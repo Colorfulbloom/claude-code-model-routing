@@ -2,7 +2,7 @@
 
 A small set of files for Claude Code that sends each job to the cheapest model that can do it well. The main session plans and decides. Haiku searches, Sonnet builds, Opus leads features, and Fable handles design and verification. A hook blocks any dispatch that names no model. One installer puts it all under `~/.claude/` and backs up anything it replaces.
 
-I wrote up why the setup looks like this in [One brief, one lead, one summary](https://jorgecalderon.codes/blog/one-brief-one-lead-one-summary).
+I wrote up why the setup looks like this in [Claude Code subagents on cheaper models](https://jorgecalderon.codes/blog/claude-code-subagents-on-cheaper-models).
 
 ## The shape
 
@@ -190,7 +190,7 @@ The rules file ships with `Codex: OFF`. When it is on, Codex works next to `deep
 
 ## Read more
 
-[One brief, one lead, one summary](https://jorgecalderon.codes/blog/one-brief-one-lead-one-summary) is the article behind this repo.
+[Claude Code subagents on cheaper models](https://jorgecalderon.codes/blog/claude-code-subagents-on-cheaper-models) is the article behind this repo.
 
 ## License
 
