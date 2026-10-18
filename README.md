@@ -82,6 +82,18 @@ The agent files pin the `haiku`, `sonnet`, `opus` and `fable` aliases. On the An
 
 Fable is never the account default on any plan or provider, so the files select it explicitly. Depending on your plan and seat tier, Fable usage can bill to usage credits instead of plan limits. Check your plan before you turn it on for the main session.
 
+## Designer settings
+
+The `designer` agent reads its project settings from a "Design" section in the project's CLAUDE.md. Any file in the CLAUDE.md hierarchy works, a `.claude/rules/*.md` file included, because subagents load that hierarchy.
+
+The section names eight things. The design source (the design system, component library or mockups that count as the truth), the benchmark (the one existing screen every direction is held to), the components to reuse, Figma on or off, the writer agent that drafts the copy, where variants and screenshots go, who builds after the owner picks a direction, and the widths to render at.
+
+Without a section the designer runs on defaults. Chrome only, Figma off, no writes to the project, widths 1440 and 375. For the settings that have no default it falls back and says so. No design source means it studies the project's existing screens and stylesheets. No benchmark means it names the best existing screen in the project as the benchmark. No writer agent means it drafts the copy itself and marks every line as draft copy. No builder means it reports the spec and stops. The top of its report lists the defaults and fallbacks it used, so you can see which settings a Design section would give you.
+
+Whatever the section says, the designer never commits, never changes config and never touches a database. It builds only when the section allows it, and only after the owner picks a direction.
+
+`examples/CLAUDE-design-section.md` is a template. Copy its `## Design` section into the project CLAUDE.md, fill in every bracket and delete the lines that do not apply.
+
 ## Install
 
 ```bash
