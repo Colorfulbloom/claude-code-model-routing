@@ -1,6 +1,6 @@
 ---
 name: deep-reasoner
-description: Opus lead and deep reasoner. Use as the lead for any multi-step feature (plans, dispatches Sonnet workers and Haiku scouts, verifies, returns one summary) and for single hard questions: architecture, complex debugging, algorithm design, novel or high-risk code.
+description: "Opus lead and deep reasoner. Use as the lead for any multi-step feature (plans, dispatches Sonnet workers and Haiku scouts, verifies, returns one summary) and for single hard questions: architecture, complex debugging, algorithm design, novel or high-risk code."
 model: opus
 effort: high
 memory: project
