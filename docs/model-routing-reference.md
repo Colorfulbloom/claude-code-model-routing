@@ -89,7 +89,7 @@ It lets through: plugin agents (names containing `:`), a dispatch with no agent 
 
 ## Startup nudge
 
-`~/.claude/hooks/check-agent-models.sh` runs on `SessionStart` (matcher `startup`). When the current project's `.claude/agents/` has agents with no pinned model, it adds one line to the session context naming them and pointing at `/route-project`. It prints nothing otherwise.
+`~/.claude/hooks/check-agent-models.sh` runs on `SessionStart` (matcher `startup`). When the current project's `.claude/agents/` or the user `agents/` folder has agents with no model or effort, it adds a line per folder to the session context naming them, with `/route-project` as the fix for project agents and the two frontmatter lines for user agents. It prints nothing otherwise.
 
 ## Where this applies
 

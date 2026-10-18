@@ -40,6 +40,7 @@ MSG_FILE_REPLACE='  replace    %s (old copy saved to %s)\n'
 MSG_FILE_REMOVE='  remove     %s\n'
 MSG_FILE_MOVE='  edited     %s (kept at %s)\n'
 MSG_FILE_GONE='  missing    %s (already gone)\n'
+MSG_FILE_SAMENAME='  warning    %s also declares name: %s. Claude Code will load only one of the two. Rename or remove that file.\n'
 MSG_SETTINGS_HEADING='Settings (%s)\n'
 MSG_SETTINGS_ADD='  add        %s hook, matcher %s\n'
 MSG_SETTINGS_SKIP='  skip       %s hook, matcher %s (already there)\n'
@@ -54,6 +55,7 @@ MSG_MANIFEST_REMOVE='  remove     %s\n'
 MSG_MANIFEST_MISSING='No manifest at %s. Only the two hook entries can be removed.\n'
 MSG_MANIFEST_LINE='    %s\n'
 MSG_SUMMARY_INSTALL='Summary: %s added, %s replaced, %s unchanged. Settings entries: %s added, %s skipped.\n'
+MSG_SUMMARY_SAMENAME='Same-name agent files: %s found. Each one needs a rename or a removal, or Claude Code keeps only one of the pair.\n'
 MSG_SUMMARY_UNINSTALL='Summary: %s removed, %s kept in backup, %s already gone. Settings entries: %s removed, %s skipped.\n'
 MSG_SUMMARY_BACKUP='Backups: %s\n'
 MSG_SUMMARY_NO_BACKUP='Backups: none needed\n'
@@ -415,6 +417,53 @@ print_backup_summary() {
   fi
 }
 
+# ---- Same-name agent scan -----------------------------------------------------
+# Read-only. Warns about files under <target>/agents/ that are not ours but whose
+# frontmatter name equals one of our agent names. File names and values are
+# untrusted text: they are only compared with [ = ] and printed through %s.
+SAMENAME=0
+scan_samename() {
+  local src rel mode names="" ours="" f nm line shown n
+  [ -d "$T/agents" ] || return 0
+  while IFS="$(printf '\t')" read -r src rel mode; do
+    case "$rel" in
+      agents/*.md) names="${names}$(basename "$rel" .md)"$'\n'; ours="${ours}${T}/${rel}"$'\n' ;;
+    esac
+  done <<EOF
+$PLAN
+EOF
+  while IFS= read -r -d '' f; do
+    # Our own six paths are covered by the add, replace and unchanged logic.
+    n=0
+    while IFS= read -r line; do
+      if [ "$line" = "$f" ]; then n=1; fi
+    done <<EOF
+$ours
+EOF
+    if [ "$n" -eq 1 ]; then continue; fi
+    # Only frontmatter counts: line 1 is ---, the block ends at the next ---.
+    line="$(awk 'NR == 1 && $0 != "---" { exit } NR > 1 && $0 == "---" { exit } NR > 1 && /^name:/ { print; exit }' "$f" 2>/dev/null || true)"
+    if [ -z "$line" ]; then continue; fi
+    nm="${line#name:}"
+    nm="${nm#"${nm%%[![:space:]]*}"}"
+    nm="${nm%"${nm##*[![:space:]]}"}"
+    case "$nm" in
+      \"?*\") nm="${nm#\"}"; nm="${nm%\"}" ;;
+      \'?*\') nm="${nm#\'}"; nm="${nm%\'}" ;;
+    esac
+    while IFS= read -r line; do
+      if [ -n "$line" ] && [ "$line" = "$nm" ]; then
+        shown="$(printf '%s' "${f#"$T"/}" | LC_ALL=C tr -d '\000-\037\177')"
+        say "$MSG_FILE_SAMENAME" "$shown" "$line"
+        SAMENAME=$((SAMENAME + 1))
+        break
+      fi
+    done <<EOF
+$names
+EOF
+  done < <(find "$T/agents" \( -type f -o -type l \) -name '*.md' -print0)
+}
+
 # ---- Install ------------------------------------------------------------------
 do_install() {
   local added=0 replaced=0 unchanged=0 src rel mode dest bk
@@ -451,6 +500,8 @@ do_install() {
 $PLAN
 EOF
 
+  scan_samename
+
   say "$MSG_SETTINGS_HEADING" "$T/settings.json"
   do_settings install "$DRY" 0
 
@@ -476,6 +527,7 @@ $(printf '%s' "$PLAN" | cut -f2 | LC_ALL=C sort)"
   fi
 
   say "$MSG_SUMMARY_INSTALL" "$added" "$replaced" "$unchanged" "$SET_ADDED" "$SET_SKIPPED"
+  if [ "$SAMENAME" -gt 0 ]; then say "$MSG_SUMMARY_SAMENAME" "$SAMENAME"; fi
   print_backup_summary
   say "$MSG_NEXT_HEADING"
   say "$MSG_NEXT_INSTALL_1"

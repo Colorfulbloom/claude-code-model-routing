@@ -50,7 +50,7 @@ The rules file assumes the main session runs on Fable. The installer does not se
 
 **`hooks/require-agent-model.py`** runs before every `Agent` tool call. It exits 2 when a dispatch passes no `model` and targets a built-in agent (`Explore`, `Plan`), an agent it cannot find, or an agent whose `model` is missing or `inherit`. It always blocks `general-purpose` (use `judge`), and it blocks any found agent with no pinned `effort`, even when a model is passed. Exit 2 means Claude Code cancels the tool call and shows the hook's message to Claude, which then passes a model and retries. Plugin agents (names with a `:`) and anything the hook cannot parse go through.
 
-**`hooks/check-agent-models.sh`** runs once when a session starts. If the project's `.claude/agents/` has agents with no pinned model, it adds one line to the session context naming them and pointing at `/route-project`. Otherwise it prints nothing.
+**`hooks/check-agent-models.sh`** runs once when a session starts. If the project's `.claude/agents/` or the user `agents/` folder has agents with no model or effort, it adds a line per folder to the session context naming them, with `/route-project` as the fix for project agents and the two frontmatter lines for user agents. Otherwise it prints nothing.
 
 Both hooks are wired into `~/.claude/settings.json` by the installer. The full list of what the dispatch hook blocks, and how to relax it so it fills in a model instead of blocking, is in `docs/model-routing-reference.md`.
 
@@ -156,13 +156,21 @@ With a custom `CLAUDE_CONFIG_DIR` the real path replaces `$HOME/.claude` in both
 
 The installer does not set `model`, `effortLevel` or `env.CLAUDE_CODE_SUBAGENT_MODEL`. Those are the three settings `/setup-model-routing` offers.
 
+## If you already have agents
+
+Agents under your own file names stay as they are. The installer writes only its own file names and leaves every other file in `agents/` alone. The dispatch hook still applies to them, though. A dispatch to an agent whose file has no `model` or no `effort` in its frontmatter is blocked, and the session is told to pass a model and go on. The fix is to add both lines to the file. The startup hook lists these agents when a session starts, for the project's `.claude/agents/` and for `<target>/agents/`.
+
+A file that has one of the six names we ship (`scout.md`, `fast-worker.md`, `judge.md`, `deep-reasoner.md`, `designer.md`, `verifier.md`) is replaced. If its content differs from ours, the installer copies it first to `<target>/backups/model-routing-<YYYYmmdd-HHMMSS>/` under the same relative path. The dry run prints `replace` and the backup path for each one, so you see it before anything moves. A file identical to ours is reported as `unchanged`.
+
+A different file that declares one of those six `name` values gets a warning, one line per file, in the plan output and in the dry run. The installer continues anyway. The warning matters because Claude Code scans `agents/` recursively and, when two files share a `name`, loads one by filesystem read order and drops the other without a message. Either agent can win, and nothing tells you which one loaded. Rename the file's `name` or remove the file.
+
 ## Uninstall
 
 ```bash
 ./install.sh --uninstall
 ```
 
-It removes the files listed in the manifest and the two hook entries, and leaves everything else alone. A file you edited after install is moved to `<target>/backups/model-routing-uninstall-<timestamp>/` instead of deleted, and `settings.json` is backed up there first. It does not restore the files an install replaced; those stay in the install backup folder, and you copy them back by hand if you want them.
+It removes the files listed in the manifest and the two hook entries, and leaves everything else alone. A file you edited after install is moved to `<target>/backups/model-routing-uninstall-<timestamp>/` instead of deleted, and `settings.json` is backed up there first. The pre-install backup is never put back; if you want a replaced file again, copy it by hand from `<target>/backups/model-routing-<YYYYmmdd-HHMMSS>/`.
 
 ## The example project agent
 

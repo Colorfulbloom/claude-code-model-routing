@@ -139,7 +139,7 @@ Keep every existing key. If `env` exists, add to it. If `model`, `effortLevel` o
    - `echo '{"tool_name":"Agent","tool_input":{"subagent_type":"fast-worker","prompt":"x"}}' | python3 ~/.claude/hooks/require-agent-model.py; echo "exit $?"` prints nothing and exits 0.
    - `echo '{"tool_name":"Agent","tool_input":{"subagent_type":"general-purpose","prompt":"x"}}' | python3 ~/.claude/hooks/require-agent-model.py; echo "exit $?"` prints the block message on stderr and exits 2.
    - `echo '{"tool_name":"Agent","tool_input":{"subagent_type":"Explore","model":"haiku","prompt":"x"}}' | python3 ~/.claude/hooks/require-agent-model.py; echo "exit $?"` exits 0.
-3. Run the nudge by hand from a project folder and show me the output: `CLAUDE_PROJECT_DIR="$PWD" bash ~/.claude/hooks/check-agent-models.sh`. It prints nothing when every project agent is pinned.
+3. Run the nudge by hand from a project folder and show me the output: `CLAUDE_PROJECT_DIR="$PWD" bash ~/.claude/hooks/check-agent-models.sh`. It prints nothing when every project and user agent is pinned.
 4. Tell me to start a new local session and check, using only things that work in every local surface:
    - The model shown in the UI is what I approved (terminal: `/model`; Desktop app Code tab: the model dropdown next to the send button). On a plain install it is my previous default.
    - Ask "which subagents are available to you?" and expect scout, fast-worker, judge, deep-reasoner, designer and verifier. (`ls ~/.claude/agents/` shows the same.)
