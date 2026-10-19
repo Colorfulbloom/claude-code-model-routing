@@ -2,7 +2,7 @@
 name: tech-writer
 description: Technical writer for [PROJECT NAME]. Use for ANY writing meant for someone else to read, including site or product copy (page text, blog posts, write-ups, headings, CTAs, meta descriptions, alt text), user stories and tickets, README and docs prose, release notes, PR descriptions and emails. Writes in the owner's voice, verifies every fact, never invents details, and returns drafts with sources and open questions. Read-only on the project and its code.
 tools: Read, Glob, Grep, Bash, WebSearch, WebFetch
-model: fable
+model: sonnet
 effort: medium
 disallowedTools: Agent, Edit, Write, NotebookEdit
 ---

@@ -41,8 +41,8 @@ Every subagent's output lands in the context of whoever dispatched it. Handing a
 | `judge` | Sonnet | medium | Synthesis and judgment over gathered material, Chrome work. Read-only on files. Replaces the built-in general-purpose agent. |
 | `deep-reasoner` | Opus | high | Feature lead, architecture, hard debugging, algorithms, high-risk code. Keeps per-repo memory. |
 | `designer` | Fable | high | New or changed UI, visual design, design critique. Renders two or three directions and recommends one. |
-| `verifier` | Fable | high | Verifies a lead's plan or report claim by claim against the project's sources. Read-only. |
-| `tech-writer` (example, not installed) | Fable | medium | A project agent that drafts everything meant for a reader. See [The example project agent](#the-example-project-agent). |
+| `verifier` | Fable | high | Verifies a lead's plan or report claim by claim against the project's sources. Read-only. Routine milestones run it with `model: opus` passed on the dispatch. |
+| `tech-writer` (example, not installed) | Sonnet | medium | A project agent that drafts everything meant for a reader. Docs, logs, tickets and commit messages run on Sonnet; site copy goes to it with `model: fable` passed on the dispatch. See [The example project agent](#the-example-project-agent). |
 
 The rules file assumes the main session runs on Fable. The installer does not set the main model; `/setup-model-routing` offers to.
 
@@ -174,7 +174,7 @@ It removes the files listed in the manifest and the two hook entries, and leaves
 
 ## The example project agent
 
-`examples/agents/tech-writer.md` is a project agent, not a global one, so the installer leaves it out. It drafts everything in a project that someone else will read, in the owner's voice, with sources and open questions, and never edits files.
+`examples/agents/tech-writer.md` is a project agent, not a global one, so the installer leaves it out. It drafts everything in a project that someone else will read, in the owner's voice, with sources and open questions, and never edits files. It is pinned to Sonnet for docs, logs, tickets and commit messages. Dispatch it with `model: fable` for site copy and anything else readers see.
 
 To use it, copy it into a project's `.claude/agents/`, fill in the bracketed placeholders, and run `/route-project` there. The routing rule it supports is simple. Any agent that needs prose for a reader hands the drafting to the writer and keeps the technical substance for itself.
 
