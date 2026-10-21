@@ -1,6 +1,6 @@
 ---
 name: scout
-description: Read-only Haiku scout. Use proactively for code search, file inventories, reading logs and diffs, running tests or linters to summarize the output, and quick web lookups (vendor docs, API references, news checks). Returns conclusions, not file dumps.
+description: Read-only scout. Use proactively for code search, file inventories, reading logs and diffs, running tests or linters to summarize the output, and quick web lookups (vendor docs, API references, news checks). Returns conclusions, not file dumps.
 tools: Read, Glob, Grep, Bash, WebSearch, WebFetch
 model: haiku
 effort: low

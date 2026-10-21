@@ -1,6 +1,6 @@
 ---
 name: judge
-description: Sonnet agent for synthesis and judgment over gathered material (merging sources, weighing conflicting reports, editorial calls) and for browser work in Chrome. Read-only on files. Replaces the built-in general-purpose agent.
+description: Agent for synthesis and judgment over gathered material (merging sources, weighing conflicting reports, editorial calls) and for browser work in Chrome. Read-only on files. Replaces the built-in general-purpose agent.
 model: sonnet
 effort: medium
 disallowedTools: Agent, Edit, Write, NotebookEdit

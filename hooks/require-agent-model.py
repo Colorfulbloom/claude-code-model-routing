@@ -68,7 +68,7 @@ def main():
     ti = data.get("tool_input") or {}
     agent = ti.get("subagent_type") or ""
     if agent == "general-purpose":
-        block("Model routing: use the pinned `judge` agent (Sonnet, medium) instead of built-in general-purpose.")
+        block("Model routing: use the pinned `judge` agent instead of built-in general-purpose.")
     if not agent or ":" in agent:
         sys.exit(0)  # unknown shape or plugin agent: let it through
     if ti.get("model"):

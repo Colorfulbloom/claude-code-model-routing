@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 ## Goal
 
-The global setup (`~/.claude/`) already gives every session a Fable orchestrator, the `scout` (Haiku), `fast-worker` (Sonnet), `judge` (Sonnet), `deep-reasoner` (Opus lead), `designer` (Fable) and `verifier` (Fable) agents, the routing rules, and a dispatch hook that blocks unpinned agents. An Opus catch-all (`CLAUDE_CODE_SUBAGENT_MODEL`) applies only if `/setup-model-routing` set it.
+The global setup (`~/.claude/`) already gives every session the `scout`, `fast-worker`, `judge`, `deep-reasoner`, `designer` and `verifier` agents, the routing rules, and a dispatch hook that blocks unpinned agents. An Opus catch-all (`CLAUDE_CODE_SUBAGENT_MODEL`) applies only if `/setup-model-routing` set it.
 
 This step tunes the agents that only exist in this project: pin each one to the tier its work needs, cap its effort, decide which ones may delegate, and make sure nothing in this project overrides the global setup. It's a one-time pass per project.
 
@@ -18,14 +18,14 @@ This step tunes the agents that only exist in this project: pin each one to the 
 2. Keep every existing agent: its name, domain, and ownership boundaries. You are adding frontmatter lines, not reorganizing the team.
 3. Don't touch agent bodies unless I approve a specific change in Phase 2.
 4. Only use facts you read in this repo. If something is unclear, ask.
-5. Use the tiers during this run: do the Phase 1 inventory with `scout` (Haiku) and have it return a structured list.
+5. Use the tiers during this run: do the Phase 1 inventory with `scout` and have it return a structured list.
 6. No em dashes in anything you write.
 
 ## Config facts (verified against the Claude Code docs, September 2026)
 
 - Project agents live in `.claude/agents/` and take priority over user agents with the same name.
-- Valid `model` values: `fable`, `opus`, `sonnet`, `haiku`, a full model ID, or `inherit`. `inherit` means the main session's model, which is Fable here, so treat `inherit` as unpinned. The global dispatch hook blocks dispatches to unpinned agents unless a model is passed.
-- `effort` values: `low`, `medium`, `high`, `xhigh`, `max`; depends on the model. An agent without `effort` runs at the session's effort (observed; the docs do not say). Pin `effort` on every agent, Haiku agents included; Haiku 5.5 takes the same effort levels as the other models.
+- Valid `model` values: `fable`, `opus`, `sonnet`, `haiku`, a full model ID, or `inherit`. `inherit` means the main session's model, so treat `inherit` as unpinned. The global dispatch hook blocks dispatches to unpinned agents unless a model is passed.
+- `effort` values: `low`, `medium`, `high`, `xhigh`, `max`; depends on the model. An agent without `effort` runs at the session's effort (observed; the docs do not say). Pin `effort` on every agent.
 - Subagents can spawn subagents, up to three layers below the main session. `disallowedTools: Agent` stops an agent from delegating further.
 - Project settings override user settings key by key, so a `model`, `env`, or `hooks` entry in `.claude/settings.json` or `.claude/settings.local.json` can beat the global setup.
 - CLAUDE.md files and rules are context, not enforcement. If two rules conflict, Claude may follow either one.
@@ -69,7 +69,7 @@ Show me:
 
 ## Phase 4: Verify
 
-1. Re-read every agent file. Confirm valid YAML, `name` and `description` present, `model` valid and not `inherit`, `effort` present and valid for that model (Haiku agents included).
+1. Re-read every agent file. Confirm valid YAML, `name` and `description` present, `model` valid and not `inherit`, `effort` present and valid for that model.
 2. Confirm no agent in `.claude/agents/` is left unpinned. Run the global hook script against each one to prove it: `echo '{"tool_name":"Agent","tool_input":{"subagent_type":"<name>","prompt":"x"}}' | python3 ~/.claude/hooks/require-agent-model.py; echo "exit $?"` should exit 0 for every agent.
 3. Routing dry run: pick three realistic tasks for this project (one search-heavy quick task, one mechanical quick task, one multi-step feature) and show the dispatch plan for each. For the feature, show the lead's plan too: which workers, which model, in what order. Don't execute anything.
 4. List every file changed, and tell me what needs a new session to take effect.

@@ -1,56 +1,56 @@
 # Claude Code model routing
 
-A small set of files for Claude Code that sends each job to the cheapest model that can do it well. The main session plans and decides. Haiku searches, Sonnet builds, Opus leads features, and Fable handles design and verification. A hook blocks any dispatch that names no model. One installer puts it all under `~/.claude/` and backs up anything it replaces.
+A small set of files for Claude Code that sends each job to the cheapest model that can do it well. The main session plans and decides. A scout searches, a worker builds, a lead runs features, and a designer and a verifier handle design and checks. Each agent's model and effort are set at install. A hook blocks any dispatch that names no model. One installer puts it all under `~/.claude/` and backs up anything it replaces.
 
 I wrote up why the setup looks like this in [Claude Code subagents on cheaper models](https://jorgecalderon.codes/blog/claude-code-subagents-on-cheaper-models).
 
 ## The shape
 
 ```
-Fable (main session)
+Main session
 Plans, decides quick task vs feature, reviews summaries, makes the call. Never codes.
 │
 ├── Quick tasks (one brief, fully specified): dispatch a worker directly
-│   ├── fast-worker (Sonnet)     small edit the session already has the plan for
-│   ├── scout (Haiku)            search, run tests, summarize logs
-│   ├── judge (Sonnet)           weigh gathered material, Chrome checks
-│   ├── deep-reasoner (Opus)     a single hard question
+│   ├── fast-worker              small edit the session already has the plan for
+│   ├── scout                    search, run tests, summarize logs
+│   ├── judge                    weigh gathered material, Chrome checks
+│   ├── deep-reasoner          a single hard question
 │   └── project agents           pinned to their tier by /route-project
 │
 ├── Design (new or changed UI): hand ONE brief to the designer; the owner picks
-│   └── designer (Fable, high)
+│   └── designer
 │       └── scout, judge, fast-worker, the project writer
 │
 └── Features (anything needing more than one brief): hand ONE brief to the lead
-    └── deep-reasoner as lead (Opus)
+    └── deep-reasoner as lead
         Plans, writes worker briefs, dispatches, verifies, returns ONE summary.
         └── fast-worker, scout, project agents
 
-verifier (Fable, high): checks a plan or report before it reaches the owner
+verifier: checks a plan or report before it reaches the owner
 Codex: OFF. When ON, a peer next to deep-reasoner.
 ```
 
 Every subagent's output lands in the context of whoever dispatched it. Handing a feature to one lead keeps the main session lean and pays the top rate only for planning and review.
 
-## Tiers
+## Agents
 
-| Agent | Model | Effort | Job |
-|-------|-------|--------|-----|
-| `scout` | Haiku | low | Search, inventories, test and lint runs, log and diff reading, quick web lookups. Read-only tools. |
-| `fast-worker` | Sonnet | medium | Well-specified implementation, tests, docs. Cannot delegate. |
-| `judge` | Sonnet | medium | Synthesis and judgment over gathered material, Chrome work. Read-only on files. Replaces the built-in general-purpose agent. |
-| `deep-reasoner` | Opus | high | Feature lead, architecture, hard debugging, algorithms, high-risk code. Keeps per-repo memory. |
-| `designer` | Fable | high | New or changed UI, visual design, design critique. Renders two or three directions and recommends one. |
-| `verifier` | Fable | high | Verifies a lead's plan or report claim by claim against the project's sources. Read-only. Routine milestones run it with `model: opus` passed on the dispatch. |
-| `tech-writer` (example, not installed) | Sonnet | medium | A project agent that drafts everything meant for a reader. Docs, logs, tickets and commit messages run on Sonnet; site copy goes to it with `model: fable` passed on the dispatch. See [The example project agent](#the-example-project-agent). |
+| Agent | Job |
+|-------|-----|
+| `scout` | Search, inventories, test and lint runs, log and diff reading, quick web lookups. Read-only tools. |
+| `fast-worker` | Well-specified implementation, tests, docs. Cannot delegate. |
+| `judge` | Synthesis and judgment over gathered material, Chrome work. Read-only on files. Replaces the built-in general-purpose agent. |
+| `deep-reasoner` | Feature lead, architecture, hard debugging, algorithms, high-risk code. Keeps per-repo memory. |
+| `designer` | New or changed UI, visual design, design critique. Renders two or three directions and recommends one. |
+| `verifier` | Verifies a lead's plan or report claim by claim against the project's sources. Read-only. Its pinned model is for plans and risky milestones; routine milestones pass a cheaper model on the dispatch. |
+| `tech-writer` (example, not installed) | A project agent that drafts everything meant for a reader: docs, logs, tickets, commit messages and site copy. See [The example project agent](#the-example-project-agent). |
 
-The rules file assumes the main session runs on Fable. The installer does not set the main model; `/setup-model-routing` offers to.
+Each agent's `model` and `effort` are set in its frontmatter; the installer asks you to pick them (see [Choosing models](#choosing-models)). The installer does not set the main model; `/setup-model-routing` offers to.
 
 ## The two hooks
 
 **`hooks/require-agent-model.py`** runs before every `Agent` tool call. It exits 2 when a dispatch passes no `model` and targets a built-in agent (`Explore`, `Plan`), an agent it cannot find, or an agent whose `model` is missing or `inherit`. It always blocks `general-purpose` (use `judge`), and it blocks any found agent with no pinned `effort`, even when a model is passed. Exit 2 means Claude Code cancels the tool call and shows the hook's message to Claude, which then passes a model and retries. Plugin agents (names with a `:`) and anything the hook cannot parse go through.
 
-**`hooks/check-agent-models.sh`** runs once when a session starts. If the project's `.claude/agents/` or the user `agents/` folder has agents with no model or effort, it adds a line per folder to the session context naming them, with `/route-project` as the fix for project agents and the two frontmatter lines for user agents. Otherwise it prints nothing.
+**`hooks/check-agent-models.sh`** runs once when a session starts. If the project's `.claude/agents/` or the user `agents/` folder has agents with no model or effort, it adds a line per folder to the session context naming them, with `/route-project` as the fix for project agents and the two frontmatter lines for user agents. It then adds one line, `Model routing agents (model/effort): ...`, that lists the agents in the user folder and then the project folder as `name=model/effort` (`none` for a missing value). It prints nothing when neither folder has agents.
 
 Both hooks are wired into `~/.claude/settings.json` by the installer. The full list of what the dispatch hook blocks, and how to relax it so it fills in a model instead of blocking, is in `docs/model-routing-reference.md`.
 
@@ -72,15 +72,15 @@ Both skills are user-invoked only. Claude never runs them on its own.
 
 - Claude Code with a Pro, Max, Team, Enterprise or Console account.
 - Claude Code 2.1.302, the version this setup is tested on. Each model alias the files use has its own minimum, listed in the [model configuration docs](https://code.claude.com/docs/en/model-config). Fable 5.1 needs v2.1.257 or later, Opus 5.5 v2.1.280, Sonnet 5.5 v2.1.284 and Haiku 5.5 v2.1.293.
-- bash (macOS's bash 3.2 works) and python3. No jq.
+- python3 3.9 or later. The installer uses only the standard library, and macOS's system python3 works. bash (3.2 works) runs the `install.sh` shim and the startup hook. No jq.
 - The `design` plugin (1.2.0, by Anthropic), which the `designer` agent relies on. The agent preloads three of its skills, `design:design-critique`, `design:accessibility-review` and `design:design-system`, and can use its Figma tools (`mcp__plugin_design_figma__*`) when a project's Design section says "Figma: on". Without the plugin the designer still runs, but Claude Code skips the three preloaded skills and logs a warning, and the Figma tools are not there. The plugin's source is the [knowledge-work-plugins](https://github.com/anthropics/knowledge-work-plugins) repo, path `design`. Install it with `/plugin marketplace add anthropics/knowledge-work-plugins`, then `/plugin install design@knowledge-work-plugins`, or turn it on in your claude.ai account, which syncs it to Claude Code.
 - Tested on macOS only. Linux is untested.
 
 ## Model access
 
-The agent files pin the `haiku`, `sonnet`, `opus` and `fable` aliases. On the Anthropic API those resolve to Haiku 5.5, Sonnet 5.5, Opus 5.5 and Fable 5.1. If your plan or provider does not give you one of them, edit the `model:` line of that agent file before or after install.
+The agent files pin the `haiku`, `sonnet`, `opus` and `fable` aliases by default. On the Anthropic API those resolve to Haiku 5.5, Sonnet 5.5, Opus 5.5 and Fable 5.1. If your plan or provider does not give you one of them, pick another model in the installer or edit the `model:` line of that agent file.
 
-Fable is never the account default on any plan or provider, so the files select it explicitly. Depending on your plan and seat tier, Fable usage can bill to usage credits instead of plan limits. Check your plan before you turn it on for the main session.
+Fable is never the account default on any plan or provider, so a file selects it only when you choose it. The picker shows "may bill to usage credits" next to `fable`. Depending on your plan and seat tier, Fable usage can bill to usage credits instead of plan limits. Check your plan before you turn it on for the main session.
 
 ## Designer settings
 
@@ -100,12 +100,15 @@ Whatever the section says, the designer never commits, never changes config and 
 git clone https://github.com/Colorfulbloom/claude-code-model-routing.git
 cd claude-code-model-routing
 ./install.sh --dry-run   # prints the plan, changes nothing
-./install.sh
+./install.sh             # opens the picker, then installs
+./install.sh --yes       # skips the picker and keeps the defaults or your saved choices
 ```
+
+`install.sh` is a short shim. It checks for python3 3.9 or later and runs `install.py`, which does the work with the standard library only.
 
 Then restart Claude Code so the hooks and agents load. Run `/setup-model-routing` once if you want the optional global settings, and `/route-project` inside each project that has its own agents.
 
-A second run of `install.sh` changes nothing. Exit codes are 0 ok, 1 failure, 2 usage error.
+A second run of `install.sh` with the same choices changes nothing. Exit codes are 0 ok, 1 failure, 2 usage error.
 
 ## What the installer changes
 
@@ -116,6 +119,7 @@ Target is `$CLAUDE_CONFIG_DIR` when set, otherwise `~/.claude`. It copies:
 - the two hooks to `hooks/`, mode 755
 - the skills to `skills/setup-model-routing/` and `skills/route-project/`
 - `docs/model-routing-reference.md` to `model-routing-reference.md`
+- `model-routing-choices.json`, the model and effort you picked for each agent (see [Choosing models](#choosing-models))
 
 It never overwrites silently. Every file it would replace is copied first to `<target>/backups/model-routing-<YYYYmmdd-HHMMSS>/` under the same relative path. It writes a manifest of what it placed to `<target>/model-routing-manifest.txt`.
 
@@ -164,17 +168,45 @@ A file that has one of the six names we ship (`scout.md`, `fast-worker.md`, `jud
 
 A different file that declares one of those six `name` values gets a warning, one line per file, in the plan output and in the dry run. The installer continues anyway. The warning matters because Claude Code scans `agents/` recursively and, when two files share a `name`, loads one by filesystem read order and drops the other without a message. Either agent can win, and nothing tells you which one loaded. Rename the file's `name` or remove the file.
 
+## Choosing models
+
+On a terminal, `./install.sh` opens a picker for the model and effort of each of the six agents. The defaults are the values in the repo's `agents/*.md`. The picker uses curses. If curses is not available, or you pass `--plain`, it asks with numbered prompts instead. Model choices are `haiku`, `sonnet`, `opus`, `fable` or a typed model ID such as `claude-opus-5-5`. Effort choices are `low`, `medium`, `high`, `xhigh` and `max`. Next to `fable` the picker shows "may bill to usage credits". Cancelling changes nothing and exits 1.
+
+The installer writes only the `model:` and `effort:` lines of each installed agent file. Everything else in the file is copied as is.
+
+Flags for choosing:
+
+- `-y`, `--yes` skips the picker.
+- `--agent NAME=MODEL[:EFFORT]` sets one agent and can be repeated, for example `--agent scout=sonnet:low`. Without `:EFFORT` it keeps the current effort if the model allows it. `NAME` is a file name under `agents/` without `.md`, and `inherit` is not allowed.
+- `--reset` ignores saved choices and starts from the repo defaults.
+- `--plain` uses numbered prompts instead of curses.
+- `--dry-run`, `--uninstall` and `-h`/`--help` work as before. `--agent` and `--reset` cannot be combined with `--uninstall`.
+
+With no TTY, or with `CI` set, the installer behaves as if you passed `--yes`.
+
+Order of precedence: repo defaults, then saved choices, then `--agent` values, then what you change in the picker. The installer prints one line, `Agent models: ...`, saying which of these applied.
+
+Your choices are saved in `<config dir>/model-routing-choices.json`. A rerun preselects them. Uninstall removes the file, and an agent file you did not edit after install counts as unchanged and is removed with it.
+
+## Tests
+
+From the repo root:
+
+```bash
+/usr/bin/python3 -m unittest discover -s tests -v
+```
+
 ## Uninstall
 
 ```bash
 ./install.sh --uninstall
 ```
 
-It removes the files listed in the manifest and the two hook entries, and leaves everything else alone. A file you edited after install is moved to `<target>/backups/model-routing-uninstall-<timestamp>/` instead of deleted, and `settings.json` is backed up there first. The pre-install backup is never put back; if you want a replaced file again, copy it by hand from `<target>/backups/model-routing-<YYYYmmdd-HHMMSS>/`.
+It removes the files listed in the manifest (the choices file included) and the two hook entries, and leaves everything else alone. A file you edited after install is moved to `<target>/backups/model-routing-uninstall-<timestamp>/` instead of deleted, and `settings.json` is backed up there first. The pre-install backup is never put back; if you want a replaced file again, copy it by hand from `<target>/backups/model-routing-<YYYYmmdd-HHMMSS>/`.
 
 ## The example project agent
 
-`examples/agents/tech-writer.md` is a project agent, not a global one, so the installer leaves it out. It drafts everything in a project that someone else will read, in the owner's voice, with sources and open questions, and never edits files. It is pinned to Sonnet for docs, logs, tickets and commit messages. Dispatch it with `model: fable` for site copy and anything else readers see.
+`examples/agents/tech-writer.md` is a project agent, not a global one, so the installer leaves it out. It drafts everything in a project that someone else will read, in the owner's voice, with sources and open questions, and never edits files. Its model and effort are in its own frontmatter.
 
 To use it, copy it into a project's `.claude/agents/`, fill in the bracketed placeholders, and run `/route-project` there. The routing rule it supports is simple. Any agent that needs prose for a reader hands the drafting to the writer and keeps the technical substance for itself.
 

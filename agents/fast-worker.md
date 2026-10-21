@@ -1,6 +1,6 @@
 ---
 name: fast-worker
-description: Sonnet worker for well-specified implementation. Edits that follow existing patterns, tests, multi-file changes, boilerplate, formatting, docs. Use for work no project agent owns.
+description: Worker for well-specified implementation. Edits that follow existing patterns, tests, multi-file changes, boilerplate, formatting, docs. Use for work no project agent owns.
 model: sonnet
 effort: medium
 disallowedTools: Agent

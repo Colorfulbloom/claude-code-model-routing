@@ -11,26 +11,26 @@ disable-model-invocation: true
 Confirm that `install.sh` from `claude-code-model-routing` left my machine in this shape, then offer the three global settings the installer does not touch.
 
 ```
-Fable (main session)
+Main session
 Plans, decides quick task vs feature, reviews summaries, makes the call. Never codes.
 │
 ├── Quick tasks (one brief, fully specified): dispatch a worker directly
-│   ├── fast-worker (Sonnet)     small edit the session already has the plan for
-│   ├── scout (Haiku)            search, run tests, summarize logs
-│   ├── judge (Sonnet)           weigh gathered material, Chrome checks
-│   ├── deep-reasoner (Opus)     a single hard question
+│   ├── fast-worker              small edit the session already has the plan for
+│   ├── scout                    search, run tests, summarize logs
+│   ├── judge                    weigh gathered material, Chrome checks
+│   ├── deep-reasoner          a single hard question
 │   └── project agents           pinned to their tier by /route-project
 │
 ├── Design (new or changed UI): hand ONE brief to the designer; the owner picks
-│   └── designer (Fable, high)
+│   └── designer
 │       └── scout, judge, fast-worker, the project writer
 │
 └── Features (anything needing more than one brief): hand ONE brief to the lead
-    └── deep-reasoner as lead (Opus)
+    └── deep-reasoner as lead
         Plans, writes worker briefs, dispatches, verifies, returns ONE summary.
         └── fast-worker, scout, project agents
 
-verifier (Fable, high): checks a plan or report before it reaches the owner
+verifier: checks a plan or report before it reaches the owner
 Codex: OFF. When ON, a peer next to deep-reasoner.
 ```
 
@@ -69,8 +69,8 @@ This skill writes no agent, rule, hook or skill file. `install.sh` owns those. I
 - `~/.claude/settings.json` applies to every project. Project settings override it key by key.
 - `CLAUDE_CONFIG_DIR` overrides the config directory (default `~/.claude`).
 - Valid agent `model` values: `sonnet`, `opus`, `haiku`, `fable`, a full model ID such as `claude-opus-5-5`, or `inherit`. `inherit` means the main session's model.
-- Subagent model order: the `model` parameter on the dispatch, then the agent file's `model`, then `CLAUDE_CODE_SUBAGENT_MODEL` ("the default model for subagents, agent team teammates, and workflow agents that aren't assigned a model another way"), then the main session's model. Under a Fable session an agent with no model, or with `inherit`, runs on Fable.
-- `effort` values: `low`, `medium`, `high`, `xhigh`, `max`; the available levels depend on the model. Every agent pins `effort`, Haiku agents included; Haiku 5.5 takes the same effort levels as the other models. An agent without `effort` runs at the session's effort (observed; the docs do not say), and the dispatch hook blocks it.
+- Subagent model order: the `model` parameter on the dispatch, then the agent file's `model`, then `CLAUDE_CODE_SUBAGENT_MODEL` ("the default model for subagents, agent team teammates, and workflow agents that aren't assigned a model another way"), then the main session's model. An agent with no model, or with `inherit`, runs on the main session's model.
+- `effort` values: `low`, `medium`, `high`, `xhigh`, `max`; the available levels depend on the model. Every agent pins `effort`. An agent without `effort` runs at the session's effort (observed; the docs do not say), and the dispatch hook blocks it.
 - `effortLevel` in settings accepts `low`, `medium`, `high`, `xhigh`; not `max`. Default unset.
 - `model` in settings is an alias or a full id. Default is the account's default model. Neither Fable model is the account default on any plan or provider; `"model": "fable"` selects it. Depending on plan and seat tier, Fable usage can bill to usage credits instead of plan limits.
 - On the Anthropic API `opus` is Opus 5.5, `sonnet` is Sonnet 5.5, `haiku` is Haiku 5.5 and `fable` is Fable 5.1. Minimum Claude Code versions: Fable 5.1 v2.1.257, Opus 5.5 v2.1.280, Sonnet 5.5 v2.1.284, Haiku 5.5 v2.1.293.

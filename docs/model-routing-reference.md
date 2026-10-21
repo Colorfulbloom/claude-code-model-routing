@@ -5,52 +5,54 @@ Explanation for `~/.claude/rules/model-routing.md`. Nothing imports this file; i
 ## Shape
 
 ```
-Fable (main session)
+Main session
 Plans, decides quick task vs feature, reviews summaries, makes the call. Never codes.
 │
 ├── Quick tasks (one brief, fully specified): dispatch a worker directly
-│   ├── fast-worker (Sonnet)     small edit Fable already has the plan for
-│   ├── scout (Haiku)            search, run tests, summarize logs
-│   ├── deep-reasoner (Opus)     a single hard question
+│   ├── fast-worker              small edit the main session already has the plan for
+│   ├── scout                    search, run tests, summarize logs
+│   ├── deep-reasoner          a single hard question
 │   └── project agents           pinned to their tier by /route-project
 │
 ├── Design (new or changed UI): hand ONE brief to the designer; the owner picks
-│   └── designer (Fable, high)
+│   └── designer
 │       Studies the design system, renders 2 or 3 directions, recommends one.
-│       ├── scout (Haiku)          inventories, token and component lookups
-│       ├── judge (Sonnet)         Chrome checks, synthesis
-│       ├── fast-worker (Sonnet)   captures, renders, the build after the pick
+│       ├── scout                  inventories, token and component lookups
+│       ├── judge                  Chrome checks, synthesis
+│       ├── fast-worker            captures, renders, the build after the pick
 │       └── project writer         all copy (for example a tech-writer project agent)
 │
 └── Features (anything needing more than one brief): hand ONE design brief to the lead
-    └── deep-reasoner as lead (Opus)
+    └── deep-reasoner as lead
         Plans, writes worker briefs, dispatches, verifies, returns ONE summary.
-        ├── fast-worker (Sonnet)   x as many as needed, parallel where separable
+        ├── fast-worker            x as many as needed, parallel where separable
         ├── project agents         at their pinned tier, for work in their files
-        └── scout (Haiku)          searches, test runs, diff and log reading
+        └── scout                  searches, test runs, diff and log reading
 
 Codex: OFF. When ON, a peer next to deep-reasoner at layer one.
 ```
 
 ## Tiers
 
-| Tier | Agent | Model | Effort | Use for |
-|------|-------|-------|--------|---------|
-| Orchestrator | main session | Fable | high by default; xhigh if `/setup-model-routing` set `effortLevel` in settings with your approval | Planning, deciding, reviewing summaries, the final call |
-| Lead / reasoner | `deep-reasoner` | Opus | high | Feature lead; architecture, hard debugging, algorithms, high-risk code; `memory: project` (operational lessons per repo, `.claude/agent-memory/deep-reasoner/`) |
-| Designer | `designer` | Fable | high | New or changed UI, layout, components, visual design and design critique; leads like deep-reasoner; `memory: user` (`~/.claude/agent-memory/designer/`); settings from the project CLAUDE.md "Design" section |
-| Worker | `fast-worker` | Sonnet | medium | Well-specified implementation, tests, docs; cannot delegate (`disallowedTools: Agent`) |
-| Judge | `judge` | Sonnet | medium | Synthesis and judgment over gathered material, Chrome work; read-only on files, replaces built-in general-purpose |
-| Scout | `scout` | Haiku | low (pinned so a newer Haiku with effort levels cannot inherit the session's) | Search, inventories, test and lint runs, log and diff reading; read-only tools. On Claude Code 2.1.302 (native install) the `haiku` alias resolved to Haiku 5.5 in the owner's test on October 17, 2026. If your build resolves it to an older Haiku, pin the full id `claude-haiku-5-5` in the file. |
-| Owner | project agents | pinned by `/route-project` | per agent | Work in the files they own |
+| Tier | Agent | Use for |
+|------|-------|---------|
+| Orchestrator | main session | Planning, deciding, reviewing summaries, the final call. Effort is high by default; xhigh if `/setup-model-routing` set `effortLevel` in settings with your approval |
+| Lead / reasoner | `deep-reasoner` | Feature lead; architecture, hard debugging, algorithms, high-risk code; `memory: project` (operational lessons per repo, `.claude/agent-memory/deep-reasoner/`) |
+| Designer | `designer` | New or changed UI, layout, components, visual design and design critique; leads like deep-reasoner; `memory: user` (`~/.claude/agent-memory/designer/`); settings from the project CLAUDE.md "Design" section |
+| Worker | `fast-worker` | Well-specified implementation, tests, docs; cannot delegate (`disallowedTools: Agent`) |
+| Judge | `judge` | Synthesis and judgment over gathered material, Chrome work; read-only on files, replaces built-in general-purpose |
+| Scout | `scout` | Search, inventories, test and lint runs, log and diff reading; read-only tools. Its effort is pinned in the file so it cannot inherit the session's. |
+| Owner | project agents | Work in the files they own |
+
+Each agent's `model` and `effort` live only in its frontmatter. The installer's picker changes them (see the README).
 
 ## Why the lead pattern exists
 
-Every subagent's output lands in the context of whoever dispatched it. If Fable ran a feature itself, it would dispatch several workers and scouts and read every one of their reports, filling the most expensive context with worker detail it only needs a verdict on. Handing one brief to `deep-reasoner` moves all of that one layer down: the lead absorbs the worker transcripts on Opus, verifies the result, and returns a single summary. Fable stays lean, keeps its judgment for the decision, and pays Fable rates only for planning and review. Subagents can nest up to three layers below the main session, so Fable, then the lead, then workers, fits with room to spare.
+Every subagent's output lands in the context of whoever dispatched it. If the main session ran a feature itself, it would dispatch several workers and scouts and read every one of their reports, filling the most expensive context with worker detail it only needs a verdict on. Handing one brief to `deep-reasoner` moves all of that one layer down: the lead absorbs the worker transcripts verifies the result, and returns a single summary. The main session stays lean, keeps its judgment for the decision, and pays the top rate only for planning and review. Subagents can nest up to three layers below the main session, so the main session, then the lead, then workers, fits with room to spare.
 
 ## The designer
 
-`designer` (Fable, high; owner decision, October 17, 2026) owns design judgment. It studies the project's design system, renders two or three directions at desktop and phone width, critiques them with the preloaded `design:*` skills and recommends one. It leads like deep-reasoner, so its Fable tokens go to judgment and the rest goes to scout, judge, fast-worker and the project's writer.
+`designer` (owner decision, October 17, 2026) owns design judgment. It studies the project's design system, renders two or three directions at desktop and phone width, critiques them with the preloaded `design:*` skills and recommends one. It leads like deep-reasoner, so its own tokens go to judgment and the rest goes to scout, judge, fast-worker and the project's writer.
 
 - Who dispatches it: the main session. Subagents can't ask the owner questions (`AskUserQuestion` is removed from every subagent), so the owner picks a direction after the designer reports and before anything is built. Resume the same designer for the build to keep its study. A lead may dispatch it for a review-only pass against the picked direction only when the build departs from the designer's spec. When the designer handed over exact values, `judge` compares screenshots against the designer's clips instead.
 - Nesting: main session, then designer (layer 1), then its workers (layer 2). Dispatched by a lead, the designer sits at layer 2 and its workers at layer 3, the default limit, where Claude Code withholds `Agent`. None of its workers delegates, so that still works.
@@ -67,9 +69,11 @@ For each subagent, the first of these that applies wins:
 3. `CLAUDE_CODE_SUBAGENT_MODEL`, if set (the `/setup-model-routing` skill offers to set it to `opus` in `~/.claude/settings.json`; the installer does not).
 4. The main session's model.
 
-Under a Fable session, an agent with no model or with `inherit` would run on Fable. The dispatch hook exists to stop that.
+An agent with no model or with `inherit` would run on the main session's model. The dispatch hook exists to stop that.
 
 Built-in agents: Explore follows the main session's model, with one exception under Fable. With a Claude subscription, a Console account or an `ANTHROPIC_BASE_URL` gateway it then runs on the `opus` alias; on Bedrock, Agent Platform, Foundry, Claude Platform on AWS and the apps gateway it stays on Fable. Plan inherits the main session's model. General-purpose is blocked by the hook (historically it used `CLAUDE_CODE_SUBAGENT_MODEL` if set, otherwise the main model); use `judge`.
+
+On Claude Code 2.1.302 (native install) the `haiku` alias resolved to Haiku 5.5 in the owner's test on October 17, 2026. If your build resolves it to an older Haiku, pin the full id `claude-haiku-5-5` in the agent file.
 
 ## The dispatch hook
 
@@ -79,7 +83,7 @@ Built-in agents: Explore follows the main session's model, with one exception un
 - targets an agent not found in the project's `.claude/agents/` or the user agents folder (`$CLAUDE_CONFIG_DIR/agents/` when that variable is set, else `~/.claude/agents/`), or
 - targets an agent whose `model` is missing or `inherit`.
 
-It blocks `general-purpose` always, and any found agent without a pinned `effort`, Haiku agents included, even when a model is passed, because an agent without `effort` runs at the session's effort (observed; the docs do not say).
+It blocks `general-purpose` always, and any found agent without a pinned `effort`, even when a model is passed, because an agent without `effort` runs at the session's effort (observed; the docs do not say).
 
 It lets through: plugin agents (names containing `:`), a dispatch with no agent name, any input it cannot parse, and any other dispatch that passes a `model` or targets an agent with a pinned model, provided the agent file, when one is found, also pins an `effort`.
 
@@ -89,7 +93,7 @@ It lets through: plugin agents (names containing `:`), a dispatch with no agent 
 
 ## Startup nudge
 
-`~/.claude/hooks/check-agent-models.sh` runs on `SessionStart` (matcher `startup`). When the current project's `.claude/agents/` or the user `agents/` folder has agents with no model or effort, it adds a line per folder to the session context naming them, with `/route-project` as the fix for project agents and the two frontmatter lines for user agents. It prints nothing otherwise.
+`~/.claude/hooks/check-agent-models.sh` runs on `SessionStart` (matcher `startup`). When the current project's `.claude/agents/` or the user `agents/` folder has agents with no model or effort, it adds a line per folder to the session context naming them, with `/route-project` as the fix for project agents and the two frontmatter lines for user agents. It then adds one more line, `Model routing agents (model/effort): ...`, listing every agent in the user folder and then the project folder as `name=model/effort` (`none` for a missing value), so a session shows which models are pinned. It prints nothing when neither folder has agents.
 
 ## Where this applies
 
