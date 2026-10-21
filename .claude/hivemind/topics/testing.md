@@ -1,16 +1,16 @@
 # testing
 
-### T-7629 Full suite runs 358 tests in about a minute
-fact: From the repo root, /usr/bin/python3 -m unittest discover -s tests runs 358 tests in about a minute (51 to 77 s seen, varies with load).
+### T-7629 Full suite runs 370 tests in about a minute
+fact: From the repo root, /usr/bin/python3 -m unittest discover -s tests runs 370 tests in about a minute (51 to 77 s seen, varies with load).
 check: /usr/bin/python3 -m unittest discover -s tests
 evidence: tests
-fp: c5f6560794cc
-as_of: 2c33011 2026-10-21
+fp: a9fe46de0346
+as_of: f36fddb 2026-10-21
 author: deep-reasoner
 created: 2026-10-20
 last_used: 2026-10-21
 uses: 3
-measured: 358 tests, 63.8s @2c33011 plus the uncommitted Phase 2 build and fixes 2026-10-21
+measured: 370 tests, 69.3s @f36fddb plus the uncommitted tally rounds fix 2026-10-21
 promote: approved
 
 ### T-5589 Subsets run through discover -k; dotted names fail
@@ -41,19 +41,19 @@ promote: approved
 fact: test_picker.py and test_hivemind.py drive real ptys; a broken pty test can leave a hung unittest process, and ps -eo pid,etime,command | grep "[u]nittest" lists any strays.
 check: grep -n "import pty" tests/test_picker.py tests/test_hivemind.py
 evidence: tests/test_picker.py, tests/test_hivemind.py
-fp: 7cf8581c7a3c
-as_of: 2c33011 2026-10-21
+fp: 0cf3b75a3f33
+as_of: f36fddb 2026-10-21
 author: deep-reasoner
 created: 2026-10-20
 last_used: 2026-10-21
 uses: 3
 
 ### T-6bd7 SubagentHandback appeared only in auto mode on Claude Code 2.1.305
-fact: Version-dependent observation on Claude Code 2.1.305: headless claude -p subagents got SubagentHandback only with --permission-mode auto; under acceptEdits they ended with plain text and SubagentStop carried last_assistant_message. The check prints the installed version and shows that capture reads both endings; it does not test the mode behaviour, which needs a live run on each new version.
+fact: On Claude Code 2.1.305, headless claude -p subagents got SubagentHandback only with --permission-mode auto; under acceptEdits they ended in plain text and SubagentStop carried last_assistant_message. The check shows capture reads both endings, not the mode behaviour (needs a live run per version).
 check: claude --version; grep -n -E "last_assistant_message|transcript_tool_input" hooks/hivemind_lib.py
 evidence: hooks/hivemind_lib.py
-fp: 584e36e394bb
-as_of: 2c33011 2026-10-21
+fp: 6a327cfa01fe
+as_of: f36fddb 2026-10-21
 author: deep-reasoner
 created: 2026-10-20
 last_used: 2026-10-20
@@ -75,9 +75,20 @@ uses: 0
 fact: Headless claude -p on 2.1.306 sends SessionStart source startup (new session), resume (--resume and --continue), compact (/compact) and clear (/clear, new session_id); status shows Recent work only for startup, clear and compact.
 check: grep -n "RECENT_SOURCES =" hooks/hivemind_lib.py
 evidence: hooks/hivemind_lib.py
-fp: 584e36e394bb
-as_of: 2c33011 2026-10-21
+fp: 6a327cfa01fe
+as_of: f36fddb 2026-10-21
 author: deep-reasoner
 created: 2026-10-21
 last_used: 2026-10-21
 uses: 1
+
+### T-2160 A resumed round starts at a new promptId
+fact: On Claude Code 2.1.302 a SendMessage resume adds a user row with a new promptId (isMeta, origin.kind coordinator) after the SubagentHandback result; round_starts splits rounds on it.
+check: grep -n "def round_starts" -A14 hooks/hivemind_lib.py
+evidence: hooks/hivemind_lib.py, tests/test_hivemind.py
+fp: eecae861996b
+as_of: f36fddb 2026-10-21
+author: deep-reasoner
+created: 2026-10-21
+last_used: 2026-10-21
+uses: 0

@@ -1018,6 +1018,67 @@ class CaptureTest(HiveBase):
         self.assertEqual((run["tally"]["skipped"], run["tally"]["turns"], run["kind"]), ("too_large", 0, "untagged"))
 
 
+    def resumed_rows(self, second_kind="Kind: docs-apply\nThe owner approved.", ending="handback"):
+        """A first round, a stop (handback call or plain text), then a resumed round under a new promptId."""
+        def prompt(text, pid, meta=False):
+            r = urow(text)
+            r.update(promptId=pid, isMeta=meta)
+            return r
+        if ending == "handback":
+            stop = [arow("m2", [{"type": "tool_use", "id": "h", "name": "SubagentHandback", "input": {"message": "r"}}],
+                         usage(2, 1000, 300, 38), stop="tool_use"),
+                    dict(urow([{"type": "tool_result", "tool_use_id": "h", "content": "ok"}]), promptId="p1")]
+        else:
+            stop = [arow("m2", [{"type": "text", "text": "report"}], usage(2, 1000, 300, 38))]
+        return ([prompt("Kind: docs-plan\nPlan it.", "p1"), prompt("<system-reminder>x</system-reminder>", "p1", True),
+                 arow("m1", [{"type": "tool_use", "id": "t", "name": "Bash", "input": {}}], usage(1, 500, 100, 9),
+                      stop="tool_use"),
+                 dict(urow([{"type": "tool_result", "tool_use_id": "t", "content": "ok"}]), promptId="p1")] + stop +
+                [prompt("The coordinator sent a message while you were working:\n" + second_kind, "p2", True),
+                 arow("m3", [{"type": "text", "text": "done"}], usage(4, 1300, 200, 50))])
+
+    def test_fresh_transcript_is_round_one_without_prev(self):
+        self.make_store()
+        run = self.capture(agent_transcript_path=self.transcript(self.resumed_rows()[:6]))
+        t = run["tally"]
+        self.assertEqual((run["kind"], t["round"], t["context_final_plus_out"], "prev" in t),
+                         ("docs-plan", 1, 1340, False))
+
+    def test_resumed_round_takes_its_own_kind_and_the_previous_total(self):
+        self.make_store()
+        for ending in ("handback", "text"):
+            rows = self.resumed_rows(ending=ending)
+            run = self.capture(agent_transcript_path=self.transcript(rows, ending + ".jsonl"))
+            t = run["tally"]
+            self.assertEqual((run["kind"], t["round"], t["context_final_plus_out"], t["prev"]["context_final_plus_out"]),
+                             ("docs-apply", 2, 1554, 1340), ending)
+            self.assertEqual((t["prev"]["turns"], t["turns"], t["prev"]["total"]), (2, 3, 1950), ending)
+            self.assertEqual(lib.run_sample(run, self.cfg), (214, 2, None))
+
+    def test_resumed_round_without_a_kind_is_untagged(self):
+        self.make_store()
+        run = self.capture(agent_transcript_path=self.transcript(self.resumed_rows("Now also fix the typo.")))
+        self.assertEqual((run["kind"], run["tally"]["round"]), ("untagged", 2))
+
+    def test_prompt_that_arrives_mid_run_stays_in_the_round(self):
+        rows = self.resumed_rows()
+        rows = rows[:4] + [dict(rows[-2], promptId="p9")] + rows[4:]
+        tally, kind = lib.compute_tally(rows)
+        self.assertEqual((kind, tally["round"]), ("docs-apply", 2))
+        self.assertEqual(lib.round_starts(rows), [0, 7])
+        for r in rows:
+            r.pop("promptId", None)
+        self.assertEqual(lib.round_starts(rows), [0])
+
+    def test_compaction_shrinks_the_total_and_gives_no_sample(self):
+        self.make_store()
+        rows = self.resumed_rows()
+        rows[-1] = arow("m3", [{"type": "text", "text": "done"}], usage(4, 300, 200, 50))
+        run = self.capture(agent_transcript_path=self.transcript(rows))
+        self.assertEqual((run["tally"]["round"], run["tally"]["context_final_plus_out"]), (2, 554))
+        self.assertEqual(lib.run_sample(run, self.cfg), (None, 2, "no increase"))
+
+
 class GuardTest(HiveBase):
     def guard(self, tool_input, agent_type="scout", cwd=None, tool="Write"):
         payload = {"agent_id": "g" * 17, "cwd": cwd or self.root, "tool_name": tool, "tool_input": tool_input}
@@ -1872,20 +1933,101 @@ class ApplyTest(CliBase):
         tally = lambda v: {"turns": 1, "context_final_plus_out": v, "model": "m", "skipped": None}  # noqa: E731
         self.add_run(agent_id="s5", kind="k", agent_type="scout", tally=tally(555))
         self.add_run(agent_id="new", kind="k", agent_type="scout", tally=tally(999))
-        out = self.run_cmd(lib.cmd_apply, self.store)[1]
-        self.assertIn("2 tally samples added", out)
+        rc, out, err = self.run_cmd(lib.cmd_apply, self.store)
+        self.assertIn("1 tally samples added", out)
+        self.assertIn("apply: 1 run files gave no tally sample (duplicate 1)", err)
         row = json.loads(self.slurp("tallies.json"))["rows"]
         self.assertEqual(sorted(row), ["k|scout|m"])
         got = row["k|scout|m"]["samples"]
         self.assertEqual(len(got), 20)
-        self.assertEqual([s["agent_id"] for s in got][-2:], ["s5", "new"])
-        self.assertEqual(sum(1 for s in got if s["agent_id"] == "s5"), 1)
-        self.assertEqual(got[-2]["v"], 555)
+        self.assertEqual([s["agent_id"] for s in got][-1], "new")
+        self.assertEqual([s["v"] for s in got if s["agent_id"] == "s5"], [5])
         self.assertNotIn("s0", [s["agent_id"] for s in got])
         arch = self.slurp("archive", "token-tallies.md")
         self.assertTrue(arch.startswith("# token-tallies\n"))
         self.assertTrue(arch.endswith("| old | scout | m | 1 | 7 | 7 | 7 | 2026-01-01 |\n"))
         self.assertNotIn("| old |", self.slurp("topics", "token-tallies.md"))
+
+    def tally_run(self, agent_id, kind, v, rnd=None, prev=None, **over):
+        t = {"turns": 3, "context_final_plus_out": v, "model": "m", "skipped": None}
+        if rnd is not None:
+            t["round"] = rnd
+        if prev is not None:
+            t["prev"] = {"context_final_plus_out": prev}
+        t.update(over)
+        return self.add_run(agent_id=agent_id, kind=kind, agent_type="deep-reasoner", tally=t)
+
+    def samples(self):
+        rows = json.loads(self.slurp("tallies.json"))["rows"]
+        return {k.split("|")[0]: rows[k]["samples"] for k in rows}
+
+    def test_tally_fresh_agent_records_its_total(self):
+        self.tally_run("fresh", "plan", 277338, rnd=1)
+        rc, out, err = self.run_cmd(lib.cmd_apply, self.store)
+        self.assertEqual((rc, err), (0, ""))
+        self.assertIn("1 tally samples added", out)
+        self.assertEqual(self.samples(), {"plan": [{"v": 277338, "date": TODAY, "agent_id": "fresh"}]})
+
+    def test_tally_resumed_round_with_a_new_kind_is_its_own_sample(self):
+        self.tally_run("agent1", "plan", 277338, rnd=1)
+        self.tally_run("agent1", "apply", 323550, rnd=2, prev=277338)
+        self.assertIn("2 tally samples added", self.run_cmd(lib.cmd_apply, self.store)[1])
+        self.assertEqual(self.samples(), {
+            "plan": [{"v": 277338, "date": TODAY, "agent_id": "agent1"}],
+            "apply": [{"v": 46212, "date": TODAY, "agent_id": "agent1", "round": 2}]})
+
+    def test_tally_resumed_round_after_an_earlier_apply_keeps_the_first_sample(self):
+        self.tally_run("agent1", "plan", 277338, rnd=1)
+        self.run_cmd(lib.cmd_apply, self.store)
+        self.tally_run("agent1", "apply", 323550, rnd=2, prev=277338)
+        self.tally_run("agent1", "fix", 357047, rnd=3, prev=323550)
+        self.assertIn("2 tally samples added", self.run_cmd(lib.cmd_apply, self.store)[1])
+        got = self.samples()
+        self.assertEqual([s["v"] for s in got["plan"]], [277338])
+        self.assertEqual((got["apply"][0]["v"], got["fix"][0]["v"], got["fix"][0]["round"]), (46212, 33497, 3))
+
+    def test_tally_resumed_round_with_the_same_kind_adds_a_second_sample(self):
+        self.tally_run("tw", "site-copy-round", 9000, rnd=1)
+        self.tally_run("tw", "site-copy-round", 13000, rnd=2, prev=9000)
+        self.tally_run("tw", "site-copy-round", 13000, rnd=2, prev=9000)
+        rc, out, err = self.run_cmd(lib.cmd_apply, self.store)
+        self.assertIn("2 tally samples added", out)
+        self.assertIn("(duplicate 1)", err)
+        self.assertEqual([(s["v"], s.get("round", 1)) for s in self.samples()["site-copy-round"]],
+                         [(9000, 1), (4000, 2)])
+
+    def test_tally_round_whose_total_did_not_grow_gives_no_sample(self):
+        self.tally_run("c", "plan", 200000, rnd=1)
+        self.tally_run("c", "apply", 150000, rnd=2, prev=200000)
+        self.tally_run("c", "apply", 200000, rnd=3, prev=200000)
+        self.tally_run("c", "apply", 210000, rnd=4)
+        self.tally_run("c", "apply", 210000, rnd=0)
+        rc, out, err = self.run_cmd(lib.cmd_apply, self.store)
+        self.assertEqual(rc, 0)
+        self.assertIn("1 tally samples added", out)
+        self.assertIn("apply: 4 run files gave no tally sample (bad round 1, no increase 2, no prev 1)", err)
+        self.assertEqual(self.samples(), {"plan": [{"v": 200000, "date": TODAY, "agent_id": "c"}]})
+
+    def test_tally_old_run_file_of_a_resumed_agent_never_overwrites(self):
+        old = {"version": 1, "rows": {"plan|deep-reasoner|m": {"last_date": "2026-10-19", "samples": [
+            {"v": 277338, "date": "2026-10-19", "agent_id": "agent1"}, {"v": 5, "date": "2026-10-19", "agent_id": "b"}]}}}
+        self.write("tallies.json", json.dumps(old), self.store)
+        self.tally_run("agent1", "plan", 357047)
+        self.tally_run("agent2", "plan", 1000)
+        rc, out, err = self.run_cmd(lib.cmd_apply, self.store)
+        self.assertIn("1 tally samples added", out)
+        self.assertIn("(duplicate 1)", err)
+        self.assertEqual([(s["agent_id"], s["v"]) for s in self.samples()["plan"]],
+                         [("agent1", 277338), ("b", 5), ("agent2", 1000)])
+        self.assertIn("| plan | deep-reasoner | m | 3 | 1000 |", self.slurp("topics", "token-tallies.md"))
+
+    def test_prep_shows_round_increases(self):
+        self.tally_run("agent1", "plan", 277338, rnd=1)
+        self.tally_run("agent1", "apply", 323550, rnd=2, prev=277338)
+        self.tally_run("agent1", "apply", 1, rnd=3, prev=323550)
+        out = self.run_cmd(lib.cmd_prep, self.store)[1]
+        self.assertIn("apply | deep-reasoner | m: n=1 median=46212", out)
+        self.assertIn("plan | deep-reasoner | m: n=1 median=277338", out)
 
     def test_apply_honours_refresh_and_never_writes_active_days(self):
         self.init_git("2026-10-02T10:00:00")

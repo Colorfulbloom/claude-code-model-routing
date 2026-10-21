@@ -116,7 +116,7 @@ python3 ~/.claude/hooks/hivemind_lib.py related <path>...           # facts and 
 
 A code feature is recorded with `commit: pending (branch <name>)` before it merges. The status line lists entries that still wait for a commit, and the main session runs `history link` with the commit on development. `history add` refuses secrets and home directory paths, and `check` verifies every stored SHA and flags both in history files.
 
-Token tallies from each run feed `topics/token-tallies.md`, which the cost gate in `rules/model-routing.md` reads. The figure is the harness's per-agent token figure.
+Token tallies from each run feed `topics/token-tallies.md`, which the cost gate in `rules/model-routing.md` reads. The figure is the harness's per-agent token figure (`tally_metric`, `context_final_plus_out` by default). Each round of an agent is one sample, filed under the `Kind:` line of that round's brief (`untagged` when it has none). A fresh agent's sample is its whole run. An agent resumed with SendMessage keeps its agent id, and each later round's sample is the increase over its total at the end of the round before, read from the transcript, so a round never overwrites an earlier one. A round whose total did not grow (context compaction can shrink it) gives no sample, and `apply` says how many runs it skipped and why. A round starts at a prompt with a new `promptId` after the agent stopped; a message that arrives while the agent is still working stays in its round.
 
 Guardrails:
 
