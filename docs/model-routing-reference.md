@@ -102,7 +102,7 @@ Four more entries are installed. They do nothing in a project without `.claude/h
 | Event | Matcher | Command | What it does |
 |-------|---------|---------|--------------|
 | `SubagentStart` | `*` | `hivemind-inject.py` | Gives the subagent one-line records within its token budget, once per agent. |
-| `SubagentStop` | `*` | `hivemind-capture.py` | Parses the HIVEMIND block from the final reply (no line or length limit; lines that do not parse are kept in the file's `unparsed` list), tallies the agent's tokens for the round that just ended (a resumed agent's round records the increase over the round before; see the README's HiveMind section) and writes one file to `inbox/` (none when the stop carries no `agent_type`). |
+| `SubagentStop` | `*` | `hivemind-capture.py` | Parses the HIVEMIND block from the final reply (no line or length limit; lines that do not parse are kept in the file's `unparsed` list), tallies the agent's tokens for the round that just ended (a resumed round records its increase in a `+resumed` row; see the README's HiveMind section), keeps per-agent round state in `inbox/rounds/` and writes one run file to `inbox/` (none when the stop carries no `agent_type`). |
 | `PreToolUse` | `Write\|Edit\|MultiEdit\|NotebookEdit` | `hivemind-guard.py` | Denies a subagent's write to `.claude/hivemind/` and `.claude/rules/project-facts.md`. `deep-reasoner` and the main session pass. |
 | `SessionStart` | empty | `hivemind_lib.py status` | Prints one line when the store needs attention. On source `startup`, `clear` and `compact` it also prints the Recent work list (newest 8 history lines, at most 10 lines in all); `resume` and unknown sources print no list. Nothing is printed for a healthy store with no history. |
 

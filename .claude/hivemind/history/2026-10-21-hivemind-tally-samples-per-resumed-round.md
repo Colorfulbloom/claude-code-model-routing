@@ -4,21 +4,27 @@ kind: code
 dates: 2026-10-21 .. 2026-10-21
 refs:
   commit: pending (branch development)
-summary: A subagent resumed with SendMessage now records one tally sample per round, the increase over the round before, under that round's Kind, instead of overwriting its first sample with the cumulative total.
+summary: A subagent resumed with SendMessage records one tally sample per round, found from its captures and real briefs, and later rounds go to a separate <kind>+resumed row.
 decisions:
-- Rounds come from the transcript: a user prompt row with a new promptId after the agent stopped (last assistant row made no tool call or called SubagentHandback). A prompt that arrives mid-run stays in its round. No promptIds means one round, as before.
-- Capture keeps the cumulative figures in tally and adds round and prev (figures at the end of the round before); apply computes the increase in the configured metric.
-- prev is read from the transcript, not from tallies.json, so a round still gets its increase after an apply in between, or when the earlier round's sample was trimmed or never captured.
-- A sample is keyed by agent_id and round and never replaced; a repeat is skipped as a duplicate. Old samples without round count as round 1. A sample gains round only above 1, so fresh samples and old tallies.json files are unchanged.
-- A later round with no increase (compaction can shrink the final context), no prev or a bad round gives no sample; apply prints the count and reasons on stderr.
+- First pass (9c7985a) split rounds at a new promptId. A verifier found it unsound: promptId follows the parent prompt, so 44 real resumes kept it and 173 nudges, task notifications and worker hand-backs changed it.
+- Rounds are anchored to captures. SubagentStop fires at each stop before the wake row lands. Each capture stores inbox/rounds/<agent_id>.json (transcript, rows read, round, start row, kind), and the next capture scans only the rows after it.
+- A new round starts only at a real brief after a stop: origin.kind coordinator or human, or peer from an agent the transcript did not launch (toolUseResult.agentId) whose body is not a hand-back. Without state, capture scans the whole transcript for briefs (anchor transcript).
+- prev comes from the transcript at the round's start row, not from stored figures, because a plain-text stop's final row can land after the capture reads.
+- A later capture of the same round (after a nudge, a notification or a worker's report woke the agent) replaces that round's sample. Only run files with tally.anchor replace; older formats are skipped as duplicates.
+- Round > 1 samples go to a <kind>+resumed row, and stored ones move there on apply, so resumes never move fresh-dispatch medians.
+- 9c7985a-format files with round > 1 and no anchor are skipped as "unanchored round"; their boundary came from the wrong rule.
+- A resumed round with no Kind: line stays untagged, as the first pass decided. Inheriting the earlier round's kind is an open question for the owner.
+- apply deletes round state files older than 30 days.
 rejected:
-- Previous total from tallies.json samples: needs a cumulative field on every sample and breaks when the earlier sample is trimmed by tally_samples_max or never captured.
-- Keeping latest-wins dedupe per agent_id: that is the bug.
-- Inheriting the first round's Kind when a resume prompt has none: the brief asked for the existing untagged fallback.
-files: hooks/hivemind_lib.py, tests/test_hivemind.py, README.md, docs/model-routing-reference.md, .claude/hivemind/topics/testing.md, .claude/hivemind/topics/dead-ends.md
+- promptId boundaries: wrong in both directions on real data.
+- Treating a lead's own workers' hand-backs as rounds: they wake the lead inside one feature and would split its cost.
+- Sample increase over a stored cumulative figure: off by the late final row; the transcript at the brief row is exact.
+- Previous total from tallies.json samples, and latest-wins per agent_id: as in the first pass.
+files: hooks/hivemind_lib.py, tests/test_hivemind.py, tests/fixtures/rounds/, README.md, docs/model-routing-reference.md, .claude/hivemind/topics/testing.md
 gotchas:
-- An old-format run file (captured before this fix) of a resumed agent has no round and carries its first round's Kind; apply now skips it as a duplicate instead of overwriting, so that round gets no sample unless a lead adds it by hand.
-- Kind is read from the first user row of the round; if a compaction summary row ever lands before the resume prompt, the round would be untagged. Not observed.
+- Run files sort by name; two captures of one agent in the same second sort the -2 suffix first. Not seen in practice.
+- Old-format waiting inbox files of a resumed agent carry the whole run under the first round's kind; apply skips them when the agent already has a sample.
 facts: T-2160, T-7629
 follow-ups:
-- Confirm on a live run that a prompt sent to a still-working agent is folded into its round as the code assumes.
+- Owner: kind inheritance for resumes without a Kind: line.
+- Install the fix into ~/.claude/hooks after the owner's go.

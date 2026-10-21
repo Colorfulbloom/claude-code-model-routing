@@ -40,6 +40,11 @@ GIT_TIMEOUT_DEFAULT = 2
 FP_CACHE_MAX = 5000
 INJECTED_KEEP_DAYS = 2
 ERR_MAX_CHARS = 200
+ROUNDS_DIR = "rounds"                       # inbox/rounds/: per-agent capture state, not run files
+ROUND_STATE_MAX_DAYS = 30
+RESUMED_SUFFIX = "+resumed"
+HANDBACK_PREFIX = "[Subagent hand-back]"
+BRIEF_ORIGINS = ("coordinator", "human")
 FP_IGNORE = ("." + "git", "__pycache__", "node_modules")
 
 DEFAULT_CONFIG = {
@@ -844,31 +849,107 @@ def _int(v):
     return v if isinstance(v, int) and not isinstance(v, bool) else 0
 
 
+def _is_int(v):
+    return isinstance(v, int) and not isinstance(v, bool)
+
+
 def effort_level(value):
     if isinstance(value, dict):
         value = value.get("level")
     return value if isinstance(value, str) else ""
 
 
+def launched_ids(rows):
+    """Agent ids this transcript launched: the toolUseResult.agentId values on its rows."""
+    out = set()
+    for r in rows:
+        t = r.get("toolUseResult")
+        if isinstance(t, dict) and isinstance(t.get("agentId"), str) and t["agentId"]:
+            out.add(t["agentId"])
+    return out
+
+
+def is_brief(row, launched):
+    """True for a user row that briefs the agent: a coordinator or human prompt, or a peer message.
+
+    A peer message counts only when its sender is not an agent this transcript launched (those are the
+    agent's own workers reporting back) and its body is not a hand-back. Tool results, task notifications,
+    harness nudges and system reminders (no origin) never brief the agent.
+    """
+    if row.get("type") != "user":
+        return False
+    blocks = _content_blocks(_message(row))
+    if not blocks or all(b.get("type") == "tool_result" for b in blocks):
+        return False
+    origin = row.get("origin")
+    kind = origin.get("kind") if isinstance(origin, dict) else None
+    if kind in BRIEF_ORIGINS:
+        return True
+    if kind != "peer":
+        return False
+    body = origin.get("body")
+    return origin.get("from") not in launched and not (isinstance(body, str) and body.startswith(HANDBACK_PREFIX))
+
+
+def brief_starts(rows, start=0, stopped=False):
+    """Row indexes at or after start of the briefs that arrive after the agent stopped.
+
+    The agent has stopped when its last assistant row made no tool call or called SubagentHandback; stopped
+    says whether it already had at row start. A brief that arrives while the agent is still working stays in
+    its round, and after a start the agent counts as working until its next stop.
+    """
+    launched = launched_ids(rows)
+    out = []
+    for n in range(start, len(rows)):
+        r = rows[n]
+        if r.get("type") == "assistant":
+            names = [b.get("name") for b in _content_blocks(_message(r)) if b.get("type") == "tool_use"]
+            stopped = not names or "SubagentHandback" in names
+        elif stopped and is_brief(r, launched):
+            out.append(n)
+            stopped = False
+    return out
+
+
 def round_starts(rows):
     """Row indexes where each round of the run starts; 0 is the first brief.
 
-    A resumed agent (SendMessage) gets its next prompt under a new promptId once it has stopped: its last
-    assistant row made no tool call, or called SubagentHandback. A prompt that arrives while the agent is
-    still working stays in the current round. Tool results are not prompts. A transcript without promptIds
-    is one round.
+    A resumed agent (SendMessage) keeps its transcript. A new round starts at a real brief (see is_brief)
+    that arrives after the agent stopped. Harness nudges, task notifications and the agent's own workers
+    reporting back wake the agent without starting a round, and promptId plays no part.
     """
-    starts, pid, ended = [0], None, False
-    for n, r in enumerate(rows):
-        if r.get("type") == "assistant":
-            names = [b.get("name") for b in _content_blocks(_message(r)) if b.get("type") == "tool_use"]
-            ended = not names or "SubagentHandback" in names
-        elif (r.get("type") == "user" and isinstance(r.get("promptId"), str) and r["promptId"]
-              and any(b.get("type") != "tool_result" for b in _content_blocks(_message(r)))):
-            if pid is not None and r["promptId"] != pid and ended:
-                starts.append(n)
-            pid = r["promptId"]
-    return starts
+    return [0] + brief_starts(rows)
+
+
+def row_kind(row):
+    """The `Kind:` tag in a row's text blocks, or None."""
+    m = KIND_RE.search("\n".join(b.get("text", "") for b in _content_blocks(_message(row))
+                                 if b.get("type") == "text" and isinstance(b.get("text"), str)))
+    return m.group(1) if m else None
+
+
+def round_info(rows, state):
+    """(round, start, kind, anchor) of the round the transcript rows end in.
+
+    With a valid state (what the last capture of this agent stored: rows read, round, start, kind) it
+    continues from there: it scans only the rows after state["rows"], so a stop that landed one message
+    late in the earlier capture does not matter, and anchor is "capture". Without one it finds the round by
+    scanning the whole transcript for briefs, and anchor is "transcript". A round's kind is the `Kind:` tag
+    of its brief, else "untagged"; a capture with no new brief keeps the stored kind of its round.
+    """
+    if (isinstance(state, dict) and _is_int(state.get("rows")) and 0 < state["rows"] <= len(rows)
+            and _is_int(state.get("round")) and state["round"] >= 1 and _is_int(state.get("start"))
+            and 0 <= state["start"] <= state["rows"] and isinstance(state.get("kind"), str)):
+        rnd, start, kind = state["round"], state["start"], state["kind"]
+        for n in brief_starts(rows, state["rows"], True):
+            rnd, start, kind = rnd + 1, n, row_kind(rows[n]) or "untagged"
+        return rnd, start, kind, "capture"
+    starts = round_starts(rows)
+    m = KIND_RE.search(_first_user_text(rows))
+    kind = m.group(1) if m else "untagged"
+    for n in starts[1:]:
+        kind = row_kind(rows[n]) or "untagged"
+    return len(starts), starts[-1], kind, "transcript"
 
 
 def usage_totals(rows):
@@ -896,17 +977,21 @@ def usage_totals(rows):
     return out, final
 
 
-def compute_tally(rows, stdin_effort=None):
+def compute_tally(rows, stdin_effort=None, state=None):
     """(tally dict, kind) from transcript rows (see design section 8).
 
-    The figures cover the whole transcript. round is 1 for a fresh agent; a resumed agent's later round
-    also carries prev, the figures at the end of the round before it, and its kind comes from its own prompt.
+    The figures cover the whole transcript. round is 1 for a fresh agent; start is the row where the round
+    begins, rows the number of rows read, and anchor says how the round was found (round_info). A resumed
+    agent's later round also carries prev, the figures over the rows before its start, taken from the
+    transcript so a final row that landed after an earlier capture still counts in the round before. The
+    kind comes from the round's own brief.
     """
-    starts = round_starts(rows)
+    rnd, start, kind, anchor = round_info(rows, state)
     figures, final = usage_totals(rows)
-    tally = dict(figures, model="", effort="", partial_output=False, skipped=None, round=len(starts))
-    if len(starts) > 1:
-        tally["prev"] = usage_totals(rows[:starts[-1]])[0]
+    tally = dict(figures, model="", effort="", partial_output=False, skipped=None,
+                 round=rnd, anchor=anchor, start=start, rows=len(rows))
+    if rnd > 1:
+        tally["prev"] = usage_totals(rows[:start])[0]
     if final is not None:
         tally["model"] = final.get("model") if isinstance(final.get("model"), str) else ""
         tally["partial_output"] = "stop_reason" in final and final["stop_reason"] is None
@@ -921,8 +1006,25 @@ def compute_tally(rows, stdin_effort=None):
             if effort_level(r.get("effort")):
                 tally["effort"] = effort_level(r["effort"])
                 break
-    m = KIND_RE.search(_first_user_text(rows[starts[-1]:]))
-    return tally, (m.group(1) if m else "untagged")
+    return tally, kind
+
+
+# ---------------------------------------------------------------- round state
+
+def round_state_path(store, agent_id):
+    return os.path.join(store, "inbox", ROUNDS_DIR, safe_name(agent_id) + ".json")
+
+
+def read_round_state(store, agent_id, transcript_path):
+    """The agent's stored capture state, or None unless it is for this transcript (round_info checks the rest)."""
+    state = read_json(round_state_path(store, agent_id), None)
+    if isinstance(state, dict) and state.get("transcript") == transcript_path:
+        return state
+    return None
+
+
+def write_round_state(store, agent_id, state):
+    atomic_write(round_state_path(store, agent_id), json.dumps(state, indent=1) + "\n")
 
 
 def tally_key(kind, agent_type, model):
@@ -1402,7 +1504,9 @@ def _capture(data, root, store):
             break
     if block is None:
         block = parse_block("", cfg, root)
-    tally, kind = compute_tally(rows, data.get("effort"))
+    transcript_path = data.get("agent_transcript_path")
+    state = read_round_state(store, data["agent_id"], transcript_path) if rows else None
+    tally, kind = compute_tally(rows, data.get("effort"), state)
     tally["skipped"] = skipped
     run = {"version": 1, "time": now_str(), "date": day, "agent_type": agent_type, "agent_id": data["agent_id"],
            "session_id": data.get("session_id") if isinstance(data.get("session_id"), str) else "",
@@ -1412,6 +1516,13 @@ def _capture(data, root, store):
            "not_counted": block["not_counted"], "contradicts": block["contradicts"], "new": block["new"],
            "unparsed": block["unparsed"], "dropped": block["dropped"], "drop_reasons": block["drop_reasons"], "redacted": block["redacted"]}
     write_run_file(store, run, agent_type, data["agent_id"])
+    if rows:
+        try:
+            write_round_state(store, data["agent_id"], {
+                "version": 1, "transcript": transcript_path, "rows": tally["rows"], "round": tally["round"],
+                "start": tally["start"], "kind": kind, "time": now_str()})
+        except Exception as e:
+            log_error(store, "hivemind-capture", e)
 
 
 def guard_applies(data):
@@ -3038,10 +3149,10 @@ def prep_report(store, root):
     out.append("Dropped: " + (", ".join("%s %d" % kv for kv in sorted(reasons.items())) or "none"))
     groups = {}
     for _, data in runs:
-        v = run_sample(data, cfg)[0]
+        v, rnd, _ = run_sample(data, cfg)
         if v is not None:
             t = data["tally"]
-            groups.setdefault((data.get("kind", "untagged"), data.get("agent_type", ""), t.get("model", "")),
+            groups.setdefault((sample_kind(data, rnd), data.get("agent_type", ""), t.get("model", "")),
                               []).append(v)
     out.append("Tallies in this inbox (%s):" % cfg["tally_metric"])
     out += ["  %s | %s | %s: n=%d median=%d" % (k + (len(v), median_int(v))) for k, v in sorted(groups.items())]
@@ -3089,13 +3200,19 @@ def fold_uses(runs):
     return count, latest, verified
 
 
+def sample_kind(data, rnd):
+    """Row kind of a run file's sample: its kind (or untagged), plus RESUMED_SUFFIX for a later round."""
+    return (data.get("kind") or "untagged") + (RESUMED_SUFFIX if rnd > 1 else "")
+
+
 def run_sample(data, cfg):
     """(value, round, reason) of a run file's tally sample; value is None when it gives none, and reason says why.
 
-    Round 1 is the whole run. A later round of a resumed agent is the increase over its total at the end of
-    the round before it, in the same metric. A run file from before rounds were recorded has no round and
-    counts as round 1. No usable tally gives no reason; a later round with no prev, or with a total that did
-    not grow (context compaction can shrink the final context), gives "no prev" or "no increase".
+    Round 1 is the whole run. A later round of a resumed agent is the increase over the total at the start
+    of the round, in the same metric. A run file from before rounds were recorded has no round and counts as
+    round 1. No usable tally gives no reason; a later round with no prev, or with a total that did not grow
+    (context compaction can shrink the final context), gives "no prev" or "no increase". A later round
+    without an anchor was found by the old promptId rule, which was wrong, and gives "unanchored round".
     """
     t = data.get("tally")
     if not isinstance(t, dict) or t.get("skipped") or _int(t.get("turns")) <= 0:
@@ -3107,6 +3224,8 @@ def run_sample(data, cfg):
         return None, 1, "bad round"
     if rnd == 1:
         return v, 1, None
+    if "anchor" not in t:
+        return None, rnd, "unanchored round"
     prev = t.get("prev")
     p = prev.get(cfg["tally_metric"]) if isinstance(prev, dict) else None
     if not isinstance(p, int) or isinstance(p, bool):
@@ -3116,14 +3235,39 @@ def run_sample(data, cfg):
     return v - p, rnd, None
 
 
-def add_tally_samples(tallies, runs, cfg):
-    """Append one sample per run with a usable tally; returns (n added, {reason: n skipped}).
+def move_resumed_samples(tallies):
+    """Move stored samples of round > 1 out of fresh-dispatch rows into the matching RESUMED_SUFFIX row."""
+    for key in list(tallies["rows"]):
+        row = tallies["rows"][key]
+        kind, rest = (key.split("|", 1) + [""])[:2]
+        if kind.endswith(RESUMED_SUFFIX) or not isinstance(row, dict) or not isinstance(row.get("samples"), list):
+            continue
+        moving = [s for s in row["samples"] if isinstance(s, dict) and _is_int(s.get("round")) and s["round"] > 1]
+        if not moving:
+            continue
+        row["samples"] = [s for s in row["samples"] if s not in moving]
+        if not row["samples"]:
+            del tallies["rows"][key]
+        target = tallies["rows"].setdefault(
+            kind + RESUMED_SUFFIX + "|" + rest, {"samples": [], "last_date": row.get("last_date", "")})
+        target["samples"] += moving
+        dates = [s["date"] for s in target["samples"] if isinstance(s.get("date"), str)]
+        target["last_date"] = max(dates) if dates else target.get("last_date", "")
 
-    A sample is keyed by agent_id and round and is never replaced: a run whose agent_id and round already
-    have a sample in its row is skipped as a duplicate. That also keeps an old run file (no round) of a
-    resumed agent from overwriting the agent's first sample with its cumulative total.
+
+def add_tally_samples(tallies, runs, cfg):
+    """Fold the runs' tally samples in; returns (n added, n replaced, {reason: n skipped}).
+
+    First, samples of round > 1 stored in a fresh-dispatch row move to the matching RESUMED_SUFFIX row.
+    A sample is keyed by agent_id and round, and a round of an agent is one sample: a round above 1 is filed
+    under sample_kind, so resumed increases never mix into fresh-dispatch medians. When the row already has
+    a sample for the run's agent_id and round, a run file with an anchor (it comes from a later capture of the
+    same round, after a nudge or a worker's hand-back woke the agent, so it is the complete figure) replaces
+    that sample's value and date. A run file without an anchor (an old format) is skipped as a duplicate; that
+    also keeps an old run file (no round) of a resumed agent from overwriting the agent's first sample.
     """
-    added, skipped = 0, {}
+    move_resumed_samples(tallies)
+    added, replaced, skipped = 0, 0, {}
     for _, data in runs:
         v, rnd, reason = run_sample(data, cfg)
         d = run_date(data)
@@ -3132,12 +3276,19 @@ def add_tally_samples(tallies, runs, cfg):
                 skipped[reason] = skipped.get(reason, 0) + 1
             continue
         t = data["tally"]
-        key = tally_key(data.get("kind") or "untagged", data.get("agent_type") or "", t.get("model") or "")
+        key = tally_key(sample_kind(data, rnd), data.get("agent_type") or "", t.get("model") or "")
         row = tallies["rows"].setdefault(key, {"samples": [], "last_date": d})
         agent_id = str(data.get("agent_id", ""))
-        if any(isinstance(s, dict) and s.get("agent_id") == agent_id and s.get("round", 1) == rnd
-               for s in row["samples"]):
-            skipped["duplicate"] = skipped.get("duplicate", 0) + 1
+        same = [s for s in row["samples"]
+                if isinstance(s, dict) and s.get("agent_id") == agent_id and s.get("round", 1) == rnd]
+        if same:
+            if "anchor" in t:
+                same[0]["v"], same[0]["date"] = v, d
+                replaced += 1
+            else:
+                skipped["duplicate"] = skipped.get("duplicate", 0) + 1
+            if d > row.get("last_date", ""):
+                row["last_date"] = d
             continue
         sample = {"v": v, "date": d, "agent_id": agent_id}
         if rnd > 1:
@@ -3147,7 +3298,24 @@ def add_tally_samples(tallies, runs, cfg):
         if d > row.get("last_date", ""):
             row["last_date"] = d
         added += 1
-    return added, skipped
+    return added, replaced, skipped
+
+
+def drop_old_round_states(store):
+    """Delete inbox/rounds/*.json files older than ROUND_STATE_MAX_DAYS days; nothing else."""
+    d = os.path.join(store, "inbox", ROUNDS_DIR)
+    limit = time.time() - ROUND_STATE_MAX_DAYS * 86400
+    try:
+        names = os.listdir(d)
+    except OSError:
+        return
+    for n in names:
+        path = os.path.join(d, n)
+        try:
+            if n.endswith(".json") and os.path.isfile(path) and os.path.getmtime(path) < limit:
+                os.unlink(path)
+        except OSError:
+            pass
 
 
 def cmd_apply(args):
@@ -3247,7 +3415,7 @@ def cmd_apply(args):
         st.topics[topic] = keep
     # (6) tallies
     tallies = load_tallies(store)
-    added, tally_skipped = add_tally_samples(tallies, runs, cfg)
+    added, replaced, tally_skipped = add_tally_samples(tallies, runs, cfg)
     dead = sorted(k for k, row in tallies["rows"].items() if isinstance(row, dict)
                   and valid_date(row.get("last_date")) and is_expired(row["last_date"], days, today_s, limit))
     tally_arch = os.path.join(store, "archive", TALLY_TOPIC + ".md")
@@ -3275,6 +3443,7 @@ def cmd_apply(args):
             os.unlink(os.path.join(store, "inbox", n))
         except OSError:
             pass
+    drop_old_round_states(store)
     errors = os.path.join(store, "inbox", "errors.log")
     if os.path.exists(errors):
         atomic_write(errors, "")
@@ -3284,9 +3453,9 @@ def cmd_apply(args):
         sys.stderr.write("apply: %d run files gave no tally sample (%s)\n" % (
             sum(tally_skipped.values()), ", ".join("%s %d" % kv for kv in sorted(tally_skipped.items()))))
     print("apply: %d ids assigned, %d uses folded, %d archived (%d expired, %d superseded, %d retired), "
-          "%d tally samples added, %d inbox files removed" % (
+          "%d tally samples added, %d replaced, %d inbox files removed" % (
               assigned, folded, sum(counts.values()), counts["expired"], counts["superseded"],
-              counts["retired-by-lead"], added, len(names)))
+              counts["retired-by-lead"], added, replaced, len(names)))
     return 0
 
 

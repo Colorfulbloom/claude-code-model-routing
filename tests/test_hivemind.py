@@ -68,6 +68,21 @@ def urow(content):
     return {"type": "user", "message": {"role": "user", "content": content}}
 
 
+def fixture_rows(name):
+    """Rows of a sanitized round fixture in tests/fixtures/rounds/."""
+    rows = []
+    with open(os.path.join(REPO, "tests", "fixtures", "rounds", name)) as fh:
+        for line in fh:
+            if line.strip():
+                rows.append(json.loads(line))
+    return rows
+
+
+def cfpo(rows):
+    """context_final_plus_out over the rows."""
+    return lib.usage_totals(rows)[0]["context_final_plus_out"]
+
+
 def block(*lines):
     return "HIVEMIND\n" + "\n".join(lines) + "\nEND HIVEMIND\n"
 
@@ -1019,22 +1034,24 @@ class CaptureTest(HiveBase):
 
 
     def resumed_rows(self, second_kind="Kind: docs-apply\nThe owner approved.", ending="handback"):
-        """A first round, a stop (handback call or plain text), then a resumed round under a new promptId."""
-        def prompt(text, pid, meta=False):
+        """A first round, a stop (handback call or plain text), then a resumed round briefed by the coordinator."""
+        def prompt(text, meta=False, origin=None):
             r = urow(text)
-            r.update(promptId=pid, isMeta=meta)
+            r["isMeta"] = meta
+            if origin:
+                r["origin"] = {"kind": origin}
             return r
         if ending == "handback":
             stop = [arow("m2", [{"type": "tool_use", "id": "h", "name": "SubagentHandback", "input": {"message": "r"}}],
                          usage(2, 1000, 300, 38), stop="tool_use"),
-                    dict(urow([{"type": "tool_result", "tool_use_id": "h", "content": "ok"}]), promptId="p1")]
+                    urow([{"type": "tool_result", "tool_use_id": "h", "content": "ok"}])]
         else:
             stop = [arow("m2", [{"type": "text", "text": "report"}], usage(2, 1000, 300, 38))]
-        return ([prompt("Kind: docs-plan\nPlan it.", "p1"), prompt("<system-reminder>x</system-reminder>", "p1", True),
+        return ([prompt("Kind: docs-plan\nPlan it."), prompt("<system-reminder>x</system-reminder>", True),
                  arow("m1", [{"type": "tool_use", "id": "t", "name": "Bash", "input": {}}], usage(1, 500, 100, 9),
                       stop="tool_use"),
-                 dict(urow([{"type": "tool_result", "tool_use_id": "t", "content": "ok"}]), promptId="p1")] + stop +
-                [prompt("The coordinator sent a message while you were working:\n" + second_kind, "p2", True),
+                 urow([{"type": "tool_result", "tool_use_id": "t", "content": "ok"}])] + stop +
+                [prompt("The coordinator sent a message while you were working:\n" + second_kind, True, "coordinator"),
                  arow("m3", [{"type": "text", "text": "done"}], usage(4, 1300, 200, 50))])
 
     def test_fresh_transcript_is_round_one_without_prev(self):
@@ -1043,6 +1060,7 @@ class CaptureTest(HiveBase):
         t = run["tally"]
         self.assertEqual((run["kind"], t["round"], t["context_final_plus_out"], "prev" in t),
                          ("docs-plan", 1, 1340, False))
+        self.assertEqual((t["anchor"], t["start"], t["rows"]), ("transcript", 0, 6))
 
     def test_resumed_round_takes_its_own_kind_and_the_previous_total(self):
         self.make_store()
@@ -1062,13 +1080,14 @@ class CaptureTest(HiveBase):
 
     def test_prompt_that_arrives_mid_run_stays_in_the_round(self):
         rows = self.resumed_rows()
-        rows = rows[:4] + [dict(rows[-2], promptId="p9")] + rows[4:]
-        tally, kind = lib.compute_tally(rows)
-        self.assertEqual((kind, tally["round"]), ("docs-apply", 2))
+        mid = dict(rows[-2])
+        rows = rows[:3] + [mid] + rows[3:]          # right after the tool_use row, before the agent stopped
         self.assertEqual(lib.round_starts(rows), [0, 7])
-        for r in rows:
-            r.pop("promptId", None)
-        self.assertEqual(lib.round_starts(rows), [0])
+        self.assertEqual(lib.round_starts(rows[:7]), [0])
+        tally, kind = lib.compute_tally(rows[:7])
+        self.assertEqual((kind, tally["round"]), ("docs-plan", 1))
+        tally, kind = lib.compute_tally(rows)
+        self.assertEqual((kind, tally["round"], tally["start"]), ("docs-apply", 2, 7))
 
     def test_compaction_shrinks_the_total_and_gives_no_sample(self):
         self.make_store()
@@ -1077,6 +1096,171 @@ class CaptureTest(HiveBase):
         run = self.capture(agent_transcript_path=self.transcript(rows))
         self.assertEqual((run["tally"]["round"], run["tally"]["context_final_plus_out"]), (2, 554))
         self.assertEqual(lib.run_sample(run, self.cfg), (None, 2, "no increase"))
+
+    # capture-anchored rounds, on sanitized real transcripts
+    ROUND_STARTS = {
+        "coordinator-resume-same-prompt.jsonl": [0, 9],
+        "peer-resume-same-prompt-after-nudge.jsonl": [0, 10],
+        "nudge-new-prompt.jsonl": [0],
+        "task-notification-after-handback.jsonl": [0],
+        "worker-handback-wakes-lead.jsonl": [0],
+    }
+
+    def test_round_starts_on_the_real_transcript_fixtures(self):
+        for name, starts in self.ROUND_STARTS.items():
+            rows = fixture_rows(name)
+            self.assertEqual(lib.round_starts(rows), starts, name)
+            for r in rows:
+                r.pop("promptId", None)
+            self.assertEqual(lib.round_starts(rows), starts, name + " without promptIds")
+
+    def test_fixture_figures_are_the_ones_the_design_relies_on(self):
+        c = fixture_rows("coordinator-resume-same-prompt.jsonl")
+        p = fixture_rows("peer-resume-same-prompt-after-nudge.jsonl")
+        n = fixture_rows("nudge-new-prompt.jsonl")
+        t = fixture_rows("task-notification-after-handback.jsonl")
+        w = fixture_rows("worker-handback-wakes-lead.jsonl")
+        self.assertEqual((cfpo(c[:9]), cfpo(c), len(c)), (85906, 114508, 18))
+        self.assertEqual((cfpo(p[:5]), cfpo(p[:6]), cfpo(p[:10]), cfpo(p), len(p)), (35263, 37609, 37661, 44098, 19))
+        self.assertEqual((cfpo(n), len(n), cfpo(t[:6]), cfpo(t), len(t)), (35123, 10, 63667, 75293, 12))
+        self.assertEqual((cfpo(w[:9]), cfpo(w), len(w)), (144086, 152856, 17))
+
+    def agent_capture(self, agent_id, rows, name="agent.jsonl"):
+        return self.capture(agent_id=agent_id, agent_transcript_path=self.transcript(rows, name))
+
+    def test_capture_sequence_on_a_coordinator_follow_up_under_the_same_prompt(self):
+        self.make_store()
+        rows, aid = fixture_rows("coordinator-resume-same-prompt.jsonl"), self.agent_id()
+        first = self.agent_capture(aid, rows[:9])
+        t = first["tally"]
+        self.assertEqual((first["kind"], t["round"], t["anchor"], t["context_final_plus_out"], "prev" in t),
+                         ("fixture-brief", 1, "transcript", 85906, False))
+        second = self.agent_capture(aid, rows)
+        t = second["tally"]
+        self.assertEqual((second["kind"], t["round"], t["anchor"], t["start"], t["rows"]),
+                         ("untagged", 2, "capture", 9, 18))
+        self.assertEqual((t["context_final_plus_out"], t["prev"]["context_final_plus_out"]), (114508, 85906))
+        self.assertEqual(lib.run_sample(second, self.cfg), (28602, 2, None))
+
+    def test_follow_up_with_its_own_kind_line_takes_that_kind(self):
+        self.make_store()
+        rows, aid = fixture_rows("coordinator-resume-same-prompt.jsonl"), self.agent_id()
+        rows[9]["message"]["content"] = "Kind: fixture-fix\n" + str(rows[9]["message"]["content"])
+        self.agent_capture(aid, rows[:9])
+        second = self.agent_capture(aid, rows)
+        self.assertEqual((second["kind"], second["tally"]["round"]), ("fixture-fix", 2))
+        self.assertEqual(lib.round_starts(rows), [0, 9])
+
+    def test_follow_up_without_a_kind_line_is_untagged_not_inherited(self):
+        self.make_store()
+        rows = fixture_rows("coordinator-resume-same-prompt.jsonl")
+        self.assertEqual(lib.compute_tally(rows[:9])[1], "fixture-brief")
+        self.assertEqual(lib.compute_tally(rows)[1], "untagged")
+        self.assertEqual(lib.compute_tally(rows, None, {"rows": 9, "round": 1, "start": 0, "kind": "fixture-brief"})[1],
+                         "untagged")
+
+    def test_capture_sequence_on_a_peer_follow_up_after_a_nudge(self):
+        self.make_store()
+        rows, aid = fixture_rows("peer-resume-same-prompt-after-nudge.jsonl"), self.agent_id()
+        runs = [self.agent_capture(aid, rows[:n]) for n in (5, 10, 19)]
+        got = [(r["tally"]["round"], r["tally"]["anchor"]) for r in runs]
+        self.assertEqual(got, [(1, "transcript"), (1, "capture"), (2, "capture")])
+        self.assertEqual([r["tally"]["context_final_plus_out"] for r in runs], [35263, 37661, 44098])
+        # prev is read at the brief row, so the row that landed after the first capture is in round 1's total
+        self.assertEqual(runs[2]["tally"]["prev"]["context_final_plus_out"], cfpo(rows[:10]))
+        self.assertEqual(runs[2]["tally"]["prev"]["context_final_plus_out"], 37661)
+        self.assertEqual(lib.run_sample(runs[2], self.cfg), (6437, 2, None))
+
+    def test_a_nudge_or_task_notification_wakes_the_agent_without_a_new_round(self):
+        for name, stop_rows, full in (("nudge-new-prompt.jsonl", 6, 35123),
+                                      ("task-notification-after-handback.jsonl", 6, 75293)):
+            self.make_store()
+            rows, aid = fixture_rows(name), self.agent_id()
+            first = self.agent_capture(aid, rows[:stop_rows], name)
+            second = self.agent_capture(aid, rows, name)
+            self.assertEqual((first["tally"]["round"], second["tally"]["round"]), (1, 1), name)
+            self.assertEqual((first["tally"]["anchor"], second["tally"]["anchor"]), ("transcript", "capture"), name)
+            self.assertEqual(second["tally"]["context_final_plus_out"], full, name)
+            self.assertNotIn("prev", second["tally"], name)
+
+    def test_a_workers_hand_back_does_not_start_a_round_for_its_lead(self):
+        self.make_store()
+        rows, aid = fixture_rows("worker-handback-wakes-lead.jsonl"), self.agent_id()
+        first = self.agent_capture(aid, rows[:9])
+        second = self.agent_capture(aid, rows)
+        self.assertEqual((first["tally"]["round"], second["tally"]["round"]), (1, 1))
+        self.assertEqual((first["tally"]["context_final_plus_out"], second["tally"]["context_final_plus_out"]),
+                         (144086, 152856))
+        self.assertEqual(lib.launched_ids(rows), {"worker-1", "worker-2"})
+
+    def test_without_the_state_file_the_round_is_found_by_scanning_briefs(self):
+        self.make_store()
+        rows, aid = fixture_rows("coordinator-resume-same-prompt.jsonl"), self.agent_id()
+        self.agent_capture(aid, rows[:9])
+        os.unlink(lib.round_state_path(self.store, aid))
+        second = self.agent_capture(aid, rows)
+        self.assertEqual((second["tally"]["round"], second["tally"]["anchor"]), (2, "transcript"))
+        self.assertEqual(second["tally"]["prev"]["context_final_plus_out"], 85906)
+
+    def test_state_for_another_transcript_is_ignored(self):
+        self.make_store()
+        rows, aid = fixture_rows("coordinator-resume-same-prompt.jsonl"), self.agent_id()
+        self.agent_capture(aid, rows[:9], "one.jsonl")
+        second = self.agent_capture(aid, rows, "two.jsonl")
+        self.assertEqual((second["tally"]["round"], second["tally"]["anchor"]), (2, "transcript"))
+        self.assertIsNone(lib.read_round_state(self.store, aid, "/nowhere.jsonl"))
+
+    def test_invalid_state_falls_back_to_the_transcript_scan(self):
+        rows = fixture_rows("coordinator-resume-same-prompt.jsonl")
+        good = {"rows": 9, "round": 1, "start": 0, "kind": "k"}
+        self.assertEqual(lib.round_info(rows, good), (2, 9, "untagged", "capture"))
+        for bad in (None, [], dict(good, rows=0), dict(good, rows=99), dict(good, rows=True), dict(good, round=0),
+                    dict(good, start=10), dict(good, start=-1), dict(good, kind=3), {"rows": 9}):
+            self.assertEqual(lib.round_info(rows, bad)[3], "transcript", bad)
+
+    def test_state_file_holds_what_the_next_capture_needs(self):
+        self.make_store()
+        rows, aid = fixture_rows("coordinator-resume-same-prompt.jsonl"), self.agent_id()
+        path = self.transcript(rows[:9], "agent.jsonl")
+        self.capture(agent_id=aid, agent_transcript_path=path)
+        state_path = lib.round_state_path(self.store, aid)
+        self.assertEqual(os.path.dirname(state_path), os.path.join(self.store, "inbox", "rounds"))
+        with open(state_path) as fh:
+            state = json.load(fh)
+        self.assertEqual({k: v for k, v in state.items() if k != "time"},
+                         {"version": 1, "transcript": path, "rows": 9, "round": 1, "start": 0, "kind": "fixture-brief"})
+        self.assertRegex(state["time"], r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d$")
+        self.agent_capture(aid, rows)
+        with open(state_path) as fh:
+            state = json.load(fh)
+        self.assertEqual((state["rows"], state["round"], state["start"], state["kind"]), (18, 2, 9, "untagged"))
+        names = lib.run_file_names(self.store)           # the rounds directory is not a run file
+        self.assertEqual((len(names), "rounds" in names, os.path.isdir(os.path.join(self.store, "inbox", "rounds"))),
+                         (2, False, True))
+
+    def test_no_state_is_written_for_a_skipped_transcript_and_the_old_one_stays(self):
+        self.make_store(config={"transcript_max_bytes": 50})
+        aid = self.agent_id()
+        rows = [urow("Kind: big\n" + "x" * 100), arow("m1", [], usage(1))]
+        run = self.agent_capture(aid, rows)
+        self.assertEqual(run["tally"]["skipped"], "too_large")
+        self.assertFalse(os.path.exists(lib.round_state_path(self.store, aid)))
+        self.make_store()
+        os.makedirs(os.path.dirname(lib.round_state_path(self.store, aid)), exist_ok=True)
+        with open(lib.round_state_path(self.store, aid), "w") as fh:
+            fh.write('{"keep": 1}')
+        self.write("config.json", json.dumps({"transcript_max_bytes": 50}), self.store)
+        self.agent_capture(aid, rows)
+        with open(lib.round_state_path(self.store, aid)) as fh:
+            self.assertEqual(json.load(fh), {"keep": 1})
+
+    def test_a_state_that_cannot_be_written_is_logged_and_the_capture_goes_on(self):
+        self.make_store()
+        os.makedirs(os.path.join(self.store, "inbox"), exist_ok=True)
+        self.write("inbox/rounds", "a file where the directory should be\n", self.store)
+        run = self.agent_capture(self.agent_id(), fixture_rows("nudge-new-prompt.jsonl"))
+        self.assertEqual(run["tally"]["round"], 1)
+        self.assertTrue(any("hivemind-capture" in ln for ln in self.errors_log()), self.errors_log())
 
 
 class GuardTest(HiveBase):
@@ -1863,7 +2047,7 @@ class ApplyTest(CliBase):
         rc, out, err = self.run_cmd(lib.cmd_apply, self.store)
         self.assertEqual(rc, 0, err)
         self.assertEqual(out, "apply: 2 ids assigned, 3 uses folded, 3 archived (1 expired, 1 superseded, "
-                              "1 retired), 1 tally samples added, 3 inbox files removed\n")
+                              "1 retired), 1 tally samples added, 0 replaced, 3 inbox files removed\n")
         testing = {r["id"]: r for r in self.topic("testing")}
         self.assertEqual(sorted(testing)[:2], ["T-0001", "T-0005"])
         new_id = [i for i in testing if i not in ("T-0001", "T-0005")]
@@ -1948,10 +2132,13 @@ class ApplyTest(CliBase):
         self.assertTrue(arch.endswith("| old | scout | m | 1 | 7 | 7 | 7 | 2026-01-01 |\n"))
         self.assertNotIn("| old |", self.slurp("topics", "token-tallies.md"))
 
-    def tally_run(self, agent_id, kind, v, rnd=None, prev=None, **over):
+    def tally_run(self, agent_id, kind, v, rnd=None, prev=None, anchor="capture", **over):
+        """A run file; a tally with a round carries an anchor (new format) unless anchor=None (9c7985a format)."""
         t = {"turns": 3, "context_final_plus_out": v, "model": "m", "skipped": None}
         if rnd is not None:
             t["round"] = rnd
+            if anchor is not None:
+                t["anchor"] = anchor
         if prev is not None:
             t["prev"] = {"context_final_plus_out": prev}
         t.update(over)
@@ -1974,7 +2161,7 @@ class ApplyTest(CliBase):
         self.assertIn("2 tally samples added", self.run_cmd(lib.cmd_apply, self.store)[1])
         self.assertEqual(self.samples(), {
             "plan": [{"v": 277338, "date": TODAY, "agent_id": "agent1"}],
-            "apply": [{"v": 46212, "date": TODAY, "agent_id": "agent1", "round": 2}]})
+            "apply+resumed": [{"v": 46212, "date": TODAY, "agent_id": "agent1", "round": 2}]})
 
     def test_tally_resumed_round_after_an_earlier_apply_keeps_the_first_sample(self):
         self.tally_run("agent1", "plan", 277338, rnd=1)
@@ -1984,17 +2171,88 @@ class ApplyTest(CliBase):
         self.assertIn("2 tally samples added", self.run_cmd(lib.cmd_apply, self.store)[1])
         got = self.samples()
         self.assertEqual([s["v"] for s in got["plan"]], [277338])
-        self.assertEqual((got["apply"][0]["v"], got["fix"][0]["v"], got["fix"][0]["round"]), (46212, 33497, 3))
+        self.assertEqual((got["apply+resumed"][0]["v"], got["fix+resumed"][0]["v"], got["fix+resumed"][0]["round"]),
+                         (46212, 33497, 3))
 
-    def test_tally_resumed_round_with_the_same_kind_adds_a_second_sample(self):
+    def test_tally_a_round_captured_twice_keeps_one_sample_with_the_later_figure(self):
+        self.tally_run("a", "plan", 1000, rnd=1)
+        self.tally_run("a", "plan", 1500, rnd=1)
+        rc, out, err = self.run_cmd(lib.cmd_apply, self.store)
+        self.assertEqual((rc, err), (0, ""))
+        self.assertIn("1 tally samples added, 1 replaced", out)
+        self.assertEqual(self.samples(), {"plan": [{"v": 1500, "date": TODAY, "agent_id": "a"}]})
+        self.tally_run("a", "plan", 1800, rnd=1)
+        self.assertIn("0 tally samples added, 1 replaced", self.run_cmd(lib.cmd_apply, self.store)[1])
+        self.assertEqual([s["v"] for s in self.samples()["plan"]], [1800])
+
+    def test_tally_a_resumed_round_captured_twice_is_replaced_in_the_resumed_row(self):
         self.tally_run("tw", "site-copy-round", 9000, rnd=1)
         self.tally_run("tw", "site-copy-round", 13000, rnd=2, prev=9000)
-        self.tally_run("tw", "site-copy-round", 13000, rnd=2, prev=9000)
+        self.tally_run("tw", "site-copy-round", 15000, rnd=2, prev=9000)
         rc, out, err = self.run_cmd(lib.cmd_apply, self.store)
-        self.assertIn("2 tally samples added", out)
+        self.assertIn("2 tally samples added, 1 replaced", out)
+        self.assertEqual(err, "")
+        got = self.samples()
+        self.assertEqual([(s["v"], s.get("round", 1)) for s in got["site-copy-round"]], [(9000, 1)])
+        self.assertEqual([(s["v"], s.get("round", 1)) for s in got["site-copy-round+resumed"]], [(6000, 2)])
+
+    def test_tally_a_later_round_lands_in_the_resumed_row_of_its_kind(self):
+        self.tally_run("a", "plan", 1000, rnd=1)
+        self.tally_run("a", "plan", 1700, rnd=2, prev=1000)
+        self.run_cmd(lib.cmd_apply, self.store)
+        self.assertIn("| plan+resumed | deep-reasoner | m | 1 | 700 |", self.slurp("topics", "token-tallies.md"))
+        self.assertIn("| plan | deep-reasoner | m | 1 | 1000 |", self.slurp("topics", "token-tallies.md"))
+
+    def test_tally_9c7985a_round_two_is_skipped_as_unanchored(self):
+        self.tally_run("a", "plan", 1000, rnd=1, anchor=None)
+        self.tally_run("a", "apply", 1700, rnd=2, prev=1000, anchor=None)
+        rc, out, err = self.run_cmd(lib.cmd_apply, self.store)
+        self.assertIn("1 tally samples added", out)
+        self.assertIn("(unanchored round 1)", err)
+        self.assertEqual(self.samples(), {"plan": [{"v": 1000, "date": TODAY, "agent_id": "a"}]})
+
+    def test_tally_9c7985a_round_one_behaves_like_a_legacy_run_file(self):
+        self.tally_run("a", "plan", 1000, rnd=1, anchor=None)
+        self.tally_run("a", "plan", 1500, rnd=1, anchor=None)
+        rc, out, err = self.run_cmd(lib.cmd_apply, self.store)
+        self.assertIn("1 tally samples added, 0 replaced", out)
         self.assertIn("(duplicate 1)", err)
-        self.assertEqual([(s["v"], s.get("round", 1)) for s in self.samples()["site-copy-round"]],
-                         [(9000, 1), (4000, 2)])
+        self.assertEqual([s["v"] for s in self.samples()["plan"]], [1000])
+
+    def test_tally_stored_round_samples_in_a_fresh_row_move_to_the_resumed_row(self):
+        old = {"version": 1, "rows": {
+            "plan|deep-reasoner|m": {"last_date": "2026-10-19", "samples": [
+                {"v": 10, "date": "2026-10-18", "agent_id": "a"},
+                {"v": 20, "date": "2026-10-19", "agent_id": "a", "round": 2}]},
+            "fix|deep-reasoner|m": {"last_date": "2026-10-17", "samples": [
+                {"v": 30, "date": "2026-10-17", "agent_id": "b", "round": 3}]},
+            "plan+resumed|deep-reasoner|m": {"last_date": "2026-10-10", "samples": [
+                {"v": 5, "date": "2026-10-10", "agent_id": "c", "round": 2}]}}}
+        self.write("tallies.json", json.dumps(old), self.store)
+        self.run_cmd(lib.cmd_apply, self.store)
+        rows = json.loads(self.slurp("tallies.json"))["rows"]
+        self.assertEqual(sorted(rows), ["fix+resumed|deep-reasoner|m", "plan+resumed|deep-reasoner|m",
+                                        "plan|deep-reasoner|m"])
+        self.assertEqual([s["v"] for s in rows["plan|deep-reasoner|m"]["samples"]], [10])
+        self.assertEqual([s["v"] for s in rows["plan+resumed|deep-reasoner|m"]["samples"]], [5, 20])
+        self.assertEqual(rows["plan+resumed|deep-reasoner|m"]["last_date"], "2026-10-19")
+        self.assertEqual(rows["fix+resumed|deep-reasoner|m"]["samples"][0]["round"], 3)
+
+    def test_apply_deletes_only_round_states_older_than_thirty_days(self):
+        inbox = os.path.join(self.store, "inbox")
+        rounds = os.path.join(inbox, "rounds")
+        for rel in ("rounds/old.json", "rounds/new.json", "rounds/note.txt"):
+            self.write(rel, "{}\n", inbox)
+        self.write("outside.json", "{}\n", self.store)
+        old_t = time.time() - (lib.ROUND_STATE_MAX_DAYS + 1) * 86400
+        for path in (os.path.join(rounds, "old.json"), os.path.join(rounds, "note.txt"),
+                     os.path.join(self.store, "outside.json")):
+            os.utime(path, (old_t, old_t))
+        rc, out, err = self.run_cmd(lib.cmd_apply, self.store)
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(sorted(os.listdir(rounds)), ["new.json", "note.txt"])
+        self.assertTrue(os.path.exists(os.path.join(self.store, "outside.json")))
+        self.assertIn("0 inbox files removed", out)
 
     def test_tally_round_whose_total_did_not_grow_gives_no_sample(self):
         self.tally_run("c", "plan", 200000, rnd=1)
@@ -2026,8 +2284,9 @@ class ApplyTest(CliBase):
         self.tally_run("agent1", "apply", 323550, rnd=2, prev=277338)
         self.tally_run("agent1", "apply", 1, rnd=3, prev=323550)
         out = self.run_cmd(lib.cmd_prep, self.store)[1]
-        self.assertIn("apply | deep-reasoner | m: n=1 median=46212", out)
+        self.assertIn("apply+resumed | deep-reasoner | m: n=1 median=46212", out)
         self.assertIn("plan | deep-reasoner | m: n=1 median=277338", out)
+        self.assertNotIn("apply | deep-reasoner", out)
 
     def test_apply_honours_refresh_and_never_writes_active_days(self):
         self.init_git("2026-10-02T10:00:00")
@@ -2083,7 +2342,7 @@ class FlowTest(CliBase):
         rc, out, err = self.cli("apply")
         self.assertEqual(rc, 0, err)
         self.assertEqual(out, "apply: 1 ids assigned, 1 uses folded, 0 archived (0 expired, 0 superseded, "
-                              "0 retired), 2 tally samples added, 2 inbox files removed\n")
+                              "0 retired), 2 tally samples added, 0 replaced, 2 inbox files removed\n")
         recs = {r["id"]: r for r in self.topic()}
         self.assertEqual(len(recs), 2)
         new_id = [i for i in recs if i != "T-0001"][0]

@@ -170,6 +170,36 @@
         }
       ]
     },
+    "hivemind-tally-rounds-fix|deep-reasoner|claude-opus-5-5": {
+      "last_date": "2026-10-21",
+      "samples": [
+        {
+          "agent_id": "a7841fd252246d371",
+          "date": "2026-10-21",
+          "v": 221558
+        }
+      ]
+    },
+    "hivemind-tally-rounds-impl|fast-worker|claude-sonnet-5-5": {
+      "last_date": "2026-10-21",
+      "samples": [
+        {
+          "agent_id": "a0a5c2afaed1d96f1",
+          "date": "2026-10-21",
+          "v": 111101
+        }
+      ]
+    },
+    "hivemind-tally-rounds-review|scout|claude-haiku-5-5": {
+      "last_date": "2026-10-21",
+      "samples": [
+        {
+          "agent_id": "a91c706f5046240fe",
+          "date": "2026-10-21",
+          "v": 61532
+        }
+      ]
+    },
     "test-fixture-cleanup|fast-worker|claude-sonnet-5-5": {
       "last_date": "2026-10-20",
       "samples": [
