@@ -248,6 +248,21 @@ class HiveMindHooks(SandboxCase):
         self.assertEqual(len(got), 6)
         self.assertEqual(sorted(got), sorted(want))
 
+    def test_13d_next_steps_ends_with_the_hivemind_init_step(self):
+        step = self.run_install()
+        self.assertEqual(step.code, 0, step.err)
+        tail = step.out.split("Next steps\n")[1].split("\n")
+        self.assertEqual(tail[:3], [
+            "  1. Restart Claude Code so the hooks and agents load.",
+            "  2. Run /route-project inside each project that has its own agents.",
+            "  3. Optional. Run /setup-model-routing for the settings this installer leaves alone "
+            "(main model, effortLevel, subagent catch-all model)."])
+        self.assertEqual(tail[3], '  4. Optional. Run python3 "%s/hooks/hivemind_lib.py" init inside a project '
+                                  'to turn on HiveMind there.' % "<ROOT>/cfg")
+        self.assertEqual(tail[4:], [""])
+        uninstall = self.run_install("--uninstall")
+        self.assertNotIn("hivemind_lib.py\" init", uninstall.out)
+
     def test_13c_empty_matcher_round_trips(self):
         self.run_install()
         data = json.loads(self.settings_bytes())

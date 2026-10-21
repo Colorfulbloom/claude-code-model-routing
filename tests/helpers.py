@@ -295,6 +295,9 @@ CHOICES_MANIFEST_LINE = "    model-routing-choices.json"
 MANIFEST_LISTING = re.compile(r"^    (agents|rules|hooks|skills)/")
 SUM_INSTALL = re.compile(r"^Summary: (\d+) added, (\d+) replaced, (\d+) unchanged\.(.*)$")
 SUM_UNINSTALL = re.compile(r"^Summary: (\d+) removed, (\d+) kept in backup, (\d+) already gone\.(.*)$")
+OLD_NEXT_3 = re.compile(r"^  3\. Optional\. Run /setup-model-routing ")
+NEXT_4 = re.compile(r'^  4\. Optional\. Run python3 ".+/hooks/hivemind_lib\.py" init inside a project '
+                    r"to turn on HiveMind there\.$")
 INSTALL_GROUP = {"add": 1, "replace": 2, "unchanged": 3}
 UNINSTALL_GROUP = {"remove": 1, "edited": 2, "missing": 3}
 
@@ -475,6 +478,22 @@ def apply_allowances(old, new):
                             % (len(setting_drops), len(NEW_SETTINGS_LINES) // 4))
     if file_drops or setting_drops:
         n_lines = _lower_summary(n_lines, file_drops, setting_drops, problems)
+    # Allowance 5: the Next steps line that points at the HiveMind init command; only the new
+    # installer prints it, and only after the old installer's step 3.
+    next_lines = [l for l in n_lines if NEXT_4.match(l)]
+    if len(next_lines) > 1:
+        problems.append("new printed %d HiveMind Next steps lines" % len(next_lines))
+    old_has_next = any(OLD_NEXT_3.match(l) for l in o_lines)
+    if not SELF_TEST and old_has_next and len(next_lines) != 1:
+        problems.append("new did not print exactly one HiveMind Next steps line on install")
+    if next_lines:
+        if not old_has_next:
+            problems.append("new printed a HiveMind Next steps line where old printed no Next steps")
+        else:
+            at = n_lines.index(next_lines[0])
+            if at == 0 or not OLD_NEXT_3.match(n_lines[at - 1]):
+                problems.append("HiveMind Next steps line does not directly follow step 3")
+        n_lines.remove(next_lines[0])
     o_out = "\n".join(o_lines)
     n_out = "\n".join(n_lines)
 

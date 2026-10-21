@@ -85,6 +85,7 @@ MSG_NEXT_HEADING = 'Next steps\n'
 MSG_NEXT_INSTALL_1 = '  1. Restart Claude Code so the hooks and agents load.\n'
 MSG_NEXT_INSTALL_2 = '  2. Run /route-project inside each project that has its own agents.\n'
 MSG_NEXT_INSTALL_3 = '  3. Optional. Run /setup-model-routing for the settings this installer leaves alone (main model, effortLevel, subagent catch-all model).\n'
+MSG_NEXT_INSTALL_4 = '  4. Optional. Run python3 "%s/hooks/hivemind_lib.py" init inside a project to turn on HiveMind there.\n'
 MSG_NEXT_UNINSTALL_1 = '  1. Restart Claude Code so it stops loading the removed files.\n'
 
 MSG_CHOICES_SOURCE = 'Agent models: %s\n'
@@ -1490,6 +1491,7 @@ def do_install(ctx, plan):
     say(MSG_NEXT_INSTALL_1)
     say(MSG_NEXT_INSTALL_2)
     say(MSG_NEXT_INSTALL_3)
+    say(MSG_NEXT_INSTALL_4, t)
 
 
 # ---- Uninstall --------------------------------------------------------------

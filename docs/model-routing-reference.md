@@ -102,9 +102,9 @@ Four more entries are installed. They do nothing in a project without `.claude/h
 | Event | Matcher | Command | What it does |
 |-------|---------|---------|--------------|
 | `SubagentStart` | `*` | `hivemind-inject.py` | Gives the subagent one-line records within its token budget, once per agent. |
-| `SubagentStop` | `*` | `hivemind-capture.py` | Parses the HIVEMIND block from the final reply (no line or length limit; lines that do not parse are kept in the file's `unparsed` list), tallies the agent's tokens and writes one file to `inbox/`. |
+| `SubagentStop` | `*` | `hivemind-capture.py` | Parses the HIVEMIND block from the final reply (no line or length limit; lines that do not parse are kept in the file's `unparsed` list), tallies the agent's tokens and writes one file to `inbox/` (none when the stop carries no `agent_type`). |
 | `PreToolUse` | `Write\|Edit\|MultiEdit\|NotebookEdit` | `hivemind-guard.py` | Denies a subagent's write to `.claude/hivemind/` and `.claude/rules/project-facts.md`. `deep-reasoner` and the main session pass. |
-| `SessionStart` | empty | `hivemind_lib.py status` | Prints one line when the store needs attention, nothing otherwise. |
+| `SessionStart` | empty | `hivemind_lib.py status` | Prints one line when the store needs attention. On source `startup`, `clear` and `compact` it also prints the Recent work list (newest 8 history lines, at most 10 lines in all); `resume` and unknown sources print no list. Nothing is printed for a healthy store with no history. |
 
 The three hooks that read agent input exit 0 on any error and never block an agent. Shell redirects are not covered by the guard.
 
@@ -116,6 +116,12 @@ python3 ~/.claude/hooks/hivemind_lib.py status
 
 # prints "check passed" and exit 0, or one line per problem and exit 1
 python3 ~/.claude/hooks/hivemind_lib.py check .claude/hivemind; echo "exit $?"
+
+# prints the Recent work list from history/INDEX.md, whatever the session source
+python3 ~/.claude/hooks/hivemind_lib.py history recent
+
+# prints the facts and history entries that cite a path, or "related: nothing cites these paths"
+python3 ~/.claude/hooks/hivemind_lib.py related src/example.py
 ```
 
 ## Where this applies

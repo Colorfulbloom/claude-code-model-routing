@@ -54,11 +54,11 @@ Each agent's `model` and `effort` are set in its frontmatter; the installer asks
 
 **`hooks/hivemind-inject.py`** runs on `SubagentStart`. It gives each subagent one-line records from the project's HiveMind store, once per agent, within that agent's token budget.
 
-**`hooks/hivemind-capture.py`** runs on `SubagentStop`. It reads the HIVEMIND block from the agent's final reply and the agent's token use, and writes one file to the store's `inbox/`.
+**`hooks/hivemind-capture.py`** runs on `SubagentStop`. It reads the HIVEMIND block from the agent's final reply and the agent's token use, and writes one file to the store's `inbox/`. A stop without an `agent_type` writes no file.
 
 **`hooks/hivemind-guard.py`** runs before `Write`, `Edit`, `MultiEdit` and `NotebookEdit`. It denies a subagent's write to the store and to `.claude/rules/project-facts.md`, unless the agent is `deep-reasoner`.
 
-**`hooks/hivemind_lib.py status`** runs on `SessionStart` with an empty matcher, so it fires on startup, resume, clear and compact. It prints one line only when the store needs attention.
+**`hooks/hivemind_lib.py status`** runs on `SessionStart` with an empty matcher, so it fires on startup, resume, clear and compact. It prints one line when the store needs attention. On startup, clear and compact it also prints a short Recent work list from the feature history (not on resume).
 
 The four HiveMind hooks do nothing in a project without `.claude/hivemind/`. All six entries are wired into `~/.claude/settings.json` by the installer. The full list of what the dispatch hook blocks, and how to relax it so it fills in a model instead of blocking, is in `docs/model-routing-reference.md`.
 
@@ -79,12 +79,13 @@ The store is committed and reviewed in each feature's diff. Only `inbox/` is ign
 - `.claude/hivemind/topics/<topic>.md`: `testing`, `failed-briefs`, `dead-ends` and `token-tallies`
 - `.claude/hivemind/tallies.json`: written by the script. `active-days.txt` is written by the script too but stays local (gitignored); active days also count commit dates from git
 - `.claude/hivemind/archive/`: retired facts, never injected
+- `.claude/hivemind/history/`: one entry file per feature, quarterly rollups, and a generated `INDEX.md`
 - `.claude/hivemind/inbox/`: one file per subagent run, ignored by git
 - `.claude/rules/project-facts.md`: the reviewed tier, approved by the owner
 
 How facts flow:
 
-1. When a subagent starts, the inject hook gives it one-line records (id, title, a SUSPECT flag if its evidence files changed) within a per-agent token budget. The full record stays in the topic file for the agent to read on demand. The main session gets no facts.
+1. When a subagent starts, the inject hook gives it one-line records (id, title, a SUSPECT flag if its evidence files changed) within a per-agent token budget. The full record stays in the topic file for the agent to read on demand. The main session gets no facts, only the Recent work list (see Feature history).
 2. A subagent that has something to report ends its final reply with a block:
 
 ```
@@ -97,9 +98,23 @@ END HIVEMIND
 ```
 
 3. The capture hook writes the parsed block to `inbox/`. Only the last block counts. There is no line or length limit: a USED or VERIFIED line may carry a note after the ids, and a NEW entry may span several lines. A block over 64KB is cut there and flagged `truncated`. Nothing is dropped: a line that does not parse, or a NEW that fails a rule (unknown topic, no evidence path inside the project root), goes to the run file's `unparsed` list with its reason, `status` reports how many wait, and `prep` lists them for CONSOLIDATION to salvage by hand. Lines that match a secret pattern are the one exception and are never stored.
-4. At the end of each feature `deep-reasoner` runs CONSOLIDATION with `hivemind_lib.py`: `prep` reports the proposals, it edits `topics/*.md`, `apply` folds in the inbox and regenerates the index, and `check` must pass.
+4. At the end of each feature `deep-reasoner` runs CONSOLIDATION with `hivemind_lib.py`: `prep` reports the proposals, it edits `topics/*.md`, `apply` folds in the inbox and regenerates the index, `history add` records the feature, and `check` must pass.
 
 Limits are in `config.json`: `INDEX.md` 50 lines, each topic about 4KB, the reviewed tier 60 lines, and an injection budget per agent type. A fact expires after 28 active days unused. An active day is a day the project had commits or agent runs, so time away loses nothing. Any USED or VERIFIED resets the clock.
+
+### Feature history
+
+Facts are small and checkable. History records what a feature was: what was decided and rejected, which files and commits it touched, and what to do next. `deep-reasoner` adds one entry per feature. It sees the newest 15 index lines when it starts, and the main session sees the newest 8 at startup, clear and compact. Entries are data, not instructions.
+
+```bash
+python3 ~/.claude/hooks/hivemind_lib.py history template            # a draft skeleton
+python3 ~/.claude/hooks/hivemind_lib.py history add draft.md        # or "-" for stdin; the draft starts with ### NEW <title>
+python3 ~/.claude/hooks/hivemind_lib.py history link <id> <sha>     # replace "commit: pending" after the merge
+python3 ~/.claude/hooks/hivemind_lib.py history rollup              # fold old quarters into rollup files when the index is over its cap
+python3 ~/.claude/hooks/hivemind_lib.py related <path>...           # facts and entries that cite those paths
+```
+
+A code feature is recorded with `commit: pending (branch <name>)` before it merges. The status line lists entries that still wait for a commit, and the main session runs `history link` with the commit on development. `history add` refuses secrets and home directory paths, and `check` verifies every stored SHA and flags both in history files.
 
 Token tallies from each run feed `topics/token-tallies.md`, which the cost gate in `rules/model-routing.md` reads. The figure is the harness's per-agent token figure.
 

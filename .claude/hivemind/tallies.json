@@ -70,6 +70,16 @@
         }
       ]
     },
+    "hivemind-consolidation|deep-reasoner|claude-opus-5-5": {
+      "last_date": "2026-10-20",
+      "samples": [
+        {
+          "agent_id": "a267392cdabbae39a",
+          "date": "2026-10-20",
+          "v": 82414
+        }
+      ]
+    },
     "hivemind-guard-test|fast-worker|claude-sonnet-5-5": {
       "last_date": "2026-10-20",
       "samples": [
@@ -80,6 +90,36 @@
         }
       ]
     },
+    "hivemind-history-core|fast-worker|claude-sonnet-5-5": {
+      "last_date": "2026-10-21",
+      "samples": [
+        {
+          "agent_id": "a460bccf6d0f5fda6",
+          "date": "2026-10-21",
+          "v": 229121
+        }
+      ]
+    },
+    "hivemind-history-integration|fast-worker|claude-sonnet-5-5": {
+      "last_date": "2026-10-21",
+      "samples": [
+        {
+          "agent_id": "aeaaeb10d792c8f80",
+          "date": "2026-10-21",
+          "v": 128984
+        }
+      ]
+    },
+    "hivemind-history-review|scout|claude-haiku-5-5": {
+      "last_date": "2026-10-21",
+      "samples": [
+        {
+          "agent_id": "a0f01da3874f2ae16",
+          "date": "2026-10-21",
+          "v": 105862
+        }
+      ]
+    },
     "hivemind-live-test|scout|claude-haiku-5-5": {
       "last_date": "2026-10-20",
       "samples": [
@@ -87,6 +127,46 @@
           "agent_id": "a8185b9e6f9c9a065",
           "date": "2026-10-20",
           "v": 11853
+        }
+      ]
+    },
+    "hivemind-phase2-fixes|fast-worker|claude-sonnet-5-5": {
+      "last_date": "2026-10-21",
+      "samples": [
+        {
+          "agent_id": "ac8f75e8bb99a8db3",
+          "date": "2026-10-21",
+          "v": 75099
+        }
+      ]
+    },
+    "hivemind-phase2-spec|deep-reasoner|claude-opus-5-5": {
+      "last_date": "2026-10-21",
+      "samples": [
+        {
+          "agent_id": "a52d457729d43f3a6",
+          "date": "2026-10-21",
+          "v": 200796
+        }
+      ]
+    },
+    "hivemind-phase2-verify|verifier|claude-sonnet-5-5": {
+      "last_date": "2026-10-21",
+      "samples": [
+        {
+          "agent_id": "a39c6c37e679926ad",
+          "date": "2026-10-21",
+          "v": 118966
+        }
+      ]
+    },
+    "hivemind-sessionstart-calibration|scout|claude-haiku-5-5": {
+      "last_date": "2026-10-20",
+      "samples": [
+        {
+          "agent_id": "ab66d193df1df9701",
+          "date": "2026-10-20",
+          "v": 19966
         }
       ]
     },

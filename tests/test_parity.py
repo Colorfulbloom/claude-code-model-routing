@@ -548,6 +548,19 @@ class HarnessSelfTests(ParityBase):
         tree[key] = tree[key][:3] + (b"{not json",)
         self.assertFails(old, new._replace(tree=tree), "not valid JSON")
 
+    def test_self_07_different_extra_next_steps_line(self):
+        old, new = self.baseline()
+        for extra in ('  4. Optional. Run python3 "/elsewhere/other.py" init inside a project.\n',
+                      '  5. Optional. Run python3 "/elsewhere/hooks/hivemind_lib.py" init inside a project '
+                      'to turn on HiveMind there.\n',
+                      '  4. Optional. Something else entirely.\n'):
+            with self.subTest(extra=extra):
+                self.assertFails(old, new._replace(out=new.out + extra), "stdout")
+        # The allowed line twice, or in the wrong place, is also a problem.
+        line = '  4. Optional. Run python3 "/x/hooks/hivemind_lib.py" init inside a project to turn on HiveMind there.\n'
+        self.assertFails(old, new._replace(out=new.out + line + line), "HiveMind Next steps")
+        self.assertFails(old, new._replace(out=line + new.out), "HiveMind Next steps")
+
 
 if __name__ == "__main__":
     unittest.main()
