@@ -6,6 +6,7 @@ Everything runs in throwaway sandboxes (see helpers.py). Run from the repo root:
 import importlib.util
 import json
 import os
+import re
 import subprocess
 import sys
 import unittest
@@ -15,6 +16,43 @@ import helpers  # noqa: E402
 from helpers import CHOICES, MANIFEST, REPO, Sandbox  # noqa: E402
 
 AGENTS = ["deep-reasoner", "designer", "fast-worker", "judge", "scout", "verifier"]
+
+HOOK_FILES = ["require-agent-model.py", "check-agent-models.sh", "hivemind_lib.py", "hivemind-inject.py",
+              "hivemind-capture.py", "hivemind-guard.py"]
+NEW_HOOK_FILES = HOOK_FILES[2:]
+# (event, matcher, command format) in the order install.py writes them
+ENTRY_FMT = [
+    ("PreToolUse", "Agent", 'python3 "%s/hooks/require-agent-model.py"'),
+    ("SessionStart", "startup", 'bash "%s/hooks/check-agent-models.sh"'),
+    ("SubagentStart", "*", 'python3 "%s/hooks/hivemind-inject.py"'),
+    ("SubagentStop", "*", 'python3 "%s/hooks/hivemind-capture.py"'),
+    ("PreToolUse", "Write|Edit|MultiEdit|NotebookEdit", 'python3 "%s/hooks/hivemind-guard.py"'),
+    ("SessionStart", "", 'python3 "%s/hooks/hivemind_lib.py" status'),
+]
+
+
+def expected_entries(prefix):
+    return [(e, m, fmt % prefix) for e, m, fmt in ENTRY_FMT]
+
+
+def group_for(matcher, command, timeout=10):
+    return {"matcher": matcher, "hooks": [{"type": "command", "command": command, "timeout": timeout}]}
+
+
+def canonical(data):
+    """The bytes install.py writes for a settings.json."""
+    return (json.dumps(data, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
+
+
+def flat_entries(settings_bytes):
+    """Every (event, matcher, command, timeout) in a settings.json, in file order."""
+    data = json.loads(settings_bytes.decode("utf-8"))
+    out = []
+    for event, groups in data.get("hooks", {}).items():
+        for g in groups:
+            for h in g.get("hooks", []):
+                out.append((event, g.get("matcher"), h.get("command"), h.get("timeout")))
+    return out
 
 
 def load_install():
@@ -138,6 +176,7 @@ class CustomizedInstall(SandboxCase):
         settings = read(self.cpath("settings.json")).decode()
         self.assertNotIn("require-agent-model", settings)
         self.assertNotIn("check-agent-models", settings)
+        self.assertNotIn("hivemind", settings)
 
 
 class UpgradeFromOld(SandboxCase):
@@ -166,6 +205,7 @@ class UpgradeFromOld(SandboxCase):
         found = self.ours()
         self.assertEqual(len(found["PreToolUse"]), 1, found)
         self.assertEqual(len(found["SessionStart"]), 1, found)
+        self.assertEqual(len(flat_entries(read(self.cpath("settings.json")))), 6)
         manifest = read(self.cpath(MANIFEST)).decode().split("\n")
         self.assertEqual(manifest.count(CHOICES), 1)
         self.assertTrue(os.path.isfile(self.cpath(CHOICES)))
@@ -179,6 +219,141 @@ class UpgradeFromOld(SandboxCase):
         self.assertFalse(os.path.exists(self.cpath(CHOICES)))
         found = self.ours()
         self.assertEqual(found, {"PreToolUse": [], "SessionStart": []})
+
+
+class HiveMindHooks(SandboxCase):
+    """The four HiveMind hook files and their four settings.json entries (six entries in all)."""
+
+    def settings_bytes(self, base=None):
+        return read(os.path.join(base or self.cfg, "settings.json"))
+
+    def install_default_dir(self):
+        step = self.run_install(config_dir=None)
+        self.assertEqual(step.code, 0, step.err)
+        return os.path.join(self.sb.home, ".claude")
+
+    def test_13a_six_entries_default_config_dir(self):
+        base = self.install_default_dir()
+        got = flat_entries(self.settings_bytes(base))
+        want = [(e, m, c, 10) for e, m, c in expected_entries("$HOME/.claude")]
+        self.assertEqual(len(got), 6)
+        self.assertEqual(sorted(got), sorted(want))
+        self.assertNotIn(self.sb.home, self.settings_bytes(base).decode())
+
+    def test_13b_six_entries_custom_config_dir(self):
+        step = self.run_install()
+        self.assertEqual(step.code, 0, step.err)
+        got = flat_entries(self.settings_bytes())
+        want = [(e, m, c, 10) for e, m, c in expected_entries(self.cfg)]
+        self.assertEqual(len(got), 6)
+        self.assertEqual(sorted(got), sorted(want))
+
+    def test_13c_empty_matcher_round_trips(self):
+        self.run_install()
+        data = json.loads(self.settings_bytes())
+        matchers = [g["matcher"] for g in data["hooks"]["SessionStart"]]
+        self.assertEqual(sorted(matchers), ["", "startup"])
+        dry = self.run_install("--dry-run", config_dir=self.sb.p("fresh"))
+        self.assertIn('  add        SessionStart hook, matcher ""\n', dry.out)
+        self.assertIn("  add        SessionStart hook, matcher startup\n", dry.out)
+
+    def test_14_hook_files_copied_mode_755_identical(self):
+        self.run_install()
+        for name in HOOK_FILES:
+            path = self.cpath("hooks", name)
+            self.assertTrue(os.path.isfile(path), name)
+            self.assertEqual(os.stat(path).st_mode & 0o777, 0o755, name)
+            self.assertEqual(read(path), read(os.path.join(REPO, "hooks", name)), name)
+        manifest = read(self.cpath(MANIFEST)).decode().split("\n")
+        for name in HOOK_FILES:
+            self.assertIn("hooks/" + name, manifest)
+
+    def test_15_rerun_skips_all_six_and_leaves_settings_alone(self):
+        self.run_install()
+        before = self.settings_bytes()
+        step = self.run_install()
+        self.assertEqual(step.code, 0, step.err)
+        skips = [l for l in step.out.split("\n") if l.startswith("  skip") and "(already there)" in l]
+        self.assertEqual(len(skips), 6, step.out)
+        self.assertIn('  skip       SessionStart hook, matcher "" (already there)\n', step.out)
+        self.assertIn("Settings entries: 0 added, 6 skipped.", step.out)
+        self.assertEqual(self.settings_bytes(), before)
+        self.assertFalse(os.path.isdir(self.cpath("backups")))
+
+    def test_16_uninstall_removes_six_entries_and_six_files(self):
+        self.run_install()
+        step = self.run_install("--uninstall")
+        self.assertEqual(step.code, 0, step.err)
+        removed = [l for l in step.out.split("\n") if l.startswith("  remove") and " hook, matcher " in l]
+        self.assertEqual(len(removed), 6, step.out)
+        self.assertIn("Settings entries: 6 removed, 0 skipped.", step.out)
+        for name in HOOK_FILES:
+            self.assertFalse(os.path.exists(self.cpath("hooks", name)), name)
+            self.assertRegex(step.out, r"(?m)^  remove\s+hooks/%s$" % name.replace(".", r"\."))
+        self.assertEqual(flat_entries(self.settings_bytes()), [])
+        self.assertNotIn("hooks", json.loads(self.settings_bytes()))
+
+    def foreign_settings(self):
+        return {
+            "model": "opus",
+            "hooks": {
+                "SubagentStart": [{"matcher": "*", "hooks": [{"type": "command", "command": "echo foreign start"}]}],
+                "SessionStart": [{"matcher": "", "hooks": [{"type": "command", "command": "echo foreign session"}]}],
+                "PreToolUse": [{"matcher": "Write", "hooks": [{"type": "command", "command": "echo foreign write"}]}],
+            },
+        }
+
+    def test_17_foreign_groups_survive_install_and_uninstall(self):
+        foreign = self.foreign_settings()
+        self.sb.write(self.cpath("settings.json"), canonical(foreign))
+        step = self.run_install()
+        self.assertEqual(step.code, 0, step.err)
+        self.assertIn("Settings entries: 6 added, 0 skipped.", step.out)
+        data = json.loads(self.settings_bytes())
+        for event, groups in foreign["hooks"].items():
+            self.assertEqual(data["hooks"][event][0], groups[0], event)  # in place, first
+        self.assertEqual(len(data["hooks"]["SubagentStart"]), 2)
+        self.assertEqual(len(data["hooks"]["SessionStart"]), 3)
+        self.assertEqual(len(flat_entries(self.settings_bytes())), 9)
+        step = self.run_install("--uninstall")
+        self.assertEqual(step.code, 0, step.err)
+        self.assertEqual(self.settings_bytes(), canonical(foreign))
+
+    def test_18_entry_already_present_is_not_added_twice(self):
+        cmd = 'python3 "%s/hooks/hivemind-capture.py"' % self.cfg
+        data = self.foreign_settings()
+        data["hooks"]["SubagentStop"] = [group_for("*", cmd, timeout=30)]
+        self.sb.write(self.cpath("settings.json"), canonical(data))
+        step = self.run_install()
+        self.assertEqual(step.code, 0, step.err)
+        self.assertIn("Settings entries: 5 added, 1 skipped.", step.out)
+        self.assertIn("  skip       SubagentStop hook, matcher * (already there)\n", step.out)
+        after = json.loads(self.settings_bytes())
+        self.assertEqual(after["hooks"]["SubagentStop"], [group_for("*", cmd, timeout=30)])
+        self.assertEqual(len([e for e in flat_entries(self.settings_bytes()) if e[2] == cmd]), 1)
+        again = self.run_install()
+        self.assertIn("Settings entries: 0 added, 6 skipped.", again.out)
+
+    def test_19_upgrade_from_two_entry_settings(self):
+        old_pre = group_for("Agent", 'python3 "%s/hooks/require-agent-model.py"' % self.cfg)
+        old_start = group_for("startup", 'bash "%s/hooks/check-agent-models.sh"' % self.cfg)
+        before = {"hooks": {"PreToolUse": [old_pre], "SessionStart": [old_start]}}
+        self.sb.write(self.cpath("settings.json"), canonical(before))
+        step = self.run_install()
+        self.assertEqual(step.code, 0, step.err)
+        self.assertIn("Settings entries: 4 added, 2 skipped.", step.out)
+        self.assertEqual(len(re.findall(r"(?m)^  add\s+\S+ hook, matcher", step.out)), 4)
+        data = json.loads(self.settings_bytes())
+        self.assertEqual(data["hooks"]["PreToolUse"][0], old_pre)
+        self.assertEqual(data["hooks"]["SessionStart"][0], old_start)
+        self.assertEqual(len(flat_entries(self.settings_bytes())), 6)
+        self.assertEqual(list(data["hooks"]), ["PreToolUse", "SessionStart", "SubagentStart", "SubagentStop"])
+        got = {(e, m, c) for e, m, c, _ in flat_entries(self.settings_bytes())}
+        self.assertEqual(got, set(expected_entries(self.cfg)))
+        # the two old entries keep their exact bytes inside the rewritten file
+        text = self.settings_bytes().decode()
+        for g in (old_pre, old_start):
+            self.assertIn(json.dumps(g, indent=2).replace("\n", "\n      "), text)
 
 
 class UsageErrors(SandboxCase):

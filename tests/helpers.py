@@ -7,6 +7,7 @@ the invoking user's real Claude config directory.
 import atexit
 import collections
 import difflib
+import json
 import os
 import pwd
 import re
@@ -297,6 +298,43 @@ SUM_UNINSTALL = re.compile(r"^Summary: (\d+) removed, (\d+) kept in backup, (\d+
 INSTALL_GROUP = {"add": 1, "replace": 2, "unchanged": 3}
 UNINSTALL_GROUP = {"remove": 1, "edited": 2, "missing": 3}
 
+# Allowance 4: the four HiveMind hook files and their four settings.json entries,
+# which the old installer does not know about. Everything here is matched exactly.
+NEW_HOOK_FILES = ("hivemind_lib.py", "hivemind-inject.py", "hivemind-capture.py", "hivemind-guard.py")
+OLD_HOOK_FILES = ("require-agent-model.py", "check-agent-models.sh")
+NEW_HOOK_FILES_LINE = re.compile(
+    r"^  (add|unchanged|replace|remove|edited|missing)\s+hooks/(%s)(\s.*)?$"
+    % "|".join(re.escape(n) for n in NEW_HOOK_FILES))
+OLD_HOOK_FILES_LINE = re.compile(
+    r"^  (add|unchanged|replace|remove|edited|missing)\s+hooks/(%s)(\s.*)?$"
+    % "|".join(re.escape(n) for n in OLD_HOOK_FILES))
+NEW_MANIFEST_LINES = tuple("    hooks/" + n for n in NEW_HOOK_FILES)
+# (event, matcher, command regex). The command prefix is $HOME/.claude or a path
+# that the sandbox normalizer turned into <ROOT>/...
+_HOOK_PREFIX = r'(?:\$HOME/\.claude|<ROOT>/[^"]*)'
+NEW_SETTINGS_ENTRIES = (
+    ("SubagentStart", "*", re.compile(r'^python3 "%s/hooks/hivemind-inject\.py"$' % _HOOK_PREFIX)),
+    ("SubagentStop", "*", re.compile(r'^python3 "%s/hooks/hivemind-capture\.py"$' % _HOOK_PREFIX)),
+    ("PreToolUse", "Write|Edit|MultiEdit|NotebookEdit",
+     re.compile(r'^python3 "%s/hooks/hivemind-guard\.py"$' % _HOOK_PREFIX)),
+    ("SessionStart", "", re.compile(r'^python3 "%s/hooks/hivemind_lib\.py" status$' % _HOOK_PREFIX)),
+)
+# The printed matcher of an empty matcher is two double quotes.
+_SETTINGS_SHOWN = (("SubagentStart", "*"), ("SubagentStop", "*"),
+                   ("PreToolUse", "Write|Edit|MultiEdit|NotebookEdit"), ("SessionStart", '""'))
+NEW_SETTINGS_LINES = {}  # exact line -> (kind, (event, shown matcher))
+for _ev, _m in _SETTINGS_SHOWN:
+    NEW_SETTINGS_LINES["  add        %s hook, matcher %s" % (_ev, _m)] = ("add", (_ev, _m))
+    NEW_SETTINGS_LINES["  skip       %s hook, matcher %s (already there)" % (_ev, _m)] = ("skip", (_ev, _m))
+    NEW_SETTINGS_LINES["  remove     %s hook, matcher %s" % (_ev, _m)] = ("remove", (_ev, _m))
+    NEW_SETTINGS_LINES["  skip       %s hook, matcher %s (not there)" % (_ev, _m)] = ("absent", (_ev, _m))
+OLD_SETTINGS_LINE = re.compile(r"^  (add|skip|remove)\s+(PreToolUse|SessionStart) hook, matcher (Agent|startup)\b")
+SUM_FULL_INSTALL = re.compile(
+    r"^Summary: (\d+) added, (\d+) replaced, (\d+) unchanged\. Settings entries: (\d+) added, (\d+) skipped\.$")
+SUM_FULL_UNINSTALL = re.compile(
+    r"^Summary: (\d+) removed, (\d+) kept in backup, (\d+) already gone\. Settings entries: (\d+) removed, (\d+) skipped\.$")
+OLD_MANIFEST_MISSING = re.compile(r"^(No manifest at .*\. Only the )two (hook entries can be removed\.)$")
+
 
 def _usage_strip(o, n, problems, label):
     """Usage text may gain lines for the new flags; old lines must all survive in order."""
@@ -419,6 +457,25 @@ def apply_allowances(old, new):
         if not done:
             problems.append("choices Files line printed but no summary line found")
         n_lines = adjusted
+
+    # Allowance 4 (stdout): the four new hook files and four new settings entries.
+    o_lines = o_out.split("\n")
+    o_lines = [OLD_MANIFEST_MISSING.sub(r"\1\2", l) for l in o_lines]  # "two hook entries" reworded
+    if SELF_TEST:  # old stands in for new, so it prints the old wording too
+        n_lines = [OLD_MANIFEST_MISSING.sub(r"\1\2", l) for l in n_lines]
+    n_lines, file_drops, setting_drops = _drop_new_hook_lines(n_lines, problems)
+    old_has_files = any(OLD_HOOK_FILES_LINE.match(l) for l in o_lines)
+    old_has_settings = any(OLD_SETTINGS_LINE.match(l) for l in o_lines)
+    if not SELF_TEST:
+        if old_has_files and len(file_drops) != len(NEW_HOOK_FILES):
+            problems.append("new printed %d Files lines for the new hook files (want %d)"
+                            % (len(file_drops), len(NEW_HOOK_FILES)))
+        if old_has_settings and len(setting_drops) != len(NEW_SETTINGS_LINES) // 4:
+            problems.append("new printed %d settings lines for the new entries (want %d)"
+                            % (len(setting_drops), len(NEW_SETTINGS_LINES) // 4))
+    if file_drops or setting_drops:
+        n_lines = _lower_summary(n_lines, file_drops, setting_drops, problems)
+    o_out = "\n".join(o_lines)
     n_out = "\n".join(n_lines)
 
     # Same-name warnings must appear in the same order: install.py walks the
@@ -442,6 +499,7 @@ def apply_allowances(old, new):
                 problems.append("manifest %s lists the choices file %d times (want 1)" % (key, cnt))
             if cnt:
                 lines.remove(CHOICES.encode())
+            lines = _drop_new_manifest_lines(lines, ob, key, problems)
             n_tree[key] = n_tree[key][:3] + (b"\n".join(lines),)
             want = os.path.join(os.path.dirname(key), CHOICES)
             entry = new.tree.get(want)
@@ -451,10 +509,167 @@ def apply_allowances(old, new):
     for key in list(n_tree):
         if os.path.basename(key) == CHOICES:
             del n_tree[key]
+    _drop_new_hook_tree(o_tree, n_tree, problems)
     for key in sorted(set(o_tree) | set(n_tree)):
         if o_tree.get(key) != n_tree.get(key):
             problems.append(_entry_diff(key, o_tree.get(key), n_tree.get(key)))
     return problems
+
+
+def _drop_new_hook_lines(n_lines, problems):
+    """Allowance 4, stdout. Drops each exact line that only the new installer prints for the
+    four new hook files and entries (each at most once per name). Returns the remaining lines,
+    the dropped Files actions and the dropped settings kinds."""
+    kept, file_drops, setting_drops = [], [], []
+    seen_files, seen_settings, seen_manifest = set(), set(), set()
+    for l in n_lines:
+        m = NEW_HOOK_FILES_LINE.match(l)
+        if m and m.group(2) not in seen_files:
+            seen_files.add(m.group(2))
+            file_drops.append(m.group(1))
+            continue
+        if l in NEW_SETTINGS_LINES:
+            kind, ident = NEW_SETTINGS_LINES[l]
+            if ident not in seen_settings:
+                seen_settings.add(ident)
+                setting_drops.append(kind)
+                continue
+        if l in NEW_MANIFEST_LINES and l not in seen_manifest:
+            seen_manifest.add(l)
+            continue
+        kept.append(l)
+    return kept, file_drops, setting_drops
+
+
+def _lower_summary(n_lines, file_drops, setting_drops, problems):
+    """Lower the Files and Settings entries counts of the summary line by what was dropped."""
+    out, done = [], False
+    for l in n_lines:
+        m_i, m_u = SUM_FULL_INSTALL.match(l), SUM_FULL_UNINSTALL.match(l)
+        m = m_i or m_u
+        if m and not done:
+            done = True
+            vals = [int(v) for v in m.groups()]
+            files = {"add": 0, "replace": 1, "unchanged": 2} if m_i else {"remove": 0, "edited": 1, "missing": 2}
+            sets = {"add": 3, "skip": 4} if m_i else {"remove": 3, "absent": 4}
+            for action in file_drops:
+                if action not in files:
+                    problems.append("new hook Files line action %r does not fit this summary" % action)
+                    continue
+                vals[files[action]] -= 1
+            for kind in setting_drops:
+                if kind not in sets:
+                    problems.append("new settings line kind %r does not fit this summary" % kind)
+                    continue
+                vals[sets[kind]] -= 1
+            if min(vals) < 0:
+                problems.append("summary count would go below zero after dropping the new hook lines: %r" % vals)
+                vals = [max(v, 0) for v in vals]
+            l = _rebuild_all(m, vals)
+        out.append(l)
+    if not done:
+        problems.append("new hook lines were printed but no summary line was found")
+    return out
+
+
+def _rebuild_all(m, vals):
+    line, out, last = m.string, [], 0
+    for i, v in enumerate(vals, 1):
+        s, e = m.span(i)
+        out.append(line[last:s])
+        out.append(str(v))
+        last = e
+    out.append(line[last:])
+    return "".join(out)
+
+
+def _drop_new_manifest_lines(lines, old_bytes, key, problems):
+    """Allowance 4, manifest file: drop one line per new hook file (hooks/<name>)."""
+    old_lines = old_bytes.split(b"\n")
+    for name in NEW_HOOK_FILES:
+        item = ("hooks/" + name).encode()
+        cnt = lines.count(item)
+        want_one = (b"hooks/" + OLD_HOOK_FILES[0].encode()) in old_lines and not SELF_TEST
+        if cnt > 1 or (cnt != 1 and want_one):
+            problems.append("manifest %s lists hooks/%s %d times (want 1)" % (key, name, cnt))
+        if cnt:
+            lines.remove(item)
+    return lines
+
+
+def _strip_new_entries(data):
+    """Remove exactly the four new entries from a parsed settings.json, the way install.py's
+    uninstall does: drop a group it empties, an event list it empties and an emptied hooks."""
+    hooks = data.get("hooks")
+    if not isinstance(hooks, dict):
+        return False
+    changed = False
+    for event, matcher, cmd_re in NEW_SETTINGS_ENTRIES:
+        lst = hooks.get(event)
+        if not isinstance(lst, list):
+            continue
+        keep, removed = [], False
+        for g in lst:
+            if isinstance(g, dict) and g.get("matcher") == matcher and isinstance(g.get("hooks"), list):
+                before = g["hooks"]
+                after = [h for h in before if not (isinstance(h, dict) and h.get("type") == "command"
+                                                   and isinstance(h.get("command"), str)
+                                                   and cmd_re.match(h["command"]))]
+                if len(after) != len(before):
+                    removed = True
+                if after:
+                    g["hooks"] = after
+                    keep.append(g)
+            else:
+                keep.append(g)
+        if removed:
+            changed = True
+            if keep:
+                hooks[event] = keep
+            else:
+                del hooks[event]
+    if changed and not hooks:
+        del data["hooks"]
+    return changed
+
+
+def _drop_new_hook_tree(o_tree, n_tree, problems):
+    """Allowance 4, tree: remove the four new hook files (under any hooks/ dir, backups
+    included) and the four new settings.json entries from the new tree before comparing."""
+    removed_dirs = set()
+    for key in sorted(n_tree):
+        entry = n_tree[key]
+        parts = key.split("/")
+        if entry[0] == "file" and len(parts) >= 2 and parts[-2] == "hooks" and parts[-1] in NEW_HOOK_FILES:
+            del n_tree[key]
+            removed_dirs.add("/".join(parts[:-1]))
+    # a hooks dir (and parents) that only existed to hold new files is not an extra
+    for d in sorted(removed_dirs, key=len, reverse=True):
+        while d and d in n_tree and d not in o_tree and not any(k.startswith(d + "/") for k in n_tree):
+            del n_tree[d]
+            d = d.rpartition("/")[0]
+    for key in sorted(n_tree):
+        entry = n_tree[key]
+        if os.path.basename(key) != "settings.json" or entry[0] != "file" or key not in o_tree:
+            continue
+        old_entry = o_tree[key]
+        if old_entry[0] != "file" or entry[3] is None or old_entry[3] is None:
+            continue
+        try:
+            old_data = json.loads(old_entry[3].decode("utf-8"))
+        except ValueError:
+            old_data = None
+        try:
+            data = json.loads(entry[3].decode("utf-8"))
+        except ValueError:
+            data = None
+            if old_data is not None:
+                problems.append("new settings file %s is not valid JSON" % key)
+            continue
+        if not isinstance(data, dict) or not _strip_new_entries(data):
+            continue
+        text = json.dumps(data, indent=2, ensure_ascii=False) + "\n"
+        n_tree[key] = entry[:3] + (text.encode("utf-8"),)
 
 
 def _rebuild(m, vals):

@@ -37,7 +37,7 @@ Codex: OFF. When ON, a peer next to deep-reasoner at layer one.
 | Tier | Agent | Use for |
 |------|-------|---------|
 | Orchestrator | main session | Planning, deciding, reviewing summaries, the final call. Effort is high by default; xhigh if `/setup-model-routing` set `effortLevel` in settings with your approval |
-| Lead / reasoner | `deep-reasoner` | Feature lead; architecture, hard debugging, algorithms, high-risk code; `memory: project` (operational lessons per repo, `.claude/agent-memory/deep-reasoner/`) |
+| Lead / reasoner | `deep-reasoner` | Feature lead; architecture, hard debugging, algorithms, high-risk code; runs HiveMind CONSOLIDATION at the end of each feature (project facts live in `.claude/hivemind/`) |
 | Designer | `designer` | New or changed UI, layout, components, visual design and design critique; leads like deep-reasoner; `memory: user` (`~/.claude/agent-memory/designer/`); settings from the project CLAUDE.md "Design" section |
 | Worker | `fast-worker` | Well-specified implementation, tests, docs; cannot delegate (`disallowedTools: Agent`) |
 | Judge | `judge` | Synthesis and judgment over gathered material, Chrome work; read-only on files, replaces built-in general-purpose |
@@ -95,6 +95,29 @@ It lets through: plugin agents (names containing `:`), a dispatch with no agent 
 
 `~/.claude/hooks/check-agent-models.sh` runs on `SessionStart` (matcher `startup`). When the current project's `.claude/agents/` or the user `agents/` folder has agents with no model or effort, it adds a line per folder to the session context naming them, with `/route-project` as the fix for project agents and the two frontmatter lines for user agents. It then adds one more line, `Model routing agents (model/effort): ...`, listing every agent in the user folder and then the project folder as `name=model/effort` (`none` for a missing value), so a session shows which models are pinned. It prints nothing when neither folder has agents.
 
+## HiveMind hooks
+
+Four more entries are installed. They do nothing in a project without `.claude/hivemind/`, which only `python3 ~/.claude/hooks/hivemind_lib.py init` creates. The README's "HiveMind" section explains the store.
+
+| Event | Matcher | Command | What it does |
+|-------|---------|---------|--------------|
+| `SubagentStart` | `*` | `hivemind-inject.py` | Gives the subagent one-line records within its token budget, once per agent. |
+| `SubagentStop` | `*` | `hivemind-capture.py` | Parses the HIVEMIND block from the final reply (no line or length limit; lines that do not parse are kept in the file's `unparsed` list), tallies the agent's tokens and writes one file to `inbox/`. |
+| `PreToolUse` | `Write\|Edit\|MultiEdit\|NotebookEdit` | `hivemind-guard.py` | Denies a subagent's write to `.claude/hivemind/` and `.claude/rules/project-facts.md`. `deep-reasoner` and the main session pass. |
+| `SessionStart` | empty | `hivemind_lib.py status` | Prints one line when the store needs attention, nothing otherwise. |
+
+The three hooks that read agent input exit 0 on any error and never block an agent. Shell redirects are not covered by the guard.
+
+To check a store from a project root:
+
+```bash
+# prints nothing when the store is healthy or absent
+python3 ~/.claude/hooks/hivemind_lib.py status
+
+# prints "check passed" and exit 0, or one line per problem and exit 1
+python3 ~/.claude/hooks/hivemind_lib.py check .claude/hivemind; echo "exit $?"
+```
+
 ## Where this applies
 
 The terminal CLI and the Desktop app's Code tab. Cloud sessions (Claude Code on the web and in the mobile app) don't read `~/.claude/` at all, so none of this reaches them; they need repo-level `.claude/agents/` and settings.
@@ -116,8 +139,8 @@ Useful Codex commands once it's on: `/codex:rescue` (hand Codex a task, add `--b
 ## Verification
 
 ```bash
-# plain install: settings parse and carry the two hook entries
-python3 -c 'import json; s=json.load(open("'"$HOME"'/.claude/settings.json")); print([e["matcher"] for e in s["hooks"]["PreToolUse"]], [e["matcher"] for e in s["hooks"]["SessionStart"]])'
+# plain install: settings parse and carry the six hook entries
+python3 -c 'import json; s=json.load(open("'"$HOME"'/.claude/settings.json")); h=s["hooks"]; print({k: [e.get("matcher") for e in h.get(k, [])] for k in ("PreToolUse", "SessionStart", "SubagentStart", "SubagentStop")})'
 
 # after /setup-model-routing: the optional keys are present too
 python3 -c 'import json; s=json.load(open("'"$HOME"'/.claude/settings.json")); print(s.get("model"), s.get("effortLevel"), s.get("env", {}).get("CLAUDE_CODE_SUBAGENT_MODEL"))'

@@ -398,6 +398,10 @@ class ParityTests(ParityBase):
                 text = fh.read()
             self.assertIn('python3 \\"$HOME/.claude/hooks/require-agent-model.py\\"', text)
             self.assertIn('bash \\"$HOME/.claude/hooks/check-agent-models.sh\\"', text)
+            if kind == "new" and REAL_NEW:
+                for tail in ('hooks/hivemind-inject.py', 'hooks/hivemind-capture.py', 'hooks/hivemind-guard.py'):
+                    self.assertIn('python3 \\"$HOME/.claude/%s\\"' % tail, text)
+                self.assertIn('python3 \\"$HOME/.claude/hooks/hivemind_lib.py\\" status', text)
             self.assertNotIn(sb.home, text)
 
     # 12a
@@ -460,6 +464,89 @@ class ParityTests(ParityBase):
                 self.assertIn("caf\u00e9 \u00f1 \u65e5\u672c", fh.read())
             return [first, second]
         self.parity(scn)
+
+
+class HarnessSelfTests(ParityBase):
+    """The harness must still fail on anything the allowances do not name: Allowance 4 drops
+    the four HiveMind hook files and entries and nothing else."""
+
+    def baseline(self):
+        old = self.sandbox("old").run([])
+        new = self.sandbox("new").run([])
+        self.assertEqual((old.code, new.code), (0, 0), old.err + new.err)
+        self.assertEqual(apply_allowances(old, new), [], "baseline is not clean")
+        return old, new
+
+    def new_settings(self, new):
+        key = "cfg/settings.json"
+        return key, json.loads(new.tree[key][3].decode("utf-8"))
+
+    def with_settings(self, new, data):
+        key = "cfg/settings.json"
+        tree = dict(new.tree)
+        text = json.dumps(data, indent=2, ensure_ascii=False) + "\n"
+        tree[key] = tree[key][:3] + (text.encode("utf-8"),)
+        return new._replace(tree=tree)
+
+    def assertFails(self, old, new, needle):
+        problems = apply_allowances(old, new)
+        self.assertTrue(problems, "harness accepted a difference it should reject: " + needle)
+        self.assertIn(needle, "\n".join(problems))
+
+    def test_self_01_extra_unrelated_hook_file(self):
+        old, new = self.baseline()
+        tree = dict(new.tree)
+        tree["cfg/hooks/extra-hook.py"] = ("file", None, 0o755, b"print(1)\n")
+        self.assertFails(old, new._replace(tree=tree), "extra-hook.py")
+
+    def test_self_02_hivemind_name_outside_hooks_dir(self):
+        old, new = self.baseline()
+        tree = dict(new.tree)
+        tree["cfg/hivemind-guard.py"] = ("file", None, 0o755, b"x\n")
+        tree["cfg/hooks/hivemind-other.py"] = ("file", None, 0o755, b"x\n")
+        problems = apply_allowances(old, new._replace(tree=tree))
+        self.assertTrue(any("cfg/hivemind-guard.py" in p for p in problems), problems)
+        self.assertTrue(any("hivemind-other.py" in p for p in problems), problems)
+
+    def test_self_03_extra_unrelated_settings_entry(self):
+        old, new = self.baseline()
+        for event in ("SubagentStart", "PreToolUse", "SessionStart", "Stop"):
+            with self.subTest(event=event):
+                _, data = self.new_settings(new)
+                data["hooks"].setdefault(event, []).append(
+                    {"matcher": "x", "hooks": [{"type": "command", "command": "echo foreign"}]})
+                self.assertFails(old, self.with_settings(new, data), "settings.json")
+
+    @unittest.skipIf(SELF_TEST, "old installer writes no HiveMind entries")
+    def test_self_04_new_entry_with_wrong_command_or_matcher(self):
+        old, new = self.baseline()
+        _, data = self.new_settings(new)
+        data["hooks"]["SubagentStart"][0]["hooks"][0]["command"] = 'python3 "/elsewhere/other.py"'
+        self.assertFails(old, self.with_settings(new, data), "settings.json")
+        _, data = self.new_settings(new)
+        for g in data["hooks"]["SessionStart"]:
+            if g["matcher"] == "":
+                g["matcher"] = "startup"
+        self.assertFails(old, self.with_settings(new, data), "settings.json")
+
+    def test_self_05_extra_stdout_and_manifest_lines(self):
+        old, new = self.baseline()
+        self.assertFails(old, new._replace(out=new.out + "  add        SubagentStart hook, matcher Other\n"),
+                         "stdout")
+        self.assertFails(old, new._replace(out=new.out + "  add        hooks/extra-hook.py\n"), "stdout")
+        twice = "  skip       SubagentStop hook, matcher * (already there)\n"
+        self.assertFails(old, new._replace(out=new.out + twice + twice), "stdout")
+        key = "cfg/model-routing-manifest.txt"
+        tree = dict(new.tree)
+        tree[key] = tree[key][:3] + (tree[key][3] + b"hooks/extra-hook.py\n",)
+        self.assertFails(old, new._replace(tree=tree), "manifest")
+
+    def test_self_06_invalid_new_settings_is_a_problem(self):
+        old, new = self.baseline()
+        tree = dict(new.tree)
+        key = "cfg/settings.json"
+        tree[key] = tree[key][:3] + (b"{not json",)
+        self.assertFails(old, new._replace(tree=tree), "not valid JSON")
 
 
 if __name__ == "__main__":

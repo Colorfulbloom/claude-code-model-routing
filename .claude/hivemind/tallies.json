@@ -1,0 +1,105 @@
+{
+  "rows": {
+    "diff-walkthrough|scout|claude-haiku-5-5": {
+      "last_date": "2026-10-20",
+      "samples": [
+        {
+          "agent_id": "aa56d6dda9895e33c",
+          "date": "2026-10-20",
+          "v": 43449
+        }
+      ]
+    },
+    "hivemind-ab-test-control|Explore|claude-haiku-5-5": {
+      "last_date": "2026-10-20",
+      "samples": [
+        {
+          "agent_id": "a5e42d1a53db6b59c",
+          "date": "2026-10-20",
+          "v": 32322
+        }
+      ]
+    },
+    "hivemind-ab-test-pty-control|Explore|claude-haiku-5-5": {
+      "last_date": "2026-10-20",
+      "samples": [
+        {
+          "agent_id": "a4aec8e9c98159ce4",
+          "date": "2026-10-20",
+          "v": 33735
+        },
+        {
+          "agent_id": "ac74c135d9b7ab8e9",
+          "date": "2026-10-20",
+          "v": 37352
+        }
+      ]
+    },
+    "hivemind-ab-test-pty|scout|claude-haiku-5-5": {
+      "last_date": "2026-10-20",
+      "samples": [
+        {
+          "agent_id": "afcec3f2dff444454",
+          "date": "2026-10-20",
+          "v": 17557
+        },
+        {
+          "agent_id": "a405fbcffd1086728",
+          "date": "2026-10-20",
+          "v": 20380
+        }
+      ]
+    },
+    "hivemind-ab-test|scout|claude-haiku-5-5": {
+      "last_date": "2026-10-20",
+      "samples": [
+        {
+          "agent_id": "a63a679fe5db1b608",
+          "date": "2026-10-20",
+          "v": 15638
+        }
+      ]
+    },
+    "hivemind-capture-fix|fast-worker|claude-sonnet-5-5": {
+      "last_date": "2026-10-20",
+      "samples": [
+        {
+          "agent_id": "a13d44739c9e47239",
+          "date": "2026-10-20",
+          "v": 101567
+        }
+      ]
+    },
+    "hivemind-guard-test|fast-worker|claude-sonnet-5-5": {
+      "last_date": "2026-10-20",
+      "samples": [
+        {
+          "agent_id": "aeebbc68ec728c599",
+          "date": "2026-10-20",
+          "v": 39985
+        }
+      ]
+    },
+    "hivemind-live-test|scout|claude-haiku-5-5": {
+      "last_date": "2026-10-20",
+      "samples": [
+        {
+          "agent_id": "a8185b9e6f9c9a065",
+          "date": "2026-10-20",
+          "v": 11853
+        }
+      ]
+    },
+    "test-fixture-cleanup|fast-worker|claude-sonnet-5-5": {
+      "last_date": "2026-10-20",
+      "samples": [
+        {
+          "agent_id": "af2a6a228733e5fac",
+          "date": "2026-10-20",
+          "v": 54296
+        }
+      ]
+    }
+  },
+  "version": 1
+}

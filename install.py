@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Installs the model-routing setup (agents, rules, hooks, skills, reference doc)
-into the Claude Code config directory and registers two hooks in settings.json.
+into the Claude Code config directory and registers six hook entries in settings.json.
 
 Python 3.9+, standard library only. Run it through install.sh (a thin shim that
 checks the Python version) or directly with python3.
@@ -74,7 +74,7 @@ MSG_MANIFEST_HEADING = 'Manifest (%s)\n'
 MSG_MANIFEST_WRITE = '  write      %s\n'
 MSG_MANIFEST_UNCHANGED = '  unchanged  %s\n'
 MSG_MANIFEST_REMOVE = '  remove     %s\n'
-MSG_MANIFEST_MISSING = 'No manifest at %s. Only the two hook entries can be removed.\n'
+MSG_MANIFEST_MISSING = 'No manifest at %s. Only the hook entries can be removed.\n'
 MSG_MANIFEST_LINE = '    %s\n'
 MSG_SUMMARY_INSTALL = 'Summary: %s added, %s replaced, %s unchanged. Settings entries: %s added, %s skipped.\n'
 MSG_SUMMARY_SAMENAME = 'Same-name agent files: %s found. Each one needs a rename or a removal, or Claude Code keeps only one of the pair.\n'
@@ -127,10 +127,15 @@ EFFORTS_BY_MODEL = {alias: EFFORTS for alias in ALIASES}
 FABLE_NOTE = "may bill to usage credits"
 DEFAULT_EFFORT = "medium"
 CHOICES_NAME = "model-routing-choices.json"
-HOOK_NAMES = ["require-agent-model.py", "check-agent-models.sh"]
+HOOK_NAMES = ["require-agent-model.py", "check-agent-models.sh", "hivemind_lib.py",
+              "hivemind-inject.py", "hivemind-capture.py", "hivemind-guard.py"]
 SETTINGS_ENTRIES_FMT = [
     ("PreToolUse", "Agent", 'python3 "%s/hooks/require-agent-model.py"'),
     ("SessionStart", "startup", 'bash "%s/hooks/check-agent-models.sh"'),
+    ("SubagentStart", "*", 'python3 "%s/hooks/hivemind-inject.py"'),
+    ("SubagentStop", "*", 'python3 "%s/hooks/hivemind-capture.py"'),
+    ("PreToolUse", "Write|Edit|MultiEdit|NotebookEdit", 'python3 "%s/hooks/hivemind-guard.py"'),
+    ("SessionStart", "", 'python3 "%s/hooks/hivemind_lib.py" status'),
 ]
 
 # A plan entry: destination relative to the target, mode, rendered bytes, and the
@@ -160,11 +165,10 @@ class Args(object):
 class Ctx(object):
     """State shared by the install and uninstall steps."""
 
-    def __init__(self, target, settings_real, cmd_pre, cmd_session, dry, uninstall, stamp):
+    def __init__(self, target, settings_real, entries, dry, uninstall, stamp):
         self.target = target
         self.settings_real = settings_real
-        self.cmd_pre = cmd_pre
-        self.cmd_session = cmd_session
+        self.entries = entries  # list of (event, matcher, command)
         self.dry = dry
         self.uninstall = uninstall
         self.stamp = stamp
@@ -298,8 +302,9 @@ def hook_prefix(target, env):
     return target
 
 
-def hook_commands(prefix):
-    return [fmt % prefix for _, _, fmt in SETTINGS_ENTRIES_FMT]
+def hook_entries(prefix):
+    """The settings.json entries as (event, matcher, command) tuples."""
+    return [(event, matcher, fmt % prefix) for event, matcher, fmt in SETTINGS_ENTRIES_FMT]
 
 
 def detect_claude_version():
@@ -1157,14 +1162,10 @@ def preflight(ctx, plan):
 
 # ---- Settings merge ---------------------------------------------------------
 
-def merge_settings(mode, path, dry, backup_dir, tdir, cmd_pre, cmd_session):
+def merge_settings(mode, path, dry, backup_dir, tdir, entries):
     """Returns (lines, ok). Each line is a tuple:
     backup <path> | add/skip/remove/absent <event> <matcher> | nofile | error <code> [detail]
     """
-    entries = [
-        ("PreToolUse", "Agent", cmd_pre),
-        ("SessionStart", "startup", cmd_session),
-    ]
     lines = []
 
     def out(*parts):
@@ -1291,12 +1292,14 @@ def do_settings(ctx, mode, dry, quiet):
     can be merged (used before any file is copied)."""
     ensure_backup_dir(ctx)
     lines, ok = merge_settings(mode, ctx.settings_real, dry, ctx.backup_dir,
-                               os.path.dirname(ctx.settings_real), ctx.cmd_pre, ctx.cmd_session)
+                               os.path.dirname(ctx.settings_real), ctx.entries)
     settings_path = ctx.target + "/settings.json"
     for line in lines:
         kind = line[0]
         a = line[1] if len(line) > 1 else ""
         b = line[2] if len(line) > 2 else ""
+        if kind in ("add", "skip", "remove", "absent") and b == "":
+            b = '""'  # an empty matcher prints readably
         if kind == "add" and not quiet:
             say(MSG_SETTINGS_ADD, a, b)
             ctx.set_added += 1
@@ -1605,7 +1608,7 @@ def run(args, env, repo_dir):
     target = resolve_target(env, os.getcwd())
     say(MSG_TARGET, target)
     prefix = hook_prefix(target, env)
-    cmd_pre, cmd_session = hook_commands(prefix)
+    entries = hook_entries(prefix)
     if args.dry:
         say(MSG_DRY_BANNER)
 
@@ -1621,7 +1624,7 @@ def run(args, env, repo_dir):
         if not os.path.exists(settings_real):
             raise die_text(MSG_ERR_SETTINGS_DANGLING, target + "/settings.json")
         settings_real = os.path.realpath(settings_real)
-    ctx = Ctx(target, settings_real, cmd_pre, cmd_session, args.dry, args.uninstall,
+    ctx = Ctx(target, settings_real, entries, args.dry, args.uninstall,
               time.strftime("%Y%m%d-%H%M%S"))
 
     if args.uninstall:

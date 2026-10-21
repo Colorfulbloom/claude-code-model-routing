@@ -39,20 +39,75 @@ Every subagent's output lands in the context of whoever dispatched it. Handing a
 | `scout` | Search, inventories, test and lint runs, log and diff reading, quick web lookups. Read-only tools. |
 | `fast-worker` | Well-specified implementation, tests, docs. Cannot delegate. |
 | `judge` | Synthesis and judgment over gathered material, Chrome work. Read-only on files. Replaces the built-in general-purpose agent. |
-| `deep-reasoner` | Feature lead, architecture, hard debugging, algorithms, high-risk code. Keeps per-repo memory. |
+| `deep-reasoner` | Feature lead, architecture, hard debugging, algorithms, high-risk code. Runs HiveMind CONSOLIDATION at the end of each feature. |
 | `designer` | New or changed UI, visual design, design critique. Renders two or three directions and recommends one. |
 | `verifier` | Verifies a lead's plan or report claim by claim against the project's sources. Read-only. Its pinned model is for plans and risky milestones; routine milestones pass a cheaper model on the dispatch. |
 | `tech-writer` (example, not installed) | A project agent that drafts everything meant for a reader: docs, logs, tickets, commit messages and site copy. See [The example project agent](#the-example-project-agent). |
 
 Each agent's `model` and `effort` are set in its frontmatter; the installer asks you to pick them (see [Choosing models](#choosing-models)). The installer does not set the main model; `/setup-model-routing` offers to.
 
-## The two hooks
+## The hooks
 
 **`hooks/require-agent-model.py`** runs before every `Agent` tool call. It exits 2 when a dispatch passes no `model` and targets a built-in agent (`Explore`, `Plan`), an agent it cannot find, or an agent whose `model` is missing or `inherit`. It always blocks `general-purpose` (use `judge`), and it blocks any found agent with no pinned `effort`, even when a model is passed. Exit 2 means Claude Code cancels the tool call and shows the hook's message to Claude, which then passes a model and retries. Plugin agents (names with a `:`) and anything the hook cannot parse go through.
 
 **`hooks/check-agent-models.sh`** runs once when a session starts. If the project's `.claude/agents/` or the user `agents/` folder has agents with no model or effort, it adds a line per folder to the session context naming them, with `/route-project` as the fix for project agents and the two frontmatter lines for user agents. It then adds one line, `Model routing agents (model/effort): ...`, that lists the agents in the user folder and then the project folder as `name=model/effort` (`none` for a missing value). It prints nothing when neither folder has agents.
 
-Both hooks are wired into `~/.claude/settings.json` by the installer. The full list of what the dispatch hook blocks, and how to relax it so it fills in a model instead of blocking, is in `docs/model-routing-reference.md`.
+**`hooks/hivemind-inject.py`** runs on `SubagentStart`. It gives each subagent one-line records from the project's HiveMind store, once per agent, within that agent's token budget.
+
+**`hooks/hivemind-capture.py`** runs on `SubagentStop`. It reads the HIVEMIND block from the agent's final reply and the agent's token use, and writes one file to the store's `inbox/`.
+
+**`hooks/hivemind-guard.py`** runs before `Write`, `Edit`, `MultiEdit` and `NotebookEdit`. It denies a subagent's write to the store and to `.claude/rules/project-facts.md`, unless the agent is `deep-reasoner`.
+
+**`hooks/hivemind_lib.py status`** runs on `SessionStart` with an empty matcher, so it fires on startup, resume, clear and compact. It prints one line only when the store needs attention.
+
+The four HiveMind hooks do nothing in a project without `.claude/hivemind/`. All six entries are wired into `~/.claude/settings.json` by the installer. The full list of what the dispatch hook blocks, and how to relax it so it fills in a model instead of blocking, is in `docs/model-routing-reference.md`.
+
+## HiveMind
+
+HiveMind is a per-project memory that all agents share. It is opt-in and reviewed. Agents propose facts, one agent (`deep-reasoner`) decides which to keep, and the result is committed like code.
+
+To opt a project in, run this from the project root:
+
+```bash
+python3 ~/.claude/hooks/hivemind_lib.py init
+```
+
+The store is committed and reviewed in each feature's diff. Only `inbox/` is ignored. Layout:
+
+- `.claude/hivemind/config.json`: limits, topics and per-agent topic lists
+- `.claude/hivemind/INDEX.md`: generated, never edited by hand
+- `.claude/hivemind/topics/<topic>.md`: `testing`, `failed-briefs`, `dead-ends` and `token-tallies`
+- `.claude/hivemind/tallies.json`: written by the script. `active-days.txt` is written by the script too but stays local (gitignored); active days also count commit dates from git
+- `.claude/hivemind/archive/`: retired facts, never injected
+- `.claude/hivemind/inbox/`: one file per subagent run, ignored by git
+- `.claude/rules/project-facts.md`: the reviewed tier, approved by the owner
+
+How facts flow:
+
+1. When a subagent starts, the inject hook gives it one-line records (id, title, a SUSPECT flag if its evidence files changed) within a per-agent token budget. The full record stays in the topic file for the agent to read on demand. The main session gets no facts.
+2. A subagent that has something to report ends its final reply with a block:
+
+```
+HIVEMIND
+USED <id>[, <id>][: <note>]
+VERIFIED <id>[, <id>][: <note>]
+CONTRADICTS <id>: <observation>
+NEW <topic>: <fact> | check: <command> | evidence: <path>[, <path>]
+END HIVEMIND
+```
+
+3. The capture hook writes the parsed block to `inbox/`. Only the last block counts. There is no line or length limit: a USED or VERIFIED line may carry a note after the ids, and a NEW entry may span several lines. A block over 64KB is cut there and flagged `truncated`. Nothing is dropped: a line that does not parse, or a NEW that fails a rule (unknown topic, no evidence path inside the project root), goes to the run file's `unparsed` list with its reason, `status` reports how many wait, and `prep` lists them for CONSOLIDATION to salvage by hand. Lines that match a secret pattern are the one exception and are never stored.
+4. At the end of each feature `deep-reasoner` runs CONSOLIDATION with `hivemind_lib.py`: `prep` reports the proposals, it edits `topics/*.md`, `apply` folds in the inbox and regenerates the index, and `check` must pass.
+
+Limits are in `config.json`: `INDEX.md` 50 lines, each topic about 4KB, the reviewed tier 60 lines, and an injection budget per agent type. A fact expires after 28 active days unused. An active day is a day the project had commits or agent runs, so time away loses nothing. Any USED or VERIFIED resets the clock.
+
+Token tallies from each run feed `topics/token-tallies.md`, which the cost gate in `rules/model-routing.md` reads. The figure is the harness's per-agent token figure.
+
+Guardrails:
+
+- Memory picks the order and subsets of tests, never whether the full suite runs.
+- No secrets and no owner decisions. The secret scan redacts matching lines before anything is stored.
+- The guard hook denies subagent writes to the store and to `.claude/rules/project-facts.md`. Promotion into `project-facts.md` is the owner's call.
 
 ## Rules
 
@@ -116,14 +171,14 @@ Target is `$CLAUDE_CONFIG_DIR` when set, otherwise `~/.claude`. It copies:
 
 - `agents/*.md` to `agents/` (flat, no subfolders)
 - `rules/*.md` to `rules/`
-- the two hooks to `hooks/`, mode 755
+- the six hook files to `hooks/`, mode 755: `require-agent-model.py`, `check-agent-models.sh`, `hivemind_lib.py`, `hivemind-inject.py`, `hivemind-capture.py` and `hivemind-guard.py`
 - the skills to `skills/setup-model-routing/` and `skills/route-project/`
 - `docs/model-routing-reference.md` to `model-routing-reference.md`
 - `model-routing-choices.json`, the model and effort you picked for each agent (see [Choosing models](#choosing-models))
 
 It never overwrites silently. Every file it would replace is copied first to `<target>/backups/model-routing-<YYYYmmdd-HHMMSS>/` under the same relative path. It writes a manifest of what it placed to `<target>/model-routing-manifest.txt`.
 
-It merges exactly two entries into `<target>/settings.json`, creating the file if it is missing. It backs up the old file to the same backup folder, writes through a temp file, skips entries already present, and keeps every other key and hook. If `settings.json` is not valid JSON it stops with exit 1 and changes nothing. It rewrites the file with two-space indentation, so a file formatted another way comes back reformatted, with keys, values and order unchanged.
+It merges exactly six entries into `<target>/settings.json`, creating the file if it is missing. It backs up the old file to the same backup folder, writes through a temp file, skips entries already present, and keeps every other key and hook. If `settings.json` is not valid JSON it stops with exit 1 and changes nothing. It rewrites the file with two-space indentation, so a file formatted another way comes back reformatted, with keys, values and order unchanged.
 
 ```json
 {
@@ -135,6 +190,16 @@ It merges exactly two entries into `<target>/settings.json`, creating the file i
           {
             "type": "command",
             "command": "python3 \"$HOME/.claude/hooks/require-agent-model.py\"",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$HOME/.claude/hooks/hivemind-guard.py\"",
             "timeout": 10
           }
         ]
@@ -150,15 +215,49 @@ It merges exactly two entries into `<target>/settings.json`, creating the file i
             "timeout": 10
           }
         ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$HOME/.claude/hooks/hivemind_lib.py\" status",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$HOME/.claude/hooks/hivemind-inject.py\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$HOME/.claude/hooks/hivemind-capture.py\"",
+            "timeout": 10
+          }
+        ]
       }
     ]
   }
 }
 ```
 
-With a custom `CLAUDE_CONFIG_DIR` the real path replaces `$HOME/.claude` in both commands.
+With a custom `CLAUDE_CONFIG_DIR` the real path replaces `$HOME/.claude` in every command.
 
-The installer does not set `model`, `effortLevel` or `env.CLAUDE_CODE_SUBAGENT_MODEL`. Those are the three settings `/setup-model-routing` offers.
+The installer does not set `model`, `effortLevel` or `env.CLAUDE_CODE_SUBAGENT_MODEL`. Those are the three settings `/setup-model-routing` offers. The installer never creates a HiveMind store; `init` does, per project.
 
 ## If you already have agents
 
@@ -202,7 +301,7 @@ From the repo root:
 ./install.sh --uninstall
 ```
 
-It removes the files listed in the manifest (the choices file included) and the two hook entries, and leaves everything else alone. A file you edited after install is moved to `<target>/backups/model-routing-uninstall-<timestamp>/` instead of deleted, and `settings.json` is backed up there first. The pre-install backup is never put back; if you want a replaced file again, copy it by hand from `<target>/backups/model-routing-<YYYYmmdd-HHMMSS>/`.
+It removes the files listed in the manifest (the choices file included) and the six hook entries, and leaves everything else alone. A file you edited after install is moved to `<target>/backups/model-routing-uninstall-<timestamp>/` instead of deleted, and `settings.json` is backed up there first. The pre-install backup is never put back; if you want a replaced file again, copy it by hand from `<target>/backups/model-routing-<YYYYmmdd-HHMMSS>/`.
 
 ## The example project agent
 
@@ -214,6 +313,7 @@ To use it, copy it into a project's `.claude/agents/`, fill in the bracketed pla
 
 - **No copies in subfolders.** Claude Code scans `agents/` recursively, and two files with the same `name` are picked by filesystem read order, not by a documented precedence. Keep backups out of `~/.claude/agents/`. The installer writes its backups to `backups/` for this reason, and `find ~/.claude/agents -mindepth 2 -name '*.md'` should print nothing.
 - **Cloud sessions.** Claude Code on the web and in the mobile app does not read `~/.claude/`, so none of this reaches those sessions. They need repo-level `.claude/agents/` and settings.
+- **HiveMind guard.** It covers `Write`, `Edit`, `MultiEdit` and `NotebookEdit`, not shell redirects. The hook inputs were verified on Claude Code 2.1.305.
 - **Platform.** Tested on macOS with bash 3.2.57, python3 and Claude Code 2.1.302. Linux is untested.
 
 ## Optional: Codex as a peer

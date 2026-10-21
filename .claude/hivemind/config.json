@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "index_max_lines": 50,
+  "topic_max_bytes": 4096,
+  "reviewed_max_lines": 60,
+  "inject_budget_tokens": {
+    "default": 800,
+    "deep-reasoner": 3000,
+    "fast-worker": 2000,
+    "verifier": 2000,
+    "designer": 1500,
+    "scout": 1000,
+    "judge": 1000
+  },
+  "chars_per_token": 3.5,
+  "expiry_active_days": 28,
+  "block_max_lines": 12,
+  "block_line_max_chars": 400,
+  "max_used_per_report": 5,
+  "fp_max_files": 300,
+  "fp_max_bytes": 5000000,
+  "tally_samples_max": 20,
+  "tally_metric": "context_final_plus_out",
+  "transcript_max_bytes": 52428800,
+  "inject_deadline_s": 4,
+  "capture_deadline_s": 6,
+  "git_timeout_s": 2,
+  "topics": [
+    "testing",
+    "failed-briefs",
+    "dead-ends",
+    "token-tallies"
+  ],
+  "id_prefix": {
+    "testing": "T",
+    "failed-briefs": "B",
+    "dead-ends": "D"
+  },
+  "slices": {
+    "deep-reasoner": [
+      "*"
+    ],
+    "scout": [
+      "testing*",
+      "dead-ends"
+    ],
+    "fast-worker": [
+      "testing*",
+      "dead-ends"
+    ],
+    "verifier": [
+      "testing*",
+      "failed-briefs",
+      "dead-ends"
+    ],
+    "judge": [
+      "dead-ends"
+    ],
+    "designer": [
+      "failed-briefs",
+      "token-tallies"
+    ],
+    "*": []
+  }
+}
