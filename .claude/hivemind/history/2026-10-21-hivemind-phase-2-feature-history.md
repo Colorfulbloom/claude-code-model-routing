@@ -1,9 +1,9 @@
 ### F-089d HiveMind Phase 2: feature history
-status: in-progress
+status: shipped
 kind: code
 dates: 2026-10-20 .. 2026-10-21
 refs:
-  commit: pending (branch feature/hivemind-history)
+  commit: ed2d0a66bf7b332a8536c44d88118a36c76ad3d1 (branch feature/hivemind-history, merged into development)
 summary: Episodic memory next to the facts store: one entry per finished feature in .claude/hivemind/history/ with commit, file or url refs, a generated INDEX (cap 40, quarterly rollups that move entries whole), the CLI commands history add, link, rollup, index, recent, template and related, check validation of SHAs, paths and url shape, a Recent work block for the main session at startup, clear and compact, and the newest 15 index lines in deep-reasoner's slice.
 decisions:
 - Recent work rides the existing SessionStart status entry and gates on the stdin source field (startup, clear, compact), so the installer needs no new hook entry and reruns stay clean; calibrated live on 2.1.306, resume sends source resume.
@@ -19,6 +19,7 @@ rejected:
 - A new SessionStart hook entry for Recent work (would change the installer's byte-identical entries).
 - Prose compression in rollups (loses the decisions git does not record).
 - A pre-commit hook against home paths (owner declined).
+files: .claude/hivemind/INDEX.md, .claude/hivemind/history/2026-10-20-hivemind-design-and-diagrams.md, .claude/hivemind/history/2026-10-20-hivemind-phase-1-shared-memory-for-all-agents.md, .claude/hivemind/history/2026-10-20-python-installer-with-model-and-effort-picker.md, .claude/hivemind/history/2026-10-21-hivemind-phase-2-feature-history.md, .claude/hivemind/history/INDEX.md, .claude/hivemind/tallies.json, .claude/hivemind/topics/dead-ends.md, .claude/hivemind/topics/testing.md, .claude/hivemind/topics/token-tallies.md, .claude/rules/project-facts.md, README.md, agents/deep-reasoner.md, docs/hivemind/archive/history-backfill-2026-10-20.md, docs/model-routing-reference.md, hooks/hivemind_lib.py, install.py, rules/model-routing.md, tests/helpers.py, tests/test_features.py, tests/test_hivemind.py, tests/test_parity.py
 gotchas:
 - A review scout ran history add without --store from inside the repo and wrote the live store; it removed its two files. Smoke runs must pass --store (D-168e).
 - The installed hooks under the config dir stay at Phase 1 until the installer is rerun, so empty-agent run files keep appearing until then.
