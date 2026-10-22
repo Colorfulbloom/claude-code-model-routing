@@ -935,20 +935,21 @@ def round_info(rows, state):
     continues from there: it scans only the rows after state["rows"], so a stop that landed one message
     late in the earlier capture does not matter, and anchor is "capture". Without one it finds the round by
     scanning the whole transcript for briefs, and anchor is "transcript". A round's kind is the `Kind:` tag
-    of its brief, else "untagged"; a capture with no new brief keeps the stored kind of its round.
+    of its brief; a later brief without one inherits the kind of the round before, and a first brief without
+    one is "untagged". A capture with no new brief keeps the stored kind of its round.
     """
     if (isinstance(state, dict) and _is_int(state.get("rows")) and 0 < state["rows"] <= len(rows)
             and _is_int(state.get("round")) and state["round"] >= 1 and _is_int(state.get("start"))
             and 0 <= state["start"] <= state["rows"] and isinstance(state.get("kind"), str)):
         rnd, start, kind = state["round"], state["start"], state["kind"]
         for n in brief_starts(rows, state["rows"], True):
-            rnd, start, kind = rnd + 1, n, row_kind(rows[n]) or "untagged"
+            rnd, start, kind = rnd + 1, n, row_kind(rows[n]) or kind
         return rnd, start, kind, "capture"
     starts = round_starts(rows)
     m = KIND_RE.search(_first_user_text(rows))
     kind = m.group(1) if m else "untagged"
     for n in starts[1:]:
-        kind = row_kind(rows[n]) or "untagged"
+        kind = row_kind(rows[n]) or kind
     return len(starts), starts[-1], kind, "transcript"
 
 
@@ -984,7 +985,7 @@ def compute_tally(rows, stdin_effort=None, state=None):
     begins, rows the number of rows read, and anchor says how the round was found (round_info). A resumed
     agent's later round also carries prev, the figures over the rows before its start, taken from the
     transcript so a final row that landed after an earlier capture still counts in the round before. The
-    kind comes from the round's own brief.
+    kind comes from the round's own brief, else from the round before.
     """
     rnd, start, kind, anchor = round_info(rows, state)
     figures, final = usage_totals(rows)

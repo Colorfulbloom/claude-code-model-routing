@@ -13,7 +13,7 @@ decisions:
 - A later capture of the same round (after a nudge, a notification or a worker's report woke the agent) replaces that round's sample. Only run files with tally.anchor replace; older formats are skipped as duplicates.
 - Round > 1 samples go to a <kind>+resumed row, and stored ones move there on apply, so resumes never move fresh-dispatch medians.
 - 9c7985a-format files with round > 1 and no anchor are skipped as "unanchored round"; their boundary came from the wrong rule.
-- A resumed round with no Kind: line stays untagged, as the first pass decided. Inheriting the earlier round's kind is an open question for the owner.
+- A resumed round with no Kind: line inherits the previous round's kind and files as <previous kind>+resumed. Owner decision, 2026-10-22: inherit instead of untagged (the first pass had left it untagged). Round 1 with no Kind: line stays untagged; a brief with its own Kind: line takes that kind. On real data 264 of 274 coordinator follow-ups have no Kind: line.
 - apply deletes round state files older than 30 days.
 rejected:
 - promptId boundaries: wrong in both directions on real data.
@@ -23,8 +23,8 @@ rejected:
 files: hooks/hivemind_lib.py, tests/test_hivemind.py, tests/fixtures/rounds/, README.md, docs/model-routing-reference.md, .claude/hivemind/topics/testing.md
 gotchas:
 - Run files sort by name; two captures of one agent in the same second sort the -2 suffix first. Not seen in practice.
+- If a capture runs before a plain-text final row is written and the next stop is a real brief, the stored round-1 sample stays short by that final message (about 300 tokens on a 201K run); only a same-round recapture corrects it.
 - Old-format waiting inbox files of a resumed agent carry the whole run under the first round's kind; apply skips them when the agent already has a sample.
 facts: T-2160, T-7629
 follow-ups:
-- Owner: kind inheritance for resumes without a Kind: line.
 - Install the fix into ~/.claude/hooks after the owner's go.

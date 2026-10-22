@@ -1073,10 +1073,20 @@ class CaptureTest(HiveBase):
             self.assertEqual((t["prev"]["turns"], t["turns"], t["prev"]["total"]), (2, 3, 1950), ending)
             self.assertEqual(lib.run_sample(run, self.cfg), (214, 2, None))
 
-    def test_resumed_round_without_a_kind_is_untagged(self):
+    def test_resumed_round_without_a_kind_inherits_the_previous_rounds_kind(self):
         self.make_store()
         run = self.capture(agent_transcript_path=self.transcript(self.resumed_rows("Now also fix the typo.")))
-        self.assertEqual((run["kind"], run["tally"]["round"]), ("untagged", 2))
+        self.assertEqual((run["kind"], run["tally"]["round"]), ("docs-plan", 2))
+        self.assertEqual(lib.sample_kind(run, 2), "docs-plan+resumed")
+
+    def test_first_round_without_a_kind_is_untagged_and_its_resume_stays_untagged(self):
+        rows = self.resumed_rows("Now also fix the typo.")
+        rows[0] = urow("Plan it.")
+        self.assertEqual(lib.compute_tally(rows[:6])[1], "untagged")
+        tally, kind = lib.compute_tally(rows)
+        self.assertEqual((kind, tally["round"]), ("untagged", 2))
+        state = {"rows": 6, "round": 1, "start": 0, "kind": "untagged"}
+        self.assertEqual(lib.round_info(rows, state), (2, 6, "untagged", "capture"))
 
     def test_prompt_that_arrives_mid_run_stays_in_the_round(self):
         rows = self.resumed_rows()
@@ -1138,7 +1148,7 @@ class CaptureTest(HiveBase):
         second = self.agent_capture(aid, rows)
         t = second["tally"]
         self.assertEqual((second["kind"], t["round"], t["anchor"], t["start"], t["rows"]),
-                         ("untagged", 2, "capture", 9, 18))
+                         ("fixture-brief", 2, "capture", 9, 18))
         self.assertEqual((t["context_final_plus_out"], t["prev"]["context_final_plus_out"]), (114508, 85906))
         self.assertEqual(lib.run_sample(second, self.cfg), (28602, 2, None))
 
@@ -1151,13 +1161,34 @@ class CaptureTest(HiveBase):
         self.assertEqual((second["kind"], second["tally"]["round"]), ("fixture-fix", 2))
         self.assertEqual(lib.round_starts(rows), [0, 9])
 
-    def test_follow_up_without_a_kind_line_is_untagged_not_inherited(self):
+    def test_follow_up_without_a_kind_line_inherits_the_previous_rounds_kind(self):
         self.make_store()
         rows = fixture_rows("coordinator-resume-same-prompt.jsonl")
         self.assertEqual(lib.compute_tally(rows[:9])[1], "fixture-brief")
-        self.assertEqual(lib.compute_tally(rows)[1], "untagged")
-        self.assertEqual(lib.compute_tally(rows, None, {"rows": 9, "round": 1, "start": 0, "kind": "fixture-brief"})[1],
-                         "untagged")
+        # no state: the whole-transcript scan carries the last known kind
+        tally, kind = lib.compute_tally(rows)
+        self.assertEqual((kind, tally["round"], tally["anchor"]), ("fixture-brief", 2, "transcript"))
+        # stored state: the round's stored kind is inherited
+        tally, kind = lib.compute_tally(rows, None, {"rows": 9, "round": 1, "start": 0, "kind": "fixture-brief"})
+        self.assertEqual((kind, tally["round"], tally["anchor"]), ("fixture-brief", 2, "capture"))
+
+    def test_inherited_kind_is_carried_across_several_rounds_on_both_paths(self):
+        rows = fixture_rows("coordinator-resume-same-prompt.jsonl")
+        third = [dict(r) for r in rows[9:]]
+        for r in third:
+            r.pop("promptId", None)
+        third[0] = dict(third[0], message=dict(third[0]["message"], content="Kind: fixture-fix\nAgain."))
+        third2 = [dict(r) for r in rows[9:]]
+        third2[0] = dict(third2[0], message=dict(third2[0]["message"], content="And once more."))
+        rows3 = rows + third + third2
+        self.assertEqual(lib.round_starts(rows3), [0, 9, 18, 27])
+        info = lib.round_info(rows3, None)
+        self.assertEqual((info[0], info[2], info[3]), (4, "fixture-fix", "transcript"))
+        state = {"rows": 9, "round": 1, "start": 0, "kind": "fixture-brief"}
+        info = lib.round_info(rows3, state)
+        self.assertEqual((info[0], info[2], info[3]), (4, "fixture-fix", "capture"))
+        self.assertEqual(lib.round_info(rows3[:27], None)[2], "fixture-fix")
+        self.assertEqual(lib.round_info(rows[:18], None)[2], "fixture-brief")
 
     def test_capture_sequence_on_a_peer_follow_up_after_a_nudge(self):
         self.make_store()
@@ -1213,7 +1244,7 @@ class CaptureTest(HiveBase):
     def test_invalid_state_falls_back_to_the_transcript_scan(self):
         rows = fixture_rows("coordinator-resume-same-prompt.jsonl")
         good = {"rows": 9, "round": 1, "start": 0, "kind": "k"}
-        self.assertEqual(lib.round_info(rows, good), (2, 9, "untagged", "capture"))
+        self.assertEqual(lib.round_info(rows, good), (2, 9, "k", "capture"))
         for bad in (None, [], dict(good, rows=0), dict(good, rows=99), dict(good, rows=True), dict(good, round=0),
                     dict(good, start=10), dict(good, start=-1), dict(good, kind=3), {"rows": 9}):
             self.assertEqual(lib.round_info(rows, bad)[3], "transcript", bad)
@@ -1233,7 +1264,7 @@ class CaptureTest(HiveBase):
         self.agent_capture(aid, rows)
         with open(state_path) as fh:
             state = json.load(fh)
-        self.assertEqual((state["rows"], state["round"], state["start"], state["kind"]), (18, 2, 9, "untagged"))
+        self.assertEqual((state["rows"], state["round"], state["start"], state["kind"]), (18, 2, 9, "fixture-brief"))
         names = lib.run_file_names(self.store)           # the rounds directory is not a run file
         self.assertEqual((len(names), "rounds" in names, os.path.isdir(os.path.join(self.store, "inbox", "rounds"))),
                          (2, False, True))
@@ -2210,6 +2241,26 @@ class ApplyTest(CliBase):
         self.assertIn("1 tally samples added", out)
         self.assertIn("(unanchored round 1)", err)
         self.assertEqual(self.samples(), {"plan": [{"v": 1000, "date": TODAY, "agent_id": "a"}]})
+
+    def test_tally_repeated_unanchored_round_above_one_is_unanchored_not_a_duplicate(self):
+        # the duplicate path needs an anchor-less round 1; a round above 1 without an anchor is rejected first
+        self.tally_run("a", "plan", 1000, rnd=1, anchor=None)
+        self.tally_run("a", "plan", 1700, rnd=2, prev=1000, anchor=None)
+        self.tally_run("a", "plan", 1900, rnd=2, prev=1000, anchor=None)
+        rc, out, err = self.run_cmd(lib.cmd_apply, self.store)
+        self.assertIn("1 tally samples added", out)
+        self.assertIn("(unanchored round 2)", err)
+        self.assertNotIn("duplicate", err)
+        self.assertEqual([s["v"] for s in self.samples()["plan"]], [1000])
+
+    def test_tally_repeated_anchored_round_above_one_replaces_not_duplicates(self):
+        self.tally_run("a", "plan", 1000, rnd=1)
+        self.tally_run("a", "plan", 1700, rnd=2, prev=1000)
+        self.tally_run("a", "plan", 1900, rnd=2, prev=1000)
+        rc, out, err = self.run_cmd(lib.cmd_apply, self.store)
+        self.assertIn("2 tally samples added, 1 replaced", out)
+        self.assertNotIn("duplicate", err)
+        self.assertEqual([(s["v"], s.get("round", 1)) for s in self.samples()["plan+resumed"]], [(900, 2)])
 
     def test_tally_9c7985a_round_one_behaves_like_a_legacy_run_file(self):
         self.tally_run("a", "plan", 1000, rnd=1, anchor=None)
