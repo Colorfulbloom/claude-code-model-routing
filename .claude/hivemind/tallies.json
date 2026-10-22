@@ -160,6 +160,16 @@
         }
       ]
     },
+    "hivemind-resume-kind-inherit|fast-worker|claude-sonnet-5-5": {
+      "last_date": "2026-10-22",
+      "samples": [
+        {
+          "agent_id": "a66ae1c715e17c86b",
+          "date": "2026-10-22",
+          "v": 61870
+        }
+      ]
+    },
     "hivemind-sessionstart-calibration|scout|claude-haiku-5-5": {
       "last_date": "2026-10-20",
       "samples": [
@@ -167,6 +177,16 @@
           "agent_id": "ab66d193df1df9701",
           "date": "2026-10-20",
           "v": 19966
+        }
+      ]
+    },
+    "hivemind-tally-data-fix|fast-worker|claude-sonnet-5-5": {
+      "last_date": "2026-10-22",
+      "samples": [
+        {
+          "agent_id": "a72034671bfe8dfd5",
+          "date": "2026-10-22",
+          "v": 58410
         }
       ]
     },
@@ -197,6 +217,16 @@
           "agent_id": "a91c706f5046240fe",
           "date": "2026-10-21",
           "v": 61532
+        }
+      ]
+    },
+    "hivemind-tally-rounds-verify|verifier|claude-sonnet-5-5": {
+      "last_date": "2026-10-21",
+      "samples": [
+        {
+          "agent_id": "a31bfb4295db21dec",
+          "date": "2026-10-21",
+          "v": 112890
         }
       ]
     },

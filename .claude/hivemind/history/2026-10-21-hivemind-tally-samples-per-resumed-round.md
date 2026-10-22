@@ -20,7 +20,7 @@ rejected:
 - Treating a lead's own workers' hand-backs as rounds: they wake the lead inside one feature and would split its cost.
 - Sample increase over a stored cumulative figure: off by the late final row; the transcript at the brief row is exact.
 - Previous total from tallies.json samples, and latest-wins per agent_id: as in the first pass.
-files: hooks/hivemind_lib.py, tests/test_hivemind.py, tests/fixtures/rounds/, README.md, docs/model-routing-reference.md, .claude/hivemind/topics/testing.md
+files: hooks/hivemind_lib.py, tests/test_hivemind.py, tests/fixtures/rounds/, README.md, docs/model-routing-reference.md, .claude/hivemind/topics/testing.md, .claude/rules/project-facts.md
 gotchas:
 - Run files sort by name; two captures of one agent in the same second sort the -2 suffix first. Not seen in practice.
 - If a capture runs before a plain-text final row is written and the next stop is a real brief, the stored round-1 sample stays short by that final message (about 300 tokens on a 201K run); only a same-round recapture corrects it.

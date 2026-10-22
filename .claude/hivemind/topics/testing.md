@@ -1,16 +1,16 @@
 # testing
 
-### T-7629 Full suite runs 390 tests in about a minute
-fact: From the repo root, /usr/bin/python3 -m unittest discover -s tests runs 390 tests in about a minute (51 to 77 s seen, varies with load).
+### T-7629 Full suite runs 394 tests in about a minute
+fact: From the repo root, /usr/bin/python3 -m unittest discover -s tests runs 394 tests in about a minute (51 to 77 s seen, varies with load).
 check: /usr/bin/python3 -m unittest discover -s tests
 evidence: tests
-fp: 7ba6b4a6ea89
-as_of: 9c7985a 2026-10-21
+fp: 3e3cf9eb3aa6
+as_of: deb3d7e 2026-10-22
 author: deep-reasoner
 created: 2026-10-20
 last_used: 2026-10-21
-uses: 5
-measured: 390 tests, 71.4s @9c7985a plus the capture-anchored rounds fix 2026-10-21
+uses: 6
+measured: 394 tests, 75.5s @deb3d7e 2026-10-22
 promote: approved
 
 ### T-5589 Subsets run through discover -k; dotted names fail
@@ -21,8 +21,8 @@ fp: 1a7f2c83b755
 as_of: 9c7985a 2026-10-21
 author: deep-reasoner
 created: 2026-10-20
-last_used: 2026-10-21
-uses: 8
+last_used: 2026-10-22
+uses: 9
 promote: approved
 
 ### T-c826 MR_TEST_TMP is optional and created when missing
@@ -33,8 +33,8 @@ fp: 1a7f2c83b755
 as_of: 9c7985a 2026-10-21
 author: deep-reasoner
 created: 2026-10-20
-last_used: 2026-10-21
-uses: 3
+last_used: 2026-10-22
+uses: 4
 promote: approved
 
 ### T-baa7 Broken pty tests can leave stray unittest processes
@@ -86,9 +86,9 @@ uses: 1
 fact: promptId follows the parent's prompt. A brief is a user row with origin.kind coordinator or human, or peer from an agent the transcript did not launch; nudges (no origin), task-notification rows and workers' hand-backs are not. SubagentStop fires at each stop before the wake row lands; a plain-text stop's last row can land after capture reads.
 check: grep -n "def is_brief" -A20 hooks/hivemind_lib.py
 evidence: hooks/hivemind_lib.py, tests/fixtures/rounds/README.md
-fp: 4c389c534348
-as_of: 9c7985a 2026-10-21
+fp: 1ba85b303b01
+as_of: deb3d7e 2026-10-22
 author: deep-reasoner
 created: 2026-10-21
 last_used: 2026-10-21
-uses: 1
+uses: 2
