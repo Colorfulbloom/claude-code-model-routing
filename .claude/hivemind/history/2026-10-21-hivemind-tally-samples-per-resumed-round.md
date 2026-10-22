@@ -1,9 +1,9 @@
 ### F-1906 HiveMind tally samples per resumed round
-status: in-progress
+status: shipped
 kind: code
 dates: 2026-10-21 .. 2026-10-21
 refs:
-  commit: pending (branch development)
+  commit: f36fddbd37dbfb1d53da068b753fca41c01a9790..4cc21f1bb4821be4fef6cb25473e3c3bb70e1dfb (branch development, merged into development)
 summary: A subagent resumed with SendMessage records one tally sample per round, found from its captures and real briefs, and later rounds go to a separate <kind>+resumed row.
 decisions:
 - First pass (9c7985a) split rounds at a new promptId. A verifier found it unsound: promptId follows the parent prompt, so 44 real resumes kept it and 173 nudges, task notifications and worker hand-backs changed it.
