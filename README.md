@@ -100,7 +100,7 @@ END HIVEMIND
 3. The capture hook writes the parsed block to `inbox/`. Only the last block counts. There is no line or length limit: a USED or VERIFIED line may carry a note after the ids, and a NEW entry may span several lines. A block over 64KB is cut there and flagged `truncated`. Nothing is dropped: a line that does not parse, or a NEW that fails a rule (unknown topic, no evidence path inside the project root), goes to the run file's `unparsed` list with its reason, `status` reports how many wait, and `prep` lists them for CONSOLIDATION to salvage by hand. Lines that match a secret pattern are the one exception and are never stored.
 4. At the end of each feature `deep-reasoner` runs CONSOLIDATION with `hivemind_lib.py`: `prep` reports the proposals, it edits `topics/*.md`, `apply` folds in the inbox and regenerates the index, `history add` records the feature, and `check` must pass.
 
-Limits are in `config.json`: `INDEX.md` 50 lines, each topic about 4KB, the reviewed tier 60 lines, and an injection budget per agent type. A fact expires after 28 active days unused. An active day is a day the project had commits or agent runs, so time away loses nothing. Any USED or VERIFIED resets the clock.
+Limits are in `config.json`: `INDEX.md` 50 lines, each topic about 4KB (the generated `token-tallies` topic 16KB), the reviewed tier 60 lines, and an injection budget per agent type. A fact expires after 28 active days unused. An active day is a day the project had commits or agent runs, so time away loses nothing. Any USED or VERIFIED resets the clock.
 
 ### Feature history
 

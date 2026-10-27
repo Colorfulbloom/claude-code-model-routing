@@ -51,6 +51,7 @@ DEFAULT_CONFIG = {
     "version": 1,
     "index_max_lines": 50,
     "topic_max_bytes": 4096,
+    "tally_topic_max_bytes": 16384,
     "reviewed_max_lines": 60,
     "inject_budget_tokens": {"default": 800, "deep-reasoner": 3000, "fast-worker": 2000,
                              "verifier": 2000, "designer": 1500, "scout": 1000, "judge": 1000},
@@ -2721,8 +2722,8 @@ def size_report(st, root):
         names = []
     for name in names:
         size = os.path.getsize(os.path.join(st.path, "topics", name))
-        out.append(("topics/%s %.1f/%.1fKB" % (name, size / 1024.0, cfg["topic_max_bytes"] / 1024.0),
-                    size > cfg["topic_max_bytes"]))
+        limit = cfg["tally_topic_max_bytes"] if name == TALLY_TOPIC + ".md" else cfg["topic_max_bytes"]
+        out.append(("topics/%s %.1f/%.1fKB" % (name, size / 1024.0, limit / 1024.0), size > limit))
     facts = os.path.join(root, FACTS_REL)
     if os.path.exists(facts):
         n = count_lines(facts)

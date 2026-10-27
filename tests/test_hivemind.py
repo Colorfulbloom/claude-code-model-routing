@@ -3231,6 +3231,27 @@ class HistoryStatusPrepInitTest(HistBase):
         os.unlink(os.path.join(self.hdir, "INDEX.md"))
         self.assertFalse([t for t, _ in lib.size_report(st, self.root) if t.startswith("history/")])
 
+    def test_size_report_gives_the_tally_topic_its_own_limit(self):
+        self.assertEqual((lib.DEFAULT_CONFIG["topic_max_bytes"], lib.DEFAULT_CONFIG["tally_topic_max_bytes"]), (4096, 16384))
+        self.write("topics/testing.md", "x" * 5000, self.store)
+        self.write("topics/token-tallies.md", "x" * 10000, self.store)
+        rep = dict(lib.size_report(lib.Store(self.store), self.root))
+        self.assertEqual(rep["topics/testing.md 4.9/4.0KB"], True)
+        self.assertEqual(rep["topics/token-tallies.md 9.8/16.0KB"], False)
+        self.write("topics/token-tallies.md", "x" * 17000, self.store)
+        rep = dict(lib.size_report(lib.Store(self.store), self.root))
+        self.assertEqual(rep["topics/token-tallies.md 16.6/16.0KB"], True)
+        self.write("config.json", json.dumps({"tally_topic_max_bytes": 20000}), self.store)
+        rep = dict(lib.size_report(lib.Store(self.store), self.root))
+        self.assertEqual(rep["topics/token-tallies.md 16.6/19.5KB"], False)
+        self.assertEqual(rep["topics/testing.md 4.9/4.0KB"], True)
+
+    def test_config_without_tally_key_falls_back_to_default(self):
+        self.write("config.json", json.dumps({"topic_max_bytes": 4096}), self.store)
+        cfg, problem = lib.load_config(self.store)
+        self.assertFalse(problem)
+        self.assertEqual(cfg["tally_topic_max_bytes"], 16384)
+
     def test_prep_history_section(self):
         self.pend(2)
         rc, out, err = self.run_cmd(lib.cmd_prep, self.store)
