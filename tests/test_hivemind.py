@@ -185,6 +185,7 @@ class HiveBase(unittest.TestCase):
         env.pop("CLAUDE_PROJECT_DIR", None)
         env["PYTHONDONTWRITEBYTECODE"] = "1"
         env["HIVEMIND_NOW"] = now
+        env["HOME"] = os.path.join(self.tmp, "home")
         if project:
             env["CLAUDE_PROJECT_DIR"] = self.root
         return env
@@ -758,7 +759,7 @@ class InjectTest(HiveBase):
         self.assertIn("[testing] T-0001 bad fp (SUSPECT)", ctx)
         self.assertIn("[testing] T-0002 gone (SUSPECT missing: nope.py)", ctx)
         self.assertIn("[testing] T-0003 big (UNCHECKED)", ctx)
-        self.assertIn("[token-tallies] k fast-worker m: n=3 median=20 p90=30", ctx)
+        self.assertIn("[token-tallies] k fast-worker m unknown: n=3 median=20 p90=30", ctx)
 
     def test_secret_in_stored_line_is_not_injected(self):
         leak = "sk-ant-" + "a1" * 12
@@ -1023,6 +1024,59 @@ class CaptureTest(HiveBase):
                          ("a-b", "claude-haiku-x", "low", True))
         run = self.capture(agent_transcript_path=self.transcript(rows[1:], "t2.jsonl"), effort="medium")
         self.assertEqual((run["kind"], run["tally"]["effort"]), ("untagged", "medium"))
+
+    def stamped(self, rows, stamps):
+        out = []
+        for r, ts in zip(rows, stamps):
+            r = dict(r)
+            if ts:
+                r["timestamp"] = ts
+            out.append(r)
+        return out
+
+    def test_tally_effort_comes_from_the_payload_then_the_transcript_then_the_agent_file(self):
+        self.make_store()
+        rows = [urow("Kind: a-b\nrest"), arow("m1", [{"type": "text", "text": "x"}], usage(1, 2, 3, 4))]
+        bare = lambda name: self.transcript(rows, name)  # noqa: E731
+        t = self.capture(agent_type="writer", agent_transcript_path=bare("a.jsonl"), effort={"level": "max"})["tally"]
+        self.assertEqual((t["effort"], t["effort_source"]), ("max", "payload"))
+        withrow = [rows[0], dict(rows[1], effort="low")]
+        t = self.capture(agent_type="writer", agent_transcript_path=self.transcript(withrow, "b.jsonl"))["tally"]
+        self.assertEqual((t["effort"], t["effort_source"]), ("low", "transcript"))
+        self.write("home/.claude/agents/writer.md", "---\nname: writer\nmodel: sonnet\neffort: high\n---\nbody\neffort: low\n", self.tmp)
+        t = self.capture(agent_type="writer", agent_transcript_path=bare("c.jsonl"))["tally"]
+        self.assertEqual((t["effort"], t["effort_source"]), ("high", "agent_file"))
+        self.write(".claude/agents/writer.md", "---\nname: writer\neffort: xhigh\n---\n")
+        t = self.capture(agent_type="writer", agent_transcript_path=bare("d.jsonl"))["tally"]
+        self.assertEqual((t["effort"], t["effort_source"]), ("xhigh", "agent_file"))
+        t = self.capture(agent_type="other", agent_transcript_path=bare("e.jsonl"))["tally"]
+        self.assertEqual((t["effort"], t["effort_source"]), ("", ""))
+
+    def test_agent_file_effort_reads_only_the_frontmatter(self):
+        self.write("home/.claude/agents/a.md", "---\nname: a\n---\neffort: high\n", self.tmp)
+        self.write("home/.claude/agents/b.md", "no frontmatter\neffort: high\n", self.tmp)
+        self.write("home/.claude/agents/c.md", "---\neffort: 'medium'\n---\n", self.tmp)
+        with mock.patch.dict(os.environ, {"HOME": os.path.join(self.tmp, "home")}):
+            self.assertEqual([lib.agent_file_effort(self.root, n) for n in ("a", "b", "c", "none", "../c", "")],
+                             ["", "", "medium", "", "", ""])
+
+    def test_tally_duration_is_the_span_of_the_transcript_timestamps(self):
+        self.make_store()
+        rows = self.stamped([urow("Kind: a-b\nrest"), arow("m1", [{"type": "text", "text": "x"}], usage(1, 2, 3, 4)),
+                             arow("m2", [{"type": "text", "text": "y"}], usage(1, 2, 3, 9))],
+                            ["2026-10-20T11:00:00.000Z", "2026-10-20T11:01:00.500Z", "2026-10-20T11:02:05.250Z"])
+        t = self.capture(agent_transcript_path=self.transcript(rows))["tally"]
+        self.assertEqual(t["duration_ms"], 125250)
+        bare = self.transcript([urow("Kind: a-b\nrest"), arow("m1", [{"type": "text", "text": "x"}], usage(1, 2, 3, 4))], "u.jsonl")
+        self.assertIsNone(self.capture(agent_transcript_path=bare)["tally"]["duration_ms"])
+
+    def test_round_duration_counts_from_the_row_the_round_starts_at(self):
+        rows = self.stamped([urow("a"), {"type": "assistant"}, urow("b"), {"type": "assistant"}],
+                            ["2026-10-20T11:00:00Z", "2026-10-20T11:00:10Z", "2026-10-20T12:00:00Z", "2026-10-20T12:00:30Z"])
+        self.assertEqual((lib.round_duration_ms(rows), lib.round_duration_ms(rows, 2)), (3630000, 30000))
+        self.assertIsNone(lib.round_duration_ms(rows, 3))
+        self.assertIsNone(lib.round_duration_ms(self.stamped(rows[:2], ["2026-10-20T11:00:10Z", "2026-10-20T11:00:00Z"])))
+        self.assertIsNone(lib.round_duration_ms(self.stamped(rows[:2], ["nope", "2026-10-20T11:00:00Z"])))
 
     def test_tally_skipped_for_missing_and_oversized_transcripts(self):
         self.make_store(config={"transcript_max_bytes": 50})
@@ -1547,9 +1601,11 @@ class ConfigAndHelpersTest(HiveBase):
     def test_tally_stats_table_and_index(self):
         rows = {"b|scout|m": {"last_date": TODAY, "samples": [{"v": v} for v in (10, 20)]},
                 "a|fast-worker|m": {"last_date": "2026-10-01", "samples": [{"v": v} for v in range(1, 11)]}}
-        self.assertEqual(lib.tally_stats(rows["a|fast-worker|m"]["samples"]), {"n": 10, "median": 6, "p90": 9, "last": 10})
+        self.assertEqual(lib.tally_stats(rows["a|fast-worker|m"]["samples"]),
+                         {"n": 10, "median": 6, "p90": 9, "last": 10, "median_ms": None})
         table = lib.generate_tally_table(self.cfg, {"rows": rows})
-        self.assertIn("| a | fast-worker | m | 10 | 6 | 9 | 10 | 2026-10-01 |\n| b | scout | m | 2 | 15 | 20 | 20 | %s |\n"
+        self.assertIn("| a | fast-worker | m | unknown | 10 | 6 | 9 | - | 10 | 2026-10-01 |\n"
+                      "| b | scout | m | unknown | 2 | 15 | 20 | - | 20 | %s |\n"
                       % TODAY, table)
         self.assertTrue(table.startswith("# token-tallies\n\nGenerated by hivemind_lib.py"))
         idx = lib.generate_index(self.cfg, {"testing": 4, "token-tallies": 3})
@@ -2110,10 +2166,11 @@ class ApplyTest(CliBase):
         self.assertIn("- testing: 3 facts\n", index)
         self.assertIn("- dead-ends: 1 facts\n", index)
         self.assertIn("- token-tallies: 1 rows\n", index)
-        self.assertIn("| k | scout | m | 1 | 5000 | 5000 | 5000 | 2026-10-18 |\n",
+        self.assertIn("| k | scout | m | unknown | 1 | 5000 | 5000 | - | 5000 | 2026-10-18 |\n",
                       left[".claude/hivemind/topics/token-tallies.md"].decode())
         tallies = json.loads(left[".claude/hivemind/tallies.json"])
-        self.assertEqual(tallies["rows"]["k|scout|m"]["samples"], [{"v": 5000, "date": "2026-10-18", "agent_id": "a1"}])
+        self.assertEqual(tallies["rows"]["k|scout|m|unknown"]["samples"],
+                         [{"v": 5000, "date": "2026-10-18", "agent_id": "a1", "effort": "unknown"}])
         self.assertEqual(self.run_cmd(lib.cmd_check, self.store), (0, "check passed\n", ""))
 
     def test_apply_deletes_only_the_snapshotted_run_files(self):
@@ -2152,15 +2209,15 @@ class ApplyTest(CliBase):
         self.assertIn("1 tally samples added", out)
         self.assertIn("apply: 1 run files gave no tally sample (duplicate 1)", err)
         row = json.loads(self.slurp("tallies.json"))["rows"]
-        self.assertEqual(sorted(row), ["k|scout|m"])
-        got = row["k|scout|m"]["samples"]
+        self.assertEqual(sorted(row), ["k|scout|m|unknown"])
+        got = row["k|scout|m|unknown"]["samples"]
         self.assertEqual(len(got), 20)
         self.assertEqual([s["agent_id"] for s in got][-1], "new")
         self.assertEqual([s["v"] for s in got if s["agent_id"] == "s5"], [5])
         self.assertNotIn("s0", [s["agent_id"] for s in got])
         arch = self.slurp("archive", "token-tallies.md")
         self.assertTrue(arch.startswith("# token-tallies\n"))
-        self.assertTrue(arch.endswith("| old | scout | m | 1 | 7 | 7 | 7 | 2026-01-01 |\n"))
+        self.assertTrue(arch.endswith("| old | scout | m | unknown | 1 | 7 | 7 | - | 7 | 2026-01-01 |\n"))
         self.assertNotIn("| old |", self.slurp("topics", "token-tallies.md"))
 
     def tally_run(self, agent_id, kind, v, rnd=None, prev=None, anchor="capture", **over):
@@ -2184,15 +2241,65 @@ class ApplyTest(CliBase):
         rc, out, err = self.run_cmd(lib.cmd_apply, self.store)
         self.assertEqual((rc, err), (0, ""))
         self.assertIn("1 tally samples added", out)
-        self.assertEqual(self.samples(), {"plan": [{"v": 277338, "date": TODAY, "agent_id": "fresh"}]})
+        self.assertEqual(self.samples(), {"plan": [{"v": 277338, "date": TODAY, "agent_id": "fresh", "effort": "unknown"}]})
+
+    def test_tally_sample_keeps_effort_and_duration_and_rows_split_by_effort(self):
+        self.tally_run("a", "plan", 1000, rnd=1, effort="high", duration_ms=90000)
+        self.tally_run("b", "plan", 3000, rnd=1, effort="high", duration_ms=150000)
+        self.tally_run("c", "plan", 5000, rnd=1, effort="xhigh", duration_ms=61000)
+        self.tally_run("d", "plan", 7000, rnd=1, effort="")
+        rc, out, err = self.run_cmd(lib.cmd_apply, self.store)
+        self.assertEqual((rc, err), (0, ""))
+        rows = json.loads(self.slurp("tallies.json"))["rows"]
+        self.assertEqual(sorted(rows), ["plan|deep-reasoner|m|high", "plan|deep-reasoner|m|unknown",
+                                        "plan|deep-reasoner|m|xhigh"])
+        self.assertEqual(rows["plan|deep-reasoner|m|high"]["samples"], [
+            {"v": 1000, "date": TODAY, "agent_id": "a", "effort": "high", "duration_ms": 90000},
+            {"v": 3000, "date": TODAY, "agent_id": "b", "effort": "high", "duration_ms": 150000}])
+        self.assertEqual(rows["plan|deep-reasoner|m|unknown"]["samples"],
+                         [{"v": 7000, "date": TODAY, "agent_id": "d", "effort": "unknown"}])
+        table = self.slurp("topics", "token-tallies.md")
+        self.assertIn("| kind | agent | model | effort | n | median | p90 | med_time | last | last_date |\n", table)
+        self.assertIn("| plan | deep-reasoner | m | high | 2 | 2000 | 3000 | 2:00 | 3000 | %s |\n" % TODAY, table)
+        self.assertIn("| plan | deep-reasoner | m | unknown | 1 | 7000 | 7000 | - | 7000 | %s |\n" % TODAY, table)
+        self.assertIn("| plan | deep-reasoner | m | xhigh | 1 | 5000 | 5000 | 1:01 | 5000 | %s |\n" % TODAY, table)
+
+    def test_tally_recapture_of_a_round_updates_the_duration(self):
+        self.tally_run("a", "plan", 1000, rnd=1, effort="high", duration_ms=60000)
+        self.tally_run("a", "plan", 1500, rnd=1, effort="high", duration_ms=95000)
+        self.run_cmd(lib.cmd_apply, self.store)
+        got = json.loads(self.slurp("tallies.json"))["rows"]["plan|deep-reasoner|m|high"]["samples"]
+        self.assertEqual([(s["v"], s["duration_ms"]) for s in got], [(1500, 95000)])
+
+    def test_tallies_from_before_efforts_migrate_to_unknown_without_losing_data(self):
+        old = {"version": 1, "rows": {
+            "plan|scout|m": {"last_date": "2026-10-10", "samples": [{"v": 1, "date": "2026-10-10", "agent_id": "x"}]},
+            "plan+resumed|scout|m": {"last_date": "2026-10-11", "samples": [
+                {"v": 2, "date": "2026-10-11", "agent_id": "y", "round": 2}]},
+            "plan|scout|m|unknown": {"last_date": "2026-10-12", "samples": [{"v": 3, "date": "2026-10-12", "agent_id": "z"}]},
+            "plan|scout|m|high": {"last_date": "2026-10-12", "samples": [
+                {"v": 4, "date": "2026-10-12", "agent_id": "w", "effort": "high", "duration_ms": 5000}]}}}
+        self.write("tallies.json", json.dumps(old), self.store)
+        rows = lib.load_tallies(self.store)["rows"]
+        self.assertEqual(sorted(rows), ["plan+resumed|scout|m|unknown", "plan|scout|m|high", "plan|scout|m|unknown"])
+        self.assertEqual([s["agent_id"] for s in rows["plan|scout|m|unknown"]["samples"]], ["x", "z"])
+        self.assertEqual(rows["plan|scout|m|unknown"]["last_date"], "2026-10-12")
+        self.assertTrue(all("effort" not in s and "duration_ms" not in s for s in rows["plan|scout|m|unknown"]["samples"]))
+        self.assertEqual(rows["plan|scout|m|high"]["samples"][0]["duration_ms"], 5000)
+        table = lib.generate_tally_table(self.cfg, {"rows": rows})
+        self.assertIn("| plan | scout | m | unknown | 2 | 2 | 3 | - | 3 | 2026-10-12 |\n", table)
+        self.assertIn("| plan | scout | m | high | 1 | 4 | 4 | 0:05 | 4 | 2026-10-12 |\n", table)
+        self.assertEqual(lib.format_minutes(None), "-")
+        self.assertEqual((lib.format_minutes(0), lib.format_minutes(59499), lib.format_minutes(59500),
+                          lib.format_minutes(3725000)), ("0:00", "0:59", "1:00", "62:05"))
 
     def test_tally_resumed_round_with_a_new_kind_is_its_own_sample(self):
         self.tally_run("agent1", "plan", 277338, rnd=1)
         self.tally_run("agent1", "apply", 323550, rnd=2, prev=277338)
         self.assertIn("2 tally samples added", self.run_cmd(lib.cmd_apply, self.store)[1])
         self.assertEqual(self.samples(), {
-            "plan": [{"v": 277338, "date": TODAY, "agent_id": "agent1"}],
-            "apply+resumed": [{"v": 46212, "date": TODAY, "agent_id": "agent1", "round": 2}]})
+            "plan": [{"v": 277338, "date": TODAY, "agent_id": "agent1", "effort": "unknown"}],
+            "apply+resumed": [{"v": 46212, "date": TODAY, "agent_id": "agent1", "effort": "unknown", "round": 2}]})
 
     def test_tally_resumed_round_after_an_earlier_apply_keeps_the_first_sample(self):
         self.tally_run("agent1", "plan", 277338, rnd=1)
@@ -2211,7 +2318,7 @@ class ApplyTest(CliBase):
         rc, out, err = self.run_cmd(lib.cmd_apply, self.store)
         self.assertEqual((rc, err), (0, ""))
         self.assertIn("1 tally samples added, 1 replaced", out)
-        self.assertEqual(self.samples(), {"plan": [{"v": 1500, "date": TODAY, "agent_id": "a"}]})
+        self.assertEqual(self.samples(), {"plan": [{"v": 1500, "date": TODAY, "agent_id": "a", "effort": "unknown"}]})
         self.tally_run("a", "plan", 1800, rnd=1)
         self.assertIn("0 tally samples added, 1 replaced", self.run_cmd(lib.cmd_apply, self.store)[1])
         self.assertEqual([s["v"] for s in self.samples()["plan"]], [1800])
@@ -2231,8 +2338,8 @@ class ApplyTest(CliBase):
         self.tally_run("a", "plan", 1000, rnd=1)
         self.tally_run("a", "plan", 1700, rnd=2, prev=1000)
         self.run_cmd(lib.cmd_apply, self.store)
-        self.assertIn("| plan+resumed | deep-reasoner | m | 1 | 700 |", self.slurp("topics", "token-tallies.md"))
-        self.assertIn("| plan | deep-reasoner | m | 1 | 1000 |", self.slurp("topics", "token-tallies.md"))
+        self.assertIn("| plan+resumed | deep-reasoner | m | unknown | 1 | 700 |", self.slurp("topics", "token-tallies.md"))
+        self.assertIn("| plan | deep-reasoner | m | unknown | 1 | 1000 |", self.slurp("topics", "token-tallies.md"))
 
     def test_tally_9c7985a_round_two_is_skipped_as_unanchored(self):
         self.tally_run("a", "plan", 1000, rnd=1, anchor=None)
@@ -2240,7 +2347,7 @@ class ApplyTest(CliBase):
         rc, out, err = self.run_cmd(lib.cmd_apply, self.store)
         self.assertIn("1 tally samples added", out)
         self.assertIn("(unanchored round 1)", err)
-        self.assertEqual(self.samples(), {"plan": [{"v": 1000, "date": TODAY, "agent_id": "a"}]})
+        self.assertEqual(self.samples(), {"plan": [{"v": 1000, "date": TODAY, "agent_id": "a", "effort": "unknown"}]})
 
     def test_tally_repeated_unanchored_round_above_one_is_unanchored_not_a_duplicate(self):
         # the duplicate path needs an anchor-less round 1; a round above 1 without an anchor is rejected first
@@ -2282,12 +2389,12 @@ class ApplyTest(CliBase):
         self.write("tallies.json", json.dumps(old), self.store)
         self.run_cmd(lib.cmd_apply, self.store)
         rows = json.loads(self.slurp("tallies.json"))["rows"]
-        self.assertEqual(sorted(rows), ["fix+resumed|deep-reasoner|m", "plan+resumed|deep-reasoner|m",
-                                        "plan|deep-reasoner|m"])
-        self.assertEqual([s["v"] for s in rows["plan|deep-reasoner|m"]["samples"]], [10])
-        self.assertEqual([s["v"] for s in rows["plan+resumed|deep-reasoner|m"]["samples"]], [5, 20])
-        self.assertEqual(rows["plan+resumed|deep-reasoner|m"]["last_date"], "2026-10-19")
-        self.assertEqual(rows["fix+resumed|deep-reasoner|m"]["samples"][0]["round"], 3)
+        self.assertEqual(sorted(rows), ["fix+resumed|deep-reasoner|m|unknown",
+                                        "plan+resumed|deep-reasoner|m|unknown", "plan|deep-reasoner|m|unknown"])
+        self.assertEqual([s["v"] for s in rows["plan|deep-reasoner|m|unknown"]["samples"]], [10])
+        self.assertEqual([s["v"] for s in rows["plan+resumed|deep-reasoner|m|unknown"]["samples"]], [5, 20])
+        self.assertEqual(rows["plan+resumed|deep-reasoner|m|unknown"]["last_date"], "2026-10-19")
+        self.assertEqual(rows["fix+resumed|deep-reasoner|m|unknown"]["samples"][0]["round"], 3)
 
     def test_apply_deletes_only_round_states_older_than_thirty_days(self):
         inbox = os.path.join(self.store, "inbox")
@@ -2315,7 +2422,7 @@ class ApplyTest(CliBase):
         self.assertEqual(rc, 0)
         self.assertIn("1 tally samples added", out)
         self.assertIn("apply: 4 run files gave no tally sample (bad round 1, no increase 2, no prev 1)", err)
-        self.assertEqual(self.samples(), {"plan": [{"v": 200000, "date": TODAY, "agent_id": "c"}]})
+        self.assertEqual(self.samples(), {"plan": [{"v": 200000, "date": TODAY, "agent_id": "c", "effort": "unknown"}]})
 
     def test_tally_old_run_file_of_a_resumed_agent_never_overwrites(self):
         old = {"version": 1, "rows": {"plan|deep-reasoner|m": {"last_date": "2026-10-19", "samples": [
@@ -2328,7 +2435,7 @@ class ApplyTest(CliBase):
         self.assertIn("(duplicate 1)", err)
         self.assertEqual([(s["agent_id"], s["v"]) for s in self.samples()["plan"]],
                          [("agent1", 277338), ("b", 5), ("agent2", 1000)])
-        self.assertIn("| plan | deep-reasoner | m | 3 | 1000 |", self.slurp("topics", "token-tallies.md"))
+        self.assertIn("| plan | deep-reasoner | m | unknown | 3 | 1000 |", self.slurp("topics", "token-tallies.md"))
 
     def test_prep_shows_round_increases(self):
         self.tally_run("agent1", "plan", 277338, rnd=1)
@@ -2404,7 +2511,7 @@ class FlowTest(CliBase):
         index = self.slurp("INDEX.md")
         self.assertIn("- testing: 2 facts\n", index)
         self.assertIn("- token-tallies: 1 rows\n", index)
-        self.assertIn("| flow-test | scout | claude-x | 2 | 2000 | 3000 | 3000 | %s |" % TODAY,
+        self.assertIn("| flow-test | scout | claude-x | unknown | 2 | 2000 | 3000 | - | 3000 | %s |" % TODAY,
                       self.slurp("topics", "token-tallies.md"))
         self.assertEqual(self.cli("check")[:2], (0, "check passed\n"))
         self.assertEqual(self.cli("status")[:2], (0, ""))
