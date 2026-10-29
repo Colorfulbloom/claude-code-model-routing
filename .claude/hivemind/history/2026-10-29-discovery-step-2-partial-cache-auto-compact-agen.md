@@ -1,9 +1,9 @@
 ### F-36e5 Discovery step 2: cache, auto-compact, agent files (#10-#13) and #26 docs fix
-status: in-progress
+status: shipped
 kind: code
 dates: 2026-10-29 .. 2026-10-29
 refs:
-  commit: pending (branch discovery/step-2)
+  commit: 32ad78a918e75682a9af64bfc40a351a33ccbdf7 (branch discovery/step-2, merged into development)
 summary: 16 new and 4 changed rules (41 total) from 44 harness cases on 2.1.302 in three records; schema gained a plugin layer, combine all, condition plans/when/default_value and an other_file slot; 15 fixtures; agent_fields.json and a strict one-level frontmatter reader; #26 applied with a hook test; verifier fix round tightened the frontmatter guard and made the reader linear; suite 723 OK.
 decisions:
 - Owner, October 29: plan subscription makes billing-dependent cache cells Unknown, reason "one hour within plan usage, five minutes once usage credits start" (main default and an agent's 1h); plan values subscription, api_key, cloud_provider, missing shows Unknown; the harness's requested-TTL record (k12) stands in for the real-account claude -p check.
