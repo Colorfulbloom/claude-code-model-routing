@@ -1,0 +1,28 @@
+{
+  "fixture": "prompt-cache-unsupported-value-ignored",
+  "rule_ids": [
+    "prompt-cache-ttl-order"
+  ],
+  "confidence": "tested",
+  "source": "dashboard/experiments/2026-10-29-prompt-cache-sources.json#k7",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "promptCacheTtl",
+      "value": "1h",
+      "status": "in_effect",
+      "layer": "project",
+      "file": "project/.claude/settings.json",
+      "scope": "main"
+    },
+    {
+      "key": "promptCacheTtl",
+      "value": "2h",
+      "status": "invalid",
+      "layer": "env",
+      "file": null,
+      "scope": "main",
+      "via": "CLAUDE_CODE_PROMPT_CACHE_TTL"
+    }
+  ]
+}

@@ -1,0 +1,77 @@
+{
+  "fixture": "prompt-cache-force-5m-over-everything",
+  "rule_ids": [
+    "prompt-cache-force-5m",
+    "subagent-prompt-cache-force-5m"
+  ],
+  "note": "The env entries for CLAUDE_CODE_PROMPT_CACHE_TTL and CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL are left out on purpose. FORCE_PROMPT_CACHING_5M overrides them, but a rule condition can't name a variable yet, so the rules would mark them in_effect. Add them back as overridden when #5 lets a condition name a variable.",
+  "confidence": "tested",
+  "source": "dashboard/experiments/2026-10-29-prompt-cache-sources.json#k3",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "promptCacheTtl",
+      "value": "5m",
+      "status": "in_effect",
+      "layer": "env",
+      "file": null,
+      "scope": "main",
+      "via": "FORCE_PROMPT_CACHING_5M"
+    },
+    {
+      "key": "promptCacheTtl",
+      "value": "1h",
+      "status": "overridden",
+      "layer": "user",
+      "file": "config/settings.json",
+      "scope": "main"
+    },
+    {
+      "key": "promptCacheTtl",
+      "value": "1h",
+      "status": "overridden",
+      "layer": "default",
+      "file": null,
+      "scope": "main",
+      "via": "ENABLE_PROMPT_CACHING_1H"
+    },
+    {
+      "key": "subagentPromptCacheTtl",
+      "value": "5m",
+      "status": "in_effect",
+      "layer": "env",
+      "file": null,
+      "scope": "agent",
+      "agent": "probe",
+      "via": "FORCE_PROMPT_CACHING_5M"
+    },
+    {
+      "key": "subagentPromptCacheTtl",
+      "value": "1h",
+      "status": "overridden",
+      "layer": "user",
+      "file": "config/settings.json",
+      "scope": "agent",
+      "agent": "probe"
+    },
+    {
+      "key": "subagentPromptCacheTtl",
+      "value": "1h",
+      "status": "overridden",
+      "layer": "agent",
+      "file": "config/agents/probe.md",
+      "scope": "agent",
+      "agent": "probe"
+    },
+    {
+      "key": "subagentPromptCacheTtl",
+      "value": "1h",
+      "status": "overridden",
+      "layer": "default",
+      "file": null,
+      "scope": "agent",
+      "agent": "probe",
+      "via": "ENABLE_PROMPT_CACHING_1H"
+    }
+  ]
+}

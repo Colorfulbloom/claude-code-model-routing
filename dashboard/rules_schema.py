@@ -29,21 +29,24 @@ A model:
 A rule:
 
     rule_id       unique, lowercase words joined by hyphens
-    key           the setting, as a dotted path (effortLevel, experimental.cacheTtl)
+    key           the setting, as a dotted path (effortLevel, experimental.cacheTtl),
+                  or a kind of file the dashboard lists (agentFile, rulesFile)
     scope         main, agent or model
     layer_order   layer ids, highest precedence first
     combine       how the candidates for the key combine. highest_layer: the
                   first layer in layer_order with a valid candidate wins.
                   lowest_value: the lowest candidate by `value_order` wins,
-                  wherever it is set.
+                  wherever it is set. all: every candidate loads and none
+                  wins, such as rules files, which are listed with their layer.
     value_order   only with combine lowest_value, and then required: a
                   non-empty list of unique non-empty strings, lowest first.
-    conditions    list of {layer, models, [values], status, [becomes]}; each one
-                  says what status a candidate set in `layer` yields when the
-                  model is in `models` and, if given, the raw value is in
-                  `values`. `values` is a non-empty list of unique strings.
-                  The resolver takes the first condition that matches, so
-                  list the narrow ones first.
+    conditions    list of {layer, models, [values], [plans], [when], status,
+                  [becomes], [default_value]}; each one says what status a
+                  candidate set in `layer` yields when the model is in `models`
+                  and, if given, the raw value is in `values`, the plan is in
+                  `plans` and the file case is `when`. `values` is a non-empty
+                  list of unique strings. The resolver takes the first
+                  condition that matches, so list the narrow ones first.
     reason        the sentence shown on screen, with {slot} placeholders
     quotes        list, may be empty, of {doc_url, quote}: doc_url is an https
                   link to the doc section, quote is verbatim doc text that
@@ -81,6 +84,34 @@ needs one of EFFORT_LEVELS, and any other key takes any non-empty string.
                               effort_levels is not empty and lacks the value.
 
 `becomes` is only for the lowered status, and lowered always needs it.
+
+A condition's `plans` is a non-empty list of unique PLANS items. It matches the
+`plan` field of the dashboard config: subscription, api_key or cloud_provider,
+and unset when the config has no `plan` field. Without `plans`, any plan
+matches.
+
+A condition's `when` is one of WHEN_CASES. It names the file case the condition
+covers, for keys about files rather than values (agentFile, rulesFile):
+
+    same_name_in_layer  two or more files in the layer declare the same name
+    not_md_file         the file name does not end in .md
+    no_name             the frontmatter has no name
+    no_description      the frontmatter has a name but no description
+    parse_error         the frontmatter does not parse and Claude Code does not
+                        load the file. Experiment 2026-10-29-agent-files.json
+                        (f2) shows this for a tab in an indent, an unterminated
+                        quote and a bad list indent.
+    reader_rejected_but_loads
+                        the dashboard's strict reader (agent_frontmatter.py)
+                        rejects the frontmatter, but Claude Code loads the file.
+                        f2 shows this for an unclosed [, a second colon in a
+                        value and a repeated key. The status is unknown, because
+                        the reader cannot say which values Claude Code took.
+    unknown_field       the frontmatter sets a field Claude Code does not read
+
+A condition's `default_value` is only for the default status: the value the
+default yields, as a non-empty string. With a value_order or an effort key it
+must be one of those values, as for `becomes`.
 
 Every rule needs a reason. Documented and Tested rules also need a source: at
 least one doc quote in `quotes`, or an experiment record. Documented needs at
@@ -131,17 +162,28 @@ SCOPES = ("main", "agent", "model")
 #   flag     a session flag such as --model, --effort or --autocompact
 #   env      the process environment: the shell, overwritten by settings env
 #            blocks, which the resolver works out first (rule env-block-order)
+#   plugin   a file shipped by an enabled plugin, such as a plugin's agents/
 #   default  Claude Code's own value, or the main model for an agent
-LAYERS = ("managed", "cli", "flag", "env", "local", "project", "user", "agent", "default")
+LAYERS = ("managed", "cli", "flag", "env", "local", "project", "user", "plugin", "agent",
+          "default")
 
 # Slots a reason template may use.
-REASON_SLOTS = ("key", "value", "file", "layer", "model", "agent", "winner", "becomes")
+REASON_SLOTS = ("key", "value", "file", "layer", "model", "agent", "winner", "becomes",
+                "other_file")
 
 # Effort levels a model can offer, lowest first.
 EFFORT_LEVELS = ("low", "medium", "high", "xhigh", "max")
 
 # How the candidates for a key combine into one winner.
-COMBINE_MODES = ("highest_layer", "lowest_value")
+COMBINE_MODES = ("highest_layer", "lowest_value", "all")
+
+# Values of the dashboard config's `plan` field a condition can match. unset
+# matches a config with no `plan` field.
+PLANS = ("subscription", "api_key", "cloud_provider", "unset")
+
+# File cases a condition's `when` can name.
+WHEN_CASES = ("same_name_in_layer", "not_md_file", "no_name", "no_description",
+              "parse_error", "reader_rejected_but_loads", "unknown_field")
 
 # What a computed `becomes` works out.
 COMPUTED_BECOMES = ("cap", "fallback")
@@ -162,7 +204,7 @@ RULE_FIELDS = {
 }
 RULE_OPTIONAL_FIELDS = {"value_order"}
 CONDITION_REQUIRED = {"layer", "models", "status"}
-CONDITION_FIELDS = CONDITION_REQUIRED | {"values", "becomes"}
+CONDITION_FIELDS = CONDITION_REQUIRED | {"values", "becomes", "plans", "when", "default_value"}
 VERIFIED_FIELDS = {"claude_version", "date"}
 EXPERIMENT_FIELDS = {"date", "claude_version", "ran", "result"}
 
@@ -607,6 +649,30 @@ def _check_condition(cond, order, model_ids=None, levels=None):
             errors.append("becomes %r is not one of %s" % (becomes, ", ".join(levels)))
     if status == "lowered" and "becomes" not in cond:
         errors.append("lowered needs becomes")
+    if "plans" in cond:
+        plans = cond["plans"]
+        if not (isinstance(plans, list) and plans):
+            errors.append("plans must be a non-empty list")
+        else:
+            for plan in plans:
+                if not (isinstance(plan, str) and plan in PLANS):
+                    errors.append("unknown plan %r, must be one of %s" % (plan, ", ".join(PLANS)))
+            if len(set(map(str, plans))) != len(plans):
+                errors.append("plans repeat a plan")
+    if "when" in cond:
+        when = cond["when"]
+        if not (isinstance(when, str) and when in WHEN_CASES):
+            errors.append("when must be one of %s" % ", ".join(WHEN_CASES))
+        elif when == "reader_rejected_but_loads" and status != "unknown":
+            errors.append("when reader_rejected_but_loads needs status unknown")
+    if "default_value" in cond:
+        value = cond["default_value"]
+        if status != "default":
+            errors.append("default_value is only for a default status")
+        if not _text(value):
+            errors.append("default_value must be a non-empty string")
+        elif levels is not None and value not in levels:
+            errors.append("default_value %r is not one of %s" % (value, ", ".join(levels)))
     return errors
 
 

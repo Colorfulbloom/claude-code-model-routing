@@ -1,0 +1,29 @@
+{
+  "fixture": "prompt-cache-plan-subscription-unknown",
+  "rule_ids": [
+    "subagent-prompt-cache-ttl-order",
+    "prompt-cache-default-by-plan"
+  ],
+  "confidence": "documented",
+  "source": "owner decision 2026-10-29, and the docs quote in rule subagent-prompt-cache-ttl-order",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "subagentPromptCacheTtl",
+      "value": "1h",
+      "status": "unknown",
+      "layer": "agent",
+      "file": "config/agents/probe.md",
+      "scope": "agent",
+      "agent": "probe"
+    },
+    {
+      "key": "promptCacheTtl",
+      "value": null,
+      "status": "unknown",
+      "layer": "default",
+      "file": null,
+      "scope": "main"
+    }
+  ]
+}

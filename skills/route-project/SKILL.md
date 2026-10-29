@@ -25,7 +25,7 @@ This step tunes the agents that only exist in this project: pin each one to the 
 
 - Project agents live in `.claude/agents/` and take priority over user agents with the same name.
 - Valid `model` values: `fable`, `opus`, `sonnet`, `haiku`, a full model ID, or `inherit`. `inherit` means the main session's model, so treat `inherit` as unpinned. The global dispatch hook blocks dispatches to unpinned agents unless a model is passed.
-- `effort` values: `low`, `medium`, `high`, `xhigh`, `max`; depends on the model. An agent without `effort` runs at the session's effort (observed; the docs do not say). Pin `effort` on every agent.
+- `effort` values: `low`, `medium`, `high`, `xhigh`, `max`; depends on the model. An agent without `effort` resolves effort for its own model, so a level set only for the main model doesn't reach it (tested; the docs do not say). Pin `effort` on every agent.
 - Subagents can spawn subagents, up to three layers below the main session. `disallowedTools: Agent` stops an agent from delegating further.
 - Project settings override user settings key by key, so a `model`, `env`, or `hooks` entry in `.claude/settings.json` or `.claude/settings.local.json` can beat the global setup.
 - CLAUDE.md files and rules are context, not enforcement. If two rules conflict, Claude may follow either one.

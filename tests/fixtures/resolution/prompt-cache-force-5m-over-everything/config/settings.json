@@ -1,0 +1,5 @@
+{
+  "model": "claude-sonnet-5-5",
+  "promptCacheTtl": "1h",
+  "subagentPromptCacheTtl": "1h"
+}

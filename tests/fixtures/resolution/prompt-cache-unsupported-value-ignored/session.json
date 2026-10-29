@@ -1,0 +1,7 @@
+{
+  "shell_env": {
+    "CLAUDE_CODE_PROMPT_CACHE_TTL": "2h"
+  },
+  "flags": [],
+  "cli_settings": null
+}

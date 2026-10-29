@@ -19,7 +19,7 @@ Tiers:
 
 Rules:
 - Every dispatch names a model or targets an agent with a pinned one. A hook blocks the rest; if it does, pass a model and continue.
-- Every agent file pins `model` and `effort`. An agent without `effort` inherits the dispatching session's, so the hook blocks it.
+- Every agent file pins `model` and `effort`. An agent without `effort` resolves effort for its own model, not the dispatching session's, so the hook blocks it.
 - Start on the cheapest plausible tier; on failure, re-run one tier up.
 - Briefs are self-contained: goal, exact paths, constraints, expected output. Ask for structured results (lists, path:line), not prose. Start each brief with `Kind: <task-kind>` (lowercase words joined by hyphens) so HiveMind can tally tokens per kind of task.
 - Stay direct only for tiny linked edits in files already in your context, or debugging already in progress there.

@@ -712,64 +712,150 @@
         "user",
         "default"
       ],
+      "combine": "highest_layer",
       "conditions": [
         {
           "layer": "env",
           "models": [
             "*"
           ],
-          "status": "in_effect"
+          "status": "in_effect",
+          "values": [
+            "5m",
+            "1h"
+          ]
+        },
+        {
+          "layer": "env",
+          "models": [
+            "*"
+          ],
+          "status": "invalid"
         },
         {
           "layer": "managed",
           "models": [
             "*"
           ],
-          "status": "in_effect"
+          "status": "in_effect",
+          "values": [
+            "5m",
+            "1h"
+          ]
+        },
+        {
+          "layer": "managed",
+          "models": [
+            "*"
+          ],
+          "status": "invalid"
         },
         {
           "layer": "cli",
           "models": [
             "*"
           ],
-          "status": "in_effect"
+          "status": "in_effect",
+          "values": [
+            "5m",
+            "1h"
+          ]
+        },
+        {
+          "layer": "cli",
+          "models": [
+            "*"
+          ],
+          "status": "invalid"
         },
         {
           "layer": "local",
           "models": [
             "*"
           ],
-          "status": "in_effect"
+          "status": "in_effect",
+          "values": [
+            "5m",
+            "1h"
+          ]
+        },
+        {
+          "layer": "local",
+          "models": [
+            "*"
+          ],
+          "status": "invalid"
         },
         {
           "layer": "project",
           "models": [
             "*"
           ],
-          "status": "in_effect"
+          "status": "in_effect",
+          "values": [
+            "5m",
+            "1h"
+          ]
+        },
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "status": "invalid"
         },
         {
           "layer": "user",
           "models": [
             "*"
           ],
-          "status": "in_effect"
+          "status": "in_effect",
+          "values": [
+            "5m",
+            "1h"
+          ]
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "status": "invalid"
         }
       ],
-      "reason": "{winner} sets the main conversation's cache lifetime. ENABLE_PROMPT_CACHING_1H counts only when no file sets the key.",
+      "reason": "{winner} sets the main conversation's cache lifetime. CLAUDE_CODE_PROMPT_CACHE_TTL beats the settings files, and the higher file wins. Only a lowercase 5m or 1h counts, so Claude Code skips any other value and the next source decides.",
       "quotes": [
         {
           "doc_url": "https://code.claude.com/docs/en/settings-reference#promptcachettl",
           "quote": "`FORCE_PROMPT_CACHING_5M` takes precedence over everything else, then `CLAUDE_CODE_PROMPT_CACHE_TTL`, then this key, and last `ENABLE_PROMPT_CACHING_1H`"
+        },
+        {
+          "doc_url": "https://code.claude.com/docs/en/prompt-caching#choose-the-ttl-yourself",
+          "quote": "When more than one control applies, Claude Code takes the first match in this order:"
+        },
+        {
+          "doc_url": "https://code.claude.com/docs/en/prompt-caching#choose-the-ttl-yourself",
+          "quote": "The bucket's environment variable"
+        },
+        {
+          "doc_url": "https://code.claude.com/docs/en/prompt-caching#choose-the-ttl-yourself",
+          "quote": "The bucket's setting"
+        },
+        {
+          "doc_url": "https://code.claude.com/docs/en/prompt-caching#choose-the-ttl-yourself",
+          "quote": "You can set a TTL for either bucket. Each control takes `5m` or `1h`, and Claude Code ignores any other value."
+        },
+        {
+          "doc_url": "https://code.claude.com/docs/en/prompt-caching#choose-the-ttl-yourself",
+          "quote": "Both settings and both environment variables require Claude Code v2.1.242 or later."
         }
       ],
-      "experiment": "experiments/2026-10-29-prompt-cache-ttl-order.json",
+      "experiment": "experiments/2026-10-29-prompt-cache-sources.json",
       "confidence": "tested",
       "verified_on": {
         "claude_version": "2.1.302",
         "date": "2026-10-29"
-      },
-      "combine": "highest_layer"
+      }
     },
     {
       "rule_id": "subagent-prompt-cache-ttl-order",
@@ -782,66 +868,189 @@
         "local",
         "project",
         "user",
+        "agent",
         "default"
       ],
+      "combine": "highest_layer",
       "conditions": [
         {
           "layer": "env",
           "models": [
             "*"
           ],
-          "status": "in_effect"
+          "status": "in_effect",
+          "values": [
+            "5m",
+            "1h"
+          ]
+        },
+        {
+          "layer": "env",
+          "models": [
+            "*"
+          ],
+          "status": "invalid"
         },
         {
           "layer": "managed",
           "models": [
             "*"
           ],
-          "status": "in_effect"
+          "status": "in_effect",
+          "values": [
+            "5m",
+            "1h"
+          ]
+        },
+        {
+          "layer": "managed",
+          "models": [
+            "*"
+          ],
+          "status": "invalid"
         },
         {
           "layer": "cli",
           "models": [
             "*"
           ],
-          "status": "in_effect"
+          "status": "in_effect",
+          "values": [
+            "5m",
+            "1h"
+          ]
+        },
+        {
+          "layer": "cli",
+          "models": [
+            "*"
+          ],
+          "status": "invalid"
         },
         {
           "layer": "local",
           "models": [
             "*"
           ],
-          "status": "in_effect"
+          "status": "in_effect",
+          "values": [
+            "5m",
+            "1h"
+          ]
+        },
+        {
+          "layer": "local",
+          "models": [
+            "*"
+          ],
+          "status": "invalid"
         },
         {
           "layer": "project",
           "models": [
             "*"
           ],
-          "status": "in_effect"
+          "status": "in_effect",
+          "values": [
+            "5m",
+            "1h"
+          ]
+        },
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "status": "invalid"
         },
         {
           "layer": "user",
           "models": [
             "*"
           ],
-          "status": "in_effect"
+          "status": "in_effect",
+          "values": [
+            "5m",
+            "1h"
+          ]
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "status": "invalid"
+        },
+        {
+          "layer": "agent",
+          "models": [
+            "*"
+          ],
+          "status": "unknown",
+          "values": [
+            "1h"
+          ],
+          "plans": [
+            "subscription",
+            "unset"
+          ]
+        },
+        {
+          "layer": "agent",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect",
+          "values": [
+            "5m",
+            "1h"
+          ]
+        },
+        {
+          "layer": "agent",
+          "models": [
+            "*"
+          ],
+          "status": "invalid"
         }
       ],
-      "reason": "{winner} sets the cache lifetime for {agent}. ENABLE_PROMPT_CACHING_1H counts only when no file sets the key.",
+      "reason": "{winner} sets the cache lifetime for {agent}. CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL beats the settings files, which beat the agent's experimental.cacheTtl. Only a lowercase 5m or 1h counts, so Claude Code skips any other value and the next source decides. On a subscription, the agent's 1h gives one hour within plan usage, five minutes once usage credits start. With no plan in the dashboard config, the dashboard can't tell which applies.",
       "quotes": [
         {
           "doc_url": "https://code.claude.com/docs/en/settings-reference#subagentpromptcachettl",
           "quote": "`FORCE_PROMPT_CACHING_5M` takes precedence over everything else, then `CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL`, then this key, then `ENABLE_PROMPT_CACHING_1H`, which asks for the one-hour lifetime on every request."
+        },
+        {
+          "doc_url": "https://code.claude.com/docs/en/prompt-caching#choose-the-ttl-yourself",
+          "quote": "When more than one control applies, Claude Code takes the first match in this order:"
+        },
+        {
+          "doc_url": "https://code.claude.com/docs/en/prompt-caching#choose-the-ttl-yourself",
+          "quote": "For a subagent's requests, the `cacheTtl` value in the subagent's `experimental` frontmatter field, which requires Claude Code v2.1.248 or later. Claude Code ignores a `1h` there while your Claude subscription is using usage credits"
+        },
+        {
+          "doc_url": "https://code.claude.com/docs/en/sub-agents#frontmatter-reference",
+          "quote": "Claude Code ignores any other value, ignores `1h` while your Claude subscription is using usage credits, and reads the field only from subagent files."
+        },
+        {
+          "doc_url": "https://code.claude.com/docs/en/sub-agents#frontmatter-reference",
+          "quote": "Write `cacheTtl` inside the `experimental` map, not at the top level of the frontmatter."
+        },
+        {
+          "doc_url": "https://code.claude.com/docs/en/prompt-caching#choose-the-ttl-yourself",
+          "quote": "You can set a TTL for either bucket. Each control takes `5m` or `1h`, and Claude Code ignores any other value."
+        },
+        {
+          "doc_url": "https://code.claude.com/docs/en/prompt-caching#choose-the-ttl-yourself",
+          "quote": "Both settings and both environment variables require Claude Code v2.1.242 or later."
         }
       ],
-      "experiment": "experiments/2026-10-29-subagent-prompt-cache-ttl-order.json",
+      "experiment": "experiments/2026-10-29-prompt-cache-sources.json",
       "confidence": "tested",
       "verified_on": {
         "claude_version": "2.1.302",
         "date": "2026-10-29"
-      },
-      "combine": "highest_layer"
+      }
     },
     {
       "rule_id": "auto-compact-window-order",
@@ -857,6 +1066,7 @@
         "user",
         "default"
       ],
+      "combine": "highest_layer",
       "conditions": [
         {
           "layer": "env",
@@ -908,20 +1118,23 @@
           "status": "in_effect"
         }
       ],
-      "reason": "{winner} sets the auto-compact window. CLAUDE_CODE_AUTO_COMPACT_WINDOW beats --autocompact, and both beat managed settings.",
+      "reason": "{winner} sets the auto-compact window. CLAUDE_CODE_AUTO_COMPACT_WINDOW beats --autocompact, which beats every settings file, and the higher file wins. /autocompact reports a window set with --autocompact as coming from settings.",
       "quotes": [
         {
           "doc_url": "https://code.claude.com/docs/en/settings-reference#autocompactwindow",
           "quote": "`--autocompact` takes precedence over this key for one session, and `CLAUDE_CODE_AUTO_COMPACT_WINDOW` takes precedence over both unless Claude Code ignores the variable's value"
+        },
+        {
+          "doc_url": "https://code.claude.com/docs/en/model-config#set-the-auto-compact-window",
+          "quote": "the variable takes precedence over the command, the flag, and the `autoCompactWindow` setting."
         }
       ],
-      "experiment": null,
-      "confidence": "documented",
+      "experiment": "experiments/2026-10-29-auto-compact-window.json",
+      "confidence": "tested",
       "verified_on": {
         "claude_version": "2.1.302",
         "date": "2026-10-29"
-      },
-      "combine": "highest_layer"
+      }
     },
     {
       "rule_id": "subagent-model-order",
@@ -2210,11 +2423,942 @@
           "status": "in_effect"
         }
       ],
-      "reason": "{file} sets the auto-compact window for {model}, and in that file the per-model value beats the top-level autoCompactWindow.",
+      "reason": "{file} sets the auto-compact window for {model}. The higher settings file wins, whether it sets a per-model or a top-level window. In one file, the per-model window wins, and a per-model value of auto gives the window tuned for the model.",
       "quotes": [
         {
           "doc_url": "https://code.claude.com/docs/en/settings-reference#modelsettings",
           "quote": "For that model, the value takes precedence over a top-level `autoCompactWindow` in the same settings file. Requires Claude Code v2.1.288 or later"
+        },
+        {
+          "doc_url": "https://code.claude.com/docs/en/settings-reference#modelsettings",
+          "quote": "`autoCompactWindow`: a number of tokens from `100000` to `1000000`, or `\"auto\"` for the window tuned for the model."
+        }
+      ],
+      "experiment": "experiments/2026-10-29-auto-compact-window.json",
+      "confidence": "tested",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-29"
+      }
+    },
+    {
+      "rule_id": "prompt-cache-force-5m",
+      "key": "promptCacheTtl",
+      "scope": "main",
+      "layer_order": [
+        "env",
+        "managed",
+        "cli",
+        "local",
+        "project",
+        "user",
+        "default"
+      ],
+      "combine": "highest_layer",
+      "conditions": [
+        {
+          "layer": "env",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "managed",
+          "models": [
+            "*"
+          ],
+          "status": "overridden"
+        },
+        {
+          "layer": "cli",
+          "models": [
+            "*"
+          ],
+          "status": "overridden"
+        },
+        {
+          "layer": "local",
+          "models": [
+            "*"
+          ],
+          "status": "overridden"
+        },
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "status": "overridden"
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "status": "overridden"
+        },
+        {
+          "layer": "default",
+          "models": [
+            "*"
+          ],
+          "status": "overridden"
+        }
+      ],
+      "reason": "FORCE_PROMPT_CACHING_5M is on, so the main conversation's cache lifetime is five minutes, whatever {file} sets.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/prompt-caching#choose-the-ttl-yourself",
+          "quote": "`FORCE_PROMPT_CACHING_5M=1`, which forces five minutes for both buckets"
+        },
+        {
+          "doc_url": "https://code.claude.com/docs/en/env-vars#variables",
+          "quote": "Set to `1` to force the 5-minute prompt cache TTL even when 1-hour TTL would otherwise apply. Overrides `CLAUDE_CODE_PROMPT_CACHE_TTL`, `CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL`, `ENABLE_PROMPT_CACHING_1H`, and the `promptCacheTtl` and `subagentPromptCacheTtl` settings"
+        }
+      ],
+      "experiment": "experiments/2026-10-29-prompt-cache-sources.json",
+      "confidence": "tested",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-29"
+      }
+    },
+    {
+      "rule_id": "subagent-prompt-cache-force-5m",
+      "key": "subagentPromptCacheTtl",
+      "scope": "agent",
+      "layer_order": [
+        "env",
+        "managed",
+        "cli",
+        "local",
+        "project",
+        "user",
+        "agent",
+        "default"
+      ],
+      "combine": "highest_layer",
+      "conditions": [
+        {
+          "layer": "env",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "managed",
+          "models": [
+            "*"
+          ],
+          "status": "overridden"
+        },
+        {
+          "layer": "cli",
+          "models": [
+            "*"
+          ],
+          "status": "overridden"
+        },
+        {
+          "layer": "local",
+          "models": [
+            "*"
+          ],
+          "status": "overridden"
+        },
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "status": "overridden"
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "status": "overridden"
+        },
+        {
+          "layer": "agent",
+          "models": [
+            "*"
+          ],
+          "status": "overridden"
+        },
+        {
+          "layer": "default",
+          "models": [
+            "*"
+          ],
+          "status": "overridden"
+        }
+      ],
+      "reason": "FORCE_PROMPT_CACHING_5M is on, so the cache lifetime for {agent} is five minutes, whatever {file} sets.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/prompt-caching#choose-the-ttl-yourself",
+          "quote": "`FORCE_PROMPT_CACHING_5M=1`, which forces five minutes for both buckets"
+        }
+      ],
+      "experiment": "experiments/2026-10-29-prompt-cache-sources.json",
+      "confidence": "tested",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-29"
+      }
+    },
+    {
+      "rule_id": "prompt-cache-enable-1h",
+      "key": "promptCacheTtl",
+      "scope": "main",
+      "layer_order": [
+        "default"
+      ],
+      "combine": "highest_layer",
+      "conditions": [
+        {
+          "layer": "default",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect",
+          "values": [
+            "1h"
+          ]
+        }
+      ],
+      "reason": "ENABLE_PROMPT_CACHING_1H asks for one hour, because no other variable or settings file sets the main conversation's cache lifetime.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/prompt-caching#choose-the-ttl-yourself",
+          "quote": "`ENABLE_PROMPT_CACHING_1H=1`, which requests one hour for both buckets"
+        }
+      ],
+      "experiment": "experiments/2026-10-29-prompt-cache-sources.json",
+      "confidence": "tested",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-29"
+      }
+    },
+    {
+      "rule_id": "subagent-prompt-cache-enable-1h",
+      "key": "subagentPromptCacheTtl",
+      "scope": "agent",
+      "layer_order": [
+        "default"
+      ],
+      "combine": "highest_layer",
+      "conditions": [
+        {
+          "layer": "default",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect",
+          "values": [
+            "1h"
+          ]
+        }
+      ],
+      "reason": "ENABLE_PROMPT_CACHING_1H asks for one hour, because no other variable, settings file or experimental.cacheTtl sets the cache lifetime for {agent}.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/prompt-caching#choose-the-ttl-yourself",
+          "quote": "`ENABLE_PROMPT_CACHING_1H=1`, which requests one hour for both buckets"
+        }
+      ],
+      "experiment": "experiments/2026-10-29-prompt-cache-sources.json",
+      "confidence": "tested",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-29"
+      }
+    },
+    {
+      "rule_id": "prompt-cache-default-by-plan",
+      "key": "promptCacheTtl",
+      "scope": "main",
+      "layer_order": [
+        "default"
+      ],
+      "combine": "highest_layer",
+      "conditions": [
+        {
+          "layer": "default",
+          "models": [
+            "*"
+          ],
+          "status": "default",
+          "plans": [
+            "api_key",
+            "cloud_provider"
+          ],
+          "default_value": "5m"
+        },
+        {
+          "layer": "default",
+          "models": [
+            "*"
+          ],
+          "status": "unknown",
+          "plans": [
+            "subscription",
+            "unset"
+          ]
+        }
+      ],
+      "reason": "Nothing sets the main conversation's cache lifetime, so the plan decides it. On a subscription it's one hour within plan usage, five minutes once usage credits start. On an API key or a cloud provider it's five minutes. With no plan in the dashboard config, the dashboard can't tell which applies.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/prompt-caching#choose-the-ttl-yourself",
+          "quote": "The default for the request's bucket"
+        },
+        {
+          "doc_url": "https://code.claude.com/docs/en/prompt-caching#which-ttl-each-request-gets",
+          "quote": "Unless you choose a TTL yourself, Claude Code requests the one-hour TTL only on a Claude subscription within your plan's included usage."
+        },
+        {
+          "doc_url": "https://code.claude.com/docs/en/prompt-caching#which-ttl-each-request-gets",
+          "quote": "so Claude Code drops the main conversation to the five-minute TTL"
+        }
+      ],
+      "experiment": "experiments/2026-10-29-prompt-cache-sources.json",
+      "confidence": "tested",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-29"
+      }
+    },
+    {
+      "rule_id": "subagent-prompt-cache-default",
+      "key": "subagentPromptCacheTtl",
+      "scope": "agent",
+      "layer_order": [
+        "default"
+      ],
+      "combine": "highest_layer",
+      "conditions": [
+        {
+          "layer": "default",
+          "models": [
+            "*"
+          ],
+          "status": "default",
+          "default_value": "5m"
+        }
+      ],
+      "reason": "Nothing sets the cache lifetime for {agent}, so it gets five minutes on every plan.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/prompt-caching#subagents-and-the-cache",
+          "quote": "Subagents fall outside the main-conversation TTL bucket, so they get five minutes even on a subscription until you choose a longer one."
+        }
+      ],
+      "experiment": "experiments/2026-10-29-prompt-cache-sources.json",
+      "confidence": "tested",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-29"
+      }
+    },
+    {
+      "rule_id": "auto-compact-window-values",
+      "key": "autoCompactWindow",
+      "scope": "main",
+      "layer_order": [
+        "env",
+        "flag",
+        "managed",
+        "cli",
+        "local",
+        "project",
+        "user",
+        "default"
+      ],
+      "combine": "highest_layer",
+      "conditions": [
+        {
+          "layer": "env",
+          "models": [
+            "*"
+          ],
+          "status": "ignored",
+          "values": [
+            "",
+            "abc"
+          ]
+        },
+        {
+          "layer": "env",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "flag",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "managed",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "cli",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "local",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        }
+      ],
+      "reason": "{file} sets the auto-compact window to {value}. For CLAUDE_CODE_AUTO_COMPACT_WINDOW, Claude Code ignores a value that isn't a number, runs one below 100000 at 100000 and one above 1000000 at 1000000. On 2.1.302, 200k ran at 100000, and the k suffix needs v2.1.304. In a settings file, Claude Code ignores a value below 100000.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/model-config#claude_code_auto_compact_window-values",
+          "quote": "A warning that quotes your `CLAUDE_CODE_AUTO_COMPACT_WINDOW` value means the value falls outside 100,000 to 1,000,000 or isn't a token count."
+        },
+        {
+          "doc_url": "https://code.claude.com/docs/en/model-config#claude_code_auto_compact_window-values",
+          "quote": "On Claude Code v2.1.304 or later, you can also write the number with `k` for thousands or `M` for millions, as in `200k` or `1M`."
+        },
+        {
+          "doc_url": "https://code.claude.com/docs/en/model-config#claude_code_auto_compact_window-values",
+          "quote": "A number with no suffix is read as that many tokens, so `CLAUDE_CODE_AUTO_COMPACT_WINDOW=200` means 200 tokens even though `/autocompact 200` means 200,000."
+        }
+      ],
+      "experiment": "experiments/2026-10-29-auto-compact-window.json",
+      "confidence": "tested",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-29"
+      }
+    },
+    {
+      "rule_id": "agent-auto-compact-window",
+      "key": "autoCompactWindow",
+      "scope": "agent",
+      "layer_order": [
+        "env",
+        "agent",
+        "flag",
+        "managed",
+        "cli",
+        "local",
+        "project",
+        "user",
+        "default"
+      ],
+      "combine": "highest_layer",
+      "conditions": [
+        {
+          "layer": "env",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "agent",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "flag",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "managed",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "cli",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "local",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        }
+      ],
+      "reason": "{winner} sets the auto-compact window for {agent}. CLAUDE_CODE_AUTO_COMPACT_WINDOW beats the agent's frontmatter, and the frontmatter can only lower the session's window.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/sub-agents#subagent-auto-compact-window",
+          "quote": "If you set `CLAUDE_CODE_AUTO_COMPACT_WINDOW`, the subagent uses that variable's window instead and the field has no effect, unless Claude Code ignores the variable's value."
+        },
+        {
+          "doc_url": "https://code.claude.com/docs/en/sub-agents#subagent-auto-compact-window",
+          "quote": "To make one subagent compact earlier than it otherwise would, set `autoCompactWindow` in its frontmatter to a token count from `100000` to `1000000`."
+        }
+      ],
+      "experiment": null,
+      "confidence": "assumed",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-29"
+      }
+    },
+    {
+      "rule_id": "agent-file-location-order",
+      "key": "agentFile",
+      "scope": "agent",
+      "layer_order": [
+        "managed",
+        "flag",
+        "project",
+        "user",
+        "plugin"
+      ],
+      "combine": "highest_layer",
+      "conditions": [
+        {
+          "layer": "managed",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "flag",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "plugin",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        }
+      ],
+      "reason": "{file} defines {agent}, and it beats {other_file}. When agents share a name, the order is managed settings, the --agents flag, the project, the user folder, then a plugin.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/sub-agents#choose-the-subagent-scope",
+          "quote": "When multiple subagents share the same name, Claude Code uses the one from the higher-priority location."
+        }
+      ],
+      "experiment": null,
+      "confidence": "documented",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-29"
+      }
+    },
+    {
+      "rule_id": "agent-file-project-over-user",
+      "key": "agentFile",
+      "scope": "agent",
+      "layer_order": [
+        "project",
+        "user"
+      ],
+      "combine": "highest_layer",
+      "conditions": [
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        }
+      ],
+      "reason": "{file} defines {agent}, and it beats {other_file}. When a project file and a user file share a name, the project file wins.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/sub-agents#choose-the-subagent-scope",
+          "quote": "When multiple subagents share the same name, Claude Code uses the one from the higher-priority location."
+        }
+      ],
+      "experiment": "experiments/2026-10-29-agent-files.json",
+      "confidence": "tested",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-29"
+      }
+    },
+    {
+      "rule_id": "agent-file-nested-closest",
+      "key": "agentFile",
+      "scope": "agent",
+      "layer_order": [
+        "project"
+      ],
+      "combine": "highest_layer",
+      "conditions": [
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        }
+      ],
+      "reason": "{file} defines {agent}, because its .claude/agents folder is the closest one to the working directory.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/sub-agents#choose-the-subagent-scope",
+          "quote": "Project subagents are discovered by walking up from the current working directory, so every `.claude/agents/` between there and the repository root is scanned. When more than one of these nested directories defines the same `name`, Claude Code uses the definition closest to the working directory."
+        }
+      ],
+      "experiment": "experiments/2026-10-29-agent-files.json",
+      "confidence": "tested",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-29"
+      }
+    },
+    {
+      "rule_id": "agent-file-same-name-one-tree",
+      "key": "agentFile",
+      "scope": "agent",
+      "layer_order": [
+        "project",
+        "user"
+      ],
+      "combine": "highest_layer",
+      "conditions": [
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "status": "unknown",
+          "when": "same_name_in_layer"
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "status": "unknown",
+          "when": "same_name_in_layer"
+        }
+      ],
+      "reason": "{file} and {other_file} both use the name {agent}, and Claude Code loads only one of them, chosen by filesystem read order. Change the name field in one so the dashboard can tell which runs.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/sub-agents#choose-the-subagent-scope",
+          "quote": "Keep `name` values unique across the whole tree: if two files under the same `.claude/agents/` directory, including its subfolders, declare the same name, Claude Code loads only one of them, chosen by filesystem read order rather than a documented precedence."
+        }
+      ],
+      "experiment": "experiments/2026-10-29-agent-files.json",
+      "confidence": "tested",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-29"
+      }
+    },
+    {
+      "rule_id": "agent-file-reader-rejected",
+      "key": "agentFile",
+      "scope": "agent",
+      "layer_order": [
+        "project",
+        "user"
+      ],
+      "combine": "highest_layer",
+      "conditions": [
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "status": "unknown",
+          "when": "reader_rejected_but_loads"
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "status": "unknown",
+          "when": "reader_rejected_but_loads"
+        }
+      ],
+      "reason": "{file} loads in Claude Code, but the dashboard can't read its frontmatter safely, so it can't say which values apply. Claude Code accepts some frontmatter that the dashboard's reader rejects, such as an unclosed bracket, a second colon in a value or a repeated key.",
+      "quotes": [],
+      "experiment": "experiments/2026-10-29-agent-files.json",
+      "confidence": "tested",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-29"
+      }
+    },
+    {
+      "rule_id": "agent-file-skipped",
+      "key": "agentFile",
+      "scope": "agent",
+      "layer_order": [
+        "project",
+        "user"
+      ],
+      "combine": "highest_layer",
+      "conditions": [
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "status": "ignored",
+          "when": "not_md_file"
+        },
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "status": "ignored",
+          "when": "no_name"
+        },
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "status": "invalid",
+          "when": "no_description"
+        },
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "status": "invalid",
+          "when": "parse_error"
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "status": "ignored",
+          "when": "not_md_file"
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "status": "ignored",
+          "when": "no_name"
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "status": "invalid",
+          "when": "no_description"
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "status": "invalid",
+          "when": "parse_error"
+        }
+      ],
+      "reason": "{file} doesn't load as an agent. Claude Code reads only .md files, treats a file with no name as documentation, and skips one with no description or with frontmatter it can't parse.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/sub-agents#subagent-files-claude-code-skips",
+          "quote": "Claude Code treats the file as documentation kept beside your agents."
+        },
+        {
+          "doc_url": "https://code.claude.com/docs/en/sub-agents#subagent-files-claude-code-skips",
+          "quote": "Claude Code reads no fields from the file, skips it, and writes the parse error to the debug log."
+        },
+        {
+          "doc_url": "https://code.claude.com/docs/en/sub-agents#subagent-files-claude-code-skips",
+          "quote": "Claude Code skips the file and writes the reason to the debug log."
+        },
+        {
+          "doc_url": "https://code.claude.com/docs/en/sub-agents#choose-the-subagent-scope",
+          "quote": "Claude Code scans `.claude/agents/` and `~/.claude/agents/` recursively, so you can organize definitions into subfolders such as `agents/review/` or `agents/research/`."
+        }
+      ],
+      "experiment": "experiments/2026-10-29-agent-files.json",
+      "confidence": "tested",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-29"
+      }
+    },
+    {
+      "rule_id": "agent-file-unknown-field",
+      "key": "agentFile",
+      "scope": "agent",
+      "layer_order": [
+        "project",
+        "user"
+      ],
+      "combine": "highest_layer",
+      "conditions": [
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "status": "ignored",
+          "when": "unknown_field"
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "status": "ignored",
+          "when": "unknown_field"
+        }
+      ],
+      "reason": "{file} sets {key}, which Claude Code doesn't read, so it has no effect. The agent still loads.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/sub-agents#frontmatter-reference",
+          "quote": "Multi-word field names use camelCase, such as `maxTurns` and `disallowedTools`, and must match the table exactly: Claude Code ignores a field it doesn't recognize without reporting an error."
+        }
+      ],
+      "experiment": "experiments/2026-10-29-agent-files.json",
+      "confidence": "tested",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-29"
+      }
+    },
+    {
+      "rule_id": "rules-files-listed",
+      "key": "rulesFile",
+      "scope": "main",
+      "layer_order": [
+        "project",
+        "user"
+      ],
+      "combine": "all",
+      "conditions": [
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "status": "ignored",
+          "when": "not_md_file"
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "status": "ignored",
+          "when": "not_md_file"
+        },
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        }
+      ],
+      "reason": "{file} is in the {layer} rules folder, and Claude Code loads only .md files there. User and project rules both load, user rules first, and neither overrides the other.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/memory#user-level-rules",
+          "quote": "Claude Code loads user-level rules before project rules, so a project rule appears later in Claude's context than a user rule. Neither set overrides the other: if a user rule and a project rule conflict, Claude may follow either one, so keep the two consistent."
+        },
+        {
+          "doc_url": "https://code.claude.com/docs/en/memory#set-up-rules",
+          "quote": "All `.md` files are discovered recursively, so you can organize rules into subdirectories like `frontend/` or `backend/`:"
         }
       ],
       "experiment": null,

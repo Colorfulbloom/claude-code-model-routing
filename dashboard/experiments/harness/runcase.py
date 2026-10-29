@@ -5,14 +5,39 @@ Usage: runcase.py <case.json> <port>
 case.json: {"name": ..., "user": {...}, "project": {...}, "local": {...},
             "cli_settings": {...}, "env": {...}, "args": [...],
             "agents": {"<name>": "<agent file text>"}, "agent_input": {...},
+            "agent_files": [{"where": "user", "path": "a.md", "text": "..."}],
+            "cwd": "project", "git_init": false,
             "prompt": "say hi", "text_reply": false}
 
 prompt is optional and must be exactly one of PROMPT_ALLOWLIST ("say hi", the
-default, or "/effort status"); it is the -p argument. text_reply is optional and
+default, "/effort status", or "/autocompact" with no argument); it is the -p
+argument. "/autocompact" prints the window and its source and makes no API call.
+text_reply is optional and
 must be a bool. When true, fakeapi.py answers every request it does not serve as
 the Agent tool call with a 200 text reply instead of a 400, so the session
 finishes a turn. TEXT_REPLY goes into fakeapi.py's environment only, never
 Claude Code's.
+
+agent_files is optional: a list of at most 8 objects with exactly the keys "where",
+"path" and "text". where is "user" (written under <config>/agents/), "project" (under
+<project>/.claude/agents/) or "nested" (under <project>/sub/.claude/agents/). path is
+one or two segments joined by "/", each matching SEGMENT_RE, and the last one ends in
+".md" or ".md.bak". text is a string whose frontmatter gets the same check as "agents".
+No two items may resolve to the same file, and none may collide with a file from "agents". cwd is optional: "project" (default) or "nested", which runs
+claude in <project>/sub. git_init is optional and must be a bool. When true, `git init
+-q` runs in <project> first, with only the pass-through variables, HOME set to the
+throwaway home, GIT_CONFIG_NOSYSTEM=1 and GIT_CONFIG_GLOBAL=/dev/null. Claude Code gets
+the same two GIT_CONFIG variables.
+
+Agent text ("agents" values and agent_files text) goes through check_frontmatter.
+It refuses any of NUL, \\v, \\f, \\r, the other C0 controls except \\n and \\t, DEL,
+U+0085, U+2028 and U+2029 anywhere in the text, then splits on "\\n" only. Between the
+fences, every top-level line must be blank, a comment, indented, or a plain `key:`
+matching [A-Za-z][A-Za-z0-9_-]* with no quote, tag, anchor or escape. The first line
+that is not blank or a comment must be a key. Braces and backslashes are refused in the
+frontmatter, as is a line with a colon after an unclosed [. hooks, mcpServers and
+initialPrompt are refused in any case. A text with no closing fence is not loaded by
+Claude Code, so only forbidden keys and lookalike closing fences are refused in it.
 
 Claude Code only ever talks to fakeapi.py on 127.0.0.1, with a fake key. The
 script refuses to run when the caller's shell sets ANTHROPIC_API_KEY,
@@ -21,8 +46,10 @@ ENV_ALLOWLIST, and no settings file may set hooks, statusLine, apiKeyHelper, the
 AWS and OTEL helper keys, forceLoginMethod or any key with "mcp" in its name. Every
 refusal happens before a folder is made or any process starts. Claude Code and
 fakeapi.py get only PATH, TMPDIR and LANG from the caller's environment.
-Prints one JSON line: the init model and what the fake API got ("sent"), plus
-"transcript" and "result". "transcript" lists [who, kind, effort, perTurnEffort]
+Prints one JSON line: the init model, "init_agents" and what the fake API got ("sent"),
+plus "transcript" and "result". "init_agents" is the "agents" list of the stream-json
+init row, keeping only strings, each cut to 100 characters, or null when there is no
+init row or no list. "transcript" lists [who, kind, effort, perTurnEffort]
 rows read from every *.jsonl under the config dir's projects/ folder before the
 throwaway root is removed: kind "assistant" rows carry the row's effort and
 perTurnEffort, kind "api-request" rows carry params.output_config.effort and None.
@@ -42,8 +69,9 @@ import time
 FAKE_KEY = "sk-ant-fake-000"
 HOST = "127.0.0.1"
 ARG_ALLOWLIST = ("--model", "--effort", "--autocompact")
-# The only prompts a case may send. Both are harmless: no tool runs, no network.
-PROMPT_ALLOWLIST = ("say hi", "/effort status")
+# The only prompts a case may send. All are harmless: no tool runs, no network.
+# "/autocompact" without an argument only prints the window and its source.
+PROMPT_ALLOWLIST = ("say hi", "/effort status", "/autocompact")
 DEFAULT_PROMPT = "say hi"
 CALLER_FORBIDDEN = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_BASE_URL")
 # The only env names a case, or a settings file's env block, may set.
@@ -71,7 +99,18 @@ AGENT_FORBIDDEN_KEYS = ("hooks", "mcpservers", "initialprompt")
 AGENT_INPUT_KEYS = ("description", "prompt", "subagent_type", "model")
 # The only effort values read_transcript keeps.
 EFFORT_LEVELS = ("low", "medium", "high", "xhigh", "max")
+# agent_files: where each file goes, relative to the throwaway root.
+AGENT_FILE_WHERE = {"user": ("config", "agents"),
+                    "project": ("project", ".claude", "agents"),
+                    "nested": ("project", "sub", ".claude", "agents")}
+AGENT_FILE_KEYS = ("where", "path", "text")
+AGENT_FILE_MAX = 8
+AGENT_FILE_SUFFIXES = (".md", ".md.bak")
+SEGMENT_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}")
+CWD_CHOICES = ("project", "nested")
+INIT_AGENT_MAX = 100
 CLAUDE_TIMEOUT = 90
+GIT_TIMEOUT = 20
 
 
 def refuse(msg):
@@ -91,16 +130,38 @@ def check_env(where, env):
             refuse("%s sets %s to a value that is not a string" % (where, name))
 
 
-def frontmatter(text):
-    lines = text.lstrip("\ufeff").splitlines()
-    if not lines or lines[0].strip() != "---":
-        return ""
+# Characters an agent text may not hold. \n and \t are allowed. The other C0 controls
+# (NUL, \v, \f, \r and the like), DEL, U+0085, U+2028 and U+2029 are refused because
+# readers disagree on whether they end a line, and so on where the frontmatter ends.
+AGENT_TEXT_BAD_CHARS = re.compile("[\x00-\x08\x0b-\x1f\x7f\x85\u2028\u2029]")
+# A top-level frontmatter line is blank, a comment, indented, or exactly this.
+PLAIN_KEY_LINE = re.compile(r"([A-Za-z][A-Za-z0-9_-]*):(?:[ \t].*)?")
+# What an indented line may not start with, after any "- " markers.
+INDENTED_BAD_START = "?!&*{,:\\"
+
+
+def split_frontmatter(text):
+    """Return (head, closed) for an agent text, or None when it has no opening fence.
+
+    head holds the lines after the opening fence, up to the closing fence or, when
+    there is none, to the end. Splits on "\\n" only. check_frontmatter refuses every
+    other line break first.
+    """
+    lines = text.lstrip("\ufeff").split("\n")
+    if lines[0].rstrip(" \t") != "---":
+        return None
     out = []
     for line in lines[1:]:
-        if line.strip() == "---":
-            break
+        if line.rstrip(" \t") == "---":
+            return "\n".join(out), True
         out.append(line)
-    return "\n".join(out)
+    return "\n".join(out), False
+
+
+def frontmatter(text):
+    """Return the frontmatter text of an agent text, or "" when it has none."""
+    split = split_frontmatter(text)
+    return split[0] if split else ""
 
 
 _KEY_AT_LINE_START = re.compile(r"^\s*(?:-\s+)?[{,\s]*[\"']?([^\s\"':,{}]+)[\"']?\s*:")
@@ -115,12 +176,156 @@ def frontmatter_keys(head):
     (a nested key counts) so the guard only ever refuses more.
     """
     keys = set()
-    for line in head.splitlines():
+    for line in head.split("\n"):
         m = _KEY_AT_LINE_START.match(line)
         if m:
             keys.add(m.group(1))
         keys.update(_KEY_IN_FLOW.findall(line))
     return keys
+
+
+def flow_depth(text, depth=0):
+    """Return how many [ are still open after text, ignoring quoted parts. One line at a time."""
+    quote = None
+    for ch in text:
+        if quote:
+            if ch == quote:
+                quote = None
+        elif ch in "\"'":
+            quote = ch
+        elif ch == "[":
+            depth += 1
+        elif ch == "]" and depth > 0:
+            depth -= 1
+    return depth
+
+
+def frontmatter_shape_problem(head):
+    """Return why the frontmatter lines are not plainly shaped, or None when they are.
+
+    An allowlist, not a hunt for tricks. Every top-level line must be blank, a
+    comment, an indented line, or a plain `key:` (no quote, tag, anchor or escape)
+    with a space or the end of the line after the colon. The first line that is
+    not blank or a comment must be a key line, so an indented block can never be
+    the top-level mapping. Braces and backslashes are refused anywhere, so no flow
+    map or escaped key can name a key some other way. A line with a colon that
+    follows an unclosed [ is refused.
+    """
+    seen_key = False
+    depth = 0
+    for line in head.split("\n"):
+        if depth > 0 and ":" in line:
+            return "a key line sits inside an unclosed flow list"
+        if "{" in line or "}" in line:
+            return "it holds a brace"
+        if "\\" in line:
+            return "it holds a backslash"
+        if line.strip(" \t") == "" or line.startswith("#"):
+            continue
+        if line[0] in " \t":
+            if not seen_key:
+                return "an indented line comes before the first key"
+            body = line.lstrip(" \t")
+            while body == "-" or body.startswith("- "):
+                body = body[1:].lstrip(" \t")
+            if body and body[0] in INDENTED_BAD_START:
+                return "an indented line starts with %r" % body[0]
+            if depth > 0:
+                depth = flow_depth(line, depth)
+            continue
+        m = PLAIN_KEY_LINE.fullmatch(line)
+        if not m:
+            return "a top-level line is not a plain key"
+        seen_key = True
+        value = line[m.end(1) + 1:].strip(" \t")
+        depth = flow_depth(value) if value.startswith("[") else 0
+    return None
+
+
+def check_frontmatter(label, text):
+    """Refuse an agent text whose frontmatter names a forbidden key or is not plainly shaped."""
+    bad = AGENT_TEXT_BAD_CHARS.search(text)
+    if bad:
+        refuse("%s holds the character U+%04X, which is not allowed" % (label, ord(bad.group())))
+    lines = text.lstrip("\ufeff").split("\n")
+    first = next((i for i, line in enumerate(lines) if line.strip(" \t")), None)
+    if first is not None and lines[first].strip().startswith("---") \
+            and (first != 0 or lines[0].rstrip(" \t") != "---"):
+        refuse("%s has a first line that might be a fence but is not exactly ---" % label)
+    split = split_frontmatter(text)
+    if split is None:
+        return
+    head, closed = split
+    for key in sorted(frontmatter_keys(head)):
+        if key.lower() in AGENT_FORBIDDEN_KEYS:
+            refuse("%s frontmatter sets %s" % (label, key))
+    if not closed:
+        # Claude Code does not load a file with no closing fence (case f1), so the rest
+        # is body text. Only a line that might be a closing fence in disguise is refused.
+        for line in head.split("\n"):
+            if line.strip().startswith("---"):
+                refuse("%s has a line that might be a closing fence but is not exactly ---" % label)
+        return
+    problem = frontmatter_shape_problem(head)
+    if problem:
+        refuse("%s frontmatter is not plainly shaped: %s" % (label, problem))
+
+
+def agent_file_segments(path):
+    """Return the segments of an agent_files path, or None when the path is not allowed."""
+    if not isinstance(path, str):
+        return None
+    segments = path.split("/")
+    if not 1 <= len(segments) <= 2:
+        return None
+    for seg in segments:
+        if seg in (".", "..") or not SEGMENT_RE.fullmatch(seg):
+            return None
+    if not segments[-1].endswith(AGENT_FILE_SUFFIXES):
+        return None
+    return segments
+
+
+def check_agent_files(items, agents):
+    """Refuse an agent_files value that is not allowed; return [(where, segments, text)]."""
+    if not isinstance(items, list):
+        refuse("case agent_files are not a list")
+    if len(items) > AGENT_FILE_MAX:
+        refuse("case agent_files has more than %d items" % AGENT_FILE_MAX)
+    out = []
+    # Lower case, because the throwaway folder may sit on a case-insensitive disk.
+    taken = {("user", name.lower() + ".md") for name in agents}
+    for item in items:
+        if not isinstance(item, dict):
+            refuse("agent_files item is not an object")
+        if sorted(item) != sorted(AGENT_FILE_KEYS):
+            refuse("agent_files item must have exactly the keys %s" % ", ".join(AGENT_FILE_KEYS))
+        where, path, text = item["where"], item["path"], item["text"]
+        if not isinstance(where, str) or where not in AGENT_FILE_WHERE:
+            refuse("agent_files where %r is not user, project or nested" % (where,))
+        segments = agent_file_segments(path)
+        if segments is None:
+            refuse("agent_files path %r is not allowed" % (path,))
+        if not isinstance(text, str):
+            refuse("agent_files %s text is not a string" % path)
+        check_frontmatter("agent_files %s" % path, text)
+        full = "/".join(segments).lower()
+        for other_where, other in taken:
+            # The same file, or one is a folder the other needs as a file.
+            if other_where == where and (other == full or other.startswith(full + "/")
+                                         or full.startswith(other + "/")):
+                refuse("agent_files path %s resolves to the same file as another item" % path)
+        taken.add((where, full))
+        out.append((where, segments, text))
+    return out
+
+
+def init_agents(init):
+    """Return the init row's agents list as strings cut to INIT_AGENT_MAX, or None."""
+    agents = init.get("agents") if isinstance(init, dict) else None
+    if not isinstance(agents, list):
+        return None
+    return [a[:INIT_AGENT_MAX] for a in agents if isinstance(a, str)]
 
 
 def check_case(case):
@@ -132,6 +337,10 @@ def check_case(case):
         refuse("case prompt is not on the prompt allowlist")
     if "text_reply" in case and not isinstance(case["text_reply"], bool):
         refuse("case text_reply is not a bool")
+    if "git_init" in case and not isinstance(case["git_init"], bool):
+        refuse("case git_init is not a bool")
+    if "cwd" in case and (not isinstance(case["cwd"], str) or case["cwd"] not in CWD_CHOICES):
+        refuse("case cwd is not project or nested")
     for layer in FILE_LAYERS:
         data = case.get(layer)
         if data is None:
@@ -168,9 +377,9 @@ def check_case(case):
             refuse("agent name %r is not a plain file name" % name)
         if not isinstance(text, str):
             refuse("agent %s text is not a string" % name)
-        for key in sorted(frontmatter_keys(frontmatter(text))):
-            if key.lower() in AGENT_FORBIDDEN_KEYS:
-                refuse("agent %s frontmatter sets %s" % (name, key))
+        check_frontmatter("agent %s" % name, text)
+    if "agent_files" in case:
+        check_agent_files(case["agent_files"], agents)
     agent_input = case.get("agent_input")
     if agent_input is not None:
         if not isinstance(agent_input, dict):
@@ -238,6 +447,8 @@ def main():
         case = json.load(fh)
     port = int(sys.argv[2])
     check_case(case)
+    agent_files = check_agent_files(case["agent_files"], case.get("agents") or {}) \
+        if "agent_files" in case else []
 
     root = tempfile.mkdtemp(prefix="mr-exp-", dir=os.environ.get("TMPDIR"))
     home, cfg, proj = (os.path.join(root, d) for d in ("home", "config", "project"))
@@ -256,6 +467,30 @@ def main():
         os.makedirs(os.path.join(cfg, "agents"), exist_ok=True)
         with open(os.path.join(cfg, "agents", name + ".md"), "w") as fh:
             fh.write(text)
+    bases = {"config": cfg, "project": proj}
+    for where, segments, text in agent_files:
+        parts = AGENT_FILE_WHERE[where]
+        target = os.path.join(bases[parts[0]], *parts[1:], *segments)
+        os.makedirs(os.path.dirname(target), exist_ok=True)
+        with open(target, "w") as fh:
+            fh.write(text)
+    workdir = proj
+    if case.get("cwd") == "nested":
+        workdir = os.path.join(proj, "sub")
+        os.makedirs(workdir, exist_ok=True)
+    if case.get("git_init"):
+        genv = pass_through()
+        genv.update({"HOME": home, "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": "/dev/null"})
+        try:
+            g = subprocess.run(["git", "init", "-q"], cwd=proj, env=genv, capture_output=True,
+                               text=True, timeout=GIT_TIMEOUT, stdin=subprocess.DEVNULL)
+            failed = None if g.returncode == 0 else "exit %d: %s" % (g.returncode, g.stderr.strip()[-200:])
+        except (OSError, subprocess.SubprocessError) as exc:
+            failed = "%s: %s" % (type(exc).__name__, exc)
+        if failed:
+            shutil.rmtree(root, True)
+            sys.stderr.write("runcase failed: git init in the project did not finish (%s)\n" % failed)
+            sys.exit(1)
     args = ["claude", "-p", case.get("prompt", DEFAULT_PROMPT), "--output-format", "stream-json", "--verbose"]
     if case.get("cli_settings") is not None:
         path = os.path.join(root, "cli-settings.json")
@@ -271,7 +506,8 @@ def main():
                 "ANTHROPIC_BASE_URL": "http://%s:%d" % (HOST, port),
                 "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
                 "CLAUDE_CODE_DISABLE_OFFICIAL_MARKETPLACE_AUTOINSTALL": "1",
-                "DISABLE_AUTOUPDATER": "1"})
+                "DISABLE_AUTOUPDATER": "1",
+                "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": "/dev/null"})
 
     senv = pass_through()
     if case.get("agent_input"):
@@ -282,7 +518,7 @@ def main():
     srv = subprocess.Popen([sys.executable, os.path.join(here, "fakeapi.py"), str(port), log], env=senv)
     time.sleep(0.5)
     try:
-        r = subprocess.run(args, cwd=proj, env=env, capture_output=True, text=True,
+        r = subprocess.run(args, cwd=workdir, env=env, capture_output=True, text=True,
                            timeout=CLAUDE_TIMEOUT, stdin=subprocess.DEVNULL)
     except BaseException:
         # A timeout, or any other failure, still removes the throwaway root.
@@ -314,6 +550,7 @@ def main():
         if k not in seen:
             seen.append(k)
     print(json.dumps({"case": case.get("name"), "init_model": init and init.get("model"),
+                      "init_agents": init_agents(init),
                       "sent": [list(k) for k in seen], "stderr": r.stderr[-200:].strip(),
                       "transcript": read_transcript(cfg), "result": results}))
     shutil.rmtree(root, True)

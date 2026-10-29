@@ -1,0 +1,190 @@
+[
+ {
+  "name": "k1-agent-1h-alone",
+  "agents": {
+   "probe": "---\nname: probe\ndescription: probe agent\nmodel: claude-haiku-5-5\nexperimental:\n  cacheTtl: 1h\n---\nMARKER-SUBAGENT you are a probe.\n"
+  },
+  "agent_input": {
+   "description": "probe",
+   "prompt": "go",
+   "subagent_type": "probe"
+  }
+ },
+ {
+  "name": "k2-user-setting-5m-over-agent-1h",
+  "user": {
+   "subagentPromptCacheTtl": "5m"
+  },
+  "agents": {
+   "probe": "---\nname: probe\ndescription: probe agent\nmodel: claude-haiku-5-5\nexperimental:\n  cacheTtl: 1h\n---\nMARKER-SUBAGENT you are a probe.\n"
+  },
+  "agent_input": {
+   "description": "probe",
+   "prompt": "go",
+   "subagent_type": "probe"
+  }
+ },
+ {
+  "name": "k3-force-5m-over-everything",
+  "env": {
+   "FORCE_PROMPT_CACHING_5M": "1",
+   "CLAUDE_CODE_PROMPT_CACHE_TTL": "1h",
+   "CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL": "1h",
+   "ENABLE_PROMPT_CACHING_1H": "1"
+  },
+  "user": {
+   "promptCacheTtl": "1h",
+   "subagentPromptCacheTtl": "1h"
+  },
+  "agents": {
+   "probe": "---\nname: probe\ndescription: probe agent\nmodel: claude-haiku-5-5\nexperimental:\n  cacheTtl: 1h\n---\nMARKER-SUBAGENT you are a probe.\n"
+  },
+  "agent_input": {
+   "description": "probe",
+   "prompt": "go",
+   "subagent_type": "probe"
+  }
+ },
+ {
+  "name": "k4-subagent-env-5m-over-agent-1h",
+  "env": {
+   "CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL": "5m"
+  },
+  "agents": {
+   "probe": "---\nname: probe\ndescription: probe agent\nmodel: claude-haiku-5-5\nexperimental:\n  cacheTtl: 1h\n---\nMARKER-SUBAGENT you are a probe.\n"
+  },
+  "agent_input": {
+   "description": "probe",
+   "prompt": "go",
+   "subagent_type": "probe"
+  }
+ },
+ {
+  "name": "k5-agent-5m-over-enable-1h",
+  "env": {
+   "ENABLE_PROMPT_CACHING_1H": "1"
+  },
+  "agents": {
+   "probe": "---\nname: probe\ndescription: probe agent\nmodel: claude-haiku-5-5\nexperimental:\n  cacheTtl: 5m\n---\nMARKER-SUBAGENT you are a probe.\n"
+  },
+  "agent_input": {
+   "description": "probe",
+   "prompt": "go",
+   "subagent_type": "probe"
+  }
+ },
+ {
+  "name": "k6-agent-bad-value-falls-to-enable-1h",
+  "env": {
+   "ENABLE_PROMPT_CACHING_1H": "1"
+  },
+  "agents": {
+   "probe": "---\nname: probe\ndescription: probe agent\nmodel: claude-haiku-5-5\nexperimental:\n  cacheTtl: 2h\n---\nMARKER-SUBAGENT you are a probe.\n"
+  },
+  "agent_input": {
+   "description": "probe",
+   "prompt": "go",
+   "subagent_type": "probe"
+  }
+ },
+ {
+  "name": "k7-env-bad-value-falls-to-project-key",
+  "env": {
+   "CLAUDE_CODE_PROMPT_CACHE_TTL": "2h"
+  },
+  "project": {
+   "promptCacheTtl": "1h"
+  },
+  "agents": {
+   "probe": "---\nname: probe\ndescription: probe agent\nmodel: claude-haiku-5-5\n---\nMARKER-SUBAGENT you are a probe.\n"
+  },
+  "agent_input": {
+   "description": "probe",
+   "prompt": "go",
+   "subagent_type": "probe"
+  }
+ },
+ {
+  "name": "k8-setting-bad-value-falls-to-enable-1h",
+  "env": {
+   "ENABLE_PROMPT_CACHING_1H": "1"
+  },
+  "user": {
+   "promptCacheTtl": "60m",
+   "subagentPromptCacheTtl": "60m"
+  },
+  "agents": {
+   "probe": "---\nname: probe\ndescription: probe agent\nmodel: claude-haiku-5-5\n---\nMARKER-SUBAGENT you are a probe.\n"
+  },
+  "agent_input": {
+   "description": "probe",
+   "prompt": "go",
+   "subagent_type": "probe"
+  }
+ },
+ {
+  "name": "k9-setting-upper-case-1H",
+  "user": {
+   "promptCacheTtl": "1H",
+   "subagentPromptCacheTtl": "1H"
+  },
+  "agents": {
+   "probe": "---\nname: probe\ndescription: probe agent\nmodel: claude-haiku-5-5\n---\nMARKER-SUBAGENT you are a probe.\n"
+  },
+  "agent_input": {
+   "description": "probe",
+   "prompt": "go",
+   "subagent_type": "probe"
+  }
+ },
+ {
+  "name": "k10-enable-1h-alone",
+  "env": {
+   "ENABLE_PROMPT_CACHING_1H": "1"
+  },
+  "agents": {
+   "probe": "---\nname: probe\ndescription: probe agent\nmodel: claude-haiku-5-5\n---\nMARKER-SUBAGENT you are a probe.\n"
+  },
+  "agent_input": {
+   "description": "probe",
+   "prompt": "go",
+   "subagent_type": "probe"
+  }
+ },
+ {
+  "name": "k11-top-level-cacheTtl-not-read",
+  "agents": {
+   "probe": "---\nname: probe\ndescription: probe agent\nmodel: claude-haiku-5-5\ncacheTtl: 1h\n---\nMARKER-SUBAGENT you are a probe.\n"
+  },
+  "agent_input": {
+   "description": "probe",
+   "prompt": "go",
+   "subagent_type": "probe"
+  }
+ },
+ {
+  "name": "k12-nothing-set-api-key-default",
+  "agents": {
+   "probe": "---\nname: probe\ndescription: probe agent\nmodel: claude-haiku-5-5\n---\nMARKER-SUBAGENT you are a probe.\n"
+  },
+  "agent_input": {
+   "description": "probe",
+   "prompt": "go",
+   "subagent_type": "probe"
+  }
+ },
+ {
+  "name": "k13-subagent-env-bad-value-falls-to-agent",
+  "env": {
+   "CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL": "1d"
+  },
+  "agents": {
+   "probe": "---\nname: probe\ndescription: probe agent\nmodel: claude-haiku-5-5\nexperimental:\n  cacheTtl: 1h\n---\nMARKER-SUBAGENT you are a probe.\n"
+  },
+  "agent_input": {
+   "description": "probe",
+   "prompt": "go",
+   "subagent_type": "probe"
+  }
+ }
+]
