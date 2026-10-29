@@ -1,0 +1,29 @@
+{
+  "fixture": "prompt-cache-setting-over-frontmatter",
+  "rule_ids": [
+    "subagent-prompt-cache-ttl-order"
+  ],
+  "confidence": "tested",
+  "source": "dashboard/experiments/2026-10-29-prompt-cache-sources.json#k2",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "subagentPromptCacheTtl",
+      "value": "5m",
+      "status": "in_effect",
+      "layer": "user",
+      "file": "config/settings.json",
+      "scope": "agent",
+      "agent": "probe"
+    },
+    {
+      "key": "subagentPromptCacheTtl",
+      "value": "1h",
+      "status": "overridden",
+      "layer": "agent",
+      "file": "config/agents/probe.md",
+      "scope": "agent",
+      "agent": "probe"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "fixture": "agent-unknown-field",
+  "rule_ids": [
+    "agent-file-unknown-field"
+  ],
+  "confidence": "tested",
+  "source": "dashboard/experiments/2026-10-29-agent-files.json#f1",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "agentFile",
+      "value": null,
+      "status": "in_effect",
+      "layer": "user",
+      "file": "config/agents/probe.md",
+      "scope": "agent",
+      "agent": "probe"
+    },
+    {
+      "key": "agentFile",
+      "value": null,
+      "status": "ignored",
+      "layer": "user",
+      "file": "config/agents/probe.md",
+      "scope": "agent",
+      "agent": "probe",
+      "field": "foo"
+    }
+  ]
+}

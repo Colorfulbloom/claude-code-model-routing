@@ -5,8 +5,10 @@ Each test writes a case file in a temp folder and runs runcase.py with a fake
 so a refused case must leave no marker (claude never started) and no folder made
 by runcase.py. Nothing here touches the real ~/.claude or the network.
 """
+import contextlib
 import glob
 import importlib.util
+import io
 import json
 import os
 import shutil
@@ -44,6 +46,7 @@ EXPECTED_CHILD_ENV = {
     "PATH", "TMPDIR", "LANG", "HOME", "CLAUDE_CONFIG_DIR", "ANTHROPIC_API_KEY",
     "ANTHROPIC_BASE_URL", "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC",
     "CLAUDE_CODE_DISABLE_OFFICIAL_MARKETPLACE_AUTOINSTALL", "DISABLE_AUTOUPDATER",
+    "GIT_CONFIG_NOSYSTEM", "GIT_CONFIG_GLOBAL",
 }
 # Added by macOS and by the /usr/bin/python3 shim that runs the fake claude, not by runcase.py.
 SYSTEM_ADDED = {"__CF_USER_TEXT_ENCODING", "CPATH", "LIBRARY_PATH", "SDKROOT", "MANPATH"}
@@ -53,6 +56,35 @@ def free_port():
     with socket.socket() as s:
         s.bind(("127.0.0.1", 0))
         return s.getsockname()[1]
+
+
+def agent_file(where, path, text="---\nname: probe\n---\nbody\n"):
+    return {"where": where, "path": path, "text": text}
+
+
+# Records where it ran and every file under the throwaway root, then prints one init row.
+TREE_CLAUDE = """#!/usr/bin/python3
+import json, os
+root = os.path.realpath(os.path.dirname(os.environ["CLAUDE_CONFIG_DIR"]))
+tree = {}
+for dirpath, _d, files in os.walk(root):
+    for f in files:
+        p = os.path.join(dirpath, f)
+        with open(p, errors="replace") as fh:
+            tree[os.path.relpath(p, root)] = fh.read()
+with open(%r, "w") as fh:
+    json.dump({"cwd": os.path.relpath(os.getcwd(), root), "tree": tree}, fh)
+print(json.dumps({"type": "system", "subtype": "init", "model": "m",
+                  "agents": ["general-purpose", 5, None, "x" * 150, ["a"]]}))
+"""
+
+# Records its argv, env and folder, then exits with the given code.
+FAKE_GIT = """#!/usr/bin/python3
+import json, os, sys
+with open(%r, "w") as fh:
+    json.dump({"argv": sys.argv[1:], "env": dict(os.environ), "cwd": os.getcwd()}, fh)
+sys.exit(%d)
+"""
 
 
 class GuardTestBase(unittest.TestCase):
@@ -277,6 +309,201 @@ class RefusedCases(GuardTestBase):
         self.assert_refused({"name": "t"}, {"ANTHROPIC_AUTH_TOKEN": "tok"},
                             mention="ANTHROPIC_AUTH_TOKEN")
 
+    def test_autocompact_prompt_takes_no_argument(self):
+        for bad in ("/autocompact 200k", "/autocompact auto", "/autocompact ", " /autocompact",
+                    "/autocompact\n", "/AUTOCOMPACT"):
+            with self.subTest(prompt=bad):
+                self.assert_refused({"name": "t", "prompt": bad}, mention="prompt allowlist")
+
+    def test_cwd_other_than_project_or_nested(self):
+        for bad in ("sub", "..", "/", "Project", "", None, 5, ["nested"], True):
+            with self.subTest(cwd=bad):
+                self.assert_refused({"name": "t", "cwd": bad}, mention="cwd")
+
+    def test_git_init_that_is_not_a_bool(self):
+        for bad in ("yes", 1, 0, "true", None, [True]):
+            with self.subTest(git_init=bad):
+                self.assert_refused({"name": "t", "git_init": bad}, mention="git_init")
+
+    def test_agent_files_that_is_not_a_list(self):
+        for bad in ({"where": "user"}, "a.md", None, 5, True):
+            with self.subTest(agent_files=bad):
+                self.assert_refused({"name": "t", "agent_files": bad}, mention="agent_files")
+
+    def test_agent_files_with_too_many_items(self):
+        items = [agent_file("user", "a%d.md" % i) for i in range(9)]
+        self.assert_refused({"name": "t", "agent_files": items}, mention="more than 8")
+
+    def test_agent_files_item_that_is_not_an_object(self):
+        for bad in ("a.md", None, ["user", "a.md", "x"], 5):
+            with self.subTest(item=bad):
+                self.assert_refused({"name": "t", "agent_files": [bad]}, mention="not an object")
+
+    def test_agent_files_item_with_wrong_keys(self):
+        good = agent_file("user", "a.md")
+        missing = {k: v for k, v in good.items() if k != "text"}
+        extra = dict(good, mode="0777")
+        renamed = {"where": "user", "file": "a.md", "text": "x"}
+        for bad in (missing, extra, renamed, {}):
+            with self.subTest(item=bad):
+                self.assert_refused({"name": "t", "agent_files": [bad]}, mention="exactly the keys")
+
+    def test_agent_files_where_off_the_list(self):
+        for bad in ("home", "User", "", "managed", "../x", None, 5, ["user"]):
+            with self.subTest(where=bad):
+                self.assert_refused({"name": "t", "agent_files": [agent_file(bad, "a.md")]},
+                                    mention="where")
+
+    def test_agent_files_paths_that_are_not_allowed(self):
+        bad_paths = (
+            "", "/a.md", "/etc/a.md", "a.md/", "a//b.md", "/", "./a.md", "../a.md", "a/../b.md",
+            "a/./b.md", "..", ".", "a/b/c.md", "a\\b.md", "..\\a.md", ".hidden.md", "a/.md",
+            "-a.md", "a b.md", "a.txt", "a.md.bak.txt", "a.md.bak2", "a.bak", "a", "dir/a",
+            "a.MD", "a.md\n", "a\x00.md", "caf\u00e9.md", "a/b.md/", "x" * 65 + ".md",
+            None, 5, ["a.md"], True,
+        )
+        for bad in bad_paths:
+            with self.subTest(path=bad):
+                self.assert_refused({"name": "t", "agent_files": [agent_file("user", bad)]},
+                                    mention="agent_files path")
+
+    def test_agent_files_text_that_is_not_a_string(self):
+        for bad in (5, None, ["---"], {"a": 1}, True):
+            with self.subTest(text=bad):
+                self.assert_refused({"name": "t", "agent_files": [agent_file("project", "a.md", bad)]},
+                                    mention="not a string")
+
+    def test_agent_files_frontmatter_forbidden_keys(self):
+        forms = (
+            "---\nname: probe\nhooks:\n  Stop: []\n---\nbody\n",
+            '---\nname: probe\n"hooks": {}\n---\nbody\n',
+            "---\n{name: probe, hooks: {}}\n---\nbody\n",
+            "\ufeff---\nname: probe\nmcpServers: {}\n---\nbody\n",
+            "---\nname: probe\n'mcpservers' : {}\n---\nbody\n",
+            "---\nname: probe\ninitialPrompt: /login\n---\nbody\n",
+        )
+        for where in ("user", "project", "nested"):
+            for text in forms:
+                with self.subTest(where=where, text=text):
+                    self.assert_refused(
+                        {"name": "t", "agent_files": [agent_file(where, "p.md", text)]},
+                        mention="frontmatter sets")
+
+    def test_agent_files_two_items_for_the_same_file(self):
+        same = [agent_file("user", "a.md"), agent_file("user", "a.md", "other")]
+        self.assert_refused({"name": "t", "agent_files": same}, mention="same file")
+        deep = [agent_file("nested", "d/a.md"), agent_file("nested", "d/a.md", "other")]
+        self.assert_refused({"name": "t", "agent_files": deep}, mention="same file")
+        # Case-insensitive disks make these one file.
+        cased = [agent_file("project", "a.md"), agent_file("project", "A.md")]
+        self.assert_refused({"name": "t", "agent_files": cased}, mention="same file")
+
+    def test_agent_files_file_that_is_also_a_folder(self):
+        clash = [agent_file("user", "d.md"), agent_file("user", "d.md/a.md")]
+        self.assert_refused({"name": "t", "agent_files": clash}, mention="same file")
+        self.assert_refused({"name": "t", "agent_files": list(reversed(clash))}, mention="same file")
+
+    def test_agent_files_file_that_collides_with_the_agents_map(self):
+        self.assert_refused({"name": "t", "agents": {"probe": "x"},
+                             "agent_files": [agent_file("user", "probe.md")]}, mention="same file")
+
+
+class FrontmatterGuard(GuardTestBase):
+    """The frontmatter allowlist: forms that hid hooks or mcpServers from the old key scan."""
+
+    def refused_both_ways(self, text, mention=None):
+        runcase = load_runcase()
+        cases = (
+            {"name": "t", "agents": {"probe": text}},
+            {"name": "t", "agent_files": [agent_file("user", "p.md", text)]},
+        )
+        for case in cases:
+            with self.subTest(channel=sorted(set(case) - {"name"})[0], text=text):
+                err = io.StringIO()
+                with contextlib.redirect_stderr(err), self.assertRaises(SystemExit) as ctx:
+                    runcase.check_case(case)
+                self.assertEqual(ctx.exception.code, 2)
+                self.assertIn("runcase refused", err.getvalue())
+                if mention:
+                    self.assertIn(mention, err.getvalue())
+
+    def test_complex_key_question_mark(self):
+        self.refused_both_ways("---\nname: probe\n? hooks\n: {}\n---\nbody\n")
+
+    def test_escaped_double_quoted_hooks_key(self):
+        self.refused_both_ways('---\nname: probe\n"ho\\x6fks": {}\n---\nbody\n')
+
+    def test_escaped_double_quoted_mcp_servers_key(self):
+        self.refused_both_ways('---\nname: probe\n"mcp\\x53ervers": {}\n---\nbody\n')
+
+    def test_tagged_key(self):
+        self.refused_both_ways("---\nname: probe\n!!str hooks: {}\n---\nbody\n")
+
+    def test_anchored_key(self):
+        self.refused_both_ways("---\nname: probe\n&a hooks: {}\n---\nbody\n")
+
+    def test_double_quoted_key_split_over_two_lines(self):
+        self.refused_both_ways('---\nname: probe\n"hoo\nks": {}\n---\nbody\n')
+
+    def test_flow_map_broken_across_lines(self):
+        self.refused_both_ways('---\nname: probe\nx: {"a": 1\n, "hooks"\n: {}}\n---\nbody\n')
+
+    def test_indented_flow_map_broken_across_lines(self):
+        self.refused_both_ways('---\nname: probe\nx:\n  {"a": 1\n  , "hooks"\n  : {}}\n---\nbody\n')
+
+    def test_flow_map_with_escaped_key_on_one_line(self):
+        self.refused_both_ways('---\nname: probe\nx: {"ho\\x6fks": {}}\n---\nbody\n')
+
+    def test_key_line_inside_an_unclosed_flow_list(self):
+        self.refused_both_ways("---\nname: probe\ntools: [Read\nmodel: haiku\n---\nbody\n",
+                               mention="unclosed flow list")
+
+    def test_indented_line_before_the_first_key(self):
+        self.refused_both_ways("---\n  hooks_x: 1\n  name: probe\n---\nbody\n",
+                               mention="before the first key")
+
+    def test_indented_complex_key(self):
+        self.refused_both_ways("---\nname: probe\nx:\n  ? hooks\n  : {}\n---\nbody\n")
+
+    def test_top_level_line_starts_with_a_quote_or_bracket_or_star(self):
+        for first in ("'hooks': {}", "[hooks]", "*a", ", hooks", ": x", "- hooks", "key : v",
+                      "kéy: v", " hooks: {}", "hooks"):
+            self.refused_both_ways("---\nname: probe\n%s\n---\nbody\n" % first)
+
+    def test_fake_early_fence_with_u2028(self):
+        self.refused_both_ways("---\nname: probe\n ---\nhooks: {}\n---\nbody\n", mention="U+2028")
+
+    def test_fake_early_fence_with_u0085(self):
+        self.refused_both_ways("---\nname: probe\n\x85---\nhooks: {}\n---\nbody\n", mention="U+0085")
+
+    def test_other_line_breaks_and_controls_in_frontmatter_or_body(self):
+        for bad in ("\r", " ", "\v", "\f", "\x00", "\x1c", "\x7f"):
+            for text in ("---\nname: probe%s\n---\nbody\n" % bad, "---\nname: probe\n---\nbo%sdy\n" % bad):
+                self.refused_both_ways(text, mention="U+%04X" % ord(bad))
+
+    def test_crlf_text(self):
+        self.refused_both_ways("---\r\nname: probe\r\nhooks: {}\r\n---\r\nbody\r\n", mention="U+000D")
+
+    def test_fence_that_is_not_exactly_three_dashes(self):
+        self.refused_both_ways("\n---\nname: probe\n---\nbody\n", mention="fence")
+        self.refused_both_ways("--- \nname: probe\n---\nbody\n", mention="fence")
+        self.refused_both_ways("---\nname: probe\n--- \nhooks: x\n---\nbody\n")
+        self.refused_both_ways("---\nname: probe\nmodel: x\n----\nbody\n")
+
+    def test_unclosed_file_still_refuses_forbidden_keys_and_fake_fences(self):
+        self.refused_both_ways("---\nname: probe\nhooks: {}\nbody\n", mention="frontmatter sets")
+        self.refused_both_ways("---\nname: probe\n--- \nbody\n", mention="closing fence")
+
+    def test_plain_shapes_pass(self):
+        runcase = load_runcase()
+        text = ("﻿---\n# a comment\n\nname: probe\ndescription: probe agent: one\n"
+                "tools: [Read, 'Grep']\nskills:\n  - a\n  - \"b\"\nexperimental:\n  cacheTtl: 1h\n"
+                "empty:\n\tindented with a tab\n---\nbody { with } braces \\ and a backslash\n")
+        runcase.check_case({"name": "t", "agents": {"probe": text},
+                            "agent_files": [agent_file("project", "p.md", text)]})
+        runcase.check_case({"name": "t", "agents": {"probe": "no frontmatter at all\n"}})
+        runcase.check_case({"name": "t", "agents": {"probe": "---\nname: x\ntools: [a\n"}})
+
 
 class InProcessChecks(GuardTestBase):
     def test_every_case_file_passes_check_case(self):
@@ -360,11 +587,25 @@ class AllowedCase(GuardTestBase):
         self.assertEqual(env["CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC"], "1")
         self.assertEqual(env["CLAUDE_CODE_DISABLE_OFFICIAL_MARKETPLACE_AUTOINSTALL"], "1")
         self.assertEqual(env["DISABLE_AUTOUPDATER"], "1")
+        self.assertEqual(env["GIT_CONFIG_NOSYSTEM"], "1")
+        self.assertEqual(env["GIT_CONFIG_GLOBAL"], "/dev/null")
         self.assertTrue(env["ANTHROPIC_BASE_URL"].startswith("http://127.0.0.1:"),
                         env["ANTHROPIC_BASE_URL"])
         self.assertEqual(env["ANTHROPIC_API_KEY"], "sk-ant-fake-000")
         self.assertTrue(env["HOME"].startswith(self.scratch))
         self.assertTrue(env["CLAUDE_CONFIG_DIR"].startswith(self.scratch))
+
+    def test_case_env_cannot_replace_the_git_config_values(self):
+        # GIT_CONFIG_* are not on the env allowlist, so a case cannot set them, and a
+        # caller value for them never reaches Claude Code.
+        self.assert_refused({"name": "t", "env": {"GIT_CONFIG_GLOBAL": "/etc/gitconfig"}})
+        r = self.run_case({"name": "ok"}, {"GIT_CONFIG_GLOBAL": "/etc/gitconfig",
+                                           "GIT_CONFIG_NOSYSTEM": "0"})
+        self.assertEqual(r.returncode, 0, "stdout=%r stderr=%r" % (r.stdout, r.stderr))
+        with open(self.marker) as fh:
+            env = json.load(fh)
+        self.assertEqual(env["GIT_CONFIG_NOSYSTEM"], "1")
+        self.assertEqual(env["GIT_CONFIG_GLOBAL"], "/dev/null")
 
     def test_effort_status_prompt_with_text_reply(self):
         r = self.run_case({"name": "ok", "prompt": "/effort status", "text_reply": True})
@@ -389,6 +630,147 @@ class AllowedCase(GuardTestBase):
         with open(self.argv_marker) as fh:
             argv = json.load(fh)
         self.assertEqual(argv[argv.index("-p") + 1], "say hi")
+
+
+class NewFields(GuardTestBase):
+    def test_init_agents_keeps_strings_cut_to_100(self):
+        runcase = load_runcase()
+        self.assertEqual(runcase.init_agents({"agents": ["a", 5, None, "x" * 150, ["b"], {"c": 1},
+                                                          True, "b"]}),
+                         ["a", "x" * 100, "b"])
+        self.assertEqual(runcase.init_agents({"agents": []}), [])
+
+    def test_init_agents_is_none_without_a_list(self):
+        runcase = load_runcase()
+        for init in (None, {}, {"agents": None}, {"agents": "a"}, {"agents": {"a": 1}},
+                     {"agents": 5}, "init", []):
+            with self.subTest(init=init):
+                self.assertIsNone(runcase.init_agents(init))
+
+    def test_autocompact_prompt_is_accepted(self):
+        runcase = load_runcase()
+        runcase.check_case({"name": "t", "prompt": "/autocompact"})
+        r = self.run_case({"name": "ok", "prompt": "/autocompact"})
+        self.assertEqual(r.returncode, 0, "stdout=%r stderr=%r" % (r.stdout, r.stderr))
+        with open(self.argv_marker) as fh:
+            argv = json.load(fh)
+        self.assertEqual(argv[argv.index("-p") + 1], "/autocompact")
+
+    def test_init_agents_is_null_without_an_init_row(self):
+        r = self.run_case({"name": "ok"})
+        self.assertEqual(r.returncode, 0, "stdout=%r stderr=%r" % (r.stdout, r.stderr))
+        self.assertIn("init_agents", json.loads(r.stdout))
+        self.assertIsNone(json.loads(r.stdout)["init_agents"])
+
+    def tree_claude(self):
+        self.tree_marker = os.path.join(self.tmp, "tree.json")
+        fake = os.path.join(self.bin, "claude")
+        with open(fake, "w") as fh:
+            fh.write(TREE_CLAUDE % self.tree_marker)
+
+    def read_tree(self):
+        with open(self.tree_marker) as fh:
+            return json.load(fh)
+
+    def test_agent_files_are_written_where_they_say(self):
+        self.tree_claude()
+        r = self.run_case({
+            "name": "ok",
+            "agents": {"old": "legacy"},
+            "agent_files": [
+                agent_file("user", "u.md", "user text"),
+                agent_file("user", "u2.md.bak", "bak text"),
+                agent_file("project", "p.md", "project text"),
+                agent_file("project", "sub-d/p2.md", "project deep"),
+                agent_file("nested", "n.md", "nested text"),
+                agent_file("nested", "d.1/n_2-x.md.bak", "nested deep"),
+            ]})
+        self.assertEqual(r.returncode, 0, "stdout=%r stderr=%r" % (r.stdout, r.stderr))
+        out = json.loads(r.stdout)
+        self.assertEqual(out["init_agents"], ["general-purpose", "x" * 100])
+        tree = self.read_tree()
+        self.assertEqual(tree["cwd"], "project")
+        files = tree["tree"]
+        expected = {
+            "config/agents/old.md": "legacy",
+            "config/agents/u.md": "user text",
+            "config/agents/u2.md.bak": "bak text",
+            "project/.claude/agents/p.md": "project text",
+            "project/.claude/agents/sub-d/p2.md": "project deep",
+            "project/sub/.claude/agents/n.md": "nested text",
+            "project/sub/.claude/agents/d.1/n_2-x.md.bak": "nested deep",
+        }
+        for path, text in expected.items():
+            self.assertEqual(files.get(path), text, path)
+        self.assertEqual(sorted(k for k in files if "agents" in k), sorted(expected))
+
+    def test_cwd_nested_runs_claude_in_the_sub_folder(self):
+        self.tree_claude()
+        r = self.run_case({"name": "ok", "cwd": "nested"})
+        self.assertEqual(r.returncode, 0, "stdout=%r stderr=%r" % (r.stdout, r.stderr))
+        self.assertEqual(self.read_tree()["cwd"], os.path.join("project", "sub"))
+
+    def test_cwd_project_is_the_default_and_can_be_named(self):
+        self.tree_claude()
+        for case in ({"name": "ok"}, {"name": "ok", "cwd": "project"}):
+            with self.subTest(case=case):
+                r = self.run_case(case)
+                self.assertEqual(r.returncode, 0, "stdout=%r stderr=%r" % (r.stdout, r.stderr))
+                self.assertEqual(self.read_tree()["cwd"], "project")
+
+    def fake_git(self, code):
+        self.git_marker = os.path.join(self.tmp, "git.json")
+        fake = os.path.join(self.bin, "git")
+        with open(fake, "w") as fh:
+            fh.write(FAKE_GIT % (self.git_marker, code))
+        os.chmod(fake, os.stat(fake).st_mode | stat.S_IXUSR)
+
+    def test_git_init_runs_in_the_project_with_a_closed_environment(self):
+        self.fake_git(0)
+        r = self.run_case({"name": "ok", "git_init": True,
+                           "env": {"ANTHROPIC_MODEL": "claude-haiku-5-5"}},
+                          {"GIT_DIR": "/leak", "GIT_AUTHOR_NAME": "leak", "HTTPS_PROXY": "http://leak"})
+        self.assertEqual(r.returncode, 0, "stdout=%r stderr=%r" % (r.stdout, r.stderr))
+        with open(self.git_marker) as fh:
+            seen = json.load(fh)
+        self.assertEqual(seen["argv"], ["init", "-q"])
+        self.assertTrue(seen["cwd"].endswith("/project"), seen["cwd"])
+        with open(self.marker) as fh:
+            claude_env = json.load(fh)
+        self.assertEqual(seen["env"]["HOME"], claude_env["HOME"])
+        self.assertEqual(seen["env"]["GIT_CONFIG_NOSYSTEM"], "1")
+        self.assertEqual(seen["env"]["GIT_CONFIG_GLOBAL"], "/dev/null")
+        extra = set(seen["env"]) - {"PATH", "TMPDIR", "LANG", "HOME", "GIT_CONFIG_NOSYSTEM",
+                                    "GIT_CONFIG_GLOBAL"} - SYSTEM_ADDED
+        self.assertEqual(extra, set())
+
+    def test_git_init_false_or_missing_does_not_run_git(self):
+        self.fake_git(0)
+        for case in ({"name": "ok"}, {"name": "ok", "git_init": False}):
+            with self.subTest(case=case):
+                r = self.run_case(case)
+                self.assertEqual(r.returncode, 0, "stdout=%r stderr=%r" % (r.stdout, r.stderr))
+                self.assertFalse(os.path.exists(self.git_marker))
+
+    def test_git_init_failure_removes_the_root_and_exits_non_zero(self):
+        self.fake_git(3)
+        r = self.run_case({"name": "ok", "git_init": True})
+        self.assertEqual(r.returncode, 1, "stdout=%r stderr=%r" % (r.stdout, r.stderr))
+        self.assertIn("git init", r.stderr)
+        self.assertFalse(os.path.exists(self.marker), "claude started")
+        self.assertEqual(os.listdir(self.scratch), [], "throwaway root left behind")
+
+    def test_git_init_with_no_git_removes_the_root_and_exits_non_zero(self):
+        # PATH holds only the fake claude folder, so there is no git to find.
+        path = os.path.join(self.tmp, "case.json")
+        with open(path, "w") as fh:
+            json.dump({"name": "ok", "git_init": True}, fh)
+        env = {"PATH": self.bin, "TMPDIR": self.scratch, "LANG": "en_US.UTF-8"}
+        r = subprocess.run([PYTHON, RUNCASE, path, str(free_port())], env=env,
+                           capture_output=True, text=True, timeout=60, stdin=subprocess.DEVNULL)
+        self.assertEqual(r.returncode, 1, "stdout=%r stderr=%r" % (r.stdout, r.stderr))
+        self.assertFalse(os.path.exists(self.marker), "claude started")
+        self.assertEqual(os.listdir(self.scratch), [], "throwaway root left behind")
 
 
 if __name__ == "__main__":

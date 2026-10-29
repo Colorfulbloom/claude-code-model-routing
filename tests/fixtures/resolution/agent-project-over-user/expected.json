@@ -1,0 +1,29 @@
+{
+  "fixture": "agent-project-over-user",
+  "rule_ids": [
+    "agent-file-project-over-user"
+  ],
+  "confidence": "tested",
+  "source": "dashboard/experiments/2026-10-29-agent-files.json#n1",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "agentFile",
+      "value": null,
+      "status": "in_effect",
+      "layer": "project",
+      "file": "project/.claude/agents/probe.md",
+      "scope": "agent",
+      "agent": "probe"
+    },
+    {
+      "key": "agentFile",
+      "value": null,
+      "status": "overridden",
+      "layer": "user",
+      "file": "config/agents/probe.md",
+      "scope": "agent",
+      "agent": "probe"
+    }
+  ]
+}

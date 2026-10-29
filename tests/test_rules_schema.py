@@ -5,6 +5,7 @@ never touch the real ~/.claude.
 """
 import contextlib
 import copy
+import glob
 import io
 import json
 import os
@@ -176,6 +177,87 @@ class RealRulesFileTest(unittest.TestCase):
             self.assertNotIn("ultracode", cond.get("values", []))
         self.assertIn("ultracode", rule["reason"])
         self.assertIn("wasn't tested on 2.1.302", rule["reason"])
+
+    def real_rules(self):
+        with open(rules_schema.RULES_PATH, encoding="utf-8") as fh:
+            return {r["rule_id"]: r for r in json.load(fh)["rules"]}
+
+    def test_agent_file_order_is_split_into_a_tested_and_a_documented_rule(self):
+        rules = self.real_rules()
+        tested = rules["agent-file-project-over-user"]
+        self.assertEqual(tested["confidence"], "tested")
+        self.assertEqual(tested["layer_order"], ["project", "user"])
+        self.assertEqual(sorted(c["layer"] for c in tested["conditions"]), ["project", "user"])
+        self.assertTrue(tested["experiment"].endswith("2026-10-29-agent-files.json"))
+        documented = rules["agent-file-location-order"]
+        self.assertEqual(documented["confidence"], "documented")
+        self.assertEqual(documented["layer_order"],
+                         ["managed", "flag", "project", "user", "plugin"])
+        self.assertIsNone(documented["experiment"])
+        self.assertEqual(len(documented["quotes"]), 1)
+        self.assertIn("higher-priority location", documented["quotes"][0]["quote"])
+        self.assertEqual(rules_schema.check_rule(documented), [])
+
+    def test_fixture_rule_ids_are_real_rules(self):
+        rules = self.real_rules()
+        paths = glob.glob(os.path.join(helpers.REPO, "tests", "fixtures", "resolution",
+                                       "*", "expected.json"))
+        self.assertTrue(paths)
+        for path in paths:
+            with open(path, encoding="utf-8") as fh:
+                expected = json.load(fh)
+            for rule_id in expected["rule_ids"]:
+                with self.subTest(fixture=expected["fixture"], rule=rule_id):
+                    self.assertIn(rule_id, rules)
+
+    def test_force_5m_fixture_agrees_with_the_env_condition_of_its_rules(self):
+        rules = self.real_rules()
+        path = os.path.join(helpers.REPO, "tests", "fixtures", "resolution",
+                            "prompt-cache-force-5m-over-everything", "expected.json")
+        with open(path, encoding="utf-8") as fh:
+            expected = json.load(fh)
+        self.assertIn("note", expected)
+        seen = 0
+        for entry in expected["expect"]:
+            if entry["layer"] != "env":
+                continue
+            rule = next(r for r in (rules[i] for i in expected["rule_ids"])
+                        if r["key"] == entry["key"])
+            cond = next(c for c in rule["conditions"] if c["layer"] == "env")
+            with self.subTest(via=entry["via"]):
+                self.assertEqual(entry["status"], cond["status"])
+            seen += 1
+        # Only the FORCE_PROMPT_CACHING_5M entries; the overridden TTL
+        # variables come back once a condition can name a variable (#5).
+        self.assertEqual(seen, 2)
+
+    def test_reader_rejected_but_loads_shows_unknown_and_parse_error_stays_invalid(self):
+        rules = self.real_rules()
+        rule = rules["agent-file-reader-rejected"]
+        self.assertEqual(rules_schema.check_rule(rule), [])
+        self.assertEqual(rule["key"], "agentFile")
+        conds = rule["conditions"]
+        self.assertEqual(sorted(c["layer"] for c in conds), ["project", "user"])
+        for cond in conds:
+            self.assertEqual(cond["when"], "reader_rejected_but_loads")
+            self.assertEqual(cond["status"], "unknown")
+        self.assertIn("{file}", rule["reason"])
+        self.assertIn("loads in Claude Code", rule["reason"])
+        self.assertIn("can't read its frontmatter safely", rule["reason"])
+        # The narrow case comes before the rule that says the file does not load.
+        order = list(rules)
+        self.assertLess(order.index("agent-file-reader-rejected"), order.index("agent-file-skipped"))
+        for cond in rules["agent-file-skipped"]["conditions"]:
+            if cond["when"] == "parse_error":
+                self.assertEqual(cond["status"], "invalid")
+            self.assertNotEqual(cond["when"], "reader_rejected_but_loads")
+
+    def test_auto_compact_window_reason_says_only_what_was_observed(self):
+        reason = self.real_rules()["auto-compact-window-values"]["reason"]
+        self.assertIn("On 2.1.302, 200k ran at 100000, and the k suffix needs v2.1.304.", reason)
+        self.assertNotIn("200 tokens", reason)
+        self.assertIn("{file}", reason)
+        self.assertIn("{value}", reason)
 
     def test_cli_reports_ok(self):
         out = io.StringIO()
@@ -467,6 +549,135 @@ class ReasonTemplateTest(TempDirMixin, unittest.TestCase):
                     "Ignored in {file:>9}."):
             with self.subTest(reason=bad):
                 self.assertRejected(self.rule(reason=bad), "reason template")
+
+
+class PluginLayerAndAllCombineTest(TempDirMixin, unittest.TestCase):
+    def test_plugin_layer_is_accepted_in_layer_order(self):
+        rule = self.rule(layer_order=["project", "user", "plugin"],
+                         conditions=[{"layer": "plugin", "models": ["*"], "status": "in_effect"}])
+        self.assertEqual(self.errors(rule), [])
+
+    def test_plugin_is_a_known_layer(self):
+        self.assertIn("plugin", rules_schema.LAYERS)
+
+    def test_combine_all_is_accepted(self):
+        self.assertEqual(self.errors(self.rule(combine="all")), [])
+
+    def test_combine_all_with_value_order_fails(self):
+        rule = self.rule(combine="all", value_order=["low", "high"])
+        self.assertRejected(rule, "value_order is only for combine lowest_value")
+
+
+class PlansConditionTest(TempDirMixin, unittest.TestCase):
+    def cond(self, **fields):
+        base = {"layer": "user", "models": ["*"], "status": "unknown"}
+        base.update(fields)
+        return self.rule(conditions=[base])
+
+    def test_valid_plans_pass(self):
+        for plans in (["subscription"], ["api_key", "cloud_provider"], list(rules_schema.PLANS)):
+            with self.subTest(plans=plans):
+                self.assertEqual(self.errors(self.cond(plans=plans)), [])
+
+    def test_plans_must_be_a_non_empty_list(self):
+        for bad in ("subscription", None, 5, {"a": 1}, []):
+            with self.subTest(plans=bad):
+                self.assertRejected(self.cond(plans=bad), "plans must be a non-empty list")
+
+    def test_unknown_plan_fails(self):
+        for bad in ("free", "", 5, None):
+            with self.subTest(plan=bad):
+                self.assertRejected(self.cond(plans=["subscription", bad]), "unknown plan")
+
+    def test_repeated_plan_fails(self):
+        self.assertRejected(self.cond(plans=["api_key", "api_key"]), "plans repeat a plan")
+
+
+class WhenConditionTest(TempDirMixin, unittest.TestCase):
+    def cond(self, **fields):
+        base = {"layer": "user", "models": ["*"], "status": "ignored"}
+        base.update(fields)
+        return self.rule(conditions=[base])
+
+    def test_every_when_case_passes(self):
+        for case in rules_schema.WHEN_CASES:
+            with self.subTest(when=case):
+                status = "unknown" if case == "reader_rejected_but_loads" else "ignored"
+                self.assertEqual(self.errors(self.cond(when=case, status=status)), [])
+
+    def test_unknown_when_fails(self):
+        for bad in ("other", "", "NOT_MD_FILE"):
+            with self.subTest(when=bad):
+                self.assertRejected(self.cond(when=bad), "when must be one of")
+
+    def test_non_string_when_fails(self):
+        for bad in (5, None, ["not_md_file"], {"a": 1}, True):
+            with self.subTest(when=bad):
+                self.assertRejected(self.cond(when=bad), "when must be one of")
+
+    def test_reader_rejected_but_loads_is_a_when_case(self):
+        self.assertIn("reader_rejected_but_loads", rules_schema.WHEN_CASES)
+
+    def test_reader_rejected_but_loads_needs_status_unknown(self):
+        self.assertEqual(self.errors(self.cond(when="reader_rejected_but_loads",
+                                               status="unknown")), [])
+        for status in ("ignored", "invalid", "in_effect", "overridden"):
+            with self.subTest(status=status):
+                self.assertRejected(self.cond(when="reader_rejected_but_loads", status=status),
+                                    "when reader_rejected_but_loads needs status unknown")
+
+    def test_file_key_rule_with_when_passes(self):
+        rule = self.cond(when="not_md_file")
+        rule["key"] = "agentFile"
+        rule["reason"] = "{file} doesn't load as an agent."
+        self.assertEqual(self.errors(rule), [])
+
+
+class DefaultValueConditionTest(TempDirMixin, unittest.TestCase):
+    def cond(self, status="default", **fields):
+        base = {"layer": "user", "models": ["*"], "status": status}
+        base.update(fields)
+        return self.rule(conditions=[base])
+
+    def test_default_value_on_a_default_status_passes(self):
+        rule = self.cond(default_value="5m")
+        rule["key"] = "promptCacheTtl"
+        self.assertEqual(self.errors(rule), [])
+
+    def test_default_value_on_another_status_fails(self):
+        rule = self.cond(status="in_effect", default_value="5m")
+        rule["key"] = "promptCacheTtl"
+        self.assertRejected(rule, "default_value is only for a default status")
+
+    def test_empty_default_value_fails(self):
+        for bad in ("", " ", 5, None, ["5m"]):
+            with self.subTest(default_value=bad):
+                rule = self.cond(default_value=bad)
+                rule["key"] = "promptCacheTtl"
+                self.assertRejected(rule, "default_value must be a non-empty string")
+
+    def test_effort_key_default_value_must_be_a_known_level(self):
+        self.assertRejected(self.cond(default_value="ultra"), "default_value 'ultra' is not one of")
+        for good in rules_schema.EFFORT_LEVELS:
+            with self.subTest(default_value=good):
+                self.assertEqual(self.errors(self.cond(default_value=good)), [])
+
+    def test_default_value_must_be_in_the_rules_value_order(self):
+        rule = self.cond(default_value="xhigh")
+        rule.update(combine="lowest_value", value_order=["low", "medium", "high"])
+        self.assertRejected(rule, "default_value 'xhigh' is not one of low, medium, high")
+        rule["conditions"][0]["default_value"] = "medium"
+        self.assertEqual(self.errors(rule), [])
+
+
+class OtherFileSlotTest(TempDirMixin, unittest.TestCase):
+    def test_other_file_slot_passes(self):
+        rule = self.rule(reason="{file} and {other_file} both name {agent}.")
+        self.assertEqual(self.errors(rule), [])
+
+    def test_unknown_slot_still_fails_beside_other_file(self):
+        rule = self.rule(reason="{other_file} and {third_file}.")
+        self.assertRejected(rule, "unknown slot {third_file}")
 
 
 class ModelCatalogTest(TempDirMixin, unittest.TestCase):

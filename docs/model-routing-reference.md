@@ -89,7 +89,11 @@ On Claude Code 2.1.302 (native install) the `haiku` alias resolved to Haiku 5.5 
 - targets an agent not found in the project's `.claude/agents/` or the user agents folder (`$CLAUDE_CONFIG_DIR/agents/` when that variable is set, else `~/.claude/agents/`), or
 - targets an agent whose `model` is missing or `inherit`.
 
-It blocks `general-purpose` always, and any found agent without a pinned `effort`, even when a model is passed, because an agent without `effort` runs at the session's effort (observed; the docs do not say).
+It blocks `general-purpose` always, and any found agent without a pinned `effort`, even when a model is passed.
+
+An agent without `effort` resolves effort for its own model, not the main session's. `CLAUDE_CODE_EFFORT_LEVEL`, `--effort` and any settings level that counts for its model still reach it. A level that counts only for the main model doesn't, so the agent can run at its own model's default instead. One example is a `modelSettings` entry for the main model.
+
+With nothing set, a Sonnet 5.5 session ran at medium and its agent on Fable 5.1 ran at high. The harness tested this on Claude Code 2.1.302 on October 29 (`dashboard/experiments/2026-10-29-agent-effort.json`), and the docs do not say.
 
 It lets through: plugin agents (names containing `:`), a dispatch with no agent name, any input it cannot parse, and any other dispatch that passes a `model` or targets an agent with a pinned model, provided the agent file, when one is found, also pins an `effort`.
 

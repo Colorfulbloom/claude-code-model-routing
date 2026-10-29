@@ -1,0 +1,263 @@
+{
+ "date": "2026-10-29",
+ "claude_version": "2.1.302",
+ "ran": "13 cases on the prompt cache lifetime, each with one Agent dispatch to a probe agent on Haiku 5.5: experimental.cacheTtl alone (k1), against subagentPromptCacheTtl (k2), CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL (k4) and ENABLE_PROMPT_CACHING_1H (k5); FORCE_PROMPT_CACHING_5M against every other control (k3); values other than 5m and 1h in the frontmatter (k6), the variables (k7, k13) and the settings (k8, k9 with 1H); ENABLE_PROMPT_CACHING_1H alone (k10); cacheTtl at the top level of the frontmatter (k11); nothing set (k12).",
+ "result": "k1 sent 1h on the subagent request. A setting (k2) and the subagent variable (k4) at 5m beat the frontmatter 1h. FORCE_PROMPT_CACHING_5M sent five minutes on both requests (k3). The frontmatter 5m beat ENABLE_PROMPT_CACHING_1H (k5). 2h, 1d, 60m and 1H were ignored and the next control applied (k6, k7, k8, k9, k13), so values are case sensitive. ENABLE_PROMPT_CACHING_1H gave both requests 1h (k10). A top-level cacheTtl was not read (k11). With nothing set, both requests used five minutes on the fake API key (k12). This is the requested TTL from the request body, not the TTL the API granted: the owner accepted it on October 29 in place of the usage.cache_creation check, which needs a real account. A 5m result can't be told from the default, because the 5 minute lifetime sends no ttl field.",
+ "method": "dashboard/experiments/harness: claude -p in a throwaway HOME, CLAUDE_CONFIG_DIR and project under $TMPDIR, a fake key and ANTHROPIC_BASE_URL on 127.0.0.1. fakeapi.py logs the model, output_config.effort and cache_control ttl of each request and answers 400; for agent cases it first streams one Agent tool call. The harness only allows requests to fakeapi.py on 127.0.0.1. Managed settings were not tested, because writing them needs admin rights.",
+ "results_file": "harness/results-step2-cache.jsonl",
+ "cases": {
+  "k1": [
+   [
+    "main",
+    "claude-opus-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ],
+   [
+    "subagent",
+    "claude-haiku-5-5",
+    "medium",
+    [
+     "1h"
+    ]
+   ]
+  ],
+  "k2": [
+   [
+    "main",
+    "claude-opus-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ],
+   [
+    "subagent",
+    "claude-haiku-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "k3": [
+   [
+    "main",
+    "claude-opus-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ],
+   [
+    "subagent",
+    "claude-haiku-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "k4": [
+   [
+    "main",
+    "claude-opus-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ],
+   [
+    "subagent",
+    "claude-haiku-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "k5": [
+   [
+    "main",
+    "claude-opus-5-5",
+    "medium",
+    [
+     "1h"
+    ]
+   ],
+   [
+    "subagent",
+    "claude-haiku-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "k6": [
+   [
+    "main",
+    "claude-opus-5-5",
+    "medium",
+    [
+     "1h"
+    ]
+   ],
+   [
+    "subagent",
+    "claude-haiku-5-5",
+    "medium",
+    [
+     "1h"
+    ]
+   ]
+  ],
+  "k7": [
+   [
+    "main",
+    "claude-opus-5-5",
+    "medium",
+    [
+     "1h"
+    ]
+   ],
+   [
+    "subagent",
+    "claude-haiku-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "k8": [
+   [
+    "main",
+    "claude-opus-5-5",
+    "medium",
+    [
+     "1h"
+    ]
+   ],
+   [
+    "subagent",
+    "claude-haiku-5-5",
+    "medium",
+    [
+     "1h"
+    ]
+   ]
+  ],
+  "k9": [
+   [
+    "main",
+    "claude-opus-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ],
+   [
+    "subagent",
+    "claude-haiku-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "k10": [
+   [
+    "main",
+    "claude-opus-5-5",
+    "medium",
+    [
+     "1h"
+    ]
+   ],
+   [
+    "subagent",
+    "claude-haiku-5-5",
+    "medium",
+    [
+     "1h"
+    ]
+   ]
+  ],
+  "k11": [
+   [
+    "main",
+    "claude-opus-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ],
+   [
+    "subagent",
+    "claude-haiku-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "k12": [
+   [
+    "main",
+    "claude-opus-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ],
+   [
+    "subagent",
+    "claude-haiku-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "k13": [
+   [
+    "main",
+    "claude-opus-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ],
+   [
+    "subagent",
+    "claude-haiku-5-5",
+    "medium",
+    [
+     "1h"
+    ]
+   ]
+  ]
+ },
+ "case_files": {
+  "k1": "harness/cases-cache-ttl-sources.json",
+  "k2": "harness/cases-cache-ttl-sources.json",
+  "k3": "harness/cases-cache-ttl-sources.json",
+  "k4": "harness/cases-cache-ttl-sources.json",
+  "k5": "harness/cases-cache-ttl-sources.json",
+  "k6": "harness/cases-cache-ttl-sources.json",
+  "k7": "harness/cases-cache-ttl-sources.json",
+  "k8": "harness/cases-cache-ttl-sources.json",
+  "k9": "harness/cases-cache-ttl-sources.json",
+  "k10": "harness/cases-cache-ttl-sources.json",
+  "k11": "harness/cases-cache-ttl-sources.json",
+  "k12": "harness/cases-cache-ttl-sources.json",
+  "k13": "harness/cases-cache-ttl-sources.json"
+ },
+ "also_see": [
+  "2026-10-29-prompt-cache-ttl-order.json (file order, main)",
+  "2026-10-29-subagent-prompt-cache-ttl-order.json (file order, subagent)"
+ ]
+}

@@ -1,0 +1,95 @@
+{
+ "date": "2026-10-29",
+ "claude_version": "2.1.302",
+ "ran": "11 cases on agent files, read from the init row's agents list and, with a dispatch, from the model the subagent request used: unknown fields, no name, no description, a name that differs from the file name, bad values and no closing --- (f1); frontmatter that does not parse cleanly (f2); a user and a project file with one name (n1, n8); two files with one name in one tree (n2 to n4); a .md.bak copy, a .md.bak file alone and a subfolder (n5); nested project folders with and without git, and a parent folder only (n6, n7, n9).",
+ "result": "Unknown fields and bad values still loaded (f1), and a file loaded under its name field, not its file name. No name, no description and no closing --- did not load. A tab indent, an unterminated quote and a bad list indent did not load (f2), but an unclosed [ and a value with a second colon did, and a repeated name loaded with the last value. The project file beat the user file, also from a project subfolder (n1, n8). Of two same-name files in one tree, the one in folder a won both ways round (n2, n3), and a subfolder file beat the top-level one (n4), so the order is filesystem read order. A .md.bak copy did not load, alone or beside the .md file, and a subfolder file did (n5). With the working directory in project/sub, the closest .claude/agents won with and without git (n6, n7), and the parent's file loaded when sub had none (n9).",
+ "method": "dashboard/experiments/harness: claude -p in a throwaway HOME, CLAUDE_CONFIG_DIR and project under $TMPDIR, a fake key and ANTHROPIC_BASE_URL on 127.0.0.1. fakeapi.py logs the model, output_config.effort and cache_control ttl of each request and answers 400; for agent cases it first streams one Agent tool call. The harness only allows requests to fakeapi.py on 127.0.0.1. Managed settings were not tested, because writing them needs admin rights.",
+ "results_file": "harness/results-step2-agents.jsonl",
+ "cases": {
+  "f1": {
+   "init_agents": [
+    "badvalues",
+    "renamed",
+    "unknownfield"
+   ],
+   "subagent_model": null
+  },
+  "f2": {
+   "init_agents": [
+    "control",
+    "dupkey2",
+    "flowopen",
+    "twocolons"
+   ],
+   "subagent_model": null
+  },
+  "n1": {
+   "init_agents": [
+    "probe"
+   ],
+   "subagent_model": "claude-sonnet-5-5"
+  },
+  "n2": {
+   "init_agents": [
+    "probe"
+   ],
+   "subagent_model": "claude-haiku-5-5"
+  },
+  "n3": {
+   "init_agents": [
+    "probe"
+   ],
+   "subagent_model": "claude-sonnet-5-5"
+  },
+  "n4": {
+   "init_agents": [
+    "probe"
+   ],
+   "subagent_model": "claude-sonnet-5-5"
+  },
+  "n5": {
+   "init_agents": [
+    "deepx",
+    "probe"
+   ],
+   "subagent_model": "claude-haiku-5-5"
+  },
+  "n6": {
+   "init_agents": [
+    "probe"
+   ],
+   "subagent_model": "claude-sonnet-5-5"
+  },
+  "n7": {
+   "init_agents": [
+    "probe"
+   ],
+   "subagent_model": "claude-sonnet-5-5"
+  },
+  "n8": {
+   "init_agents": [
+    "probe"
+   ],
+   "subagent_model": "claude-sonnet-5-5"
+  },
+  "n9": {
+   "init_agents": [
+    "probe"
+   ],
+   "subagent_model": "claude-sonnet-5-5"
+  }
+ },
+ "case_files": {
+  "f1": "harness/cases-agent-files.json",
+  "f2": "harness/cases-agent-files.json",
+  "n1": "harness/cases-agent-files.json",
+  "n2": "harness/cases-agent-files.json",
+  "n3": "harness/cases-agent-files.json",
+  "n4": "harness/cases-agent-files.json",
+  "n5": "harness/cases-agent-files.json",
+  "n6": "harness/cases-agent-files.json",
+  "n7": "harness/cases-agent-files.json",
+  "n8": "harness/cases-agent-files.json",
+  "n9": "harness/cases-agent-files.json"
+ }
+}

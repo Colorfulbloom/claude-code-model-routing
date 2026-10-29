@@ -1,0 +1,267 @@
+[
+ {
+  "name": "f1-field-checks",
+  "agent_files": [
+   {
+    "where": "user",
+    "path": "unknownfield.md",
+    "text": "---\nname: unknownfield\ndescription: probe agent\nfoo: bar\ncolour: red\n---\nMARKER-SUBAGENT x\n"
+   },
+   {
+    "where": "user",
+    "path": "noname.md",
+    "text": "---\ndescription: probe agent\n---\nMARKER-SUBAGENT x\n"
+   },
+   {
+    "where": "user",
+    "path": "nodesc.md",
+    "text": "---\nname: nodesc\n---\nMARKER-SUBAGENT x\n"
+   },
+   {
+    "where": "user",
+    "path": "filename.md",
+    "text": "---\nname: renamed\ndescription: probe agent\n---\nMARKER-SUBAGENT x\n"
+   },
+   {
+    "where": "user",
+    "path": "badvalues.md",
+    "text": "---\nname: badvalues\ndescription: probe agent\nmaxTurns: abc\nautoCompactWindow: 200k\neffort: extreme\npermissionMode: sometimes\n---\nMARKER-SUBAGENT x\n"
+   },
+   {
+    "where": "user",
+    "path": "nofence.md",
+    "text": "---\nname: nofence\ndescription: probe agent\nMARKER-SUBAGENT x\n"
+   }
+  ]
+ },
+ {
+  "name": "f2-parse-checks",
+  "agent_files": [
+   {
+    "where": "user",
+    "path": "flowopen.md",
+    "text": "---\nname: flowopen\ndescription: [unclosed\n---\nMARKER-SUBAGENT x\n"
+   },
+   {
+    "where": "user",
+    "path": "twocolons.md",
+    "text": "---\nname: twocolons\ndescription: one: two\n---\nMARKER-SUBAGENT x\n"
+   },
+   {
+    "where": "user",
+    "path": "tabindent.md",
+    "text": "---\nname: tabindent\n\tdescription: probe agent\n---\nMARKER-SUBAGENT x\n"
+   },
+   {
+    "where": "user",
+    "path": "dupkey.md",
+    "text": "---\nname: dupkey\nname: dupkey2\ndescription: probe agent\n---\nMARKER-SUBAGENT x\n"
+   },
+   {
+    "where": "user",
+    "path": "badquote.md",
+    "text": "---\nname: badquote\ndescription: \"unterminated\n---\nMARKER-SUBAGENT x\n"
+   },
+   {
+    "where": "user",
+    "path": "badindent.md",
+    "text": "---\nname: badindent\ndescription: probe agent\nskills:\n  - a\n - b\n---\nMARKER-SUBAGENT x\n"
+   },
+   {
+    "where": "user",
+    "path": "control.md",
+    "text": "---\nname: control\ndescription: probe agent\n---\nMARKER-SUBAGENT x\n"
+   }
+  ]
+ },
+ {
+  "name": "n1-project-over-user",
+  "agent_input": {
+   "description": "probe",
+   "prompt": "go",
+   "subagent_type": "probe"
+  },
+  "agent_files": [
+   {
+    "where": "user",
+    "path": "probe.md",
+    "text": "---\nname: probe\ndescription: probe agent\nmodel: claude-haiku-5-5\n---\nMARKER-SUBAGENT you are a probe.\n"
+   },
+   {
+    "where": "project",
+    "path": "probe.md",
+    "text": "---\nname: probe\ndescription: probe agent\nmodel: claude-sonnet-5-5\n---\nMARKER-SUBAGENT you are a probe.\n"
+   }
+  ]
+ },
+ {
+  "name": "n2-same-tree-a-haiku-z-sonnet",
+  "agent_input": {
+   "description": "probe",
+   "prompt": "go",
+   "subagent_type": "probe"
+  },
+  "agent_files": [
+   {
+    "where": "user",
+    "path": "a/probe.md",
+    "text": "---\nname: probe\ndescription: probe agent\nmodel: claude-haiku-5-5\n---\nMARKER-SUBAGENT you are a probe.\n"
+   },
+   {
+    "where": "user",
+    "path": "z/probe.md",
+    "text": "---\nname: probe\ndescription: probe agent\nmodel: claude-sonnet-5-5\n---\nMARKER-SUBAGENT you are a probe.\n"
+   }
+  ]
+ },
+ {
+  "name": "n3-same-tree-a-sonnet-z-haiku",
+  "agent_input": {
+   "description": "probe",
+   "prompt": "go",
+   "subagent_type": "probe"
+  },
+  "agent_files": [
+   {
+    "where": "user",
+    "path": "a/probe.md",
+    "text": "---\nname: probe\ndescription: probe agent\nmodel: claude-sonnet-5-5\n---\nMARKER-SUBAGENT you are a probe.\n"
+   },
+   {
+    "where": "user",
+    "path": "z/probe.md",
+    "text": "---\nname: probe\ndescription: probe agent\nmodel: claude-haiku-5-5\n---\nMARKER-SUBAGENT you are a probe.\n"
+   }
+  ]
+ },
+ {
+  "name": "n4-same-tree-top-haiku-sub-sonnet",
+  "agent_input": {
+   "description": "probe",
+   "prompt": "go",
+   "subagent_type": "probe"
+  },
+  "agent_files": [
+   {
+    "where": "user",
+    "path": "probe.md",
+    "text": "---\nname: probe\ndescription: probe agent\nmodel: claude-haiku-5-5\n---\nMARKER-SUBAGENT you are a probe.\n"
+   },
+   {
+    "where": "user",
+    "path": "sub/probe2.md",
+    "text": "---\nname: probe\ndescription: probe agent\nmodel: claude-sonnet-5-5\n---\nMARKER-SUBAGENT you are a probe.\n"
+   }
+  ]
+ },
+ {
+  "name": "n5-bak-copy-and-subfolder",
+  "agent_input": {
+   "description": "probe",
+   "prompt": "go",
+   "subagent_type": "probe"
+  },
+  "agent_files": [
+   {
+    "where": "user",
+    "path": "probe.md",
+    "text": "---\nname: probe\ndescription: probe agent\nmodel: claude-haiku-5-5\n---\nMARKER-SUBAGENT you are a probe.\n"
+   },
+   {
+    "where": "user",
+    "path": "probe.md.bak",
+    "text": "---\nname: probe\ndescription: probe agent\nmodel: claude-sonnet-5-5\n---\nMARKER-SUBAGENT you are a probe.\n"
+   },
+   {
+    "where": "user",
+    "path": "onlybak.md.bak",
+    "text": "---\nname: onlybak\ndescription: probe agent\nmodel: claude-haiku-5-5\n---\nMARKER-SUBAGENT you are a probe.\n"
+   },
+   {
+    "where": "user",
+    "path": "deep/deepx.md",
+    "text": "---\nname: deepx\ndescription: probe agent\nmodel: claude-haiku-5-5\n---\nMARKER-SUBAGENT you are a probe.\n"
+   }
+  ]
+ },
+ {
+  "name": "n6-nested-with-git",
+  "agent_input": {
+   "description": "probe",
+   "prompt": "go",
+   "subagent_type": "probe"
+  },
+  "git_init": true,
+  "cwd": "nested",
+  "agent_files": [
+   {
+    "where": "project",
+    "path": "probe.md",
+    "text": "---\nname: probe\ndescription: probe agent\nmodel: claude-haiku-5-5\n---\nMARKER-SUBAGENT you are a probe.\n"
+   },
+   {
+    "where": "nested",
+    "path": "probe.md",
+    "text": "---\nname: probe\ndescription: probe agent\nmodel: claude-sonnet-5-5\n---\nMARKER-SUBAGENT you are a probe.\n"
+   }
+  ]
+ },
+ {
+  "name": "n7-nested-no-git",
+  "agent_input": {
+   "description": "probe",
+   "prompt": "go",
+   "subagent_type": "probe"
+  },
+  "cwd": "nested",
+  "agent_files": [
+   {
+    "where": "project",
+    "path": "probe.md",
+    "text": "---\nname: probe\ndescription: probe agent\nmodel: claude-haiku-5-5\n---\nMARKER-SUBAGENT you are a probe.\n"
+   },
+   {
+    "where": "nested",
+    "path": "probe.md",
+    "text": "---\nname: probe\ndescription: probe agent\nmodel: claude-sonnet-5-5\n---\nMARKER-SUBAGENT you are a probe.\n"
+   }
+  ]
+ },
+ {
+  "name": "n8-project-subfolder-over-user",
+  "agent_input": {
+   "description": "probe",
+   "prompt": "go",
+   "subagent_type": "probe"
+  },
+  "agent_files": [
+   {
+    "where": "user",
+    "path": "probe.md",
+    "text": "---\nname: probe\ndescription: probe agent\nmodel: claude-haiku-5-5\n---\nMARKER-SUBAGENT you are a probe.\n"
+   },
+   {
+    "where": "project",
+    "path": "team/probe.md",
+    "text": "---\nname: probe\ndescription: probe agent\nmodel: claude-sonnet-5-5\n---\nMARKER-SUBAGENT you are a probe.\n"
+   }
+  ]
+ },
+ {
+  "name": "n9-nested-root-only-with-git",
+  "agent_input": {
+   "description": "probe",
+   "prompt": "go",
+   "subagent_type": "probe"
+  },
+  "git_init": true,
+  "cwd": "nested",
+  "agent_files": [
+   {
+    "where": "project",
+    "path": "probe.md",
+    "text": "---\nname: probe\ndescription: probe agent\nmodel: claude-sonnet-5-5\n---\nMARKER-SUBAGENT you are a probe.\n"
+   }
+  ]
+ }
+]

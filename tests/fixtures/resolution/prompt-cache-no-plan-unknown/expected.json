@@ -1,0 +1,19 @@
+{
+  "fixture": "prompt-cache-no-plan-unknown",
+  "rule_ids": [
+    "prompt-cache-default-by-plan"
+  ],
+  "confidence": "tested",
+  "source": "dashboard/experiments/2026-10-29-prompt-cache-sources.json#k12; owner decision 2026-10-29: no plan field shows Unknown",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "promptCacheTtl",
+      "value": null,
+      "status": "unknown",
+      "layer": "default",
+      "file": null,
+      "scope": "main"
+    }
+  ]
+}

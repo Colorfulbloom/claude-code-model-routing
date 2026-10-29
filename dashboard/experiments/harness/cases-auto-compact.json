@@ -1,0 +1,214 @@
+[
+ {
+  "name": "a1-nothing-set",
+  "prompt": "/autocompact"
+ },
+ {
+  "name": "a2-user-top-level",
+  "prompt": "/autocompact",
+  "user": {
+   "autoCompactWindow": 200000
+  }
+ },
+ {
+  "name": "a3-same-file-per-model-over-top-level",
+  "prompt": "/autocompact",
+  "user": {
+   "autoCompactWindow": 200000,
+   "modelSettings": {
+    "claude-opus-5-5": {
+     "autoCompactWindow": 300000
+    }
+   }
+  }
+ },
+ {
+  "name": "a4-user-per-model-vs-project-top-level",
+  "prompt": "/autocompact",
+  "user": {
+   "modelSettings": {
+    "claude-opus-5-5": {
+     "autoCompactWindow": 300000
+    }
+   }
+  },
+  "project": {
+   "autoCompactWindow": 200000
+  }
+ },
+ {
+  "name": "a5-user-top-level-vs-project-per-model",
+  "prompt": "/autocompact",
+  "user": {
+   "autoCompactWindow": 200000
+  },
+  "project": {
+   "modelSettings": {
+    "claude-opus-5-5": {
+     "autoCompactWindow": 300000
+    }
+   }
+  }
+ },
+ {
+  "name": "a6-local-over-project",
+  "prompt": "/autocompact",
+  "project": {
+   "autoCompactWindow": 200000
+  },
+  "local": {
+   "autoCompactWindow": 400000
+  }
+ },
+ {
+  "name": "a7-cli-settings-over-local",
+  "prompt": "/autocompact",
+  "local": {
+   "autoCompactWindow": 400000
+  },
+  "cli_settings": {
+   "autoCompactWindow": 500000
+  }
+ },
+ {
+  "name": "a8-flag-over-cli-settings",
+  "prompt": "/autocompact",
+  "cli_settings": {
+   "autoCompactWindow": 500000
+  },
+  "args": [
+   "--autocompact",
+   "400000"
+  ]
+ },
+ {
+  "name": "a9-env-over-flag",
+  "prompt": "/autocompact",
+  "env": {
+   "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "300000"
+  },
+  "args": [
+   "--autocompact",
+   "400000"
+  ]
+ },
+ {
+  "name": "a10-env-not-a-number-ignored",
+  "prompt": "/autocompact",
+  "env": {
+   "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "abc"
+  },
+  "user": {
+   "autoCompactWindow": 200000
+  }
+ },
+ {
+  "name": "a11-env-below-minimum",
+  "prompt": "/autocompact",
+  "env": {
+   "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "50000"
+  },
+  "user": {
+   "autoCompactWindow": 200000
+  }
+ },
+ {
+  "name": "a12-env-above-maximum",
+  "prompt": "/autocompact",
+  "env": {
+   "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "2000000"
+  },
+  "user": {
+   "autoCompactWindow": 200000
+  }
+ },
+ {
+  "name": "a13-env-k-suffix-before-2-1-304",
+  "prompt": "/autocompact",
+  "env": {
+   "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "200k"
+  },
+  "user": {
+   "autoCompactWindow": 300000
+  }
+ },
+ {
+  "name": "a14-env-bare-200-is-tokens",
+  "prompt": "/autocompact",
+  "env": {
+   "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "200"
+  },
+  "user": {
+   "autoCompactWindow": 300000
+  }
+ },
+ {
+  "name": "a15-setting-below-minimum",
+  "prompt": "/autocompact",
+  "user": {
+   "autoCompactWindow": 50000
+  }
+ },
+ {
+  "name": "a16-project-per-model-auto-vs-user-top-level",
+  "prompt": "/autocompact",
+  "user": {
+   "autoCompactWindow": 200000
+  },
+  "project": {
+   "modelSettings": {
+    "claude-opus-5-5": {
+     "autoCompactWindow": "auto"
+    }
+   }
+  }
+ },
+ {
+  "name": "a17-flag-auto-over-user",
+  "prompt": "/autocompact",
+  "user": {
+   "autoCompactWindow": 200000
+  },
+  "args": [
+   "--autocompact",
+   "auto"
+  ]
+ },
+ {
+  "name": "a18-per-model-entry-for-other-model",
+  "prompt": "/autocompact",
+  "user": {
+   "autoCompactWindow": 200000,
+   "modelSettings": {
+    "claude-sonnet-5-5": {
+     "autoCompactWindow": 300000
+    }
+   }
+  }
+ },
+ {
+  "name": "a19-env-empty-string",
+  "prompt": "/autocompact",
+  "env": {
+   "CLAUDE_CODE_AUTO_COMPACT_WINDOW": ""
+  },
+  "user": {
+   "autoCompactWindow": 200000
+  }
+ },
+ {
+  "name": "a20-flag-vs-project-per-model",
+  "prompt": "/autocompact",
+  "project": {
+   "modelSettings": {
+    "claude-opus-5-5": {
+     "autoCompactWindow": 300000
+    }
+   }
+  },
+  "args": [
+   "--autocompact",
+   "400000"
+  ]
+ }
+]
