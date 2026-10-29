@@ -1,0 +1,29 @@
+{
+  "fixture": "subagent-prompt-cache-local-over-project",
+  "rule_ids": [
+    "subagent-prompt-cache-ttl-order"
+  ],
+  "confidence": "tested",
+  "source": "dashboard/experiments/2026-10-29-subagent-prompt-cache-ttl-order.json#c6",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "subagentPromptCacheTtl",
+      "value": "5m",
+      "status": "in_effect",
+      "layer": "local",
+      "file": "project/.claude/settings.local.json",
+      "scope": "agent",
+      "agent": "probe"
+    },
+    {
+      "key": "subagentPromptCacheTtl",
+      "value": "1h",
+      "status": "overridden",
+      "layer": "project",
+      "file": "project/.claude/settings.json",
+      "scope": "agent",
+      "agent": "probe"
+    }
+  ]
+}

@@ -74,7 +74,12 @@ SCOPES = ("main", "agent", "model")
 
 # Places a value can be set. The order between them is per rule (layer_order),
 # because the discovery tickets settle it key by key.
-LAYERS = ("managed", "cli", "env", "local", "project", "user", "agent", "default")
+#   cli      a file passed with --settings, which ranks with the settings files
+#   flag     a session flag such as --model, --effort or --autocompact
+#   env      the process environment: the shell, overwritten by settings env
+#            blocks, which the resolver works out first (rule env-block-order)
+#   default  Claude Code's own value, or the main model for an agent
+LAYERS = ("managed", "cli", "flag", "env", "local", "project", "user", "agent", "default")
 
 # Slots a reason template may use.
 REASON_SLOTS = ("key", "value", "file", "layer", "model", "agent", "winner")

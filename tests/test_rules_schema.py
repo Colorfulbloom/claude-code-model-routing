@@ -245,6 +245,12 @@ class FieldTest(TempDirMixin, unittest.TestCase):
         self.assertRejected(self.rule(layer_order=["user", "nowhere"]), "unknown layer")
         self.assertRejected(self.rule(layer_order=["user", "user"]), "repeats")
 
+    def test_flag_and_cli_are_separate_layers(self):
+        rule = self.rule(layer_order=["flag", "env", "managed", "cli", "local", "project",
+                                      "user", "default"],
+                         conditions=[{"layer": "flag", "models": ["*"], "status": "in_effect"}])
+        self.assertEqual(self.errors(rule), [])
+
     def test_verified_on(self):
         self.assertRejected(self.rule(verified_on={"date": "2026-10-29"}),
                             "verified_on has no claude_version")

@@ -1,0 +1,50 @@
+{
+ "date": "2026-10-29",
+ "claude_version": "2.1.302",
+ "ran": "subagentPromptCacheTtl with one Agent dispatch: user 5m vs project 1h (c5), project 1h vs local 5m (c6).",
+ "result": "c5 sent 1h on the subagent request and c6 sent no ttl (5 minutes); the main request stayed at 5 minutes in both. The higher file won.",
+ "method": "dashboard/experiments/harness: claude -p in a throwaway HOME, CLAUDE_CONFIG_DIR and project under $TMPDIR, a fake key and ANTHROPIC_BASE_URL on 127.0.0.1. fakeapi.py logs the model, output_config.effort and cache_control ttl of each request and answers 400; for agent cases it first streams one Agent tool call. The harness only allows requests to fakeapi.py on 127.0.0.1. Managed settings were not tested, because writing them needs admin rights.",
+ "results_file": "harness/results-2026-10-29.jsonl",
+ "cases": {
+  "c5-subagent-cache-project-over-user": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ],
+   [
+    "subagent",
+    "claude-haiku-5-5",
+    "medium",
+    [
+     "1h"
+    ]
+   ]
+  ],
+  "c6-subagent-cache-local-over-project": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ],
+   [
+    "subagent",
+    "claude-haiku-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ]
+  ]
+ },
+ "case_files": {
+  "c5-subagent-cache-project-over-user": "harness/cases-cache-effort-caps-default.json",
+  "c6-subagent-cache-local-over-project": "harness/cases-cache-effort-caps-default.json"
+ }
+}

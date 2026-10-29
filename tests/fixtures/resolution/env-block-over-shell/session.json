@@ -1,0 +1,7 @@
+{
+  "shell_env": {
+    "ANTHROPIC_MODEL": "claude-sonnet-5-5"
+  },
+  "flags": [],
+  "cli_settings": null
+}

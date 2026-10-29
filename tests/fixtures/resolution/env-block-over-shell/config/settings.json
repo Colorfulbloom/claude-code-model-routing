@@ -1,0 +1,5 @@
+{
+  "env": {
+    "ANTHROPIC_MODEL": "claude-haiku-5-5"
+  }
+}

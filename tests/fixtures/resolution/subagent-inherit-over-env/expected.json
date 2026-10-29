@@ -1,0 +1,31 @@
+{
+  "fixture": "subagent-inherit-over-env",
+  "rule_ids": [
+    "subagent-model-order"
+  ],
+  "confidence": "tested",
+  "source": "dashboard/experiments/2026-10-29-subagent-model-order.json#s6",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "model",
+      "value": "claude-sonnet-5-5",
+      "status": "in_effect",
+      "layer": "agent",
+      "file": "config/agents/probe.md",
+      "scope": "agent",
+      "agent": "probe",
+      "raw": "inherit"
+    },
+    {
+      "key": "model",
+      "value": "claude-fable-5-1",
+      "status": "overridden",
+      "layer": "env",
+      "file": null,
+      "scope": "agent",
+      "agent": "probe",
+      "via": "CLAUDE_CODE_SUBAGENT_MODEL"
+    }
+  ]
+}

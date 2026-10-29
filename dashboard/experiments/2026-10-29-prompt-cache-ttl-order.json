@@ -1,0 +1,56 @@
+{
+ "date": "2026-10-29",
+ "claude_version": "2.1.302",
+ "ran": "promptCacheTtl: user 1h vs project 5m (c1), project 5m vs local 1h (c2), --settings 1h vs CLAUDE_CODE_PROMPT_CACHE_TTL=5m (c3), project 5m vs ENABLE_PROMPT_CACHING_1H=1 (c4).",
+ "result": "c1 sent no ttl (5 minutes), c2 sent 1h, c3 sent no ttl, c4 sent no ttl. The higher file won, the env var beat --settings, and the key beat ENABLE_PROMPT_CACHING_1H. A 5m result can't be told from the default, because the 5 minute lifetime sends no ttl field.",
+ "method": "dashboard/experiments/harness: claude -p in a throwaway HOME, CLAUDE_CONFIG_DIR and project under $TMPDIR, a fake key and ANTHROPIC_BASE_URL on 127.0.0.1. fakeapi.py logs the model, output_config.effort and cache_control ttl of each request and answers 400; for agent cases it first streams one Agent tool call. The harness only allows requests to fakeapi.py on 127.0.0.1. Managed settings were not tested, because writing them needs admin rights.",
+ "results_file": "harness/results-2026-10-29.jsonl",
+ "cases": {
+  "c1-cache-project-over-user": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "c2-cache-local-over-project": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "medium",
+    [
+     "1h"
+    ]
+   ]
+  ],
+  "c3-cache-env-over-cli-settings": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "c4-cache-key-over-enable-1h": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ]
+  ]
+ },
+ "case_files": {
+  "c1-cache-project-over-user": "harness/cases-cache-effort-caps-default.json",
+  "c2-cache-local-over-project": "harness/cases-cache-effort-caps-default.json",
+  "c3-cache-env-over-cli-settings": "harness/cases-cache-effort-caps-default.json",
+  "c4-cache-key-over-enable-1h": "harness/cases-cache-effort-caps-default.json"
+ }
+}

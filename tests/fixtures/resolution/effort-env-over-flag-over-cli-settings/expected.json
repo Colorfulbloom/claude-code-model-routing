@@ -1,0 +1,38 @@
+{
+  "fixture": "effort-env-over-flag-over-cli-settings",
+  "rule_ids": [
+    "effort-level-layer-order"
+  ],
+  "confidence": "tested",
+  "source": "dashboard/experiments/2026-10-29-effort-level-order.json#e4",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "effortLevel",
+      "value": "high",
+      "status": "in_effect",
+      "layer": "env",
+      "file": null,
+      "scope": "main",
+      "model": "claude-sonnet-5-5"
+    },
+    {
+      "key": "effortLevel",
+      "value": "low",
+      "status": "overridden",
+      "layer": "flag",
+      "file": null,
+      "scope": "main",
+      "model": "claude-sonnet-5-5"
+    },
+    {
+      "key": "effortLevel",
+      "value": "xhigh",
+      "status": "overridden",
+      "layer": "cli",
+      "file": "session.json:cli_settings",
+      "scope": "main",
+      "model": "claude-sonnet-5-5"
+    }
+  ]
+}

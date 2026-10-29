@@ -1,0 +1,30 @@
+{
+  "fixture": "model-settings-higher-file-top-level-wins",
+  "rule_ids": [
+    "model-settings-effort-per-model",
+    "effort-level-layer-order"
+  ],
+  "confidence": "tested",
+  "source": "dashboard/experiments/2026-10-29-model-settings-effort.json#ms1",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "effortLevel",
+      "value": "high",
+      "status": "in_effect",
+      "layer": "local",
+      "file": "project/.claude/settings.local.json",
+      "scope": "main",
+      "model": "claude-sonnet-5-5"
+    },
+    {
+      "key": "modelSettings.claude-sonnet-5-5.effortLevel",
+      "value": "low",
+      "status": "overridden",
+      "layer": "project",
+      "file": "project/.claude/settings.json",
+      "scope": "model",
+      "model": "claude-sonnet-5-5"
+    }
+  ]
+}

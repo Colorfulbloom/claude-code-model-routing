@@ -1,0 +1,178 @@
+[
+ {
+  "name": "c1-cache-project-over-user",
+  "user": {
+   "model": "claude-sonnet-5-5",
+   "promptCacheTtl": "1h"
+  },
+  "project": {
+   "promptCacheTtl": "5m"
+  }
+ },
+ {
+  "name": "c2-cache-local-over-project",
+  "user": {
+   "model": "claude-sonnet-5-5"
+  },
+  "project": {
+   "promptCacheTtl": "5m"
+  },
+  "local": {
+   "promptCacheTtl": "1h"
+  }
+ },
+ {
+  "name": "c3-cache-env-over-cli-settings",
+  "user": {
+   "model": "claude-sonnet-5-5"
+  },
+  "cli_settings": {
+   "promptCacheTtl": "1h"
+  },
+  "env": {
+   "CLAUDE_CODE_PROMPT_CACHE_TTL": "5m"
+  }
+ },
+ {
+  "name": "c4-cache-key-over-enable-1h",
+  "user": {
+   "model": "claude-sonnet-5-5"
+  },
+  "project": {
+   "promptCacheTtl": "5m"
+  },
+  "env": {
+   "ENABLE_PROMPT_CACHING_1H": "1"
+  }
+ },
+ {
+  "name": "c5-subagent-cache-project-over-user",
+  "user": {
+   "model": "claude-sonnet-5-5",
+   "subagentPromptCacheTtl": "5m"
+  },
+  "project": {
+   "subagentPromptCacheTtl": "1h"
+  },
+  "agents": {
+   "probe": "---\nname: probe\ndescription: probe agent\nmodel: claude-haiku-5-5\n---\nMARKER-SUBAGENT you are a probe.\n"
+  },
+  "agent_input": {
+   "description": "probe",
+   "prompt": "go",
+   "subagent_type": "probe"
+  }
+ },
+ {
+  "name": "c6-subagent-cache-local-over-project",
+  "user": {
+   "model": "claude-sonnet-5-5"
+  },
+  "project": {
+   "subagentPromptCacheTtl": "1h"
+  },
+  "local": {
+   "subagentPromptCacheTtl": "5m"
+  },
+  "agents": {
+   "probe": "---\nname: probe\ndescription: probe agent\nmodel: claude-haiku-5-5\n---\nMARKER-SUBAGENT you are a probe.\n"
+  },
+  "agent_input": {
+   "description": "probe",
+   "prompt": "go",
+   "subagent_type": "probe"
+  }
+ },
+ {
+  "name": "ms1-local-top-level-over-project-model-settings",
+  "user": {
+   "model": "claude-sonnet-5-5"
+  },
+  "project": {
+   "modelSettings": {
+    "claude-sonnet-5-5": {
+     "effortLevel": "low"
+    }
+   }
+  },
+  "local": {
+   "effortLevel": "high"
+  }
+ },
+ {
+  "name": "ms2-local-model-settings-over-project-top-level",
+  "user": {
+   "model": "claude-sonnet-5-5"
+  },
+  "project": {
+   "effortLevel": "high"
+  },
+  "local": {
+   "modelSettings": {
+    "claude-sonnet-5-5": {
+     "effortLevel": "low"
+    }
+   }
+  }
+ },
+ {
+  "name": "ms3-same-file-model-settings-over-top-level",
+  "user": {
+   "model": "claude-sonnet-5-5"
+  },
+  "project": {
+   "effortLevel": "high",
+   "modelSettings": {
+    "claude-sonnet-5-5": {
+     "effortLevel": "low"
+    }
+   }
+  }
+ },
+ {
+  "name": "mx1-lowest-cap-wins-local-cannot-raise",
+  "user": {
+   "model": "claude-sonnet-5-5"
+  },
+  "project": {
+   "maxEffortLevel": "low"
+  },
+  "local": {
+   "maxEffortLevel": "high"
+  },
+  "cli_settings": {
+   "effortLevel": "xhigh"
+  }
+ },
+ {
+  "name": "mx2-user-cap-binds-over-higher-files",
+  "user": {
+   "model": "claude-sonnet-5-5",
+   "maxEffortLevel": "medium"
+  },
+  "project": {
+   "maxEffortLevel": "xhigh"
+  },
+  "cli_settings": {
+   "effortLevel": "xhigh"
+  }
+ },
+ {
+  "name": "d1-user-model-key-over-default-model-env",
+  "user": {
+   "model": "claude-sonnet-5-5"
+  },
+  "env": {
+   "ANTHROPIC_DEFAULT_MODEL": "claude-haiku-5-5"
+  }
+ },
+ {
+  "name": "d2-shell-env-over-user-model-key",
+  "user": {
+   "model": "claude-sonnet-5-5"
+  },
+  "env": {
+   "ANTHROPIC_MODEL": "claude-haiku-5-5"
+  }
+ }
+]

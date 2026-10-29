@@ -1,0 +1,28 @@
+{
+  "fixture": "prompt-cache-key-over-enable-1h",
+  "rule_ids": [
+    "prompt-cache-ttl-order"
+  ],
+  "confidence": "tested",
+  "source": "dashboard/experiments/2026-10-29-prompt-cache-ttl-order.json#c4",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "promptCacheTtl",
+      "value": "5m",
+      "status": "in_effect",
+      "layer": "project",
+      "file": "project/.claude/settings.json",
+      "scope": "main"
+    },
+    {
+      "key": "promptCacheTtl",
+      "value": "1h",
+      "status": "overridden",
+      "layer": "default",
+      "file": null,
+      "scope": "main",
+      "via": "ENABLE_PROMPT_CACHING_1H"
+    }
+  ]
+}
