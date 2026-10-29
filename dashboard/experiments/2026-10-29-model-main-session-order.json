@@ -1,0 +1,100 @@
+{
+ "date": "2026-10-29",
+ "claude_version": "2.1.302",
+ "ran": "Main-session model set in pairs: user vs project vs local vs --settings model keys (m1-m3), shell ANTHROPIC_MODEL vs --settings (m4), --model vs shell ANTHROPIC_MODEL (m5), --model vs a User env block (m11), user model key vs ANTHROPIC_DEFAULT_MODEL (d1), shell ANTHROPIC_MODEL vs user model key (d2).",
+ "result": "Each higher source won: project over user, local over project, --settings over local, ANTHROPIC_MODEL over --settings and over the user key, --model over ANTHROPIC_MODEL from the shell or an env block, and the user key over ANTHROPIC_DEFAULT_MODEL.",
+ "method": "dashboard/experiments/harness: claude -p in a throwaway HOME, CLAUDE_CONFIG_DIR and project under $TMPDIR, a fake key and ANTHROPIC_BASE_URL on 127.0.0.1. fakeapi.py logs the model, output_config.effort and cache_control ttl of each request and answers 400; for agent cases it first streams one Agent tool call. The harness only allows requests to fakeapi.py on 127.0.0.1. Managed settings were not tested, because writing them needs admin rights.",
+ "results_file": "harness/results-2026-10-29.jsonl",
+ "cases": {
+  "m1-project-over-user": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "m2-local-over-project": [
+   [
+    "main",
+    "claude-haiku-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "m3-cli-settings-over-local": [
+   [
+    "main",
+    "claude-fable-5-1",
+    "high",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "m4-shell-env-over-cli-settings": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "m5-model-flag-over-shell-env": [
+   [
+    "main",
+    "claude-haiku-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "m11-model-flag-vs-user-env-block": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "d1-user-model-key-over-default-model-env": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "d2-shell-env-over-user-model-key": [
+   [
+    "main",
+    "claude-haiku-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ]
+  ]
+ },
+ "case_files": {
+  "m1-project-over-user": "harness/cases-model-effort-env.json",
+  "m2-local-over-project": "harness/cases-model-effort-env.json",
+  "m3-cli-settings-over-local": "harness/cases-model-effort-env.json",
+  "m4-shell-env-over-cli-settings": "harness/cases-model-effort-env.json",
+  "m5-model-flag-over-shell-env": "harness/cases-model-effort-env.json",
+  "m11-model-flag-vs-user-env-block": "harness/cases-env-block-subagent.json",
+  "d1-user-model-key-over-default-model-env": "harness/cases-cache-effort-caps-default.json",
+  "d2-shell-env-over-user-model-key": "harness/cases-cache-effort-caps-default.json"
+ }
+}

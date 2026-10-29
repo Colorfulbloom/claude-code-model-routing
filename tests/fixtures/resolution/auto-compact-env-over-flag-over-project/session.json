@@ -1,0 +1,10 @@
+{
+  "shell_env": {
+    "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "300000"
+  },
+  "flags": [
+    "--autocompact",
+    "400000"
+  ],
+  "cli_settings": null
+}

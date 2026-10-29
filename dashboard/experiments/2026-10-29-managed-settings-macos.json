@@ -1,0 +1,12 @@
+{
+ "date": "2026-10-29",
+ "claude_version": "2.1.302",
+ "ran": "Docs lookup of managed-settings.md, then ls of /Library/Application Support/ClaudeCode/ and defaults read com.anthropic.claudecode on this Mac. No write was attempted, because it needs admin rights.",
+ "result": "The documented file is /Library/Application Support/ClaudeCode/managed-settings.json, with an optional managed-settings.d/ merged after it in alphabetical order, and the MDM domain com.anthropic.claudecode. Server-managed settings rank above MDM, and MDM above the files. Neither the folder nor the domain exists on this Mac. Reading without admin rights is not documented; the docs only say a denied read drops that source, so the dashboard should show Unknown when it can't read the file.",
+ "sources": [
+  "https://code.claude.com/docs/en/managed-settings#deploy-a-managed-settings-file",
+  "https://code.claude.com/docs/en/managed-settings#where-each-mechanism-stores-the-policy",
+  "https://code.claude.com/docs/en/managed-settings#how-claude-code-combines-managed-sources",
+  "https://code.claude.com/docs/en/managed-settings#find-entries-claude-code-dropped"
+ ]
+}

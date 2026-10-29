@@ -1,0 +1,8 @@
+{
+  "shell_env": {
+    "CLAUDE_CODE_SUBAGENT_MODEL": "claude-fable-5-1",
+    "CLAUDE_CODE_SUBAGENT_MODEL_FORCE": "1"
+  },
+  "flags": [],
+  "cli_settings": null
+}

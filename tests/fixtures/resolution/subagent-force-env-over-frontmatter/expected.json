@@ -1,0 +1,31 @@
+{
+  "fixture": "subagent-force-env-over-frontmatter",
+  "rule_ids": [
+    "subagent-model-force",
+    "subagent-model-order"
+  ],
+  "confidence": "documented",
+  "source": "https://code.claude.com/docs/en/sub-agents#run-every-subagent-on-one-model",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "model",
+      "value": "claude-fable-5-1",
+      "status": "in_effect",
+      "layer": "env",
+      "file": null,
+      "scope": "agent",
+      "agent": "probe",
+      "via": "CLAUDE_CODE_SUBAGENT_MODEL"
+    },
+    {
+      "key": "model",
+      "value": "claude-haiku-5-5",
+      "status": "ignored",
+      "layer": "agent",
+      "file": "config/agents/probe.md",
+      "scope": "agent",
+      "agent": "probe"
+    }
+  ]
+}

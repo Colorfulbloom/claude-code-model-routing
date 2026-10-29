@@ -1,0 +1,36 @@
+{
+  "fixture": "model-user-env-block-over-project-key",
+  "rule_ids": [
+    "model-main-session-order",
+    "env-block-order"
+  ],
+  "confidence": "tested",
+  "source": "dashboard/experiments/2026-10-29-env-block-order.json#m6",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "env.ANTHROPIC_MODEL",
+      "value": "claude-haiku-5-5",
+      "status": "in_effect",
+      "layer": "user",
+      "file": "config/settings.json",
+      "scope": "main"
+    },
+    {
+      "key": "model",
+      "value": "claude-haiku-5-5",
+      "status": "in_effect",
+      "layer": "env",
+      "file": "config/settings.json",
+      "scope": "main"
+    },
+    {
+      "key": "model",
+      "value": "claude-sonnet-5-5",
+      "status": "overridden",
+      "layer": "project",
+      "file": "project/.claude/settings.json",
+      "scope": "main"
+    }
+  ]
+}

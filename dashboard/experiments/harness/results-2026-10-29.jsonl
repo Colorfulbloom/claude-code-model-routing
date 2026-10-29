@@ -1,0 +1,36 @@
+{"case": "m1-project-over-user", "init_model": "claude-sonnet-5-5", "sent": [["main", "claude-sonnet-5-5", "medium", ["5m(default)"]]], "stderr": ""}
+{"case": "m2-local-over-project", "init_model": "claude-haiku-5-5", "sent": [["main", "claude-haiku-5-5", "medium", ["5m(default)"]]], "stderr": ""}
+{"case": "m3-cli-settings-over-local", "init_model": "claude-fable-5-1", "sent": [["main", "claude-fable-5-1", "high", ["5m(default)"]]], "stderr": ""}
+{"case": "m4-shell-env-over-cli-settings", "init_model": "claude-sonnet-5-5", "sent": [["main", "claude-sonnet-5-5", "medium", ["5m(default)"]]], "stderr": ""}
+{"case": "m5-model-flag-over-shell-env", "init_model": "claude-haiku-5-5", "sent": [["main", "claude-haiku-5-5", "medium", ["5m(default)"]]], "stderr": ""}
+{"case": "m6-user-env-block-vs-project-model-key", "init_model": "claude-haiku-5-5", "sent": [["main", "claude-haiku-5-5", "medium", ["5m(default)"]]], "stderr": ""}
+{"case": "m7-shell-env-vs-user-env-block", "init_model": "claude-haiku-5-5", "sent": [["main", "claude-haiku-5-5", "medium", ["5m(default)"]]], "stderr": ""}
+{"case": "m8-project-env-block-vs-user-env-block", "init_model": "claude-sonnet-5-5", "sent": [["main", "claude-sonnet-5-5", "medium", ["5m(default)"]]], "stderr": ""}
+{"case": "m9-local-env-block-vs-project-env-block", "init_model": "claude-fable-5-1", "sent": [["main", "claude-fable-5-1", "high", ["5m(default)"]]], "stderr": ""}
+{"case": "e1-local-over-project", "init_model": "claude-sonnet-5-5", "sent": [["main", "claude-sonnet-5-5", "low", ["5m(default)"]]], "stderr": ""}
+{"case": "e2-cli-settings-over-local", "init_model": "claude-sonnet-5-5", "sent": [["main", "claude-sonnet-5-5", "xhigh", ["5m(default)"]]], "stderr": ""}
+{"case": "e3-effort-flag-over-cli-settings", "init_model": "claude-sonnet-5-5", "sent": [["main", "claude-sonnet-5-5", "low", ["5m(default)"]]], "stderr": ""}
+{"case": "e4-env-over-effort-flag", "init_model": "claude-sonnet-5-5", "sent": [["main", "claude-sonnet-5-5", "high", ["5m(default)"]]], "stderr": ""}
+{"case": "e5-user-env-block-effort-vs-project-key", "init_model": "claude-sonnet-5-5", "sent": [["main", "claude-sonnet-5-5", "low", ["5m(default)"]]], "stderr": ""}
+{"case": "m10-shell-env-vs-cli-settings-env-block", "init_model": "claude-haiku-5-5", "sent": [["main", "claude-haiku-5-5", "medium", ["5m(default)"]]], "stderr": ""}
+{"case": "m11-model-flag-vs-user-env-block", "init_model": "claude-sonnet-5-5", "sent": [["main", "claude-sonnet-5-5", "medium", ["5m(default)"]]], "stderr": ""}
+{"case": "s1-frontmatter-only", "init_model": "claude-sonnet-5-5", "sent": [["main", "claude-sonnet-5-5", "medium", ["5m(default)"]], ["subagent", "claude-haiku-5-5", "medium", ["5m(default)"]]], "stderr": ""}
+{"case": "s2-frontmatter-over-subagent-env", "init_model": "claude-sonnet-5-5", "sent": [["main", "claude-sonnet-5-5", "medium", ["5m(default)"]], ["subagent", "claude-haiku-5-5", "medium", ["5m(default)"]]], "stderr": ""}
+{"case": "s3-invocation-param-over-frontmatter", "init_model": "claude-sonnet-5-5", "sent": [["main", "claude-sonnet-5-5", "medium", ["5m(default)"]], ["subagent", "claude-opus-5-5", "medium", ["5m(default)"]]], "stderr": ""}
+{"case": "s4-subagent-env-when-no-frontmatter", "init_model": "claude-sonnet-5-5", "sent": [["main", "claude-sonnet-5-5", "medium", ["5m(default)"]], ["subagent", "claude-fable-5-1", "high", ["5m(default)"]]], "stderr": ""}
+{"case": "s5-inherits-main-model", "init_model": "claude-sonnet-5-5", "sent": [["main", "claude-sonnet-5-5", "medium", ["5m(default)"]], ["subagent", "claude-sonnet-5-5", "medium", ["5m(default)"]]], "stderr": ""}
+{"case": "s6-frontmatter-inherit-with-subagent-env", "init_model": "claude-sonnet-5-5", "sent": [["main", "claude-sonnet-5-5", "medium", ["5m(default)"]], ["subagent", "claude-sonnet-5-5", "medium", ["5m(default)"]]], "stderr": ""}
+{"case": "s7-subagent-env-in-user-env-block-vs-frontmatter", "init_model": "claude-sonnet-5-5", "sent": [["main", "claude-sonnet-5-5", "medium", ["5m(default)"]], ["subagent", "claude-haiku-5-5", "medium", ["5m(default)"]]], "stderr": ""}
+{"case": "c1-cache-project-over-user", "init_model": "claude-sonnet-5-5", "sent": [["main", "claude-sonnet-5-5", "medium", ["5m(default)"]]], "stderr": ""}
+{"case": "c2-cache-local-over-project", "init_model": "claude-sonnet-5-5", "sent": [["main", "claude-sonnet-5-5", "medium", ["1h"]]], "stderr": ""}
+{"case": "c3-cache-env-over-cli-settings", "init_model": "claude-sonnet-5-5", "sent": [["main", "claude-sonnet-5-5", "medium", ["5m(default)"]]], "stderr": ""}
+{"case": "c4-cache-key-over-enable-1h", "init_model": "claude-sonnet-5-5", "sent": [["main", "claude-sonnet-5-5", "medium", ["5m(default)"]]], "stderr": ""}
+{"case": "c5-subagent-cache-project-over-user", "init_model": "claude-sonnet-5-5", "sent": [["main", "claude-sonnet-5-5", "medium", ["5m(default)"]], ["subagent", "claude-haiku-5-5", "medium", ["1h"]]], "stderr": ""}
+{"case": "c6-subagent-cache-local-over-project", "init_model": "claude-sonnet-5-5", "sent": [["main", "claude-sonnet-5-5", "medium", ["5m(default)"]], ["subagent", "claude-haiku-5-5", "medium", ["5m(default)"]]], "stderr": ""}
+{"case": "ms1-local-top-level-over-project-model-settings", "init_model": "claude-sonnet-5-5", "sent": [["main", "claude-sonnet-5-5", "high", ["5m(default)"]]], "stderr": ""}
+{"case": "ms2-local-model-settings-over-project-top-level", "init_model": "claude-sonnet-5-5", "sent": [["main", "claude-sonnet-5-5", "low", ["5m(default)"]]], "stderr": ""}
+{"case": "ms3-same-file-model-settings-over-top-level", "init_model": "claude-sonnet-5-5", "sent": [["main", "claude-sonnet-5-5", "low", ["5m(default)"]]], "stderr": ""}
+{"case": "mx1-lowest-cap-wins-local-cannot-raise", "init_model": "claude-sonnet-5-5", "sent": [["main", "claude-sonnet-5-5", "low", ["5m(default)"]]], "stderr": ""}
+{"case": "mx2-user-cap-binds-over-higher-files", "init_model": "claude-sonnet-5-5", "sent": [["main", "claude-sonnet-5-5", "medium", ["5m(default)"]]], "stderr": ""}
+{"case": "d1-user-model-key-over-default-model-env", "init_model": "claude-sonnet-5-5", "sent": [["main", "claude-sonnet-5-5", "medium", ["5m(default)"]]], "stderr": ""}
+{"case": "d2-shell-env-over-user-model-key", "init_model": "claude-haiku-5-5", "sent": [["main", "claude-haiku-5-5", "medium", ["5m(default)"]]], "stderr": ""}

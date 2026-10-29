@@ -5,16 +5,648 @@
       "rule_id": "effort-level-user-settings-opus-5-5",
       "key": "effortLevel",
       "scope": "main",
-      "layer_order": ["managed", "cli", "local", "project", "user"],
+      "layer_order": [
+        "env",
+        "flag",
+        "managed",
+        "cli",
+        "local",
+        "project",
+        "user",
+        "default"
+      ],
       "conditions": [
-        {"layer": "user", "models": ["claude-opus-5-5"], "status": "ignored"}
+        {
+          "layer": "user",
+          "models": [
+            "claude-opus-5-5"
+          ],
+          "status": "ignored"
+        }
       ],
       "reason": "Opus 5.5 ignores effortLevel in {file}.",
       "doc_url": "https://code.claude.com/docs/en/settings-reference#effortlevel",
-      "quote": "Opus 5.5 and models released after it ignore it and start at their own default until you save a level for them, which /effort writes under modelSettings. In project, local, and managed settings, and with --settings, this key applies to every model.",
+      "quote": "Opus 5.5 and models released after it ignore it and start at their own default until you save a level for them, which `/effort` writes under `modelSettings`. In project, local, and managed settings, and with `--settings`, this key applies to every model.",
       "experiment": null,
       "confidence": "documented",
-      "verified_on": {"claude_version": "2.1.302", "date": "2026-10-29"}
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-29"
+      }
+    },
+    {
+      "rule_id": "model-main-session-order",
+      "key": "model",
+      "scope": "main",
+      "layer_order": [
+        "flag",
+        "env",
+        "managed",
+        "cli",
+        "local",
+        "project",
+        "user",
+        "default"
+      ],
+      "conditions": [
+        {
+          "layer": "flag",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "env",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "managed",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "cli",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "local",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        }
+      ],
+      "reason": "{winner} sets the model. --model beats ANTHROPIC_MODEL, which beats the model key in any file, managed included.",
+      "doc_url": "https://code.claude.com/docs/en/settings-reference#model",
+      "quote": "`--model` takes precedence over `ANTHROPIC_MODEL`, and both take precedence over this key for one session, including over a managed `model`",
+      "experiment": "experiments/2026-10-29-model-main-session-order.json",
+      "confidence": "tested",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-29"
+      }
+    },
+    {
+      "rule_id": "env-block-order",
+      "key": "env",
+      "scope": "main",
+      "layer_order": [
+        "managed",
+        "cli",
+        "local",
+        "project",
+        "user",
+        "env"
+      ],
+      "conditions": [
+        {
+          "layer": "managed",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "cli",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "local",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "env",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        }
+      ],
+      "reason": "{key} comes from {file}. A settings env block overwrites the shell, and the higher file wins.",
+      "doc_url": "https://code.claude.com/docs/en/settings-reference#env",
+      "quote": "A value here overwrites the same variable exported in your shell, and when more than one settings file sets a variable, the highest-precedence one applies.",
+      "experiment": "experiments/2026-10-29-env-block-order.json",
+      "confidence": "tested",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-29"
+      }
+    },
+    {
+      "rule_id": "effort-level-layer-order",
+      "key": "effortLevel",
+      "scope": "main",
+      "layer_order": [
+        "env",
+        "flag",
+        "managed",
+        "cli",
+        "local",
+        "project",
+        "user",
+        "default"
+      ],
+      "conditions": [
+        {
+          "layer": "env",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "flag",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "managed",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "cli",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "local",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        }
+      ],
+      "reason": "{winner} sets the effort. CLAUDE_CODE_EFFORT_LEVEL beats --effort, which beats every settings file.",
+      "doc_url": "https://code.claude.com/docs/en/settings-reference#effortlevel",
+      "quote": "`--effort` takes precedence over this key for one session, and `CLAUDE_CODE_EFFORT_LEVEL` takes precedence over both",
+      "experiment": "experiments/2026-10-29-effort-level-order.json",
+      "confidence": "tested",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-29"
+      }
+    },
+    {
+      "rule_id": "model-settings-effort-per-model",
+      "key": "modelSettings",
+      "scope": "model",
+      "layer_order": [
+        "managed",
+        "cli",
+        "local",
+        "project",
+        "user"
+      ],
+      "conditions": [
+        {
+          "layer": "managed",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "cli",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "local",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        }
+      ],
+      "reason": "{file} decides effort for {model}: it is the highest file that sets a level for this model.",
+      "doc_url": "https://code.claude.com/docs/en/settings-reference#modelsettings",
+      "quote": "Across files, Claude Code resolves each model separately: the highest-precedence settings file that sets either an `effortLevel` for that model or a top-level `effortLevel` that applies to that model decides, so an `effortLevel` in managed settings outranks a level you saved in user settings.",
+      "experiment": "experiments/2026-10-29-model-settings-effort.json",
+      "confidence": "tested",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-29"
+      }
+    },
+    {
+      "rule_id": "max-effort-level-lowest-cap",
+      "key": "maxEffortLevel",
+      "scope": "main",
+      "layer_order": [
+        "managed",
+        "cli",
+        "local",
+        "project",
+        "user"
+      ],
+      "conditions": [
+        {
+          "layer": "managed",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "cli",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "local",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        }
+      ],
+      "reason": "The lowest cap applies. {value} in {file} can't be raised from another file.",
+      "doc_url": "https://code.claude.com/docs/en/settings-reference#maxeffortlevel",
+      "quote": "When several scopes set a cap, the lowest applies, so a cap set in one scope can't be raised from another",
+      "experiment": "experiments/2026-10-29-max-effort-level-cap.json",
+      "confidence": "tested",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-29"
+      }
+    },
+    {
+      "rule_id": "prompt-cache-ttl-order",
+      "key": "promptCacheTtl",
+      "scope": "main",
+      "layer_order": [
+        "env",
+        "managed",
+        "cli",
+        "local",
+        "project",
+        "user",
+        "default"
+      ],
+      "conditions": [
+        {
+          "layer": "env",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "managed",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "cli",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "local",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        }
+      ],
+      "reason": "{winner} sets the main conversation's cache lifetime. ENABLE_PROMPT_CACHING_1H counts only when no file sets the key.",
+      "doc_url": "https://code.claude.com/docs/en/settings-reference#promptcachettl",
+      "quote": "`FORCE_PROMPT_CACHING_5M` takes precedence over everything else, then `CLAUDE_CODE_PROMPT_CACHE_TTL`, then this key, and last `ENABLE_PROMPT_CACHING_1H`",
+      "experiment": "experiments/2026-10-29-prompt-cache-ttl-order.json",
+      "confidence": "tested",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-29"
+      }
+    },
+    {
+      "rule_id": "subagent-prompt-cache-ttl-order",
+      "key": "subagentPromptCacheTtl",
+      "scope": "agent",
+      "layer_order": [
+        "env",
+        "managed",
+        "cli",
+        "local",
+        "project",
+        "user",
+        "default"
+      ],
+      "conditions": [
+        {
+          "layer": "env",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "managed",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "cli",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "local",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        }
+      ],
+      "reason": "{winner} sets the cache lifetime for {agent}. ENABLE_PROMPT_CACHING_1H counts only when no file sets the key.",
+      "doc_url": "https://code.claude.com/docs/en/settings-reference#subagentpromptcachettl",
+      "quote": "`FORCE_PROMPT_CACHING_5M` takes precedence over everything else, then `CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL`, then this key, then `ENABLE_PROMPT_CACHING_1H`, which asks for the one-hour lifetime on every request.",
+      "experiment": "experiments/2026-10-29-subagent-prompt-cache-ttl-order.json",
+      "confidence": "tested",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-29"
+      }
+    },
+    {
+      "rule_id": "auto-compact-window-order",
+      "key": "autoCompactWindow",
+      "scope": "main",
+      "layer_order": [
+        "env",
+        "flag",
+        "managed",
+        "cli",
+        "local",
+        "project",
+        "user",
+        "default"
+      ],
+      "conditions": [
+        {
+          "layer": "env",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "flag",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "managed",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "cli",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "local",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        }
+      ],
+      "reason": "{winner} sets the auto-compact window. CLAUDE_CODE_AUTO_COMPACT_WINDOW beats --autocompact, and both beat managed settings.",
+      "doc_url": "https://code.claude.com/docs/en/settings-reference#autocompactwindow",
+      "quote": "`--autocompact` takes precedence over this key for one session, and `CLAUDE_CODE_AUTO_COMPACT_WINDOW` takes precedence over both unless Claude Code ignores the variable's value",
+      "experiment": null,
+      "confidence": "documented",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-29"
+      }
+    },
+    {
+      "rule_id": "subagent-model-order",
+      "key": "model",
+      "scope": "agent",
+      "layer_order": [
+        "agent",
+        "env",
+        "default"
+      ],
+      "conditions": [
+        {
+          "layer": "agent",
+          "models": [
+            "*"
+          ],
+          "values": [
+            "inherit"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "agent",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "env",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        }
+      ],
+      "reason": "{agent} runs on {winner}. Its frontmatter model, inherit included, beats CLAUDE_CODE_SUBAGENT_MODEL, which beats the main model. A model passed at dispatch, or set by a mod's agent.spawn hook, beats all three, and the resolver can't see either.",
+      "doc_url": "https://code.claude.com/docs/en/env-vars#variables",
+      "quote": "Two sources take precedence over it: a model Claude passes when it spawns the agent, and a `model` field in the agent's definition, including `inherit`.",
+      "experiment": "experiments/2026-10-29-subagent-model-order.json",
+      "confidence": "tested",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-29"
+      }
+    },
+    {
+      "rule_id": "subagent-model-force",
+      "key": "model",
+      "scope": "agent",
+      "layer_order": [
+        "env",
+        "agent",
+        "default"
+      ],
+      "conditions": [
+        {
+          "layer": "agent",
+          "models": [
+            "*"
+          ],
+          "status": "ignored"
+        }
+      ],
+      "reason": "CLAUDE_CODE_SUBAGENT_MODEL_FORCE is on, so {agent} ignores the model in {file} and runs on {winner}.",
+      "doc_url": "https://code.claude.com/docs/en/sub-agents#run-every-subagent-on-one-model",
+      "quote": "While `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` is on, Claude Code ignores the `model` field in subagent definitions, and Claude can't pass a model when it starts a subagent.",
+      "experiment": null,
+      "confidence": "documented",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-29"
+      }
     }
   ]
 }

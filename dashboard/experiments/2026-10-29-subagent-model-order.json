@@ -1,0 +1,145 @@
+{
+ "date": "2026-10-29",
+ "claude_version": "2.1.302",
+ "ran": "One Agent dispatch per case to a user agent 'probe', main model claude-sonnet-5-5: frontmatter only (s1), frontmatter vs CLAUDE_CODE_SUBAGENT_MODEL (s2), per-invocation model 'opus' vs both (s3), env var with no frontmatter model (s4), neither (s5), model: inherit vs env var (s6), env var from a User env block vs frontmatter (s7).",
+ "result": "The per-invocation parameter won (claude-opus-5-5), then frontmatter (claude-haiku-5-5) over the env var, then the env var (claude-fable-5-1), then the main model. model: inherit beat the env var and ran the main model.",
+ "method": "dashboard/experiments/harness: claude -p in a throwaway HOME, CLAUDE_CONFIG_DIR and project under $TMPDIR, a fake key and ANTHROPIC_BASE_URL on 127.0.0.1. fakeapi.py logs the model, output_config.effort and cache_control ttl of each request and answers 400; for agent cases it first streams one Agent tool call. The harness only allows requests to fakeapi.py on 127.0.0.1. Managed settings were not tested, because writing them needs admin rights.",
+ "results_file": "harness/results-2026-10-29.jsonl",
+ "cases": {
+  "s1-frontmatter-only": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ],
+   [
+    "subagent",
+    "claude-haiku-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "s2-frontmatter-over-subagent-env": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ],
+   [
+    "subagent",
+    "claude-haiku-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "s3-invocation-param-over-frontmatter": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ],
+   [
+    "subagent",
+    "claude-opus-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "s4-subagent-env-when-no-frontmatter": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ],
+   [
+    "subagent",
+    "claude-fable-5-1",
+    "high",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "s5-inherits-main-model": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ],
+   [
+    "subagent",
+    "claude-sonnet-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "s6-frontmatter-inherit-with-subagent-env": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ],
+   [
+    "subagent",
+    "claude-sonnet-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "s7-subagent-env-in-user-env-block-vs-frontmatter": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ],
+   [
+    "subagent",
+    "claude-haiku-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ]
+  ]
+ },
+ "case_files": {
+  "s1-frontmatter-only": "harness/cases-env-block-subagent.json",
+  "s2-frontmatter-over-subagent-env": "harness/cases-env-block-subagent.json",
+  "s3-invocation-param-over-frontmatter": "harness/cases-env-block-subagent.json",
+  "s4-subagent-env-when-no-frontmatter": "harness/cases-env-block-subagent.json",
+  "s5-inherits-main-model": "harness/cases-env-block-subagent.json",
+  "s6-frontmatter-inherit-with-subagent-env": "harness/cases-env-block-subagent.json",
+  "s7-subagent-env-in-user-env-block-vs-frontmatter": "harness/cases-env-block-subagent.json"
+ }
+}

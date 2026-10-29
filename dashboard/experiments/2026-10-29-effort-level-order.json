@@ -1,0 +1,56 @@
+{
+ "date": "2026-10-29",
+ "claude_version": "2.1.302",
+ "ran": "effortLevel on claude-sonnet-5-5: local vs project (e1), --settings vs local (e2), --effort vs --settings (e3), CLAUDE_CODE_EFFORT_LEVEL vs --effort (e4).",
+ "result": "local over project, --settings over local, --effort over --settings, CLAUDE_CODE_EFFORT_LEVEL over --effort.",
+ "method": "dashboard/experiments/harness: claude -p in a throwaway HOME, CLAUDE_CONFIG_DIR and project under $TMPDIR, a fake key and ANTHROPIC_BASE_URL on 127.0.0.1. fakeapi.py logs the model, output_config.effort and cache_control ttl of each request and answers 400; for agent cases it first streams one Agent tool call. The harness only allows requests to fakeapi.py on 127.0.0.1. Managed settings were not tested, because writing them needs admin rights.",
+ "results_file": "harness/results-2026-10-29.jsonl",
+ "cases": {
+  "e1-local-over-project": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "low",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "e2-cli-settings-over-local": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "xhigh",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "e3-effort-flag-over-cli-settings": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "low",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "e4-env-over-effort-flag": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "high",
+    [
+     "5m(default)"
+    ]
+   ]
+  ]
+ },
+ "case_files": {
+  "e1-local-over-project": "harness/cases-model-effort-env.json",
+  "e2-cli-settings-over-local": "harness/cases-model-effort-env.json",
+  "e3-effort-flag-over-cli-settings": "harness/cases-model-effort-env.json",
+  "e4-env-over-effort-flag": "harness/cases-model-effort-env.json"
+ }
+}
