@@ -1,9 +1,9 @@
 ### F-775c Settings layer order per dashboard key (#6)
-status: in-progress
+status: shipped
 kind: code
 dates: 2026-10-29 .. 2026-10-29
 refs:
-  commit: pending (branch discovery/settings-layer-order)
+  commit: c3de629bcb041697de347b5c4edd33859521f42e (branch discovery/settings-layer-order, merged into development)
 summary: Discovery #6. Ten rules in dashboard/rules.json give each dashboard key its layer order, backed by 36 harness cases on 2.1.302 and eleven fixture folders.
 decisions:
 - Schema gained a flag layer (--model, --effort, --autocompact), separate from cli (--settings), because --settings ranks below ANTHROPIC_MODEL while --model ranks above it. Owner approved.
