@@ -1,9 +1,9 @@
 ### F-af78 Routing Dashboard rules schema, bug template, Design section
-status: in-progress
+status: shipped
 kind: code
 dates: 2026-10-29 .. 2026-10-29
 refs:
-  commit: pending (branch feature/routing-dashboard)
+  commit: 1d0786c4c91a96b8ce14a42661c4b41d7804150d (branch feature/routing-dashboard, merged into development)
   url: https://github.com/Colorfulbloom/claude-code-model-routing/issues/4
 summary: dashboard/rules.json plus a stdlib schema check and 53 tests (#4), a bug issue template (#2), and a project CLAUDE.md Design section with a starter token sheet (#3).
 decisions:
