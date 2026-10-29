@@ -51,6 +51,7 @@ DEFAULT_CONFIG = {
     "version": 1,
     "index_max_lines": 50,
     "topic_max_bytes": 4096,
+    "tally_topic_max_bytes": 16384,
     "reviewed_max_lines": 60,
     "inject_budget_tokens": {"default": 800, "deep-reasoner": 3000, "fast-worker": 2000,
                              "verifier": 2000, "designer": 1500, "scout": 1000, "judge": 1000},
@@ -978,6 +979,55 @@ def usage_totals(rows):
     return out, final
 
 
+def _row_ms(row):
+    """The row's timestamp as epoch milliseconds, or None."""
+    ts = row.get("timestamp")
+    if not isinstance(ts, str):
+        return None
+    try:
+        when = datetime.datetime.fromisoformat(ts[:-1] + "+00:00" if ts.endswith("Z") else ts)
+    except ValueError:
+        return None
+    if when.tzinfo is None:
+        when = when.replace(tzinfo=datetime.timezone.utc)
+    return int(round(when.timestamp() * 1000))
+
+
+def round_duration_ms(rows, start=0):
+    """Milliseconds from the first timestamped row at or after start to the last timestamped row; None when
+    fewer than two rows carry a timestamp or the span is negative."""
+    stamps = [m for m in (_row_ms(r) for r in rows[start:]) if m is not None]
+    if len(stamps) < 2 or stamps[-1] < stamps[0]:
+        return None
+    return stamps[-1] - stamps[0]
+
+
+AGENT_FILE_EFFORT_RE = re.compile(r"^effort:[ \t]*['\"]?([A-Za-z0-9_-]+)['\"]?[ \t]*$")
+
+
+def agent_file_effort(root, agent_type):
+    """The pinned `effort` frontmatter of the agent's file: the project's .claude/agents wins over ~/.claude/agents.
+    "" when there is no file, no frontmatter or no effort line."""
+    if not isinstance(agent_type, str) or safe_name(agent_type) != agent_type:
+        return ""
+    dirs = ([os.path.join(root, ".claude", "agents")] if root else []) + [os.path.expanduser("~/.claude/agents")]
+    for d in dirs:
+        try:
+            lines = read_text(os.path.join(d, agent_type + ".md")).splitlines()
+        except OSError:
+            continue
+        if not lines or lines[0].strip() != "---":
+            return ""
+        for line in lines[1:]:
+            if line.strip() == "---":
+                break
+            m = AGENT_FILE_EFFORT_RE.match(line.strip())
+            if m:
+                return m.group(1)
+        return ""
+    return ""
+
+
 def compute_tally(rows, stdin_effort=None, state=None):
     """(tally dict, kind) from transcript rows (see design section 8).
 
@@ -985,7 +1035,9 @@ def compute_tally(rows, stdin_effort=None, state=None):
     begins, rows the number of rows read, and anchor says how the round was found (round_info). A resumed
     agent's later round also carries prev, the figures over the rows before its start, taken from the
     transcript so a final row that landed after an earlier capture still counts in the round before. The
-    kind comes from the round's own brief, else from the round before.
+    kind comes from the round's own brief, else from the round before. effort is the one the harness reports
+    (hook payload first, then the transcript's own rows) with effort_source saying which; the caller adds the
+    agent file's pin when both are missing. duration_ms is the round's wall time from the transcript timestamps.
     """
     rnd, start, kind, anchor = round_info(rows, state)
     figures, final = usage_totals(rows)
@@ -1002,11 +1054,14 @@ def compute_tally(rows, stdin_effort=None, state=None):
                 tally["model"] = r["requestedModel"]
                 break
     tally["effort"] = effort_level(stdin_effort)
+    tally["effort_source"] = "payload" if tally["effort"] else ""
     if not tally["effort"]:
         for r in reversed(rows):
             if effort_level(r.get("effort")):
                 tally["effort"] = effort_level(r["effort"])
+                tally["effort_source"] = "transcript"
                 break
+    tally["duration_ms"] = round_duration_ms(rows, start)
     return tally, kind
 
 
@@ -1028,39 +1083,65 @@ def write_round_state(store, agent_id, state):
     atomic_write(round_state_path(store, agent_id), json.dumps(state, indent=1) + "\n")
 
 
-def tally_key(kind, agent_type, model):
-    return "%s|%s|%s" % (kind, agent_type, model)
+UNKNOWN_EFFORT = "unknown"
+
+
+def tally_key(kind, agent_type, model, effort=UNKNOWN_EFFORT):
+    return "%s|%s|%s|%s" % (kind, agent_type, model, effort or UNKNOWN_EFFORT)
+
+
+def split_tally_key(key):
+    """(kind, agent, model, effort) of a row key; a key from before efforts were recorded has effort "unknown"."""
+    parts = key.split("|", 3)
+    parts += [""] * (3 - len(parts))
+    if len(parts) < 4:
+        parts.append(UNKNOWN_EFFORT)
+    return tuple(parts)
 
 
 def tally_stats(samples):
     """{"n", "median", "p90", "last"} of a row's samples (median rounds half up, p90 is nearest-rank)."""
     vals = [s["v"] for s in samples if isinstance(s, dict) and isinstance(s.get("v"), int)]
     if not vals:
-        return {"n": 0, "median": 0, "p90": 0, "last": 0}
+        return {"n": 0, "median": 0, "p90": 0, "last": 0, "median_ms": None}
     ordered = sorted(vals)
     n = len(ordered)
+    times = sorted(s["duration_ms"] for s in samples if isinstance(s, dict) and _is_int(s.get("duration_ms"))
+                   and s["duration_ms"] >= 0)
     return {"n": n, "median": int(statistics.median(ordered) + 0.5),
-            "p90": ordered[-(-9 * n // 10) - 1], "last": vals[-1]}
+            "p90": ordered[-(-9 * n // 10) - 1], "last": vals[-1],
+            "median_ms": int(statistics.median(times) + 0.5) if times else None}
+
+
+def format_minutes(ms):
+    """m:ss for a duration in ms (rounded to the second); "-" when there is none."""
+    if not _is_int(ms):
+        return "-"
+    secs = int((ms + 500) // 1000)
+    return "%d:%02d" % (secs // 60, secs % 60)
 
 
 def tally_table_header(cfg):
     return ("# token-tallies\n\nGenerated by hivemind_lib.py from tallies.json. Do not edit. "
-            "Figures: %s tokens per run.\n\n| kind | agent | model | n | median | p90 | last | last_date |\n"
-            "|---|---|---|---|---|---|---|---|\n" % cfg["tally_metric"])
+            "Figures: %s tokens per run; med_time is the median run time as m:ss "
+            "(- when no sample has one); effort unknown marks runs from before efforts were recorded.\n\n"
+            "| kind | agent | model | effort | n | median | p90 | med_time | last | last_date |\n"
+            "|---|---|---|---|---|---|---|---|---|---|\n" % cfg["tally_metric"])
 
 
 def tally_row_line(key, row):
-    kind, agent, model = (key.split("|", 2) + ["", ""])[:3]
+    kind, agent, model, effort = split_tally_key(key)
     st = tally_stats(row.get("samples", []))
-    return "| %s | %s | %s | %d | %d | %d | %d | %s |\n" % (
-        kind, agent, model, st["n"], st["median"], st["p90"], st["last"], row.get("last_date", ""))
+    return "| %s | %s | %s | %s | %d | %d | %d | %s | %d | %s |\n" % (
+        kind, agent, model, effort, st["n"], st["median"], st["p90"], format_minutes(st["median_ms"]),
+        st["last"], row.get("last_date", ""))
 
 
 def generate_tally_table(cfg, tallies):
     """Text of topics/token-tallies.md from the tallies.json structure."""
     rows = tallies.get("rows", {}) if isinstance(tallies, dict) else {}
     return tally_table_header(cfg) + "".join(
-        tally_row_line(k, rows[k]) for k in sorted(rows, key=lambda k: tuple(k.split("|", 2))))
+        tally_row_line(k, rows[k]) for k in sorted(rows, key=split_tally_key))
 
 
 def generate_index(cfg, counts, history=(0, 0)):
@@ -1254,19 +1335,18 @@ def collect_items(store, cfg, agent_type, uses, days, today_s, log):
         if not any(fnmatch.fnmatchcase(topic, p) for p in patterns):
             continue
         if topic == TALLY_TOPIC:
-            tallies = read_json(os.path.join(store, "tallies.json"), {})
-            rows = tallies.get("rows") if isinstance(tallies, dict) else None
-            for key, row in sorted(rows.items() if isinstance(rows, dict) else []):
+            for key, row in sorted(load_tallies(store)["rows"].items()):
                 if not isinstance(row, dict) or not valid_date(row.get("last_date")):
                     continue
                 if is_expired(row["last_date"], days, today_s, cfg["expiry_active_days"]):
                     expired += 1
                     continue
                 st = tally_stats(row.get("samples", []))
-                kind, agent, model = (key.split("|", 2) + ["", ""])[:3]
+                kind, agent, model, effort = split_tally_key(key)
                 items.append({"topic": topic, "id": key, "date": row["last_date"], "uses": st["n"], "rec": None,
-                              "line": "[token-tallies] %s %s %s: n=%d median=%d p90=%d" % (
-                                  kind, agent, model, st["n"], st["median"], st["p90"])})
+                              "line": "[token-tallies] %s %s %s %s: n=%d median=%d p90=%d%s" % (
+                                  kind, agent, model, effort, st["n"], st["median"], st["p90"],
+                                  "" if st["median_ms"] is None else " med_time=" + format_minutes(st["median_ms"]))})
             continue
         path = os.path.join(store, "topics", topic + ".md")
         if not os.path.exists(path):
@@ -1509,6 +1589,9 @@ def _capture(data, root, store):
     state = read_round_state(store, data["agent_id"], transcript_path) if rows else None
     tally, kind = compute_tally(rows, data.get("effort"), state)
     tally["skipped"] = skipped
+    if not tally["effort"]:
+        tally["effort"] = agent_file_effort(root, agent_type)
+        tally["effort_source"] = "agent_file" if tally["effort"] else ""
     run = {"version": 1, "time": now_str(), "date": day, "agent_type": agent_type, "agent_id": data["agent_id"],
            "session_id": data.get("session_id") if isinstance(data.get("session_id"), str) else "",
            "head": git_head(root, cfg["git_timeout_s"]), "kind": kind, "tally": tally,
@@ -2678,10 +2761,30 @@ def count_lines(path):
         return 0
 
 
+def migrate_tally_rows(rows):
+    """Rows keyed by kind|agent|model (before efforts were recorded) move to kind|agent|model|unknown.
+
+    Their samples stay as they are, with no effort or duration. Two keys that land on one key merge.
+    """
+    out = {}
+    for key, row in rows.items():
+        new = "|".join(split_tally_key(key))
+        if new not in out:
+            out[new] = row
+            continue
+        a, b = out[new], row
+        if isinstance(a, dict) and isinstance(b, dict):
+            samples = (a.get("samples") if isinstance(a.get("samples"), list) else []) + (
+                b.get("samples") if isinstance(b.get("samples"), list) else [])
+            dates = [d for d in (a.get("last_date"), b.get("last_date")) if valid_date(d)]
+            out[new] = dict(a, samples=samples, last_date=max(dates) if dates else a.get("last_date", ""))
+    return out
+
+
 def load_tallies(store):
     data = read_json(os.path.join(store, "tallies.json"), None)
     rows = data.get("rows") if isinstance(data, dict) else None
-    return {"version": 1, "rows": rows if isinstance(rows, dict) else {}}
+    return {"version": 1, "rows": migrate_tally_rows(rows) if isinstance(rows, dict) else {}}
 
 
 def write_tallies(store, tallies):
@@ -2721,8 +2824,8 @@ def size_report(st, root):
         names = []
     for name in names:
         size = os.path.getsize(os.path.join(st.path, "topics", name))
-        out.append(("topics/%s %.1f/%.1fKB" % (name, size / 1024.0, cfg["topic_max_bytes"] / 1024.0),
-                    size > cfg["topic_max_bytes"]))
+        limit = cfg["tally_topic_max_bytes"] if name == TALLY_TOPIC + ".md" else cfg["topic_max_bytes"]
+        out.append(("topics/%s %.1f/%.1fKB" % (name, size / 1024.0, limit / 1024.0), size > limit))
     facts = os.path.join(root, FACTS_REL)
     if os.path.exists(facts):
         n = count_lines(facts)
@@ -3277,7 +3380,8 @@ def add_tally_samples(tallies, runs, cfg):
                 skipped[reason] = skipped.get(reason, 0) + 1
             continue
         t = data["tally"]
-        key = tally_key(sample_kind(data, rnd), data.get("agent_type") or "", t.get("model") or "")
+        effort = t["effort"] if isinstance(t.get("effort"), str) and t["effort"] else UNKNOWN_EFFORT
+        key = tally_key(sample_kind(data, rnd), data.get("agent_type") or "", t.get("model") or "", effort)
         row = tallies["rows"].setdefault(key, {"samples": [], "last_date": d})
         agent_id = str(data.get("agent_id", ""))
         same = [s for s in row["samples"]
@@ -3285,13 +3389,17 @@ def add_tally_samples(tallies, runs, cfg):
         if same:
             if "anchor" in t:
                 same[0]["v"], same[0]["date"] = v, d
+                if _is_int(t.get("duration_ms")):
+                    same[0]["duration_ms"] = t["duration_ms"]
                 replaced += 1
             else:
                 skipped["duplicate"] = skipped.get("duplicate", 0) + 1
             if d > row.get("last_date", ""):
                 row["last_date"] = d
             continue
-        sample = {"v": v, "date": d, "agent_id": agent_id}
+        sample = {"v": v, "date": d, "agent_id": agent_id, "effort": effort}
+        if _is_int(t.get("duration_ms")) and t["duration_ms"] >= 0:
+            sample["duration_ms"] = t["duration_ms"]
         if rnd > 1:
             sample["round"] = rnd
         row["samples"].append(sample)

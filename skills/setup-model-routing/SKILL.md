@@ -37,7 +37,7 @@ Codex: OFF. When ON, a peer next to deep-reasoner.
 What `install.sh` already placed under the config dir:
 
 - `agents/`: `scout`, `fast-worker`, `judge`, `deep-reasoner`, `designer`, `verifier`, each with a pinned `model` and `effort`.
-- `rules/model-routing.md` (the routing policy) and `rules/claude-in-chrome.md`.
+- `rules/model-routing.md` (the routing policy), `rules/file-reading.md` and `rules/claude-in-chrome.md`.
 - `hooks/require-agent-model.py` (the dispatch hook, required) and `hooks/check-agent-models.sh` (the startup nudge), both wired into `settings.json`, plus the four HiveMind hook files `hooks/hivemind_lib.py`, `hooks/hivemind-inject.py`, `hooks/hivemind-capture.py` and `hooks/hivemind-guard.py`, wired the same way and idle until a project runs `hivemind_lib.py init`.
 - `skills/setup-model-routing/` and `skills/route-project/`.
 - `model-routing-reference.md`, the explanation nothing imports.

@@ -1,0 +1,86 @@
+/* Routing Dashboard tokens. Draft, October 29, 2026. System fonts, light and dark.
+   Theme: light by default, dark under prefers-color-scheme or [data-theme="dark"];
+   [data-theme="light"] forces light. Status is shape plus word, never hue alone.
+
+   Contrast (WCAG 2.1 relative luminance, computed, not estimated). AA text is 4.5:1, non-text 3:1.
+   Light                                  Dark
+   text on bg              16.56  pass    text on bg              15.33  pass
+   text on surface         15.31  pass    text on surface         13.90  pass
+   text on surface-2       14.25  pass    text on surface-2       12.14  pass
+   text-muted on bg         6.67  pass    text-muted on bg         7.98  pass
+   text-muted on surface    6.17  pass    text-muted on surface    7.23  pass
+   text-muted on surface-2  5.74  pass    text-muted on surface-2  6.32  pass
+   accent on bg             6.48  pass    accent on bg             8.79  pass
+   accent on surface        5.99  pass    accent on surface        7.96  pass
+   text-on-accent on accent 6.48  pass    text-on-accent on accent 8.79  pass
+   border-strong on bg      3.60  pass*   border-strong on bg      3.84  pass*
+   border-strong on surface 3.33  pass*   border-strong on surface 3.48  pass*
+   border on bg             1.45  n/a     border on bg             1.49  n/a
+   in-effect fg on its bg   5.67  pass    in-effect fg on its bg   8.15  pass
+   overridden fg on its bg  5.83  pass    overridden fg on its bg  7.58  pass
+   ignored fg on its bg     5.74  pass    ignored fg on its bg     6.32  pass
+   invalid fg on its bg     6.06  pass    invalid fg on its bg     7.10  pass
+   lowered fg on its bg     6.14  pass    lowered fg on its bg     7.77  pass
+   default fg on its bg    15.31  pass    default fg on its bg    13.90  pass
+   unknown fg on its bg     6.67  pass    unknown fg on its bg     7.98  pass
+   Every status fg also passes 4.5:1 on bg and surface (lowest 6.11 light, 7.23 dark).
+   * non-text, 3:1 floor. "border" is a decorative hairline, never the only boundary of a control. */
+
+:root {
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --text-xs: 12px; --text-sm: 13px; --text-md: 14px; --text-lg: 16px; --text-xl: 20px; --text-2xl: 26px;
+  --leading-tight: 1.25; --leading-body: 1.5;
+  --weight-regular: 400; --weight-medium: 500; --weight-semibold: 600;
+
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 24px; --space-6: 32px; --space-7: 48px;
+  --radius-sm: 4px; --radius-md: 6px; --radius-lg: 10px; --radius-pill: 999px;
+  --border-width: 1px; --focus-width: 2px; --focus-offset: 2px;
+
+  --bg: #ffffff; --surface: #f5f6f8; --surface-2: #eceef1;
+  --text: #1b1f24; --text-muted: #555d67;
+  --border: #d3d7dc; --border-strong: #80888f;
+  --accent: #1d5bb8; --text-on-accent: #ffffff; --focus-ring: var(--accent);
+
+  /* Status: one mark glyph (used as ::before content) plus a quiet fg/bg pair per word. */
+  --status-in-effect-mark: "\25CF"; --status-in-effect-fg: #1f6a3a; --status-in-effect-bg: #e4f1e8;   /* filled circle */
+  --status-overridden-mark: "\25B2"; --status-overridden-fg: #8a4b00; --status-overridden-bg: #f8ecd9; /* triangle up */
+  --status-ignored-mark: "\25CB"; --status-ignored-fg: #555d67; --status-ignored-bg: #eceef1;         /* hollow circle */
+  --status-invalid-mark: "\2715"; --status-invalid-fg: #a3262a; --status-invalid-bg: #f9e5e5;         /* cross */
+  --status-lowered-mark: "\25BC"; --status-lowered-fg: #6b3fa0; --status-lowered-bg: #efe7f8;         /* triangle down */
+  --status-default-mark: "\25C7"; --status-default-fg: #1b1f24; --status-default-bg: #f5f6f8;         /* hollow diamond */
+  --status-unknown-mark: "?"; --status-unknown-fg: #555d67; --status-unknown-bg: #ffffff;             /* question mark, dashed border */
+  --status-unknown-border: dashed;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111417; --surface: #1a1e23; --surface-2: #242930;
+    --text: #e8eaed; --text-muted: #a4abb4;
+    --border: #2f353d; --border-strong: #6a737d;
+    --accent: #86b4ff; --text-on-accent: #111417;
+    --status-in-effect-fg: #8fd3a4; --status-in-effect-bg: #15301f;
+    --status-overridden-fg: #f0b56b; --status-overridden-bg: #3a2a12;
+    --status-ignored-fg: #a4abb4; --status-ignored-bg: #242930;
+    --status-invalid-fg: #f09a9c; --status-invalid-bg: #3d1c1d;
+    --status-lowered-fg: #c9b0f0; --status-lowered-bg: #2c2240;
+    --status-default-fg: #e8eaed; --status-default-bg: #1a1e23;
+    --status-unknown-fg: #a4abb4; --status-unknown-bg: #111417;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #111417; --surface: #1a1e23; --surface-2: #242930;
+  --text: #e8eaed; --text-muted: #a4abb4;
+  --border: #2f353d; --border-strong: #6a737d;
+  --accent: #86b4ff; --text-on-accent: #111417;
+  --status-in-effect-fg: #8fd3a4; --status-in-effect-bg: #15301f;
+  --status-overridden-fg: #f0b56b; --status-overridden-bg: #3a2a12;
+  --status-ignored-fg: #a4abb4; --status-ignored-bg: #242930;
+  --status-invalid-fg: #f09a9c; --status-invalid-bg: #3d1c1d;
+  --status-lowered-fg: #c9b0f0; --status-lowered-bg: #2c2240;
+  --status-default-fg: #e8eaed; --status-default-bg: #1a1e23;
+  --status-unknown-fg: #a4abb4; --status-unknown-bg: #111417;
+}
+
+body { background: var(--bg); color: var(--text); font: var(--text-md)/var(--leading-body) var(--font-sans); }

@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "rules": [
+    {
+      "rule_id": "effort-level-user-settings-opus-5-5",
+      "key": "effortLevel",
+      "scope": "main",
+      "layer_order": ["managed", "cli", "local", "project", "user"],
+      "conditions": [
+        {"layer": "user", "models": ["claude-opus-5-5"], "status": "ignored"}
+      ],
+      "reason": "Opus 5.5 ignores effortLevel in {file}.",
+      "doc_url": "https://code.claude.com/docs/en/settings-reference#effortlevel",
+      "quote": "Opus 5.5 and models released after it ignore it and start at their own default until you save a level for them, which /effort writes under modelSettings. In project, local, and managed settings, and with --settings, this key applies to every model.",
+      "experiment": null,
+      "confidence": "documented",
+      "verified_on": {"claude_version": "2.1.302", "date": "2026-10-29"}
+    }
+  ]
+}

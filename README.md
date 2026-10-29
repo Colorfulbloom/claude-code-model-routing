@@ -46,6 +46,10 @@ Every subagent's output lands in the context of whoever dispatched it. Handing a
 
 Each agent's `model` and `effort` are set in its frontmatter; the installer asks you to pick them (see [Choosing models](#choosing-models)). The installer does not set the main model; `/setup-model-routing` offers to.
 
+`deep-reasoner` and `designer` also ask for a one-hour prompt cache, with `cacheTtl: 1h` under `experimental` in the frontmatter. Subagents get a five-minute cache by default. Both are leads that sit idle while their workers run, so their cache kept expiring. Each request after a gap of more than five minutes wrote the whole context to the cache again.
+
+The other agents stay on five minutes, because my session logs showed a one-hour cache would cost them more than it saves. Claude Code ignores the `1h` while your subscription draws on usage credits, so the two leads get five minutes too. Fable usage can bill to usage credits on some plans, as [Model access](#model-access) explains.
+
 ## The hooks
 
 **`hooks/require-agent-model.py`** runs before every `Agent` tool call. It exits 2 when a dispatch passes no `model` and targets a built-in agent (`Explore`, `Plan`), an agent it cannot find, or an agent whose `model` is missing or `inherit`. It always blocks `general-purpose` (use `judge`), and it blocks any found agent with no pinned `effort`, even when a model is passed. Exit 2 means Claude Code cancels the tool call and shows the hook's message to Claude, which then passes a model and retries. Plugin agents (names with a `:`) and anything the hook cannot parse go through.
@@ -100,7 +104,7 @@ END HIVEMIND
 3. The capture hook writes the parsed block to `inbox/`. Only the last block counts. There is no line or length limit: a USED or VERIFIED line may carry a note after the ids, and a NEW entry may span several lines. A block over 64KB is cut there and flagged `truncated`. Nothing is dropped: a line that does not parse, or a NEW that fails a rule (unknown topic, no evidence path inside the project root), goes to the run file's `unparsed` list with its reason, `status` reports how many wait, and `prep` lists them for CONSOLIDATION to salvage by hand. Lines that match a secret pattern are the one exception and are never stored.
 4. At the end of each feature `deep-reasoner` runs CONSOLIDATION with `hivemind_lib.py`: `prep` reports the proposals, it edits `topics/*.md`, `apply` folds in the inbox and regenerates the index, `history add` records the feature, and `check` must pass.
 
-Limits are in `config.json`: `INDEX.md` 50 lines, each topic about 4KB, the reviewed tier 60 lines, and an injection budget per agent type. A fact expires after 28 active days unused. An active day is a day the project had commits or agent runs, so time away loses nothing. Any USED or VERIFIED resets the clock.
+Limits are in `config.json`. `INDEX.md` gets 50 lines, each topic about 4KB, the reviewed tier 60 lines, and each agent type an injection budget. The `token-tallies` topic is a generated table that grows a row for each kind, agent, model and effort, so it gets its own limit of 16KB (`tally_topic_max_bytes`). A fact expires after 28 active days unused. An active day is a day the project had commits or agent runs, so time away loses nothing. Any USED or VERIFIED resets the clock.
 
 ### Feature history
 
@@ -118,6 +122,8 @@ A code feature is recorded with `commit: pending (branch <name>)` before it merg
 
 Token tallies from each run feed `topics/token-tallies.md`, which the cost gate in `rules/model-routing.md` reads. The figure is the harness's per-agent token figure (`tally_metric`, `context_final_plus_out` by default). Each round of an agent is one sample. A fresh agent's sample is its whole run. An agent resumed with SendMessage keeps its agent id. A new round starts only at a real brief after the agent stopped: a message from the coordinator, from a human, or from another agent that is not one of the agent's own workers. Harness nudges, background task notifications and the agent's own workers' reports wake the agent without starting a round, and the later capture of that round replaces its sample. The capture hook keeps per-agent state in `inbox/rounds/` (rows read, round, start row, kind) so the next capture knows where the last one stopped. Without it, the round is found by scanning the transcript for briefs. A later round's sample is its increase over the total at the start of the round, read from the transcript. It is filed under its own `Kind:` line, or under the previous round's kind when the brief has none (`untagged` only when round 1 had no `Kind:` line either), in a separate `<kind>+resumed` row, so resumes never move the fresh-dispatch medians. A round whose total did not grow (context compaction can shrink it) gives no sample, and `apply` says how many runs it skipped and why.
 
+Each sample also records the agent's effort level and the round's duration in milliseconds. Rows are keyed by kind, agent, model and effort, so the table shows what each effort level costs, and its `med_time` column is the median duration as m:ss. The capture hook takes the effort from the SubagentStop payload. If the payload has none, it falls back to the agent's transcript, then to the `effort` pinned in the agent's file (the project's `.claude/agents` first, then `~/.claude/agents`). With none of those, the effort is `unknown`. The duration is the time between the first and last transcript timestamps of the round. That is wall time, so it includes the time an agent waits on its own workers. Rows from before effort was recorded move to effort `unknown`, and their samples have no duration.
+
 Guardrails:
 
 - Memory picks the order and subsets of tests, never whether the full suite runs.
@@ -127,6 +133,7 @@ Guardrails:
 ## Rules
 
 - `rules/model-routing.md` is the routing policy. It loads into every session, so it stays short. The explanations live in the reference doc, which nothing imports.
+- `rules/file-reading.md` tells agents to read only the part of a file they need. It keeps reads from filling an agent's context. It has no `paths` frontmatter, so it loads into every session, like `model-routing.md`.
 - `rules/claude-in-chrome.md` is the tab-group etiquette for agents that use Claude in Chrome. It exists because `judge` and `designer` open tabs; if you never use Chrome you can delete it after install.
 
 Personal rules in `~/.claude/rules/` apply to every project on your machine.
