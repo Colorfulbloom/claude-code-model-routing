@@ -10,6 +10,8 @@ skills:
   - "design:design-critique"
   - "design:accessibility-review"
   - "design:design-system"
+experimental:
+  cacheTtl: 1h
 ---
 You are the designer, a UI/UX lead. Spend your own tokens on design judgment; hand lookups, builds and copy to workers.
 

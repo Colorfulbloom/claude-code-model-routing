@@ -46,6 +46,10 @@ Every subagent's output lands in the context of whoever dispatched it. Handing a
 
 Each agent's `model` and `effort` are set in its frontmatter; the installer asks you to pick them (see [Choosing models](#choosing-models)). The installer does not set the main model; `/setup-model-routing` offers to.
 
+`deep-reasoner` and `designer` also ask for a one-hour prompt cache, with `cacheTtl: 1h` under `experimental` in the frontmatter. Subagents get a five-minute cache by default. Both are leads that sit idle while their workers run, so their cache kept expiring. Each request after a gap of more than five minutes wrote the whole context to the cache again.
+
+The other agents stay on five minutes, because my session logs showed a one-hour cache would cost them more than it saves. Claude Code ignores the `1h` while your subscription draws on usage credits, so the two leads get five minutes too. Fable usage can bill to usage credits on some plans, as [Model access](#model-access) explains.
+
 ## The hooks
 
 **`hooks/require-agent-model.py`** runs before every `Agent` tool call. It exits 2 when a dispatch passes no `model` and targets a built-in agent (`Explore`, `Plan`), an agent it cannot find, or an agent whose `model` is missing or `inherit`. It always blocks `general-purpose` (use `judge`), and it blocks any found agent with no pinned `effort`, even when a model is passed. Exit 2 means Claude Code cancels the tool call and shows the hook's message to Claude, which then passes a model and retries. Plugin agents (names with a `:`) and anything the hook cannot parse go through.
@@ -129,6 +133,7 @@ Guardrails:
 ## Rules
 
 - `rules/model-routing.md` is the routing policy. It loads into every session, so it stays short. The explanations live in the reference doc, which nothing imports.
+- `rules/file-reading.md` tells agents to read only the part of a file they need. It keeps reads from filling an agent's context. It has no `paths` frontmatter, so it loads into every session, like `model-routing.md`.
 - `rules/claude-in-chrome.md` is the tab-group etiquette for agents that use Claude in Chrome. It exists because `judge` and `designer` open tabs; if you never use Chrome you can delete it after install.
 
 Personal rules in `~/.claude/rules/` apply to every project on your machine.

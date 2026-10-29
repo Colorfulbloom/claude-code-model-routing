@@ -46,6 +46,12 @@ Codex: OFF. When ON, a peer next to deep-reasoner at layer one.
 
 Each agent's `model` and `effort` live only in its frontmatter. The installer's picker changes them (see the README).
 
+`deep-reasoner` and `designer` also set `cacheTtl: 1h` under `experimental` in their frontmatter, which asks for a one-hour prompt cache. Subagents get five minutes by default, even on a Claude subscription. Both are leads that sit idle while their workers run, and the owner's session logs showed their cache kept expiring. Each request after a gap of more than five minutes wrote the whole context to the cache again.
+
+The other agents keep the default. A one-hour cache write costs more than a five-minute one. The owner's logs showed the longer cache would cost these agents more than it saves.
+
+Claude Code reads the field only from subagent files and needs v2.1.248 or later. It ignores the `1h` while a Claude subscription draws on usage credits, so the agent gets five minutes. Fable usage can bill to usage credits on some plans, as the README's "Model access" section notes. Other settings and environment variables can override the field, as [Choose the TTL yourself](https://code.claude.com/docs/en/prompt-caching#choose-the-ttl-yourself) in the prompt caching docs explains.
+
 ## Why the lead pattern exists
 
 Every subagent's output lands in the context of whoever dispatched it. If the main session ran a feature itself, it would dispatch several workers and scouts and read every one of their reports, filling the most expensive context with worker detail it only needs a verdict on. Handing one brief to `deep-reasoner` moves all of that one layer down: the lead absorbs the worker transcripts verifies the result, and returns a single summary. The main session stays lean, keeps its judgment for the decision, and pays the top rate only for planning and review. Subagents can nest up to three layers below the main session, so the main session, then the lead, then workers, fits with room to spare.
