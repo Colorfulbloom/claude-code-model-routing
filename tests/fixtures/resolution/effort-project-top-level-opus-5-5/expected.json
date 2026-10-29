@@ -1,0 +1,20 @@
+{
+  "fixture": "effort-project-top-level-opus-5-5",
+  "rule_ids": [
+    "effort-level-layer-order"
+  ],
+  "confidence": "tested",
+  "source": "dashboard/experiments/2026-10-29-effort-user-key-by-model.json#p-top-low-opus55",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "effortLevel",
+      "value": "low",
+      "status": "in_effect",
+      "layer": "project",
+      "file": "project/.claude/settings.json",
+      "scope": "main",
+      "model": "claude-opus-5-5"
+    }
+  ]
+}

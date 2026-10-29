@@ -1,5 +1,291 @@
 {
-  "schema_version": 1,
+  "schema_version": 3,
+  "models": [
+    {
+      "id": "claude-haiku-4-5",
+      "aliases": [],
+      "effort_levels": [],
+      "default_effort": null,
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/model-config#adjust-effort-level",
+          "quote": "The available effort levels depend on the model. Models not listed here do not support effort"
+        }
+      ],
+      "experiment": "experiments/2026-10-29-effort-fallback-levels.json",
+      "confidence": "tested"
+    },
+    {
+      "id": "claude-opus-4-6",
+      "aliases": [],
+      "effort_levels": [
+        "low",
+        "medium",
+        "high",
+        "max"
+      ],
+      "default_effort": "high",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/model-config#adjust-effort-level",
+          "quote": "The model's default effort: `high` on every model that supports effort, except that Opus 5.5, Sonnet 5.5, and Haiku 5.5 default to `medium`, Opus 4.7 defaults to `xhigh`"
+        },
+        {
+          "doc_url": "https://code.claude.com/docs/en/model-config#adjust-effort-level",
+          "quote": "Opus 4.6 and Sonnet 4.6 | `low`, `medium`, `high`, `max`"
+        }
+      ],
+      "experiment": "experiments/2026-10-29-effort-fallback-levels.json",
+      "confidence": "tested"
+    },
+    {
+      "id": "claude-sonnet-4-6",
+      "aliases": [],
+      "effort_levels": [
+        "low",
+        "medium",
+        "high",
+        "max"
+      ],
+      "default_effort": "high",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/model-config#adjust-effort-level",
+          "quote": "The model's default effort: `high` on every model that supports effort, except that Opus 5.5, Sonnet 5.5, and Haiku 5.5 default to `medium`, Opus 4.7 defaults to `xhigh`"
+        },
+        {
+          "doc_url": "https://code.claude.com/docs/en/model-config#adjust-effort-level",
+          "quote": "Opus 4.6 and Sonnet 4.6 | `low`, `medium`, `high`, `max`"
+        }
+      ],
+      "experiment": null,
+      "confidence": "documented"
+    },
+    {
+      "id": "claude-opus-4-7",
+      "aliases": [],
+      "effort_levels": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ],
+      "default_effort": "xhigh",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/model-config#adjust-effort-level",
+          "quote": "The model's default effort: `high` on every model that supports effort, except that Opus 5.5, Sonnet 5.5, and Haiku 5.5 default to `medium`, Opus 4.7 defaults to `xhigh`"
+        },
+        {
+          "doc_url": "https://code.claude.com/docs/en/model-config#adjust-effort-level",
+          "quote": "Opus 5.5, Sonnet 5.5, Haiku 5.5, Opus 5, Sonnet 5, Opus 4.8, and Opus 4.7 | `low`, `medium`, `high`, `xhigh`, `max`"
+        }
+      ],
+      "experiment": "experiments/2026-10-29-effort-fallback-levels.json",
+      "confidence": "tested"
+    },
+    {
+      "id": "claude-opus-4-8",
+      "aliases": [],
+      "effort_levels": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ],
+      "default_effort": "high",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/model-config#adjust-effort-level",
+          "quote": "The model's default effort: `high` on every model that supports effort, except that Opus 5.5, Sonnet 5.5, and Haiku 5.5 default to `medium`, Opus 4.7 defaults to `xhigh`"
+        },
+        {
+          "doc_url": "https://code.claude.com/docs/en/model-config#adjust-effort-level",
+          "quote": "Opus 5.5, Sonnet 5.5, Haiku 5.5, Opus 5, Sonnet 5, Opus 4.8, and Opus 4.7 | `low`, `medium`, `high`, `xhigh`, `max`"
+        }
+      ],
+      "experiment": null,
+      "confidence": "documented"
+    },
+    {
+      "id": "claude-opus-5",
+      "aliases": [],
+      "effort_levels": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ],
+      "default_effort": "high",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/model-config#adjust-effort-level",
+          "quote": "The model's default effort: `high` on every model that supports effort, except that Opus 5.5, Sonnet 5.5, and Haiku 5.5 default to `medium`, Opus 4.7 defaults to `xhigh`"
+        },
+        {
+          "doc_url": "https://code.claude.com/docs/en/model-config#adjust-effort-level",
+          "quote": "Opus 5.5, Sonnet 5.5, Haiku 5.5, Opus 5, Sonnet 5, Opus 4.8, and Opus 4.7 | `low`, `medium`, `high`, `xhigh`, `max`"
+        }
+      ],
+      "experiment": "experiments/2026-10-29-effort-fallback-levels.json",
+      "confidence": "tested"
+    },
+    {
+      "id": "claude-sonnet-5",
+      "aliases": [],
+      "effort_levels": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ],
+      "default_effort": "high",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/model-config#adjust-effort-level",
+          "quote": "The model's default effort: `high` on every model that supports effort, except that Opus 5.5, Sonnet 5.5, and Haiku 5.5 default to `medium`, Opus 4.7 defaults to `xhigh`"
+        },
+        {
+          "doc_url": "https://code.claude.com/docs/en/model-config#adjust-effort-level",
+          "quote": "Opus 5.5, Sonnet 5.5, Haiku 5.5, Opus 5, Sonnet 5, Opus 4.8, and Opus 4.7 | `low`, `medium`, `high`, `xhigh`, `max`"
+        }
+      ],
+      "experiment": "experiments/2026-10-29-effort-fallback-levels.json",
+      "confidence": "tested"
+    },
+    {
+      "id": "claude-fable-5",
+      "aliases": [],
+      "effort_levels": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ],
+      "default_effort": "high",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/model-config#adjust-effort-level",
+          "quote": "The model's default effort: `high` on every model that supports effort, except that Opus 5.5, Sonnet 5.5, and Haiku 5.5 default to `medium`, Opus 4.7 defaults to `xhigh`"
+        },
+        {
+          "doc_url": "https://code.claude.com/docs/en/model-config#adjust-effort-level",
+          "quote": "Fable 5.1 and Fable 5 | `low`, `medium`, `high`, `xhigh`, `max`"
+        }
+      ],
+      "experiment": null,
+      "confidence": "documented"
+    },
+    {
+      "id": "claude-fable-5-1",
+      "aliases": [
+        "fable"
+      ],
+      "effort_levels": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ],
+      "default_effort": "high",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/model-config#adjust-effort-level",
+          "quote": "The model's default effort: `high` on every model that supports effort, except that Opus 5.5, Sonnet 5.5, and Haiku 5.5 default to `medium`, Opus 4.7 defaults to `xhigh`"
+        },
+        {
+          "doc_url": "https://code.claude.com/docs/en/model-config#adjust-effort-level",
+          "quote": "Fable 5.1 and Fable 5 | `low`, `medium`, `high`, `xhigh`, `max`"
+        }
+      ],
+      "experiment": "experiments/2026-10-29-effort-fallback-levels.json",
+      "confidence": "tested"
+    },
+    {
+      "id": "claude-opus-5-5",
+      "aliases": [
+        "opus"
+      ],
+      "effort_levels": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ],
+      "default_effort": "medium",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/model-config#adjust-effort-level",
+          "quote": "The model's default effort: `high` on every model that supports effort, except that Opus 5.5, Sonnet 5.5, and Haiku 5.5 default to `medium`, Opus 4.7 defaults to `xhigh`"
+        },
+        {
+          "doc_url": "https://code.claude.com/docs/en/model-config#adjust-effort-level",
+          "quote": "Opus 5.5, Sonnet 5.5, Haiku 5.5, Opus 5, Sonnet 5, Opus 4.8, and Opus 4.7 | `low`, `medium`, `high`, `xhigh`, `max`"
+        }
+      ],
+      "experiment": "experiments/2026-10-29-effort-user-key-by-model.json",
+      "confidence": "tested"
+    },
+    {
+      "id": "claude-sonnet-5-5",
+      "aliases": [
+        "sonnet"
+      ],
+      "effort_levels": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ],
+      "default_effort": "medium",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/model-config#adjust-effort-level",
+          "quote": "The model's default effort: `high` on every model that supports effort, except that Opus 5.5, Sonnet 5.5, and Haiku 5.5 default to `medium`, Opus 4.7 defaults to `xhigh`"
+        },
+        {
+          "doc_url": "https://code.claude.com/docs/en/model-config#adjust-effort-level",
+          "quote": "Opus 5.5, Sonnet 5.5, Haiku 5.5, Opus 5, Sonnet 5, Opus 4.8, and Opus 4.7 | `low`, `medium`, `high`, `xhigh`, `max`"
+        }
+      ],
+      "experiment": "experiments/2026-10-29-effort-user-key-by-model.json",
+      "confidence": "tested"
+    },
+    {
+      "id": "claude-haiku-5-5",
+      "aliases": [
+        "haiku"
+      ],
+      "effort_levels": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ],
+      "default_effort": "medium",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/model-config#adjust-effort-level",
+          "quote": "The model's default effort: `high` on every model that supports effort, except that Opus 5.5, Sonnet 5.5, and Haiku 5.5 default to `medium`, Opus 4.7 defaults to `xhigh`"
+        },
+        {
+          "doc_url": "https://code.claude.com/docs/en/model-config#adjust-effort-level",
+          "quote": "Opus 5.5, Sonnet 5.5, Haiku 5.5, Opus 5, Sonnet 5, Opus 4.8, and Opus 4.7 | `low`, `medium`, `high`, `xhigh`, `max`"
+        }
+      ],
+      "experiment": "experiments/2026-10-29-effort-fallback-levels.json",
+      "confidence": "tested"
+    }
+  ],
   "rules": [
     {
       "rule_id": "effort-level-user-settings-opus-5-5",
@@ -19,20 +305,31 @@
         {
           "layer": "user",
           "models": [
-            "claude-opus-5-5"
+            {
+              "from": "claude-opus-5-5"
+            }
           ],
           "status": "ignored"
         }
       ],
-      "reason": "Opus 5.5 ignores effortLevel in {file}.",
-      "doc_url": "https://code.claude.com/docs/en/settings-reference#effortlevel",
-      "quote": "Opus 5.5 and models released after it ignore it and start at their own default until you save a level for them, which `/effort` writes under `modelSettings`. In project, local, and managed settings, and with `--settings`, this key applies to every model.",
-      "experiment": null,
-      "confidence": "documented",
+      "reason": "{model} ignores the top-level effortLevel in {file}. Opus 5.5 and later models take a user settings level only from modelSettings.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/settings-reference#effortlevel",
+          "quote": "Opus 5.5 and models released after it ignore it and start at their own default until you save a level for them, which `/effort` writes under `modelSettings`. In project, local, and managed settings, and with `--settings`, this key applies to every model."
+        },
+        {
+          "doc_url": "https://code.claude.com/docs/en/model-config#set-the-effort-level",
+          "quote": "If you set `effortLevel` in managed settings, Claude Code applies it at the settings step of the effort resolution order, and users can still change the level with `/effort` or `--effort`."
+        }
+      ],
+      "experiment": "experiments/2026-10-29-effort-user-key-by-model.json",
+      "confidence": "tested",
       "verified_on": {
         "claude_version": "2.1.302",
         "date": "2026-10-29"
-      }
+      },
+      "combine": "highest_layer"
     },
     {
       "rule_id": "model-main-session-order",
@@ -100,14 +397,19 @@
         }
       ],
       "reason": "{winner} sets the model. --model beats ANTHROPIC_MODEL, which beats the model key in any file, managed included.",
-      "doc_url": "https://code.claude.com/docs/en/settings-reference#model",
-      "quote": "`--model` takes precedence over `ANTHROPIC_MODEL`, and both take precedence over this key for one session, including over a managed `model`",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/settings-reference#model",
+          "quote": "`--model` takes precedence over `ANTHROPIC_MODEL`, and both take precedence over this key for one session, including over a managed `model`"
+        }
+      ],
       "experiment": "experiments/2026-10-29-model-main-session-order.json",
       "confidence": "tested",
       "verified_on": {
         "claude_version": "2.1.302",
         "date": "2026-10-29"
-      }
+      },
+      "combine": "highest_layer"
     },
     {
       "rule_id": "env-block-order",
@@ -166,14 +468,19 @@
         }
       ],
       "reason": "{key} comes from {file}. A settings env block overwrites the shell, and the higher file wins.",
-      "doc_url": "https://code.claude.com/docs/en/settings-reference#env",
-      "quote": "A value here overwrites the same variable exported in your shell, and when more than one settings file sets a variable, the highest-precedence one applies.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/settings-reference#env",
+          "quote": "A value here overwrites the same variable exported in your shell, and when more than one settings file sets a variable, the highest-precedence one applies."
+        }
+      ],
       "experiment": "experiments/2026-10-29-env-block-order.json",
       "confidence": "tested",
       "verified_on": {
         "claude_version": "2.1.302",
         "date": "2026-10-29"
-      }
+      },
+      "combine": "highest_layer"
     },
     {
       "rule_id": "effort-level-layer-order",
@@ -241,14 +548,23 @@
         }
       ],
       "reason": "{winner} sets the effort. CLAUDE_CODE_EFFORT_LEVEL beats --effort, which beats every settings file.",
-      "doc_url": "https://code.claude.com/docs/en/settings-reference#effortlevel",
-      "quote": "`--effort` takes precedence over this key for one session, and `CLAUDE_CODE_EFFORT_LEVEL` takes precedence over both",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/settings-reference#effortlevel",
+          "quote": "`--effort` takes precedence over this key for one session, and `CLAUDE_CODE_EFFORT_LEVEL` takes precedence over both"
+        },
+        {
+          "doc_url": "https://code.claude.com/docs/en/model-config#set-the-effort-level",
+          "quote": "If you set `effortLevel` in managed settings, Claude Code applies it at the settings step of the effort resolution order, and users can still change the level with `/effort` or `--effort`."
+        }
+      ],
       "experiment": "experiments/2026-10-29-effort-level-order.json",
       "confidence": "tested",
       "verified_on": {
         "claude_version": "2.1.302",
         "date": "2026-10-29"
-      }
+      },
+      "combine": "highest_layer"
     },
     {
       "rule_id": "model-settings-effort-per-model",
@@ -298,15 +614,20 @@
           "status": "in_effect"
         }
       ],
-      "reason": "{file} decides effort for {model}: it is the highest file that sets a level for this model.",
-      "doc_url": "https://code.claude.com/docs/en/settings-reference#modelsettings",
-      "quote": "Across files, Claude Code resolves each model separately: the highest-precedence settings file that sets either an `effortLevel` for that model or a top-level `effortLevel` that applies to that model decides, so an `effortLevel` in managed settings outranks a level you saved in user settings.",
+      "reason": "{file} decides effort for {model}, because it's the highest file that sets a level for this model.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/settings-reference#modelsettings",
+          "quote": "Across files, Claude Code resolves each model separately: the highest-precedence settings file that sets either an `effortLevel` for that model or a top-level `effortLevel` that applies to that model decides, so an `effortLevel` in managed settings outranks a level you saved in user settings."
+        }
+      ],
       "experiment": "experiments/2026-10-29-model-settings-effort.json",
       "confidence": "tested",
       "verified_on": {
         "claude_version": "2.1.302",
         "date": "2026-10-29"
-      }
+      },
+      "combine": "highest_layer"
     },
     {
       "rule_id": "max-effort-level-lowest-cap",
@@ -357,14 +678,26 @@
         }
       ],
       "reason": "The lowest cap applies. {value} in {file} can't be raised from another file.",
-      "doc_url": "https://code.claude.com/docs/en/settings-reference#maxeffortlevel",
-      "quote": "When several scopes set a cap, the lowest applies, so a cap set in one scope can't be raised from another",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/settings-reference#maxeffortlevel",
+          "quote": "When several scopes set a cap, the lowest applies, so a cap set in one scope can't be raised from another"
+        }
+      ],
       "experiment": "experiments/2026-10-29-max-effort-level-cap.json",
       "confidence": "tested",
       "verified_on": {
         "claude_version": "2.1.302",
         "date": "2026-10-29"
-      }
+      },
+      "combine": "lowest_value",
+      "value_order": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ]
     },
     {
       "rule_id": "prompt-cache-ttl-order",
@@ -424,14 +757,19 @@
         }
       ],
       "reason": "{winner} sets the main conversation's cache lifetime. ENABLE_PROMPT_CACHING_1H counts only when no file sets the key.",
-      "doc_url": "https://code.claude.com/docs/en/settings-reference#promptcachettl",
-      "quote": "`FORCE_PROMPT_CACHING_5M` takes precedence over everything else, then `CLAUDE_CODE_PROMPT_CACHE_TTL`, then this key, and last `ENABLE_PROMPT_CACHING_1H`",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/settings-reference#promptcachettl",
+          "quote": "`FORCE_PROMPT_CACHING_5M` takes precedence over everything else, then `CLAUDE_CODE_PROMPT_CACHE_TTL`, then this key, and last `ENABLE_PROMPT_CACHING_1H`"
+        }
+      ],
       "experiment": "experiments/2026-10-29-prompt-cache-ttl-order.json",
       "confidence": "tested",
       "verified_on": {
         "claude_version": "2.1.302",
         "date": "2026-10-29"
-      }
+      },
+      "combine": "highest_layer"
     },
     {
       "rule_id": "subagent-prompt-cache-ttl-order",
@@ -491,14 +829,19 @@
         }
       ],
       "reason": "{winner} sets the cache lifetime for {agent}. ENABLE_PROMPT_CACHING_1H counts only when no file sets the key.",
-      "doc_url": "https://code.claude.com/docs/en/settings-reference#subagentpromptcachettl",
-      "quote": "`FORCE_PROMPT_CACHING_5M` takes precedence over everything else, then `CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL`, then this key, then `ENABLE_PROMPT_CACHING_1H`, which asks for the one-hour lifetime on every request.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/settings-reference#subagentpromptcachettl",
+          "quote": "`FORCE_PROMPT_CACHING_5M` takes precedence over everything else, then `CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL`, then this key, then `ENABLE_PROMPT_CACHING_1H`, which asks for the one-hour lifetime on every request."
+        }
+      ],
       "experiment": "experiments/2026-10-29-subagent-prompt-cache-ttl-order.json",
       "confidence": "tested",
       "verified_on": {
         "claude_version": "2.1.302",
         "date": "2026-10-29"
-      }
+      },
+      "combine": "highest_layer"
     },
     {
       "rule_id": "auto-compact-window-order",
@@ -566,14 +909,19 @@
         }
       ],
       "reason": "{winner} sets the auto-compact window. CLAUDE_CODE_AUTO_COMPACT_WINDOW beats --autocompact, and both beat managed settings.",
-      "doc_url": "https://code.claude.com/docs/en/settings-reference#autocompactwindow",
-      "quote": "`--autocompact` takes precedence over this key for one session, and `CLAUDE_CODE_AUTO_COMPACT_WINDOW` takes precedence over both unless Claude Code ignores the variable's value",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/settings-reference#autocompactwindow",
+          "quote": "`--autocompact` takes precedence over this key for one session, and `CLAUDE_CODE_AUTO_COMPACT_WINDOW` takes precedence over both unless Claude Code ignores the variable's value"
+        }
+      ],
       "experiment": null,
       "confidence": "documented",
       "verified_on": {
         "claude_version": "2.1.302",
         "date": "2026-10-29"
-      }
+      },
+      "combine": "highest_layer"
     },
     {
       "rule_id": "subagent-model-order",
@@ -611,14 +959,19 @@
         }
       ],
       "reason": "{agent} runs on {winner}. Its frontmatter model, inherit included, beats CLAUDE_CODE_SUBAGENT_MODEL, which beats the main model. A model passed at dispatch, or set by a mod's agent.spawn hook, beats all three, and the resolver can't see either.",
-      "doc_url": "https://code.claude.com/docs/en/env-vars#variables",
-      "quote": "Two sources take precedence over it: a model Claude passes when it spawns the agent, and a `model` field in the agent's definition, including `inherit`.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/env-vars#variables",
+          "quote": "Two sources take precedence over it: a model Claude passes when it spawns the agent, and a `model` field in the agent's definition, including `inherit`."
+        }
+      ],
       "experiment": "experiments/2026-10-29-subagent-model-order.json",
       "confidence": "tested",
       "verified_on": {
         "claude_version": "2.1.302",
         "date": "2026-10-29"
-      }
+      },
+      "combine": "highest_layer"
     },
     {
       "rule_id": "subagent-model-force",
@@ -639,8 +992,1231 @@
         }
       ],
       "reason": "CLAUDE_CODE_SUBAGENT_MODEL_FORCE is on, so {agent} ignores the model in {file} and runs on {winner}.",
-      "doc_url": "https://code.claude.com/docs/en/sub-agents#run-every-subagent-on-one-model",
-      "quote": "While `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` is on, Claude Code ignores the `model` field in subagent definitions, and Claude can't pass a model when it starts a subagent.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/sub-agents#run-every-subagent-on-one-model",
+          "quote": "While `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` is on, Claude Code ignores the `model` field in subagent definitions, and Claude can't pass a model when it starts a subagent."
+        }
+      ],
+      "experiment": null,
+      "confidence": "documented",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-29"
+      },
+      "combine": "highest_layer"
+    },
+    {
+      "rule_id": "effort-env-auto-sends-none",
+      "key": "effortLevel",
+      "scope": "main",
+      "layer_order": [
+        "env",
+        "flag",
+        "managed",
+        "cli",
+        "local",
+        "project",
+        "user",
+        "default"
+      ],
+      "combine": "highest_layer",
+      "conditions": [
+        {
+          "layer": "env",
+          "models": [
+            "*"
+          ],
+          "values": [
+            "auto",
+            "unset"
+          ],
+          "status": "default"
+        }
+      ],
+      "reason": "CLAUDE_CODE_EFFORT_LEVEL is {value}, so Claude Code sends no effort level and the API's own default for {model} applies. /effort status shows this as auto.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/env-vars#variables",
+          "quote": "Set it to `auto` or `unset` to have Claude Code send no effort level, so that the API applies its own default for the model."
+        }
+      ],
+      "experiment": "experiments/2026-10-29-effort-auto.json",
+      "confidence": "tested",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-29"
+      }
+    },
+    {
+      "rule_id": "effort-default-by-model",
+      "key": "effortLevel",
+      "scope": "main",
+      "layer_order": [
+        "env",
+        "flag",
+        "managed",
+        "cli",
+        "local",
+        "project",
+        "user",
+        "default"
+      ],
+      "combine": "highest_layer",
+      "conditions": [
+        {
+          "layer": "default",
+          "models": [
+            "*"
+          ],
+          "status": "default"
+        }
+      ],
+      "reason": "Nothing sets an effort level that counts for {model}, so it runs at its default, {value}. /effort status shows this as auto (currently {value}).",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/model-config#adjust-effort-level",
+          "quote": "The model's default effort: `high` on every model that supports effort, except that Opus 5.5, Sonnet 5.5, and Haiku 5.5 default to `medium`, Opus 4.7 defaults to `xhigh`"
+        }
+      ],
+      "experiment": "experiments/2026-10-29-effort-status-session.json",
+      "confidence": "tested",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-29"
+      }
+    },
+    {
+      "rule_id": "effort-level-settings-values",
+      "key": "effortLevel",
+      "scope": "main",
+      "layer_order": [
+        "managed",
+        "cli",
+        "local",
+        "project",
+        "user"
+      ],
+      "combine": "highest_layer",
+      "conditions": [
+        {
+          "layer": "managed",
+          "models": [
+            "*"
+          ],
+          "values": [
+            "low",
+            "medium",
+            "high",
+            "xhigh"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "managed",
+          "models": [
+            "*"
+          ],
+          "status": "invalid"
+        },
+        {
+          "layer": "cli",
+          "models": [
+            "*"
+          ],
+          "values": [
+            "low",
+            "medium",
+            "high",
+            "xhigh"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "cli",
+          "models": [
+            "*"
+          ],
+          "status": "invalid"
+        },
+        {
+          "layer": "local",
+          "models": [
+            "*"
+          ],
+          "values": [
+            "low",
+            "medium",
+            "high",
+            "xhigh"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "local",
+          "models": [
+            "*"
+          ],
+          "status": "invalid"
+        },
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "values": [
+            "low",
+            "medium",
+            "high",
+            "xhigh"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "status": "invalid"
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "values": [
+            "low",
+            "medium",
+            "high",
+            "xhigh"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "status": "invalid"
+        }
+      ],
+      "reason": "{value} isn't a level effortLevel accepts in {file}, so Claude Code skips it and the next source decides. Settings files take low, medium, high or xhigh.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/model-config#set-the-effort-level",
+          "quote": "`max` isn't accepted as a level in either key"
+        }
+      ],
+      "experiment": "experiments/2026-10-29-effort-invalid-values.json",
+      "confidence": "tested",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-29"
+      }
+    },
+    {
+      "rule_id": "model-settings-effort-values",
+      "key": "modelSettings",
+      "scope": "model",
+      "layer_order": [
+        "managed",
+        "cli",
+        "local",
+        "project",
+        "user"
+      ],
+      "combine": "highest_layer",
+      "conditions": [
+        {
+          "layer": "managed",
+          "models": [
+            "*"
+          ],
+          "values": [
+            "low",
+            "medium",
+            "high",
+            "xhigh"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "managed",
+          "models": [
+            "*"
+          ],
+          "status": "invalid"
+        },
+        {
+          "layer": "cli",
+          "models": [
+            "*"
+          ],
+          "values": [
+            "low",
+            "medium",
+            "high",
+            "xhigh"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "cli",
+          "models": [
+            "*"
+          ],
+          "status": "invalid"
+        },
+        {
+          "layer": "local",
+          "models": [
+            "*"
+          ],
+          "values": [
+            "low",
+            "medium",
+            "high",
+            "xhigh"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "local",
+          "models": [
+            "*"
+          ],
+          "status": "invalid"
+        },
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "values": [
+            "low",
+            "medium",
+            "high",
+            "xhigh"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "status": "invalid"
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "values": [
+            "low",
+            "medium",
+            "high",
+            "xhigh"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "status": "invalid"
+        }
+      ],
+      "reason": "{value} isn't a level a modelSettings entry accepts in {file}, so Claude Code skips it for {model} and the next source decides. An entry takes low, medium, high or xhigh.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/settings-reference#modelsettings",
+          "quote": "`effortLevel`: one of `\"low\"`, `\"medium\"`, `\"high\"`, or `\"xhigh\"`"
+        }
+      ],
+      "experiment": "experiments/2026-10-29-effort-invalid-values.json",
+      "confidence": "tested",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-29"
+      }
+    },
+    {
+      "rule_id": "effort-flag-values",
+      "key": "effortLevel",
+      "scope": "main",
+      "layer_order": [
+        "env",
+        "flag",
+        "managed",
+        "cli",
+        "local",
+        "project",
+        "user",
+        "default"
+      ],
+      "combine": "highest_layer",
+      "conditions": [
+        {
+          "layer": "flag",
+          "models": [
+            "*"
+          ],
+          "values": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "flag",
+          "models": [
+            "*"
+          ],
+          "status": "invalid"
+        }
+      ],
+      "reason": "--effort {value} isn't a level Claude Code knows, so it warns and ignores the flag. The next source decides. The docs also list ultracode as a level, but it wasn't tested on 2.1.302, so this rule doesn't treat it as valid.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/cli-reference",
+          "quote": "Options: `low`, `medium`, `high`, `xhigh`, `max`, or `ultracode`."
+        }
+      ],
+      "experiment": "experiments/2026-10-29-effort-auto.json",
+      "confidence": "tested",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-29"
+      }
+    },
+    {
+      "rule_id": "effort-lowered-by-cap",
+      "key": "effortLevel",
+      "scope": "main",
+      "layer_order": [
+        "env",
+        "flag",
+        "managed",
+        "cli",
+        "local",
+        "project",
+        "user",
+        "default"
+      ],
+      "combine": "highest_layer",
+      "conditions": [
+        {
+          "layer": "env",
+          "models": [
+            "*"
+          ],
+          "status": "lowered",
+          "becomes": {
+            "computed": "cap"
+          }
+        },
+        {
+          "layer": "flag",
+          "models": [
+            "*"
+          ],
+          "status": "lowered",
+          "becomes": {
+            "computed": "cap"
+          }
+        },
+        {
+          "layer": "managed",
+          "models": [
+            "*"
+          ],
+          "status": "lowered",
+          "becomes": {
+            "computed": "cap"
+          }
+        },
+        {
+          "layer": "cli",
+          "models": [
+            "*"
+          ],
+          "status": "lowered",
+          "becomes": {
+            "computed": "cap"
+          }
+        },
+        {
+          "layer": "local",
+          "models": [
+            "*"
+          ],
+          "status": "lowered",
+          "becomes": {
+            "computed": "cap"
+          }
+        },
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "status": "lowered",
+          "becomes": {
+            "computed": "cap"
+          }
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "status": "lowered",
+          "becomes": {
+            "computed": "cap"
+          }
+        },
+        {
+          "layer": "default",
+          "models": [
+            "*"
+          ],
+          "status": "lowered",
+          "becomes": {
+            "computed": "cap"
+          }
+        }
+      ],
+      "reason": "{value} from {file} runs as {becomes}, because maxEffortLevel caps {model} at {becomes}.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/settings-reference#maxeffortlevel",
+          "quote": "Any higher level runs at the cap instead, including one from `/effort`, the `/model` picker, `--effort`, `CLAUDE_CODE_EFFORT_LEVEL`, a skill's or subagent's `effort` frontmatter, or the model's own default."
+        }
+      ],
+      "experiment": "experiments/2026-10-29-effort-cap-transcript.json",
+      "confidence": "tested",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-29"
+      }
+    },
+    {
+      "rule_id": "effort-lowered-unsupported-level",
+      "key": "effortLevel",
+      "scope": "main",
+      "layer_order": [
+        "env",
+        "flag",
+        "managed",
+        "cli",
+        "local",
+        "project",
+        "user",
+        "default"
+      ],
+      "combine": "highest_layer",
+      "conditions": [
+        {
+          "layer": "env",
+          "models": [
+            "*"
+          ],
+          "status": "lowered",
+          "becomes": {
+            "computed": "fallback"
+          }
+        },
+        {
+          "layer": "flag",
+          "models": [
+            "*"
+          ],
+          "status": "lowered",
+          "becomes": {
+            "computed": "fallback"
+          }
+        },
+        {
+          "layer": "managed",
+          "models": [
+            "*"
+          ],
+          "status": "lowered",
+          "becomes": {
+            "computed": "fallback"
+          }
+        },
+        {
+          "layer": "cli",
+          "models": [
+            "*"
+          ],
+          "status": "lowered",
+          "becomes": {
+            "computed": "fallback"
+          }
+        },
+        {
+          "layer": "local",
+          "models": [
+            "*"
+          ],
+          "status": "lowered",
+          "becomes": {
+            "computed": "fallback"
+          }
+        },
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "status": "lowered",
+          "becomes": {
+            "computed": "fallback"
+          }
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "status": "lowered",
+          "becomes": {
+            "computed": "fallback"
+          }
+        },
+        {
+          "layer": "default",
+          "models": [
+            "*"
+          ],
+          "status": "lowered",
+          "becomes": {
+            "computed": "fallback"
+          }
+        }
+      ],
+      "reason": "{model} has no {value} level, so {value} from {file} runs as {becomes}, the highest level it has below that.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/model-config#adjust-effort-level",
+          "quote": "If you set a level the active model does not support, Claude Code falls back to the highest supported level at or below the one you set. For example, `xhigh` runs as `high` on Opus 4.6."
+        }
+      ],
+      "experiment": "experiments/2026-10-29-effort-fallback-levels.json",
+      "confidence": "tested",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-29"
+      }
+    },
+    {
+      "rule_id": "effort-ignored-no-effort-support",
+      "key": "effortLevel",
+      "scope": "main",
+      "layer_order": [
+        "env",
+        "flag",
+        "managed",
+        "cli",
+        "local",
+        "project",
+        "user",
+        "default"
+      ],
+      "combine": "highest_layer",
+      "conditions": [
+        {
+          "layer": "env",
+          "models": [
+            "claude-haiku-4-5"
+          ],
+          "status": "ignored"
+        },
+        {
+          "layer": "flag",
+          "models": [
+            "claude-haiku-4-5"
+          ],
+          "status": "ignored"
+        },
+        {
+          "layer": "managed",
+          "models": [
+            "claude-haiku-4-5"
+          ],
+          "status": "ignored"
+        },
+        {
+          "layer": "cli",
+          "models": [
+            "claude-haiku-4-5"
+          ],
+          "status": "ignored"
+        },
+        {
+          "layer": "local",
+          "models": [
+            "claude-haiku-4-5"
+          ],
+          "status": "ignored"
+        },
+        {
+          "layer": "project",
+          "models": [
+            "claude-haiku-4-5"
+          ],
+          "status": "ignored"
+        },
+        {
+          "layer": "user",
+          "models": [
+            "claude-haiku-4-5"
+          ],
+          "status": "ignored"
+        }
+      ],
+      "reason": "{model} doesn't support effort, so Claude Code sends no level and {value} from {file} has no effect.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/model-config#adjust-effort-level",
+          "quote": "The available effort levels depend on the model. Models not listed here do not support effort"
+        }
+      ],
+      "experiment": "experiments/2026-10-29-effort-fallback-levels.json",
+      "confidence": "tested",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-29"
+      }
+    },
+    {
+      "rule_id": "agent-effort-order",
+      "key": "effort",
+      "scope": "agent",
+      "layer_order": [
+        "env",
+        "agent",
+        "flag",
+        "managed",
+        "cli",
+        "local",
+        "project",
+        "user",
+        "default"
+      ],
+      "combine": "highest_layer",
+      "conditions": [
+        {
+          "layer": "env",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "agent",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "flag",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "managed",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "cli",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "local",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        }
+      ],
+      "reason": "{agent} runs at {winner}. CLAUDE_CODE_EFFORT_LEVEL beats its effort frontmatter, which beats --effort and the settings that count for its own model.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/sub-agents#frontmatter-reference",
+          "quote": "Effort level when this subagent is active. Overrides the session effort level, but not the `CLAUDE_CODE_EFFORT_LEVEL` environment variable."
+        }
+      ],
+      "experiment": "experiments/2026-10-29-agent-effort.json",
+      "confidence": "tested",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-29"
+      }
+    },
+    {
+      "rule_id": "agent-effort-lowered-by-cap",
+      "key": "effort",
+      "scope": "agent",
+      "layer_order": [
+        "env",
+        "agent",
+        "flag",
+        "managed",
+        "cli",
+        "local",
+        "project",
+        "user",
+        "default"
+      ],
+      "combine": "highest_layer",
+      "conditions": [
+        {
+          "layer": "env",
+          "models": [
+            "*"
+          ],
+          "status": "lowered",
+          "becomes": {
+            "computed": "cap"
+          }
+        },
+        {
+          "layer": "agent",
+          "models": [
+            "*"
+          ],
+          "status": "lowered",
+          "becomes": {
+            "computed": "cap"
+          }
+        },
+        {
+          "layer": "flag",
+          "models": [
+            "*"
+          ],
+          "status": "lowered",
+          "becomes": {
+            "computed": "cap"
+          }
+        },
+        {
+          "layer": "managed",
+          "models": [
+            "*"
+          ],
+          "status": "lowered",
+          "becomes": {
+            "computed": "cap"
+          }
+        },
+        {
+          "layer": "cli",
+          "models": [
+            "*"
+          ],
+          "status": "lowered",
+          "becomes": {
+            "computed": "cap"
+          }
+        },
+        {
+          "layer": "local",
+          "models": [
+            "*"
+          ],
+          "status": "lowered",
+          "becomes": {
+            "computed": "cap"
+          }
+        },
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "status": "lowered",
+          "becomes": {
+            "computed": "cap"
+          }
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "status": "lowered",
+          "becomes": {
+            "computed": "cap"
+          }
+        },
+        {
+          "layer": "default",
+          "models": [
+            "*"
+          ],
+          "status": "lowered",
+          "becomes": {
+            "computed": "cap"
+          }
+        }
+      ],
+      "reason": "{agent} is set to {value} in {file} but runs as {becomes}, because maxEffortLevel caps {model} at {becomes}.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/settings-reference#maxeffortlevel",
+          "quote": "Any higher level runs at the cap instead, including one from `/effort`, the `/model` picker, `--effort`, `CLAUDE_CODE_EFFORT_LEVEL`, a skill's or subagent's `effort` frontmatter, or the model's own default."
+        }
+      ],
+      "experiment": "experiments/2026-10-29-effort-cap-transcript.json",
+      "confidence": "tested",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-29"
+      }
+    },
+    {
+      "rule_id": "agent-effort-lowered-unsupported-level",
+      "key": "effort",
+      "scope": "agent",
+      "layer_order": [
+        "env",
+        "agent",
+        "flag",
+        "managed",
+        "cli",
+        "local",
+        "project",
+        "user",
+        "default"
+      ],
+      "combine": "highest_layer",
+      "conditions": [
+        {
+          "layer": "env",
+          "models": [
+            "*"
+          ],
+          "status": "lowered",
+          "becomes": {
+            "computed": "fallback"
+          }
+        },
+        {
+          "layer": "agent",
+          "models": [
+            "*"
+          ],
+          "status": "lowered",
+          "becomes": {
+            "computed": "fallback"
+          }
+        },
+        {
+          "layer": "flag",
+          "models": [
+            "*"
+          ],
+          "status": "lowered",
+          "becomes": {
+            "computed": "fallback"
+          }
+        },
+        {
+          "layer": "managed",
+          "models": [
+            "*"
+          ],
+          "status": "lowered",
+          "becomes": {
+            "computed": "fallback"
+          }
+        },
+        {
+          "layer": "cli",
+          "models": [
+            "*"
+          ],
+          "status": "lowered",
+          "becomes": {
+            "computed": "fallback"
+          }
+        },
+        {
+          "layer": "local",
+          "models": [
+            "*"
+          ],
+          "status": "lowered",
+          "becomes": {
+            "computed": "fallback"
+          }
+        },
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "status": "lowered",
+          "becomes": {
+            "computed": "fallback"
+          }
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "status": "lowered",
+          "becomes": {
+            "computed": "fallback"
+          }
+        },
+        {
+          "layer": "default",
+          "models": [
+            "*"
+          ],
+          "status": "lowered",
+          "becomes": {
+            "computed": "fallback"
+          }
+        }
+      ],
+      "reason": "{agent} runs on {model}, which has no {value} level, so {value} from {file} runs as {becomes}.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/model-config#adjust-effort-level",
+          "quote": "If you set a level the active model does not support, Claude Code falls back to the highest supported level at or below the one you set. For example, `xhigh` runs as `high` on Opus 4.6."
+        }
+      ],
+      "experiment": "experiments/2026-10-29-effort-fallback-levels.json",
+      "confidence": "tested",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-29"
+      }
+    },
+    {
+      "rule_id": "model-settings-name-matching",
+      "key": "modelSettings",
+      "scope": "model",
+      "layer_order": [
+        "managed",
+        "cli",
+        "local",
+        "project",
+        "user"
+      ],
+      "combine": "highest_layer",
+      "conditions": [
+        {
+          "layer": "managed",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "cli",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "local",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        }
+      ],
+      "reason": "The entry in {file} matches {model} by canonical name, alias, date suffix, [1m] or a provider-style ID. In one file, a canonical-name entry beats an alias entry.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/settings-reference#modelsettings",
+          "quote": "Claude Code writes each entry under the model's canonical name, such as `claude-opus-5-5`, and matches that model's alias, date-suffixed, `[1m]`, and recognized provider-specific IDs to the same entry."
+        }
+      ],
+      "experiment": "experiments/2026-10-29-model-settings-name-matching.json",
+      "confidence": "tested",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-29"
+      }
+    },
+    {
+      "rule_id": "model-settings-max-effort-per-model",
+      "key": "modelSettings.maxEffortLevel",
+      "scope": "model",
+      "layer_order": [
+        "managed",
+        "cli",
+        "local",
+        "project",
+        "user"
+      ],
+      "combine": "lowest_value",
+      "conditions": [
+        {
+          "layer": "managed",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "cli",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "local",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        }
+      ],
+      "reason": "{file} caps {model} at {value}, replacing that file's top-level maxEffortLevel for this model only. Across files, the lowest cap still applies.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/settings-reference#maxeffortlevel",
+          "quote": "That entry replaces this key for the model only within the settings source that sets both, such as your user settings or one managed source."
+        }
+      ],
+      "experiment": "experiments/2026-10-29-model-settings-max-effort.json",
+      "confidence": "tested",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-29"
+      },
+      "value_order": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ]
+    },
+    {
+      "rule_id": "model-settings-auto-compact-window",
+      "key": "modelSettings.autoCompactWindow",
+      "scope": "model",
+      "layer_order": [
+        "managed",
+        "cli",
+        "local",
+        "project",
+        "user"
+      ],
+      "combine": "highest_layer",
+      "conditions": [
+        {
+          "layer": "managed",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "cli",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "local",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        }
+      ],
+      "reason": "{file} sets the auto-compact window for {model}, and in that file the per-model value beats the top-level autoCompactWindow.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/settings-reference#modelsettings",
+          "quote": "For that model, the value takes precedence over a top-level `autoCompactWindow` in the same settings file. Requires Claude Code v2.1.288 or later"
+        }
+      ],
       "experiment": null,
       "confidence": "documented",
       "verified_on": {

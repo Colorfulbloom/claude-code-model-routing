@@ -1,0 +1,114 @@
+{
+ "date": "2026-10-29",
+ "claude_version": "2.1.302",
+ "ran": "--effort xhigh or high on claude-sonnet-5-5 or claude-haiku-5-5 with: project maxEffortLevel low plus a project modelSettings cap of xhigh for Sonnet 5.5 (same file); a user cap of low plus a project modelSettings cap of xhigh; a project modelSettings cap of low for Sonnet 5.5 only.",
+ "result": "In the same file the per-model cap replaced the top-level cap, so xhigh ran. Across files the lowest cap still applied, so low ran. A per-model cap of low held on Sonnet 5.5 and didn't touch Haiku 5.5, which ran high.",
+ "method": "dashboard/experiments/harness: claude -p in a throwaway HOME, CLAUDE_CONFIG_DIR and project under $TMPDIR, a fake key and ANTHROPIC_BASE_URL on 127.0.0.1. fakeapi.py logs the model, output_config.effort and cache_control ttl of each request. It answers 400, or a short text reply when the case sets text_reply; for agent cases it first streams one Agent tool call. Cases with prompt \"/effort status\" record the command's output, and runcase.py reads the effort fields from the throwaway transcripts before deleting them. The harness only allows requests to fakeapi.py on 127.0.0.1. Managed settings were not tested, because writing them needs admin rights.",
+ "results_file": "harness/results-2026-10-29-effort.jsonl",
+ "cases": {
+  "ms-cap-only-that-model": [
+   [
+    "main",
+    "claude-haiku-5-5",
+    "high",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "ms-cap-other-file-lowest": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "low",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "ms-cap-same-file-replaces": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "xhigh",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "ms-cap-this-model": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "low",
+    [
+     "5m(default)"
+    ]
+   ]
+  ]
+ },
+ "transcripts": {
+  "ms-cap-only-that-model": [
+   [
+    "main",
+    "api-request",
+    "high",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "high"
+   ]
+  ],
+  "ms-cap-other-file-lowest": [
+   [
+    "main",
+    "api-request",
+    "low",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "low"
+   ]
+  ],
+  "ms-cap-same-file-replaces": [
+   [
+    "main",
+    "api-request",
+    "xhigh",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "xhigh"
+   ]
+  ],
+  "ms-cap-this-model": [
+   [
+    "main",
+    "api-request",
+    "low",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "low"
+   ]
+  ]
+ },
+ "case_files": {
+  "ms-cap-only-that-model": "harness/cases-model-settings.json",
+  "ms-cap-other-file-lowest": "harness/cases-model-settings.json",
+  "ms-cap-same-file-replaces": "harness/cases-model-settings.json",
+  "ms-cap-this-model": "harness/cases-model-settings.json"
+ }
+}

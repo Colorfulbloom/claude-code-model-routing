@@ -1,0 +1,498 @@
+{
+ "date": "2026-10-29",
+ "claude_version": "2.1.302",
+ "ran": "A modelSettings effortLevel low under claude-opus-5-5, opus, claude-opus-5-5[1m], claude-opus-5-5-20261001, sonnet, claude-opus-5, claude-opus-9 and fable, against sessions on claude-opus-5-5, --model opus, claude-opus-5-5[1m], claude-opus-5-5-20261001, us.anthropic.claude-opus-5-5-v1:0, claude-opus-5-5@20261001 and claude-fable-5-1; both an opus and a claude-opus-5-5 entry in one file, in each key order; a probe agent pinned with model: opus.",
+ "result": "The canonical entry matched the alias, [1m], date-suffixed, Bedrock-style and Vertex-style IDs. Hand-written entries under opus, fable, claude-opus-5-5[1m] and claude-opus-5-5-20261001 matched too. sonnet, claude-opus-5 and claude-opus-9 didn't match Opus 5.5. With both entries in one file, the canonical claude-opus-5-5 entry won in either key order. The agent pinned with model: opus ran as claude-opus-5-5 and used either entry. The provider-style IDs went to the fake first-party API, so this tests name matching, not a real Bedrock or Vertex session.",
+ "method": "dashboard/experiments/harness: claude -p in a throwaway HOME, CLAUDE_CONFIG_DIR and project under $TMPDIR, a fake key and ANTHROPIC_BASE_URL on 127.0.0.1. fakeapi.py logs the model, output_config.effort and cache_control ttl of each request. It answers 400, or a short text reply when the case sets text_reply; for agent cases it first streams one Agent tool call. Cases with prompt \"/effort status\" record the command's output, and runcase.py reads the effort fields from the throwaway transcripts before deleting them. The harness only allows requests to fakeapi.py on 127.0.0.1. Managed settings were not tested, because writing them needs admin rights.",
+ "results_file": "harness/results-2026-10-29-effort.jsonl",
+ "cases": {
+  "ms-1m-key-canon-model": [
+   [
+    "main",
+    "claude-opus-5-5",
+    "low",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "ms-agent-alias-alias-key": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ],
+   [
+    "subagent",
+    "claude-opus-5-5",
+    "low",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "ms-agent-alias-canon-key": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ],
+   [
+    "subagent",
+    "claude-opus-5-5",
+    "low",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "ms-alias-and-canon-alias-first": [
+   [
+    "main",
+    "claude-opus-5-5",
+    "high",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "ms-alias-key-alias-model": [
+   [
+    "main",
+    "claude-opus-5-5",
+    "low",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "ms-alias-key-canon-model": [
+   [
+    "main",
+    "claude-opus-5-5",
+    "low",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "ms-alias-model-low-status": [],
+  "ms-canon-1m": [
+   [
+    "main",
+    "claude-opus-5-5",
+    "low",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "ms-canon-and-alias-canon-first": [
+   [
+    "main",
+    "claude-opus-5-5",
+    "high",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "ms-canon-bedrock-id": [
+   [
+    "main",
+    "us.anthropic.claude-opus-5-5-v1:0",
+    "low",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "ms-canon-dated": [
+   [
+    "main",
+    "claude-opus-5-5-20261001",
+    "low",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "ms-canon-flag-alias": [
+   [
+    "main",
+    "claude-opus-5-5",
+    "low",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "ms-canon-vertex-id": [
+   [
+    "main",
+    "claude-opus-5-5@20261001",
+    "low",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "ms-dated-key-canon-model": [
+   [
+    "main",
+    "claude-opus-5-5",
+    "low",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "ms-fable-alias-key": [
+   [
+    "main",
+    "claude-fable-5-1",
+    "low",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "ms-family-key-opus-5-vs-5-5": [
+   [
+    "main",
+    "claude-opus-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "ms-other-alias-no-match": [
+   [
+    "main",
+    "claude-opus-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "ms-unknown-name-no-match": [
+   [
+    "main",
+    "claude-opus-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ]
+  ]
+ },
+ "transcripts": {
+  "ms-1m-key-canon-model": [
+   [
+    "main",
+    "api-request",
+    "low",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "low"
+   ]
+  ],
+  "ms-agent-alias-alias-key": [
+   [
+    "main",
+    "api-request",
+    "medium",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    "medium",
+    "medium"
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "medium"
+   ],
+   [
+    "subagent",
+    "api-request",
+    "low",
+    null
+   ],
+   [
+    "subagent",
+    "assistant",
+    null,
+    "low"
+   ]
+  ],
+  "ms-agent-alias-canon-key": [
+   [
+    "main",
+    "api-request",
+    "medium",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    "medium",
+    "medium"
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "medium"
+   ],
+   [
+    "subagent",
+    "api-request",
+    "low",
+    null
+   ],
+   [
+    "subagent",
+    "assistant",
+    null,
+    "low"
+   ]
+  ],
+  "ms-alias-and-canon-alias-first": [
+   [
+    "main",
+    "api-request",
+    "high",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "high"
+   ]
+  ],
+  "ms-alias-key-alias-model": [
+   [
+    "main",
+    "api-request",
+    "low",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "low"
+   ]
+  ],
+  "ms-alias-key-canon-model": [
+   [
+    "main",
+    "api-request",
+    "low",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "low"
+   ]
+  ],
+  "ms-canon-1m": [
+   [
+    "main",
+    "api-request",
+    "low",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "low"
+   ]
+  ],
+  "ms-canon-and-alias-canon-first": [
+   [
+    "main",
+    "api-request",
+    "high",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "high"
+   ]
+  ],
+  "ms-canon-bedrock-id": [
+   [
+    "main",
+    "api-request",
+    "low",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "low"
+   ]
+  ],
+  "ms-canon-dated": [
+   [
+    "main",
+    "api-request",
+    "low",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "low"
+   ]
+  ],
+  "ms-canon-flag-alias": [
+   [
+    "main",
+    "api-request",
+    "low",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "low"
+   ]
+  ],
+  "ms-canon-vertex-id": [
+   [
+    "main",
+    "api-request",
+    "low",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "low"
+   ]
+  ],
+  "ms-dated-key-canon-model": [
+   [
+    "main",
+    "api-request",
+    "low",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "low"
+   ]
+  ],
+  "ms-fable-alias-key": [
+   [
+    "main",
+    "api-request",
+    "low",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "low"
+   ]
+  ],
+  "ms-family-key-opus-5-vs-5-5": [
+   [
+    "main",
+    "api-request",
+    "medium",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "medium"
+   ]
+  ],
+  "ms-other-alias-no-match": [
+   [
+    "main",
+    "api-request",
+    "medium",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "medium"
+   ]
+  ],
+  "ms-unknown-name-no-match": [
+   [
+    "main",
+    "api-request",
+    "medium",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "medium"
+   ]
+  ]
+ },
+ "output": {
+  "ms-alias-model-low-status": [
+   "Current effort level: low (Quick, straightforward implementation with minimal overhead)"
+  ]
+ },
+ "case_files": {
+  "ms-1m-key-canon-model": "harness/cases-model-settings.json",
+  "ms-agent-alias-alias-key": "harness/cases-model-settings.json",
+  "ms-agent-alias-canon-key": "harness/cases-model-settings.json",
+  "ms-alias-and-canon-alias-first": "harness/cases-model-settings.json",
+  "ms-alias-key-alias-model": "harness/cases-model-settings.json",
+  "ms-alias-key-canon-model": "harness/cases-model-settings.json",
+  "ms-alias-model-low-status": "harness/cases-model-settings.json",
+  "ms-canon-1m": "harness/cases-model-settings.json",
+  "ms-canon-and-alias-canon-first": "harness/cases-model-settings.json",
+  "ms-canon-bedrock-id": "harness/cases-model-settings.json",
+  "ms-canon-dated": "harness/cases-model-settings.json",
+  "ms-canon-flag-alias": "harness/cases-model-settings.json",
+  "ms-canon-vertex-id": "harness/cases-model-settings.json",
+  "ms-dated-key-canon-model": "harness/cases-model-settings.json",
+  "ms-fable-alias-key": "harness/cases-model-settings.json",
+  "ms-family-key-opus-5-vs-5-5": "harness/cases-model-settings.json",
+  "ms-other-alias-no-match": "harness/cases-model-settings.json",
+  "ms-unknown-name-no-match": "harness/cases-model-settings.json"
+ }
+}

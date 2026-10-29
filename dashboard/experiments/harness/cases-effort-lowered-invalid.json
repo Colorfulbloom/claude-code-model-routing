@@ -1,0 +1,395 @@
+[
+ {
+  "text_reply": true,
+  "user": {
+   "model": "claude-sonnet-5-5"
+  },
+  "project": {
+   "maxEffortLevel": "low"
+  },
+  "agents": {
+   "probe": "---\nname: probe\ndescription: probe agent\nmodel: claude-haiku-5-5\neffort: high\n---\nMARKER-SUBAGENT you are a probe.\n"
+  },
+  "agent_input": {
+   "description": "probe",
+   "prompt": "go",
+   "subagent_type": "probe"
+  },
+  "name": "cap-agent-high-proj-low"
+ },
+ {
+  "text_reply": true,
+  "user": {
+   "model": "claude-sonnet-5-5"
+  },
+  "project": {
+   "maxEffortLevel": "low"
+  },
+  "args": [
+   "--effort",
+   "high"
+  ],
+  "name": "cap-main-flag-high-proj-low"
+ },
+ {
+  "text_reply": true,
+  "user": {
+   "model": "claude-opus-4-6"
+  },
+  "args": [
+   "--effort",
+   "xhigh"
+  ],
+  "name": "fb-opus46-flag-xhigh"
+ },
+ {
+  "text_reply": true,
+  "user": {
+   "model": "claude-sonnet-5-5"
+  },
+  "agents": {
+   "probe": "---\nname: probe\ndescription: probe agent\nmodel: claude-opus-4-6\neffort: xhigh\n---\nMARKER-SUBAGENT you are a probe.\n"
+  },
+  "agent_input": {
+   "description": "probe",
+   "prompt": "go",
+   "subagent_type": "probe"
+  },
+  "name": "fb-agent-opus46-xhigh"
+ },
+ {
+  "user": {
+   "model": "claude-fable-5-1"
+  },
+  "args": [
+   "--effort",
+   "xhigh"
+  ],
+  "name": "lv-claude-fable-5-1-xhigh"
+ },
+ {
+  "user": {
+   "model": "claude-fable-5-1"
+  },
+  "args": [
+   "--effort",
+   "max"
+  ],
+  "name": "lv-claude-fable-5-1-max"
+ },
+ {
+  "user": {
+   "model": "claude-fable-5-1"
+  },
+  "name": "default-claude-fable-5-1"
+ },
+ {
+  "user": {
+   "model": "claude-haiku-4-5"
+  },
+  "args": [
+   "--effort",
+   "xhigh"
+  ],
+  "name": "lv-claude-haiku-4-5-xhigh"
+ },
+ {
+  "user": {
+   "model": "claude-haiku-4-5"
+  },
+  "args": [
+   "--effort",
+   "max"
+  ],
+  "name": "lv-claude-haiku-4-5-max"
+ },
+ {
+  "user": {
+   "model": "claude-haiku-4-5"
+  },
+  "name": "default-claude-haiku-4-5"
+ },
+ {
+  "user": {
+   "model": "claude-opus-4-6"
+  },
+  "args": [
+   "--effort",
+   "xhigh"
+  ],
+  "name": "lv-claude-opus-4-6-xhigh"
+ },
+ {
+  "user": {
+   "model": "claude-opus-4-6"
+  },
+  "args": [
+   "--effort",
+   "max"
+  ],
+  "name": "lv-claude-opus-4-6-max"
+ },
+ {
+  "user": {
+   "model": "claude-opus-4-6"
+  },
+  "name": "default-claude-opus-4-6"
+ },
+ {
+  "user": {
+   "model": "claude-opus-4-7"
+  },
+  "args": [
+   "--effort",
+   "xhigh"
+  ],
+  "name": "lv-claude-opus-4-7-xhigh"
+ },
+ {
+  "user": {
+   "model": "claude-opus-4-7"
+  },
+  "args": [
+   "--effort",
+   "max"
+  ],
+  "name": "lv-claude-opus-4-7-max"
+ },
+ {
+  "user": {
+   "model": "claude-opus-4-7"
+  },
+  "name": "default-claude-opus-4-7"
+ },
+ {
+  "user": {
+   "model": "claude-opus-5"
+  },
+  "args": [
+   "--effort",
+   "xhigh"
+  ],
+  "name": "lv-claude-opus-5-xhigh"
+ },
+ {
+  "user": {
+   "model": "claude-opus-5"
+  },
+  "args": [
+   "--effort",
+   "max"
+  ],
+  "name": "lv-claude-opus-5-max"
+ },
+ {
+  "user": {
+   "model": "claude-opus-5"
+  },
+  "name": "default-claude-opus-5"
+ },
+ {
+  "user": {
+   "model": "claude-sonnet-5"
+  },
+  "args": [
+   "--effort",
+   "xhigh"
+  ],
+  "name": "lv-claude-sonnet-5-xhigh"
+ },
+ {
+  "user": {
+   "model": "claude-sonnet-5"
+  },
+  "args": [
+   "--effort",
+   "max"
+  ],
+  "name": "lv-claude-sonnet-5-max"
+ },
+ {
+  "user": {
+   "model": "claude-sonnet-5"
+  },
+  "name": "default-claude-sonnet-5"
+ },
+ {
+  "user": {
+   "model": "claude-haiku-5-5"
+  },
+  "args": [
+   "--effort",
+   "xhigh"
+  ],
+  "name": "lv-claude-haiku-5-5-xhigh"
+ },
+ {
+  "user": {
+   "model": "claude-haiku-5-5"
+  },
+  "args": [
+   "--effort",
+   "max"
+  ],
+  "name": "lv-claude-haiku-5-5-max"
+ },
+ {
+  "user": {
+   "model": "claude-haiku-5-5"
+  },
+  "name": "default-claude-haiku-5-5"
+ },
+ {
+  "user": {
+   "model": "claude-sonnet-5-5"
+  },
+  "project": {
+   "effortLevel": "max"
+  },
+  "name": "max-proj-effortLevel"
+ },
+ {
+  "prompt": "/effort status",
+  "user": {
+   "model": "claude-sonnet-5-5"
+  },
+  "project": {
+   "effortLevel": "max"
+  },
+  "name": "max-proj-effortLevel-status"
+ },
+ {
+  "user": {
+   "model": "claude-sonnet-5-5",
+   "modelSettings": {
+    "claude-sonnet-5-5": {
+     "effortLevel": "max"
+    }
+   }
+  },
+  "name": "max-user-ms"
+ },
+ {
+  "user": {
+   "model": "claude-sonnet-5-5"
+  },
+  "args": [
+   "--effort",
+   "max"
+  ],
+  "name": "max-flag"
+ },
+ {
+  "user": {
+   "model": "claude-sonnet-5-5"
+  },
+  "env": {
+   "CLAUDE_CODE_EFFORT_LEVEL": "max"
+  },
+  "name": "max-env"
+ },
+ {
+  "user": {
+   "model": "claude-sonnet-5-5"
+  },
+  "project": {
+   "effortLevel": "turbo"
+  },
+  "name": "bogus-proj-effortLevel"
+ },
+ {
+  "user": {
+   "model": "claude-sonnet-5-5"
+  },
+  "project": {
+   "effortLevel": "low"
+  },
+  "local": {
+   "effortLevel": "max"
+  },
+  "name": "inv-local-max-over-project-low"
+ },
+ {
+  "user": {
+   "model": "claude-sonnet-5-5"
+  },
+  "project": {
+   "effortLevel": "low"
+  },
+  "local": {
+   "effortLevel": "auto"
+  },
+  "name": "inv-local-auto-over-project-low"
+ },
+ {
+  "user": {
+   "model": "claude-sonnet-5-5"
+  },
+  "project": {
+   "effortLevel": "low"
+  },
+  "local": {
+   "effortLevel": "turbo"
+  },
+  "name": "inv-local-turbo-over-project-low"
+ },
+ {
+  "prompt": "/effort status",
+  "user": {
+   "model": "claude-sonnet-5-5"
+  },
+  "project": {
+   "effortLevel": "low"
+  },
+  "local": {
+   "effortLevel": "max"
+  },
+  "name": "inv-local-max-over-project-low-status"
+ },
+ {
+  "user": {
+   "model": "claude-sonnet-5-5"
+  },
+  "project": {
+   "effortLevel": "low"
+  },
+  "local": {
+   "modelSettings": {
+    "claude-sonnet-5-5": {
+     "effortLevel": "max"
+    }
+   }
+  },
+  "name": "inv-local-ms-max-over-project-low"
+ },
+ {
+  "user": {
+   "model": "claude-sonnet-5-5"
+  },
+  "project": {
+   "effortLevel": "low",
+   "modelSettings": {
+    "claude-sonnet-5-5": {
+     "effortLevel": "max"
+    }
+   }
+  },
+  "name": "inv-same-file-ms-max-with-top-low"
+ },
+ {
+  "user": {
+   "model": "claude-sonnet-5-5"
+  },
+  "project": {
+   "maxEffortLevel": "low"
+  },
+  "local": {
+   "maxEffortLevel": "max"
+  },
+  "args": [
+   "--effort",
+   "high"
+  ],
+  "name": "inv-local-cap-max-over-project-cap-low"
+ }
+]

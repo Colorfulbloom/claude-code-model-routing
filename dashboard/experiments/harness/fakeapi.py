@@ -1,9 +1,11 @@
 """Fake Anthropic API on localhost. Logs model, effort and cache TTLs per request.
 If AGENT_INPUT (JSON) is set, the first main request that offers the Agent tool gets
-a streamed tool_use calling it; every other request gets a 400. No real call is made."""
+a streamed tool_use calling it. Every other request gets a 400, unless TEXT_REPLY is set:
+then it gets a 200 streamed text reply ("done", stop_reason end_turn), so a session can
+finish a turn and write its transcript. No real call is made."""
 import json, os, sys
 from http.server import BaseHTTPRequestHandler, HTTPServer
-LOG = sys.argv[2]; AGENT_INPUT = os.environ.get("AGENT_INPUT"); state = {"served": False}
+LOG = sys.argv[2]; AGENT_INPUT = os.environ.get("AGENT_INPUT"); TEXT_REPLY = os.environ.get("TEXT_REPLY"); state = {"served": False}
 def cache_ttls(body):
     out = set()
     def walk(x):
@@ -20,6 +22,14 @@ def sse(model, inp):
           ("content_block_delta", {"type": "content_block_delta", "index": 0, "delta": {"type": "input_json_delta", "partial_json": json.dumps(inp)}}),
           ("content_block_stop", {"type": "content_block_stop", "index": 0}),
           ("message_delta", {"type": "message_delta", "delta": {"stop_reason": "tool_use", "stop_sequence": None}, "usage": {"output_tokens": 1}}),
+          ("message_stop", {"type": "message_stop"})]
+    return "".join("event: %s\ndata: %s\n\n" % (n, json.dumps(d)) for n, d in ev).encode()
+def text_sse(model):
+    ev = [("message_start", {"type": "message_start", "message": {"id": "msg_fake2", "type": "message", "role": "assistant", "model": model, "content": [], "stop_reason": None, "stop_sequence": None, "usage": {"input_tokens": 1, "output_tokens": 1}}}),
+          ("content_block_start", {"type": "content_block_start", "index": 0, "content_block": {"type": "text", "text": ""}}),
+          ("content_block_delta", {"type": "content_block_delta", "index": 0, "delta": {"type": "text_delta", "text": "done"}}),
+          ("content_block_stop", {"type": "content_block_stop", "index": 0}),
+          ("message_delta", {"type": "message_delta", "delta": {"stop_reason": "end_turn", "stop_sequence": None}, "usage": {"output_tokens": 1}}),
           ("message_stop", {"type": "message_stop"})]
     return "".join("event: %s\ndata: %s\n\n" % (n, json.dumps(d)) for n, d in ev).encode()
 class H(BaseHTTPRequestHandler):
@@ -39,6 +49,10 @@ class H(BaseHTTPRequestHandler):
         with open(LOG, "a") as fh: fh.write(json.dumps(rec) + "\n")
         if AGENT_INPUT and not state["served"] and "Agent" in tools and who == "main" and "/messages" in self.path and "count_tokens" not in self.path:
             state["served"] = True; out = sse(body.get("model"), json.loads(AGENT_INPUT))
+            self.send_response(200); self.send_header("content-type", "text/event-stream")
+            self.send_header("content-length", str(len(out))); self.end_headers(); self.wfile.write(out); return
+        if TEXT_REPLY:
+            out = text_sse(body.get("model"))
             self.send_response(200); self.send_header("content-type", "text/event-stream")
             self.send_header("content-length", str(len(out))); self.end_headers(); self.wfile.write(out); return
         msg = json.dumps({"type": "error", "error": {"type": "invalid_request_error", "message": "fake api"}}).encode()

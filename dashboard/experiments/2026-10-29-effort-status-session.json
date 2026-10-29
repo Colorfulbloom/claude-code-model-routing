@@ -1,0 +1,95 @@
+{
+ "date": "2026-10-29",
+ "claude_version": "2.1.302",
+ "ran": "The owner's main session on October 29 (2.1.302, model claude-opus-5-5, user top-level effortLevel set, CLAUDE_CODE_EFFORT_LEVEL unset, no maxEffortLevel, no modelSettings effort for Opus 5.5) printed \"Effort level: auto (currently medium)\" for /effort status, as reported on #7 and #14. The harness reproduced that setup (u-top-low-opus55-status, and u-top-low-claude-opus-5-5 for the request), plus a cap below the default (p-cap-low-status, p-cap-low-sent) and a modelSettings alias entry (ms-alias-model-low-status).",
+ "result": "The rules predict Default, medium, for that session: effort-level-user-settings-opus-5-5 marks the user key Ignored on Opus 5.5 and effort-default-by-model gives medium. The harness printed the same line, \"Effort level: auto (currently medium)\", and the request carried medium. With a project cap of low it printed \"Effort level: auto (currently low)\" and sent low. With a saved level it printed \"Current effort level: low\".",
+ "method": "dashboard/experiments/harness: claude -p in a throwaway HOME, CLAUDE_CONFIG_DIR and project under $TMPDIR, a fake key and ANTHROPIC_BASE_URL on 127.0.0.1. fakeapi.py logs the model, output_config.effort and cache_control ttl of each request. It answers 400, or a short text reply when the case sets text_reply; for agent cases it first streams one Agent tool call. Cases with prompt \"/effort status\" record the command's output, and runcase.py reads the effort fields from the throwaway transcripts before deleting them. The harness only allows requests to fakeapi.py on 127.0.0.1. Managed settings were not tested, because writing them needs admin rights.",
+ "results_file": "harness/results-2026-10-29-effort.jsonl",
+ "cases": {
+  "u-top-low-opus55-status": [],
+  "u-top-low-claude-opus-5-5": [
+   [
+    "main",
+    "claude-opus-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "p-cap-low-status": [],
+  "p-cap-low-sent": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "low",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "ms-alias-model-low-status": []
+ },
+ "transcripts": {
+  "u-top-low-claude-opus-5-5": [
+   [
+    "main",
+    "api-request",
+    "medium",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "medium"
+   ]
+  ],
+  "p-cap-low-sent": [
+   [
+    "main",
+    "api-request",
+    "low",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "low"
+   ]
+  ]
+ },
+ "output": {
+  "u-top-low-opus55-status": [
+   "Effort level: auto (currently medium)"
+  ],
+  "p-cap-low-status": [
+   "Effort level: auto (currently low)"
+  ],
+  "ms-alias-model-low-status": [
+   "Current effort level: low (Quick, straightforward implementation with minimal overhead)"
+  ]
+ },
+ "real_session": {
+  "date": "2026-10-29",
+  "claude_version": "2.1.302",
+  "output": "Effort level: auto (currently medium)",
+  "source": "https://github.com/Colorfulbloom/claude-code-model-routing/issues/7 (owner comment) and #14",
+  "predicted": {
+   "status": "default",
+   "value": "medium",
+   "rule_ids": [
+    "effort-level-user-settings-opus-5-5",
+    "effort-default-by-model"
+   ]
+  }
+ },
+ "case_files": {
+  "u-top-low-opus55-status": "harness/cases-effort-sources.json",
+  "u-top-low-claude-opus-5-5": "harness/cases-effort-sources.json",
+  "p-cap-low-status": "harness/cases-effort-sources.json",
+  "p-cap-low-sent": "harness/cases-effort-sources.json",
+  "ms-alias-model-low-status": "harness/cases-model-settings.json"
+ }
+}

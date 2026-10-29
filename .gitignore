@@ -1,2 +1,5 @@
 __pycache__/
 .DS_Store
+
+# Test fixtures need their local settings layer, which a global ignore may drop
+!tests/fixtures/**/.claude/settings.local.json
