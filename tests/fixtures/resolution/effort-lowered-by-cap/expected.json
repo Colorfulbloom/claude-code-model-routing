@@ -1,0 +1,30 @@
+{
+  "fixture": "effort-lowered-by-cap",
+  "rule_ids": [
+    "effort-lowered-by-cap",
+    "max-effort-level-lowest-cap"
+  ],
+  "confidence": "tested",
+  "source": "dashboard/experiments/2026-10-29-effort-cap-transcript.json#cap-main-flag-high-proj-low",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "effortLevel",
+      "value": "high",
+      "status": "lowered",
+      "layer": "flag",
+      "file": "session.json:flags",
+      "scope": "main",
+      "model": "claude-sonnet-5-5",
+      "becomes": "low"
+    },
+    {
+      "key": "maxEffortLevel",
+      "value": "low",
+      "status": "in_effect",
+      "layer": "project",
+      "file": "project/.claude/settings.json",
+      "scope": "main"
+    }
+  ]
+}

@@ -1,0 +1,84 @@
+{
+ "date": "2026-10-29",
+ "claude_version": "2.1.302",
+ "ran": "#8 cap test: a probe agent pinned at effort high, dispatched with no effort parameter, in a project whose .claude/settings.json sets maxEffortLevel low (cap-agent-high-proj-low); the main session at --effort high under the same cap (cap-main-flag-high-proj-low). The fake API sent text replies so the transcripts got assistant rows.",
+ "result": "The request and every transcript field showed the cap, not the pin: output_config.effort low on the api-request rows, and effort low and perTurnEffort low on the assistant rows, for the agent and the main session. So the transcript records the level that ran, and the Last session column can show a Lowered value.",
+ "method": "dashboard/experiments/harness: claude -p in a throwaway HOME, CLAUDE_CONFIG_DIR and project under $TMPDIR, a fake key and ANTHROPIC_BASE_URL on 127.0.0.1. fakeapi.py logs the model, output_config.effort and cache_control ttl of each request. It answers 400, or a short text reply when the case sets text_reply; for agent cases it first streams one Agent tool call. Cases with prompt \"/effort status\" record the command's output, and runcase.py reads the effort fields from the throwaway transcripts before deleting them. The harness only allows requests to fakeapi.py on 127.0.0.1. Managed settings were not tested, because writing them needs admin rights.",
+ "results_file": "harness/results-2026-10-29-effort.jsonl",
+ "cases": {
+  "cap-agent-high-proj-low": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "low",
+    [
+     "5m(default)"
+    ]
+   ],
+   [
+    "subagent",
+    "claude-haiku-5-5",
+    "low",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "cap-main-flag-high-proj-low": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "low",
+    [
+     "5m(default)"
+    ]
+   ]
+  ]
+ },
+ "transcripts": {
+  "cap-agent-high-proj-low": [
+   [
+    "main",
+    "api-request",
+    "low",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    "low",
+    "low"
+   ],
+   [
+    "subagent",
+    "api-request",
+    "low",
+    null
+   ],
+   [
+    "subagent",
+    "assistant",
+    "low",
+    "low"
+   ]
+  ],
+  "cap-main-flag-high-proj-low": [
+   [
+    "main",
+    "api-request",
+    "low",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    "low",
+    "low"
+   ]
+  ]
+ },
+ "case_files": {
+  "cap-agent-high-proj-low": "harness/cases-effort-lowered-invalid.json",
+  "cap-main-flag-high-proj-low": "harness/cases-effort-lowered-invalid.json"
+ }
+}

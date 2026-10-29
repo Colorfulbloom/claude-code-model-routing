@@ -1,0 +1,29 @@
+{
+  "fixture": "effort-max-in-settings-invalid",
+  "rule_ids": [
+    "effort-level-settings-values"
+  ],
+  "confidence": "tested",
+  "source": "dashboard/experiments/2026-10-29-effort-invalid-values.json#inv-local-max-over-project-low",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "effortLevel",
+      "value": "max",
+      "status": "invalid",
+      "layer": "local",
+      "file": "project/.claude/settings.local.json",
+      "scope": "main",
+      "model": "claude-sonnet-5-5"
+    },
+    {
+      "key": "effortLevel",
+      "value": "low",
+      "status": "in_effect",
+      "layer": "project",
+      "file": "project/.claude/settings.json",
+      "scope": "main",
+      "model": "claude-sonnet-5-5"
+    }
+  ]
+}

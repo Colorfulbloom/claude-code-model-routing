@@ -1,0 +1,242 @@
+{
+ "date": "2026-10-29",
+ "claude_version": "2.1.302",
+ "ran": "A top-level effortLevel low in user settings on claude-opus-5-5, claude-sonnet-5-5, claude-haiku-5-5, claude-fable-5-1, claude-opus-5, claude-sonnet-5 and claude-opus-4-8; the same key in project settings on claude-opus-5-5 (p-top-low-opus55); a user modelSettings entry for claude-opus-5-5 (u-ms-low-opus55).",
+ "result": "Opus 5.5, Sonnet 5.5 and Haiku 5.5 ignored the user key and sent their default, medium. Fable 5.1, Opus 5, Sonnet 5 and Opus 4.8 sent low. The project key and the user modelSettings entry both sent low on Opus 5.5. So on 2.1.302 the models that ignore the user key are Opus 5.5 and the two 5.5 models released after it, which is the catalog order rules.json uses for {\"from\": \"claude-opus-5-5\"}. The order among the earlier models is not load-bearing for any rule.",
+ "method": "dashboard/experiments/harness: claude -p in a throwaway HOME, CLAUDE_CONFIG_DIR and project under $TMPDIR, a fake key and ANTHROPIC_BASE_URL on 127.0.0.1. fakeapi.py logs the model, output_config.effort and cache_control ttl of each request. It answers 400, or a short text reply when the case sets text_reply; for agent cases it first streams one Agent tool call. Cases with prompt \"/effort status\" record the command's output, and runcase.py reads the effort fields from the throwaway transcripts before deleting them. The harness only allows requests to fakeapi.py on 127.0.0.1. Managed settings were not tested, because writing them needs admin rights.",
+ "results_file": "harness/results-2026-10-29-effort.jsonl",
+ "cases": {
+  "u-top-low-claude-fable-5-1": [
+   [
+    "main",
+    "claude-fable-5-1",
+    "low",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "u-top-low-claude-haiku-5-5": [
+   [
+    "main",
+    "claude-haiku-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "u-top-low-claude-opus-4-8": [
+   [
+    "main",
+    "claude-opus-4-8",
+    "low",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "u-top-low-claude-opus-5": [
+   [
+    "main",
+    "claude-opus-5",
+    "low",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "u-top-low-claude-opus-5-5": [
+   [
+    "main",
+    "claude-opus-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "u-top-low-claude-sonnet-5": [
+   [
+    "main",
+    "claude-sonnet-5",
+    "low",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "u-top-low-claude-sonnet-5-5": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "p-top-low-opus55": [
+   [
+    "main",
+    "claude-opus-5-5",
+    "low",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "u-ms-low-opus55": [
+   [
+    "main",
+    "claude-opus-5-5",
+    "low",
+    [
+     "5m(default)"
+    ]
+   ]
+  ]
+ },
+ "transcripts": {
+  "u-top-low-claude-fable-5-1": [
+   [
+    "main",
+    "api-request",
+    "low",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "low"
+   ]
+  ],
+  "u-top-low-claude-haiku-5-5": [
+   [
+    "main",
+    "api-request",
+    "medium",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "medium"
+   ]
+  ],
+  "u-top-low-claude-opus-4-8": [
+   [
+    "main",
+    "api-request",
+    "low",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    null
+   ]
+  ],
+  "u-top-low-claude-opus-5": [
+   [
+    "main",
+    "api-request",
+    "low",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    null
+   ]
+  ],
+  "u-top-low-claude-opus-5-5": [
+   [
+    "main",
+    "api-request",
+    "medium",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "medium"
+   ]
+  ],
+  "u-top-low-claude-sonnet-5": [
+   [
+    "main",
+    "api-request",
+    "low",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    null
+   ]
+  ],
+  "u-top-low-claude-sonnet-5-5": [
+   [
+    "main",
+    "api-request",
+    "medium",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "medium"
+   ]
+  ],
+  "p-top-low-opus55": [
+   [
+    "main",
+    "api-request",
+    "low",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "low"
+   ]
+  ],
+  "u-ms-low-opus55": [
+   [
+    "main",
+    "api-request",
+    "low",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "low"
+   ]
+  ]
+ },
+ "case_files": {
+  "u-top-low-claude-fable-5-1": "harness/cases-effort-sources.json",
+  "u-top-low-claude-haiku-5-5": "harness/cases-effort-sources.json",
+  "u-top-low-claude-opus-4-8": "harness/cases-effort-sources.json",
+  "u-top-low-claude-opus-5": "harness/cases-effort-sources.json",
+  "u-top-low-claude-opus-5-5": "harness/cases-effort-sources.json",
+  "u-top-low-claude-sonnet-5": "harness/cases-effort-sources.json",
+  "u-top-low-claude-sonnet-5-5": "harness/cases-effort-sources.json",
+  "p-top-low-opus55": "harness/cases-effort-sources.json",
+  "u-ms-low-opus55": "harness/cases-effort-sources.json"
+ },
+ "notes": {
+  "claude-sonnet-5-5 default_effort": "Assumed: the platform models overview (https://platform.claude.com/docs/en/about-claude/models/overview) lists Sonnet 5.5's default effort as high, while model-config#adjust-effort-level says medium and this harness saw Claude Code send medium (u-top-low-claude-sonnet-5-5). The overview's high is probably the API's own default, which applies only when Claude Code sends no level (CLAUDE_CODE_EFFORT_LEVEL auto or unset). The catalog keeps medium."
+ }
+}

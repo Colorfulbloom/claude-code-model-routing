@@ -1,0 +1,30 @@
+{
+  "fixture": "agent-effort-env-over-frontmatter",
+  "rule_ids": [
+    "agent-effort-order"
+  ],
+  "confidence": "tested",
+  "source": "dashboard/experiments/2026-10-29-agent-effort.json#ag-high-vs-env-low",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "effort",
+      "value": "low",
+      "status": "in_effect",
+      "layer": "env",
+      "file": "session.json:shell_env",
+      "scope": "agent",
+      "agent": "probe"
+    },
+    {
+      "key": "effort",
+      "value": "high",
+      "status": "overridden",
+      "layer": "agent",
+      "file": "config/agents/probe.md",
+      "scope": "agent",
+      "agent": "probe",
+      "model": "claude-haiku-5-5"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "fixture": "model-settings-agent-pinned-by-alias",
+  "rule_ids": [
+    "model-settings-name-matching",
+    "agent-effort-order"
+  ],
+  "confidence": "tested",
+  "source": "dashboard/experiments/2026-10-29-model-settings-name-matching.json#ms-agent-alias-canon-key",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "effort",
+      "value": "low",
+      "status": "in_effect",
+      "layer": "user",
+      "file": "config/settings.json",
+      "scope": "agent",
+      "agent": "probe",
+      "model": "claude-opus-5-5"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "fixture": "effort-user-model-settings-opus-5-5",
+  "rule_ids": [
+    "model-settings-effort-per-model"
+  ],
+  "confidence": "tested",
+  "source": "dashboard/experiments/2026-10-29-effort-user-key-by-model.json#u-ms-low-opus55",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "modelSettings",
+      "value": "low",
+      "status": "in_effect",
+      "layer": "user",
+      "file": "config/settings.json",
+      "scope": "model",
+      "model": "claude-opus-5-5"
+    }
+  ]
+}
