@@ -1,9 +1,9 @@
 ### F-e861 Effort resolution, Lowered and Invalid, modelSettings matching (#7, #8, #9)
-status: in-progress
+status: shipped
 kind: code
 dates: 2026-10-29 .. 2026-10-29
 refs:
-  commit: pending (branch discovery/effort-and-model-settings)
+  commit: d628b3580c0391bb12a713d92f18a57c70cfb082 (branch discovery/effort-and-model-settings, merged into development)
 summary: Schema v3 (model catalog, {"from"} model matching, combine/value_order, computed becomes), 14 new rules and 1 changed, 9 experiment records from 87 harness cases on 2.1.302, 12 fixtures, harness prompt/text_reply/transcript support.
 decisions:
 - Verifier fix round: harness guard tightened, schema checker stricter, a levels-table quote on every catalog entry with effort levels; full suite 584 tests OK.
