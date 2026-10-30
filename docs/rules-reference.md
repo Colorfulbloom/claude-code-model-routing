@@ -108,6 +108,9 @@ Some sources change a session after it starts, and others sit outside what the d
 | subagent-model-force-alone | model | agent | Documented | 2.1.302 |
 | subagent-model-default | model | agent | Tested | 2.1.302 |
 | effort-env-auto-sends-none | effortLevel | main | Tested | 2.1.302 |
+| effort-level-user-settings-model-unknown | effortLevel | main | Documented | 2.1.302 |
+| effort-env-empty-ignored | effortLevel | main | Tested | 2.1.302 |
+| agent-effort-env-empty-ignored | effort | agent | Tested | 2.1.302 |
 | effort-default-model-unknown | effortLevel | main | Assumed | 2.1.302 |
 | effort-default-no-effort-support | effortLevel | main | Tested | 2.1.302 |
 | effort-default-by-model | effortLevel | main | Tested | 2.1.302 |
@@ -147,6 +150,10 @@ Some sources change a session after it starts, and others sit outside what the d
 | agent-file-reader-rejected-untested | agentFile | agent | Assumed | 2.1.302 |
 | agent-file-skipped | agentFile | agent | Tested | 2.1.302 |
 | agent-file-unknown-field | agentFile | agent | Tested | 2.1.302 |
+| settings-file-unreadable | settingsFile | main | Documented | 2.1.302 |
+| settings-file-unreadable-untested | settingsFile | main | Assumed | 2.1.302 |
+| settings-file-managed-unparsed | settingsFile | main | Documented | 2.1.302 |
+| settings-file-unparsed-skipped | settingsFile | main | Tested | 2.1.302 |
 | rules-files-listed | rulesFile | main | Documented | 2.1.302 |
 
 ### effort-level-user-settings-opus-5-5
@@ -204,7 +211,7 @@ Quotes:
 
 Reason:
 
-> Nothing sets the model, so the session starts on Claude Code's default model. The account type decides it, unless ANTHROPIC_DEFAULT_MODEL, an organization default or a model recorded on the account applies. So the dashboard can't say which model it is. Run /status in a session to see it.
+> Nothing the dashboard reads sets the model, so the session starts on Claude Code's default model. The account type decides it, unless ANTHROPIC_DEFAULT_MODEL, an organization default or a model recorded on the account applies. So the dashboard can't say which model it is. To check, run /status in a new session started in this project.
 
 Quotes:
 
@@ -541,7 +548,7 @@ Quotes:
 
 Reason:
 
-> CLAUDE_CODE_EFFORT_LEVEL is {value}, so Claude Code sends no effort level and the API's own default for {model} applies. /effort status shows this as auto.
+> CLAUDE_CODE_EFFORT_LEVEL is set to {value}, so Claude Code sends no effort level and the API's own default for {model} applies. /effort status shows this as auto.
 
 Quotes:
 
@@ -550,6 +557,69 @@ Quotes:
 > Set it to `auto` or `unset` to have Claude Code send no effort level, so that the API applies its own default for the model.
 
 - Experiment record: [../dashboard/experiments/2026-10-29-effort-auto.json](../dashboard/experiments/2026-10-29-effort-auto.json)
+- Confidence: Tested
+- Verified on: Claude Code 2.1.302, October 29, 2026
+
+### effort-level-user-settings-model-unknown
+
+- Key: effortLevel
+- Scope: main
+- Combine: highest_layer
+- Layer order (highest first): env, flag, managed, cli, local, project, user, default
+
+Reason:
+
+> {file} sets a top-level effortLevel of {value}, but the dashboard doesn't know the session's model. Opus 5.5 and models released after it ignore this key in the user file, and earlier models use it. So the dashboard can't say whether it counts. To check, run /effort status in a new session started in this project.
+
+Quotes:
+
+- [https://code.claude.com/docs/en/settings-reference#effortlevel](https://code.claude.com/docs/en/settings-reference#effortlevel)
+
+> Opus 5.5 and models released after it ignore it and start at their own default until you save a level for them, which `/effort` writes under `modelSettings`. In project, local, and managed settings, and with `--settings`, this key applies to every model.
+
+- [https://code.claude.com/docs/en/model-config#set-the-effort-level](https://code.claude.com/docs/en/model-config#set-the-effort-level)
+
+> If you set `effortLevel` in managed settings, Claude Code applies it at the settings step of the effort resolution order, and users can still change the level with `/effort` or `--effort`.
+
+- Experiment record: [../dashboard/experiments/2026-10-29-effort-user-key-by-model.json](../dashboard/experiments/2026-10-29-effort-user-key-by-model.json)
+- Confidence: Documented
+- Verified on: Claude Code 2.1.302, October 29, 2026
+
+### effort-env-empty-ignored
+
+- Key: effortLevel
+- Scope: main
+- Combine: highest_layer
+- Layer order (highest first): env, flag, managed, cli, local, project, user, default
+
+Reason:
+
+> CLAUDE_CODE_EFFORT_LEVEL is set but empty. Claude Code treats an empty value as not set, so the next source decides the effort. To send no level at all, set it to auto or unset.
+
+Quotes:
+
+none
+
+- Experiment record: [../dashboard/experiments/2026-10-29-effort-env-empty.json](../dashboard/experiments/2026-10-29-effort-env-empty.json)
+- Confidence: Tested
+- Verified on: Claude Code 2.1.302, October 29, 2026
+
+### agent-effort-env-empty-ignored
+
+- Key: effort
+- Scope: agent
+- Combine: highest_layer
+- Layer order (highest first): env, agent, flag, managed, cli, local, project, user, default
+
+Reason:
+
+> CLAUDE_CODE_EFFORT_LEVEL is set but empty. Claude Code treats an empty value as not set, so the next source decides the effort for {agent}.
+
+Quotes:
+
+none
+
+- Experiment record: [../dashboard/experiments/2026-10-29-effort-env-empty.json](../dashboard/experiments/2026-10-29-effort-env-empty.json)
 - Confidence: Tested
 - Verified on: Claude Code 2.1.302, October 29, 2026
 
@@ -562,7 +632,7 @@ Quotes:
 
 Reason:
 
-> Nothing sets an effort level that counts, and the dashboard can't tell which model the main session runs on. So it can't say that model's default level. Run /effort status in a session to see the level.
+> Nothing the dashboard reads sets an effort level that counts. It can't name the default level either, because it doesn't know the session's model. Either nothing it reads sets a model, or that model isn't in its model list. To check, run /effort status in a new session started in this project.
 
 Quotes:
 
@@ -1049,7 +1119,7 @@ Quotes:
 
 Reason:
 
-> Nothing sets the main conversation's cache lifetime, so the plan decides it. On a subscription it's one hour within plan usage, five minutes once usage credits start. On an API key or a cloud provider it's five minutes. With no plan in the dashboard config, the dashboard can't tell which applies.
+> Nothing the dashboard reads sets the main conversation's cache lifetime, so the plan decides it. On a subscription it's one hour within plan usage, five minutes once usage credits start. On an API key or a cloud provider it's five minutes. The dashboard can't tell when usage credits start. With no plan in the dashboard config, it can't tell the plan either. To check, run claude -p "hello" --output-format json in this project and read usage.cache_creation.
 
 Quotes:
 
@@ -1099,7 +1169,7 @@ Quotes:
 
 Reason:
 
-> CLAUDE_CODE_AUTO_COMPACT_WINDOW is empty in {file}, and Claude Code ignores an empty value, so the next source sets the auto-compact window.
+> CLAUDE_CODE_AUTO_COMPACT_WINDOW is set but empty. Claude Code ignores an empty value, so the next source sets the auto-compact window.
 
 Quotes:
 
@@ -1155,7 +1225,7 @@ Quotes:
 
 Reason:
 
-> Nothing sets the auto-compact window, so Claude Code uses the window tuned for the model. On Opus 5.5 that window is 1000000 tokens. Only Opus 5.5 was checked, so for any other model the dashboard can't say what the window is. Run /autocompact in a session to see its window.
+> Nothing the dashboard reads sets the auto-compact window, so Claude Code uses the window tuned for the model. On Opus 5.5 that window is 1000000 tokens. Only Opus 5.5 was checked, so for any other model the dashboard can't say what the window is. To check, run /autocompact in a new session started in this project.
 
 Quotes:
 
@@ -1425,6 +1495,90 @@ Quotes:
 > Multi-word field names use camelCase, such as `maxTurns` and `disallowedTools`, and must match the table exactly: Claude Code ignores a field it doesn't recognize without reporting an error.
 
 - Experiment record: [../dashboard/experiments/2026-10-29-agent-files.json](../dashboard/experiments/2026-10-29-agent-files.json)
+- Confidence: Tested
+- Verified on: Claude Code 2.1.302, October 29, 2026
+
+### settings-file-unreadable
+
+- Key: settingsFile
+- Scope: main
+- Combine: all
+- Layer order (highest first): managed, local, project, user
+
+Reason:
+
+> The dashboard can't read {file}, so it can't tell which values that file sets. If the system denies Claude Code the read too, every session starts without that file's policy. To check, run /status in a new session started in this project, or run claude doctor in a terminal. Both record a managed file Claude Code couldn't read.
+
+Quotes:
+
+- [https://code.claude.com/docs/en/managed-settings#find-entries-claude-code-dropped](https://code.claude.com/docs/en/managed-settings#find-entries-claude-code-dropped)
+
+> If the operating system denied the read, for example on a root-only file, every session starts without that source's policies.
+
+- [https://code.claude.com/docs/en/managed-settings#find-entries-claude-code-dropped](https://code.claude.com/docs/en/managed-settings#find-entries-claude-code-dropped)
+
+> For any other read failure, such as an I/O error, every session exits at startup with a message to contact an administrator.
+
+- Experiment record: [../dashboard/experiments/2026-10-29-managed-settings-macos.json](../dashboard/experiments/2026-10-29-managed-settings-macos.json)
+- Confidence: Documented
+- Verified on: Claude Code 2.1.302, October 29, 2026
+
+### settings-file-unreadable-untested
+
+- Key: settingsFile
+- Scope: main
+- Combine: all
+- Layer order (highest first): managed, local, project, user
+
+Reason:
+
+> The dashboard can't read {file}, so it can't tell which values that file sets. It can't tell whether Claude Code reads it either. To check, run /status in a new session started in this project. Its Setting sources line lists each settings file Claude Code loaded.
+
+Quotes:
+
+none
+
+- Experiment record: none
+- Confidence: Assumed
+- Verified on: Claude Code 2.1.302, October 29, 2026
+
+### settings-file-managed-unparsed
+
+- Key: settingsFile
+- Scope: main
+- Combine: all
+- Layer order (highest first): managed, local, project, user
+
+Reason:
+
+> {file} isn't valid JSON, or its top level isn't an object, so the dashboard can't tell what it sets. Claude Code refuses to start while a managed file is in that state, so no new session starts until it's fixed. To check, start claude in a terminal. The error it prints names the file.
+
+Quotes:
+
+- [https://code.claude.com/docs/en/managed-settings#find-entries-claude-code-dropped](https://code.claude.com/docs/en/managed-settings#find-entries-claude-code-dropped)
+
+> When a managed settings file, drop-in file, MDM plist, or HKLM registry value is present but can't be parsed as a JSON object, Claude Code refuses to start and prints an error naming the source, even when another admin source delivers a valid policy.
+
+- Experiment record: none
+- Confidence: Documented
+- Verified on: Claude Code 2.1.302, October 29, 2026
+
+### settings-file-unparsed-skipped
+
+- Key: settingsFile
+- Scope: main
+- Combine: all
+- Layer order (highest first): managed, local, project, user
+
+Reason:
+
+> {file} isn't valid JSON, or its top level isn't an object. Claude Code skips the whole file, so nothing in it applies. The next file or Claude Code's default decides each value instead. To see what's wrong, run claude doctor in a terminal.
+
+Quotes:
+
+none
+
+- Experiment record: [../dashboard/experiments/2026-10-29-settings-invalid-json.json](../dashboard/experiments/2026-10-29-settings-invalid-json.json)
 - Confidence: Tested
 - Verified on: Claude Code 2.1.302, October 29, 2026
 

@@ -4,8 +4,8 @@
 It works out, for every setting the dashboard shows, which candidate value
 wins and why, using only the rules in dashboard/rules.json. The rules hold
 every precedence and validity decision. This module holds the plumbing: it
-reads the sources, lines the candidates up, asks the rules for a vote on each
-one and combines the votes.
+takes what the collectors found, lines the candidates up, asks the rules for a
+vote on each one and combines the votes.
 
     /usr/bin/python3 dashboard/resolve.py [fixtures_dir]
 
@@ -14,54 +14,83 @@ prints "<name>: ok" or the mismatches, and exits 1 when any fixture fails.
 
 Public functions:
 
-    resolve(inputs, rules, agent_fields=None) -> list of entry dicts
+    resolve(inputs, rules, agent_fields) -> list of entry dicts
     load_rules(path=RULES_PATH) -> the rules.json document
-    load_fixture(folder) -> (Inputs, expected)
+    load_agent_fields(path) -> the field names Claude Code reads in frontmatter
+    load_fixture(folder, rules=None) -> (Inputs, expected)
+    display_path(path, home=None, root=None) -> the text an entry shows for a path
     compare(entries, expected) -> list of mismatch messages
 
-resolve is a pure function of its inputs. It writes nothing, uses no network,
-never calls expanduser and reads only inside inputs.config_dir and
-inputs.project_dir. The caller loads the rules, and so a caller that passes
-agent_fields (the field names of dashboard/agent_fields.json) keeps resolve
-from reading that file too.
+resolve is a pure function of its inputs. It opens no file, lists no folder,
+writes nothing, uses no network and never looks up the home folder. The caller
+loads the rules and the agent field list (dashboard/agent_fields.json) and
+passes both in.
 
-Inputs, by name:
+Where values come from. dashboard/collect.py reads the files and returns one
+dict, Inputs.collected, and resolve works only from that:
 
-    config_dir   the Claude config dir: settings.json, agents/, rules/
-    project_dir  the project: .claude/settings.json, settings.local.json,
-                 agents/, rules/
-    shell_env    the shell environment, as a dict
-    flags        the session flags, as a list of words (["--effort", "high"])
-    cli_settings the content of a --settings file as a dict, or None
+    settings        the sources that parsed, highest first (merged managed,
+                    local, project, user). Each holds the masked data and a
+                    "where" map from a key path, such as ("env", "FOO"), to the
+                    file and line the value came from.
+    settings_files  every settings file that exists, with its status (ok,
+                    unparsed or unreadable) and the line of a parse problem.
+    env             each variable that rules.json names or an env block sets,
+                    with its settings records and its shell record.
+    agents          each agent file, with its masked frontmatter fields, the
+                    reader's errors and the line of every field.
+    rules_files     every file under the two rules folders.
+
+Three inputs exist only in fixtures, because the dashboard cannot see them in
+live use: flags (the session flags, as a list of words), cli_settings (the
+content of a --settings file) and shell_label. In live use flags is empty,
+cli_settings is None and no entry has the layer flag or cli. The other inputs:
+
     plan         subscription, api_key or cloud_provider, or None when unset
-    managed      managed settings as a dict, or None
-    root         the folder that paths in entries are relative to
+    home         the home folder the caller looked up. resolve never does.
+    root         fixtures only: paths display relative to this folder
+    shell_label  what an entry names as the file of a shell value. The default
+                 is "Shell". Fixtures use "session.json:shell_env".
 
 Where a candidate comes from (the `file` field of an entry):
 
-    user      <config_dir>/settings.json
-    project   <project_dir>/.claude/settings.json
-    local     <project_dir>/.claude/settings.local.json
-    cli       session.json:cli_settings
-    managed   managed
-    flag      session.json:flags
-    env       session.json:shell_env, or the settings file whose env block set
-              the variable. The layer is still env for a row such as
+    user      the settings.json in the config folder
+    project   .claude/settings.json in the project
+    local     .claude/settings.local.json in the project
+    managed   the managed file that holds the key, managed-settings.json or a
+              file in managed-settings.d
+    cli       session.json:cli_settings (fixtures only)
+    flag      session.json:flags (fixtures only)
+    env       the shell (inputs.shell_label), or the settings file whose env
+              block set the variable. The layer is still env for a row such as
               effortLevel, because the process environment is one layer.
     default   no file (null)
-    agent     the agent file, <config_dir>/agents/** (user) or
-              <project_dir>/.claude/agents/** (project), searched recursively
+    agent     the agent file, in the user or project agents folder
+
+How a path shows (display_path, pure string work with no file system calls). A
+path inside root shows relative to it, with "/" separators. Otherwise a path
+inside home shows as "~/" and the rest. Anything else shows in full. Every
+file and other_file in an entry, and so every reason, uses this one text.
+
+Lines. An entry whose value came from a real file carries "line", an integer:
+the line of the key in a settings file, of the variable in an env block, of the
+field in agent frontmatter, of the name in an agent file that loads, of the
+reader's first error in a file it rejected, and 1 for a file with no better
+line (a rules file, a file that is not .md). A shell value has no line and a
+default has no file and no line. Fixture-only sources carry no line.
 
 Order of work:
 
-    1. Env blocks. The process environment is the shell overwritten by the
+    1. Settings files. A file whose status is not ok becomes a candidate of the
+       settingsFile row. The rules decide whether it is ignored or unknown.
+    2. Env blocks. The process environment is the shell overwritten by the
        settings env blocks (rule env-block-order). Every variable set anywhere
        gets a row env.<VAR>.
-    2. Agent files. Each file gets one case (not_md_file, parse_error, ...) and
+    3. Agent files. Each file gets one case (not_md_file, parse_error, ...) and
        the agentFile row of its agent name.
-    3. Main rows: model, maxEffortLevel, effortLevel, autoCompactWindow,
+    4. Main rows: model, maxEffortLevel, effortLevel, autoCompactWindow,
        promptCacheTtl, rulesFile. effortLevel needs the main model and the cap.
-    4. Agent rows, for each agent that loads: model, effort, autoCompactWindow,
+    5. Agent rows, for each agent that loads: model, effort, autoCompactWindow,
        subagentPromptCacheTtl. They need the main model and the agent's own.
 
 Each row gathers its candidates, each candidate collects the votes of the rules
@@ -75,10 +104,17 @@ Why an entry says what it says (rule_id, rule_ids, reason):
     name_form). A value that lost is explained by the row's order rule, the
     rule that supplies the row's layer order and combine. Every default has a
     rule too, and an unknown model has its own default rules (when:
-    model_unknown). An agent whose frontmatter the reader rejected has no
-    readable model, effort, window or cache value, so the winner of those rows
-    is Unknown with the agent file's rule and reason when the agent layer ranks
-    above it.
+    model_unknown). A reason shows a model by its display name from the
+    catalog, such as Opus 5.5, while the entry's model field keeps the id.
+
+Unknown rows. Two kinds of file can hide a value from the dashboard, and both
+work the same way. An agent whose frontmatter the reader rejected has no
+readable model, effort, window or cache value, so the winner of those rows is
+Unknown with the agent file's rule and reason when the agent layer ranks above
+it. A settings file that is unreadable, or a managed file that is not JSON,
+makes the settingsFile row Unknown, and the winner of every row such a file can
+feed becomes Unknown with that row's rule and reason (see
+_mark_unreadable_files). The status and the reason always come from rules.json.
 """
 import dataclasses
 import json
@@ -91,6 +127,7 @@ if HERE not in sys.path:
     sys.path.insert(0, HERE)
 
 import agent_frontmatter  # noqa: E402
+import collect  # noqa: E402
 import rules_schema  # noqa: E402
 
 RULES_PATH = rules_schema.RULES_PATH
@@ -101,7 +138,9 @@ FIXTURES_PATH = os.path.join(REPO, "tests", "fixtures", "resolution")
 LABEL_SHELL = "session.json:shell_env"
 LABEL_FLAGS = "session.json:flags"
 LABEL_CLI = "session.json:cli_settings"
-LABEL_MANAGED = "managed"
+
+# What a live entry names as the file of a shell value.
+LIVE_SHELL_LABEL = "Shell"
 
 # Session flags and the rows they feed: flag -> [(row key, scope)].
 FLAGS = {
@@ -144,7 +183,7 @@ EFFORT_ROWS = ("effortLevel", "effort")
 
 # Rows that list files. A file that does not load leaves them empty, and an
 # empty row has no default entry.
-FILE_ROWS = ("agentFile", "rulesFile")
+FILE_ROWS = ("agentFile", "rulesFile", "settingsFile")
 
 # Frontmatter reader errors and the file case each one means. Experiment record
 # dashboard/experiments/2026-10-29-agent-files.json#f2 loaded these files:
@@ -168,6 +207,9 @@ LOADS_ANYWAY_KINDS = {"unclosed bracket", "unquoted colon in a value", "duplicat
 UNREADABLE_CASES = ("reader_rejected_but_loads", "reader_rejected_untested")
 UNREADABLE_ROWS = ("model", "effort", "autoCompactWindow", "subagentPromptCacheTtl")
 
+# The file cases that come from the reader's errors.
+READER_CASES = ("parse_error",) + UNREADABLE_CASES
+
 # What a vote means for the candidate that wins, strongest first.
 WINNER_PRECEDENCE = ("unknown", "lowered", "default", "in_effect")
 EXCLUDING = ("invalid", "ignored")
@@ -175,14 +217,15 @@ EXCLUDING = ("invalid", "ignored")
 
 @dataclasses.dataclass(frozen=True)
 class Inputs:
-    config_dir: str
-    project_dir: str
-    shell_env: dict = dataclasses.field(default_factory=dict)
+    """What resolve works from. See the module docstring for each field."""
+
+    collected: dict
     flags: list = dataclasses.field(default_factory=list)
     cli_settings: object = None
     plan: object = None
-    managed: object = None
+    home: object = None
     root: object = None
+    shell_label: str = LIVE_SHELL_LABEL
 
 
 # --------------------------------------------------------------------------
@@ -210,20 +253,34 @@ def load_agent_fields(path=agent_frontmatter.FIELDS_PATH):
     return [item["field"] for item in data.get("fields", []) if isinstance(item, dict)]
 
 
-def load_fixture(folder):
-    """Return (Inputs, expected) for one fixture folder."""
+def load_fixture(folder, rules=None):
+    """Return (Inputs, expected) for one fixture folder.
+
+    The folder's files go through the collectors first, as they do in live use.
+    Its managed/ folder stands in for the managed settings folder, and
+    session.json:shell_env for the shell, so a fixture never reads the real
+    ones. Flags and --settings content come from session.json. The --settings
+    content is masked here, as live use masks it, so a fixture secret never
+    reaches an entry.
+    """
     folder = os.path.abspath(folder)
+    rules = rules if rules is not None else load_rules()
     session = _read_json(os.path.join(folder, "session.json")) or {}
     dashboard = _read_json(os.path.join(folder, "dashboard.json")) or {}
-    inputs = Inputs(
+    collected = collect.collect(
         config_dir=os.path.join(folder, "config"),
         project_dir=os.path.join(folder, "project"),
+        managed_dir=os.path.join(folder, "managed"),
         shell_env=dict(session.get("shell_env") or {}),
+        rules=rules)
+    inputs = Inputs(
+        collected=collected,
         flags=list(session.get("flags") or []),
-        cli_settings=session.get("cli_settings"),
+        cli_settings=collect.mask(session.get("cli_settings")),
         plan=dashboard.get("plan"),
-        managed=None,
+        home=None,
         root=folder,
+        shell_label=LABEL_SHELL,
     )
     with open(os.path.join(folder, "expected.json"), encoding="utf-8") as fh:
         expected = json.load(fh)
@@ -281,34 +338,38 @@ def read_number(value):
 # --------------------------------------------------------------------------
 # Sources
 
-def _rel(path, root):
-    if root is None:
-        return path
-    return os.path.relpath(path, root).replace(os.sep, "/")
+def _below(path, base):
+    """Return the part of path under base ("" for base itself), or None.
 
-
-def read_settings(inputs):
-    """Return the settings sources, highest file first.
-
-    Each is {"layer", "file", "data"}. A file that is missing, is not JSON or
-    is not an object is left out.
+    Pure string work. The boundary is a whole folder name, so "/x/a" does not
+    hold "/x/ab".
     """
-    root = inputs.root
-    found = []
-    if isinstance(inputs.managed, dict):
-        found.append({"layer": "managed", "file": LABEL_MANAGED, "data": inputs.managed})
-    if isinstance(inputs.cli_settings, dict):
-        found.append({"layer": "cli", "file": LABEL_CLI, "data": inputs.cli_settings})
-    paths = (
-        ("local", os.path.join(inputs.project_dir, ".claude", "settings.local.json")),
-        ("project", os.path.join(inputs.project_dir, ".claude", "settings.json")),
-        ("user", os.path.join(inputs.config_dir, "settings.json")),
-    )
-    for layer, path in paths:
-        data = _read_json(path)
-        if data is not None:
-            found.append({"layer": layer, "file": _rel(path, root), "data": data})
-    return found
+    if not isinstance(path, str) or not isinstance(base, str):
+        return None
+    base = base.rstrip(os.sep)
+    if base == "":
+        return None
+    if path == base:
+        return ""
+    if path.startswith(base + os.sep):
+        return path[len(base) + 1:]
+    return None
+
+
+def display_path(path, home=None, root=None):
+    """Return the text an entry shows for a file path.
+
+    A path inside root shows relative to it, with "/" separators. Else a path
+    inside home shows as "~/" and the rest. Else it shows in full. It calls no
+    file system function and never looks the home folder up.
+    """
+    rest = _below(path, root)
+    if rest is not None:
+        return rest.replace(os.sep, "/") if rest else "."
+    rest = _below(path, home)
+    if rest is not None:
+        return "~/" + rest if rest else "~"
+    return path
 
 
 def parse_flags(flags):
@@ -324,19 +385,6 @@ def parse_flags(flags):
         elif i + 1 < len(words):
             out[name] = words[i + 1]
     return out
-
-
-def _list_files(folder):
-    """Return every non-hidden file under folder, sorted, as absolute paths."""
-    if not os.path.isdir(folder):
-        return []
-    found = []
-    for dirpath, dirnames, filenames in os.walk(folder):
-        dirnames[:] = sorted(d for d in dirnames if not d.startswith("."))
-        for name in sorted(filenames):
-            if not name.startswith("."):
-                found.append(os.path.join(dirpath, name))
-    return found
 
 
 def _frontmatter_kinds(errors):
@@ -361,50 +409,52 @@ def _stem(path):
     return os.path.basename(path).split(".")[0]
 
 
+def _first_error_line(errors):
+    """Return the line the reader's first error names, or 1."""
+    match = re.match(r"line (\d+)", errors[0]) if errors else None
+    return int(match.group(1)) if match else 1
+
+
 def read_agent_files(inputs):
     """Return one dict per agent file: layer, file, name, case, fields, loadable.
 
-    Cases are decided per file in this order: not_md_file, the reader's errors,
-    no_name, no_description, then same_name_in_layer across the files of one
-    layer. other_file is set on a same_name_in_layer file.
+    The files come from inputs.collected["agents"]. Cases are decided per file
+    in this order: not_md_file, the reader's errors, no_name, no_description,
+    then same_name_in_layer across the files of one layer. other_file is set on
+    a same_name_in_layer file. `line` is the line the file's entry shows: the
+    name line when the file loads, the reader's first error when the reader
+    rejected the file, else 1. `lines` maps a frontmatter path to its line.
     """
-    root = inputs.root
     files = []
-    folders = (
-        ("project", os.path.join(inputs.project_dir, ".claude", "agents")),
-        ("user", os.path.join(inputs.config_dir, "agents")),
-    )
-    for layer, folder in folders:
-        for path in _list_files(folder):
-            try:
-                with open(path, encoding="utf-8", errors="replace") as fh:
-                    text = fh.read()
-            except OSError:
-                text = None
-            fields, errors = agent_frontmatter.read_frontmatter(text)
-            kinds = _frontmatter_kinds(errors)
-            name = fields.get("name") if not errors else None
-            readable = isinstance(name, str) and name.strip() != ""
-            case = None
-            if not os.path.basename(path).endswith(".md"):
-                case = "not_md_file"
-            elif errors:
-                case = _reader_case(kinds)
-            elif not readable:
-                case = "no_name"
-            elif not (isinstance(fields.get("description"), str)
-                      and fields["description"].strip() != ""):
-                case = "no_description"
-            files.append({
-                "layer": layer,
-                "path": path,
-                "file": _rel(path, root),
-                "name": name.strip() if readable else _stem(path),
-                "case": case,
-                "fields": fields if not errors else {},
-                "loadable": False,
-                "other_file": None,
-            })
+    for rec in inputs.collected.get("agents", []):
+        path = rec["path"]
+        fields = rec["fields"]
+        errors = rec["errors"]
+        kinds = _frontmatter_kinds(errors)
+        name = fields.get("name") if not errors else None
+        readable = isinstance(name, str) and name.strip() != ""
+        case = None
+        if not os.path.basename(path).endswith(".md"):
+            case = "not_md_file"
+        elif errors:
+            case = _reader_case(kinds)
+        elif not readable:
+            case = "no_name"
+        elif not (isinstance(fields.get("description"), str)
+                  and fields["description"].strip() != ""):
+            case = "no_description"
+        files.append({
+            "layer": rec["layer"],
+            "path": path,
+            "file": display_path(path, inputs.home, inputs.root),
+            "name": name.strip() if readable else _stem(path),
+            "case": case,
+            "fields": fields if not errors else {},
+            "lines": rec.get("lines") or {},
+            "line": _first_error_line(errors) if case in READER_CASES else 1,
+            "loadable": False,
+            "other_file": None,
+        })
     for layer in ("project", "user"):
         groups = {}
         for f in files:
@@ -417,6 +467,8 @@ def read_agent_files(inputs):
                     f["other_file"] = group[(i + 1) % len(group)]["file"]
     for f in files:
         f["loadable"] = f["case"] in (None, "same_name_in_layer")
+        if f["loadable"]:
+            f["line"] = f["lines"].get("name", 1)
     return files
 
 
@@ -435,14 +487,40 @@ class _Context:
         self.variables = list(rules.get("variables", []))
         self.agent_fields = set(agent_fields)
         self.plan = inputs.plan or "unset"
-        self.settings = read_settings(inputs)
+        self.collected = inputs.collected
+        self.settings = self._sources()
         self.flags = parse_flags(inputs.flags)
         self.agent_files = read_agent_files(inputs)
-        self.env = {}  # name -> {"value", "file"}
+        self.env = {}  # name -> {"value", "file", "line", "status"} of the env.<name> winner
+        self.unknown_files = []  # settingsFile entries whose status is unknown
         self.main_model = None  # catalog id
         self.main_model_value = None
         self._caps = {}
         self._covers = {}
+
+    def show(self, path):
+        """The text an entry shows for a file path."""
+        return display_path(path, self.inputs.home, self.inputs.root)
+
+    def _sources(self):
+        """The settings sources, highest first, with the --settings content added.
+
+        Each is {"layer", "data", "where", "label"}. `label` names the file of
+        a value that has no entry in `where`.
+        """
+        found = [dict(src, label=src["layer"]) for src in self.collected.get("settings", [])]
+        cli = self.inputs.cli_settings
+        if isinstance(cli, dict):
+            at = sum(1 for src in found if src["layer"] == "managed")
+            found.insert(at, {"layer": "cli", "data": cli, "where": {}, "label": LABEL_CLI})
+        return found
+
+    def spot(self, src, path):
+        """Return (file, line) for the key `path` (a tuple) of a settings source."""
+        where = src["where"].get(path)
+        if where is None:
+            return src["label"], None
+        return self.show(where["path"]), where["line"]
 
     def rules_for(self, scope, key):
         return [r for r in self.rules if r["scope"] == scope and r["key"] == key]
@@ -474,8 +552,8 @@ def _is_subsequence(small, big):
 # --------------------------------------------------------------------------
 # Candidates
 
-def _candidate(layer, file, value, **extra):
-    cand = {"layer": layer, "file": file, "value": value, "rank": (1, 0, 0)}
+def _candidate(layer, file, value, line=None, **extra):
+    cand = {"layer": layer, "file": file, "value": value, "line": line, "rank": (1, 0, 0)}
     cand.update(extra)
     return cand
 
@@ -503,8 +581,9 @@ def settings_candidates(ctx, row):
     field = MODEL_SETTINGS_FIELDS.get(row["key"])
     for src in ctx.settings:
         if skey is not None and src["data"].get(skey) is not None:
-            out.append(_candidate(src["layer"], src["file"],
-                                  _show_value(row, src["data"][skey])))
+            file, line = ctx.spot(src, (skey,))
+            out.append(_candidate(src["layer"], file, _show_value(row, src["data"][skey]),
+                                  line))
         table = src["data"].get("modelSettings")
         if field is not None and row.get("model") and isinstance(table, dict):
             for name, entry in table.items():
@@ -513,8 +592,9 @@ def settings_candidates(ctx, row):
                         or entry.get(field) is None:
                     continue
                 rule_key = "modelSettings" if field == "effortLevel" else "modelSettings." + field
+                file, line = ctx.spot(src, ("modelSettings", name, field))
                 out.append(_candidate(
-                    src["layer"], src["file"], _show_value(row, entry[field]),
+                    src["layer"], file, _show_value(row, entry[field]), line,
                     path="modelSettings.%s.%s" % (name, field),
                     name_form=form, model=model_id, rule_key=rule_key, rule_scope="model",
                     rank=(0, rules_schema.NAME_FORMS.index(form), 0)))
@@ -542,8 +622,10 @@ def variable_candidates(ctx, row):
                     continue
                 value = var["value"]
             layer = vrow["layer"]
-            file = ctx.env[name]["file"] if layer == "env" else None
-            out.append(_candidate(layer, file, _show_value(row, value), via=name,
+            file = line = None
+            if layer == "env":
+                file, line = ctx.env[name]["file"], ctx.env[name]["line"]
+            out.append(_candidate(layer, file, _show_value(row, value), line, via=name,
                                   rank=(2, 0, index)))
     return out
 
@@ -559,6 +641,7 @@ def frontmatter_candidates(ctx, row, files):
         if not isinstance(value, str) or value == "":
             continue
         cand = _candidate("agent", f["file"], _show_value(row, value),
+                          f["lines"].get(".".join(path)),
                           ambiguous=f["case"] == "same_name_in_layer")
         if row["key"] == "model" and value == "inherit":
             cand["raw"] = "inherit"
@@ -586,8 +669,6 @@ def _match_value(cand):
     value = cand.get("raw", cand["value"])
     if value is None:
         return None
-    if cand.get("via") and value == "":
-        return "unset"
     return value if isinstance(value, str) else json.dumps(value)
 
 
@@ -654,7 +735,9 @@ def _condition_matches(ctx, row, cand, cond):
     if "plans" in cond and ctx.plan not in cond["plans"]:
         return False
     if cond.get("when") == "model_unknown":
-        if not cand.get("synth") or not _model_unknown(ctx, row):
+        if cond["layer"] == "default" and not cand.get("synth"):
+            return False
+        if not _model_unknown(ctx, row):
             return False
     elif "when" in cond and cand.get("case") != cond["when"]:
         return False
@@ -881,6 +964,8 @@ def _make_entry(ctx, row, cand, status, votes, becomes=None):
         "file": cand.get("file"),
         "scope": row["scope"],
     }
+    if cand.get("line") is not None:
+        entry["line"] = cand["line"]
     if row.get("agent") is not None:
         entry["agent"] = row["agent"]
     model = cand.get("model", row.get("model"))
@@ -1041,8 +1126,18 @@ def _reason(ctx, entry, winner_text):
     for slot in rules_schema.REASON_SLOTS:
         value = entry.get(slot)
         slots[slot] = "" if value is None else str(value)
+    # A reason names a model as the screen does. The entry keeps the catalog id.
+    model = ctx.models.get(entry.get("model"))
+    if model is not None and model.get("display_name"):
+        slots["model"] = model["display_name"]
     slots["winner"] = winner_text
-    return rule["reason"].format_map(slots)
+    # A reason reads "the shell" where an entry's source label is the shell
+    # label. The entry keeps the label. A slot that opens the sentence gets a capital.
+    template = rule["reason"]
+    for slot in ("file", "other_file"):
+        if entry.get(slot) is not None and entry[slot] == ctx.inputs.shell_label:
+            slots[slot] = "The shell" if template.startswith("{%s}" % slot) else "the shell"
+    return template.format_map(slots)
 
 
 # --------------------------------------------------------------------------
@@ -1053,24 +1148,31 @@ def _env_rows(ctx):
     if not ctx.rules_for("main", "env"):
         raise ValueError("the rules have no env-block rule (key env, scope main)")
     names = {}
-    for src in ctx.settings:
-        block = src["data"].get("env")
-        if isinstance(block, dict):
-            for name, value in block.items():
-                if isinstance(value, (str, int, float)) and not isinstance(value, bool):
-                    names.setdefault(name, []).append(
-                        _candidate(src["layer"], src["file"], str(value)))
-    for name, value in (ctx.inputs.shell_env or {}).items():
-        if isinstance(value, str):
-            names.setdefault(name, []).append(_candidate("env", LABEL_SHELL, value))
+    for name, records in ctx.collected.get("env", {}).items():
+        for rec in records:
+            if rec["origin"] == "shell":
+                cand = _candidate("env", ctx.inputs.shell_label, rec["value"])
+            else:
+                file = ctx.show(rec["path"]) if rec.get("path") else rec["layer"]
+                cand = _candidate(rec["layer"], file, rec["value"], rec.get("line"))
+            names.setdefault(name, []).append(cand)
+    # The --settings content is not collected, so its env block joins here.
+    cli = ctx.inputs.cli_settings
+    block = cli.get("env") if isinstance(cli, dict) else None
+    if isinstance(block, dict):
+        for name, value in block.items():
+            if isinstance(value, (str, int, float)) and not isinstance(value, bool):
+                names.setdefault(name, []).append(_candidate("cli", LABEL_CLI, str(value)))
     entries = []
     for name in sorted(names):
         row = {"key": "env." + name, "scope": "main", "agent": None, "model": None}
         got = resolve_row(ctx, row, names[name])
+        _mark_unreadable_files(ctx, got, row, names[name])
         entries.extend(got)
         winner = _winner(got)
         if winner is not None:
-            ctx.env[name] = {"value": winner["value"], "file": winner["file"]}
+            ctx.env[name] = {"value": winner["value"], "file": winner["file"],
+                             "line": winner.get("line"), "status": winner["status"]}
     return entries
 
 
@@ -1084,7 +1186,7 @@ def _agent_file_rows(ctx):
     for name in sorted(by_name):
         files = by_name[name]
         row = {"key": "agentFile", "scope": "agent", "agent": name, "model": None}
-        cands = [_candidate(f["layer"], f["file"], None, case=f["case"],
+        cands = [_candidate(f["layer"], f["file"], None, f["line"], case=f["case"],
                             other_file=f["other_file"]) for f in files]
         got = resolve_row(ctx, row, cands)
         # A file whose agentFile is in effect, or unknown, loads in Claude Code.
@@ -1110,7 +1212,8 @@ def _agent_file_rows(ctx):
 
 def _unknown_field_entry(ctx, row, f, field):
     """The entry for a frontmatter field Claude Code does not read."""
-    cand = _candidate(f["layer"], f["file"], None, case="unknown_field", field=field)
+    cand = _candidate(f["layer"], f["file"], None, f["lines"].get(field, 1),
+                      case="unknown_field", field=field)
     votes = votes_for(ctx, row, cand)
     statuses = {cond["status"] for _rule, cond in votes}
     status = next((s for s in EXCLUDING if s in statuses), None) or _status_of(votes)
@@ -1118,19 +1221,32 @@ def _unknown_field_entry(ctx, row, f, field):
 
 
 def _rules_file_rows(ctx):
-    folders = (
-        ("project", os.path.join(ctx.inputs.project_dir, ".claude", "rules")),
-        ("user", os.path.join(ctx.inputs.config_dir, "rules")),
-    )
     cands = []
-    for layer, folder in folders:
-        for path in _list_files(folder):
-            case = None if path.endswith(".md") else "not_md_file"
-            cands.append(_candidate(layer, _rel(path, ctx.inputs.root), None, case=case))
+    for rec in ctx.collected.get("rules_files", []):
+        case = None if rec["path"].endswith(".md") else "not_md_file"
+        cands.append(_candidate(rec["layer"], ctx.show(rec["path"]), None, 1, case=case))
     if not cands:
         return []
     row = {"key": "rulesFile", "scope": "main", "agent": None, "model": None}
     return resolve_row(ctx, row, cands)
+
+
+def _settings_file_rows(ctx):
+    """Entries for the settingsFile row: each settings file that did not parse or read.
+
+    The rules decide each one's status and reason. The entries whose status is
+    unknown are kept in ctx.unknown_files, highest layer first, for
+    _mark_unreadable_files.
+    """
+    cands = [_candidate(rec["layer"], ctx.show(rec["path"]), None, rec["line"] or 1,
+                        case=rec["status"])
+             for rec in ctx.collected.get("settings_files", []) if rec["status"] != "ok"]
+    if not cands:
+        return []
+    row = {"key": "settingsFile", "scope": "main", "agent": None, "model": None}
+    got = resolve_row(ctx, row, cands)
+    ctx.unknown_files = [e for e in got if e["status"] == "unknown"]
+    return got
 
 
 def _main_rows(ctx):
@@ -1141,12 +1257,13 @@ def _main_rows(ctx):
                "model": ctx.main_model if key in MODEL_ROWS else None}
         cands = settings_candidates(ctx, row) + variable_candidates(ctx, row)
         got = resolve_row(ctx, row, cands)
+        marked = _mark_unreadable_files(ctx, got, row, cands)
         entries.extend(got)
-        return got
+        return got, marked
 
-    got = run("model")
+    got, marked = run("model")
     winner = _winner(got)
-    if winner is not None:
+    if winner is not None and not marked:
         ctx.main_model_value = winner["value"]
         ctx.main_model = normalize_model(winner["value"], ctx.catalog)[0]
     for key in ("maxEffortLevel", "effortLevel", "autoCompactWindow", "promptCacheTtl"):
@@ -1155,19 +1272,31 @@ def _main_rows(ctx):
     return entries
 
 
-def _agent_above(ctx, entry, order):
-    """True when the agent layer ranks above a winning entry.
+def _ranks_above(ctx, entry, order, layer):
+    """True when `layer` ranks above a winning entry.
 
     The entry's own reason rule says it when its layer_order holds both layers
     (CLAUDE_CODE_SUBAGENT_MODEL_FORCE puts the variable above the frontmatter),
     else the row's order does.
     """
     rule = next((r for r in ctx.rules if r["rule_id"] == entry["rule_id"]), None)
-    if rule is not None and "agent" in rule["layer_order"] \
+    if rule is not None and layer in rule["layer_order"] \
             and entry["layer"] in rule["layer_order"]:
         order = rule["layer_order"]
-    return "agent" in order and entry["layer"] in order \
-        and order.index("agent") < order.index(entry["layer"])
+    return layer in order and entry["layer"] in order \
+        and order.index(layer) < order.index(entry["layer"])
+
+
+def _become_unknown(winner, source):
+    """Make a winning entry Unknown, with the rule ids and reason of `source`.
+
+    It keeps its value, layer, file and line, and it drops `becomes`.
+    """
+    winner["status"] = "unknown"
+    winner.pop("becomes", None)
+    winner["rule_id"] = source["rule_id"]
+    winner["rule_ids"] = list(source["rule_ids"])
+    winner["reason"] = source["reason"]
 
 
 def _mark_unreadable(ctx, entries, order, unreadable):
@@ -1178,12 +1307,59 @@ def _mark_unreadable(ctx, entries, order, unreadable):
     become the winner's. A row with only a default has the agent layer above it.
     """
     winner = _winner(entries)
-    if unreadable is None or winner is None or not _agent_above(ctx, winner, order):
+    if unreadable is None or winner is None or not _ranks_above(ctx, winner, order, "agent"):
         return
-    winner["status"] = "unknown"
-    winner.pop("becomes", None)
-    for field in ("rule_id", "rule_ids", "reason"):
-        winner[field] = unreadable[field]
+    _become_unknown(winner, unreadable)
+
+
+def _mark_unreadable_files(ctx, entries, row, cands):
+    """Make the winner of a row Unknown when a settings file it could come from is unknown.
+
+    This is the same mechanism agents use (_mark_unreadable), applied to the
+    settingsFile entries whose status is unknown (an unreadable file, or a
+    managed file that is not JSON). Their status, rule ids and reason come from
+    rules.json, and the winner takes the ones of the highest-ranked such file.
+    The code only decides whether that file could have set the winner's value.
+    For a file in layer L, it could when any of these holds:
+
+      a. the row takes the lowest value (combine lowest_value) and L is in the
+         row's order, because any file might hold a lower value;
+      b. L is in the order and the winner ranks below L, or the winner is a
+         default;
+      c. env is in the order and the winner ranks at or below env, because the
+         file's env block could set the variable behind the winner (rule
+         env-block-order). A winner on the env layer that has a via is the
+         exception. The env.<VAR> row already weighed every env block against
+         it, so the file counts only when that row's winner is unknown
+         (ctx.env[via]["status"]). A winner below env has no such row to lean
+         on, because the variable is unset and any file's block could set it.
+
+    The order is the row's, with the winner's own reason rule taking over when
+    its layer_order holds both layers (see _ranks_above). Call it for rows a
+    settings file can feed: the main and agent rows of the model, effort,
+    window and cache keys, and every env.<VAR> row. Returns True when it
+    marked the winner.
+    """
+    winner = _winner(entries)
+    if winner is None or not ctx.unknown_files:
+        return False
+    order, rule = _row_plan(ctx, row, cands)
+    lowest = rule is not None and rule["combine"] == "lowest_value"
+    via = ctx.env.get(winner.get("via"))
+    if winner["layer"] == "env" and via is not None:
+        env_covers = via.get("status") == "unknown"
+    else:
+        env_covers = winner["layer"] == "env" or _ranks_above(ctx, winner, order, "env")
+    for source in ctx.unknown_files:
+        layer = source["layer"]
+        in_order = layer in order
+        if (lowest and in_order) \
+                or (in_order and (winner["layer"] == "default"
+                                  or _ranks_above(ctx, winner, order, layer))) \
+                or ("env" in order and env_covers):
+            _become_unknown(winner, source)
+            return True
+    return False
 
 
 def _agent_rows(ctx, name, files, file_entries):
@@ -1195,10 +1371,12 @@ def _agent_rows(ctx, name, files, file_entries):
     model_row = {"key": "model", "scope": "agent", "agent": name, "model": None}
     cands = frontmatter_candidates(ctx, model_row, files) + variable_candidates(ctx, model_row)
     got = resolve_row(ctx, model_row, cands)
+    marked = _mark_unreadable_files(ctx, got, model_row, cands)
     _mark_unreadable(ctx, got, _row_plan(ctx, model_row, cands)[0], unreadable)
     entries.extend(got)
     winner = _winner(got)
-    agent_model = normalize_model(winner["value"], ctx.catalog)[0] if winner else None
+    agent_model = normalize_model(winner["value"], ctx.catalog)[0] \
+        if winner and not marked else None
     for key in ("effort", "autoCompactWindow", "subagentPromptCacheTtl"):
         row = {"key": key, "scope": "agent", "agent": name,
                "model": agent_model if key in MODEL_ROWS else None}
@@ -1209,24 +1387,25 @@ def _agent_rows(ctx, name, files, file_entries):
         cands = (frontmatter_candidates(ctx, row, files) + settings_candidates(ctx, row)
                  + variable_candidates(ctx, row))
         got = resolve_row(ctx, row, cands)
+        _mark_unreadable_files(ctx, got, row, cands)
         _mark_unreadable(ctx, got, _row_plan(ctx, row, cands)[0], unreadable)
         entries.extend(got)
     return entries
 
 
-def resolve(inputs, rules, agent_fields=None):
+def resolve(inputs, rules, agent_fields):
     """Return the resolution of every row as a list of entry dicts.
 
-    `rules` is the rules.json document (see load_rules). `agent_fields` is the
-    list of frontmatter fields Claude Code reads; None reads
-    dashboard/agent_fields.json. Entries hold key, value, status, layer, file
-    and scope always, and agent, model, via, path, raw, becomes, other_file and
-    field when they apply, then rule_id, rule_ids and reason.
+    `inputs` holds what the collectors found (see Inputs). `rules` is the
+    rules.json document (see load_rules). `agent_fields` is the list of
+    frontmatter fields Claude Code reads (see load_agent_fields). resolve opens
+    no file. Entries hold key, value, status, layer, file and scope always, and
+    line, agent, model, via, path, raw, becomes, other_file and field when they
+    apply, then rule_id, rule_ids and reason.
     """
-    if agent_fields is None:
-        agent_fields = load_agent_fields()
     ctx = _Context(inputs, rules, agent_fields)
-    entries = _env_rows(ctx)
+    entries = _settings_file_rows(ctx)
+    entries.extend(_env_rows(ctx))
     file_entries, active = _agent_file_rows(ctx)
     entries.extend(_main_rows(ctx))
     entries.extend(file_entries)
@@ -1340,7 +1519,7 @@ def run_fixtures(folder, out=None):
         if not os.path.isfile(os.path.join(path, "expected.json")):
             continue
         try:
-            inputs, expected = load_fixture(path)
+            inputs, expected = load_fixture(path, rules)
             messages = compare(resolve(inputs, rules, fields), expected)
         except Exception as exc:  # a broken fixture should not stop the rest
             messages = ["%s: %s: %s" % (name, exc.__class__.__name__, exc)]

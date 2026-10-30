@@ -411,5 +411,141 @@ class ReadCommandTest(unittest.TestCase):
         self.assertEqual(res.returncode, 2)
 
 
+class FieldLinesTest(unittest.TestCase):
+    """read_frontmatter_lines gives the 1-based line of every field it returns."""
+
+    def test_top_level_lines_count_the_fence_as_line_one(self):
+        text = doc("name: probe", "description: Made-up agent.", "model: sonnet")
+        fields, errors, lines = af.read_frontmatter_lines(text)
+        self.assertEqual(errors, [])
+        self.assertEqual(lines, {"name": 2, "description": 3, "model": 4})
+        self.assertEqual(set(lines), set(fields))
+
+    def test_block_map_gives_parent_and_nested_lines(self):
+        text = doc("name: probe", "experimental:", "  cacheTtl: 1h", "  other:", "  third: x",
+                   "model: sonnet")
+        fields, errors, lines = af.read_frontmatter_lines(text)
+        self.assertEqual(errors, [])
+        self.assertEqual(fields["experimental"], {"cacheTtl": "1h", "other": None, "third": "x"})
+        self.assertEqual(lines, {
+            "name": 2, "experimental": 3, "experimental.cacheTtl": 4,
+            "experimental.other": 5, "experimental.third": 6, "model": 7})
+
+    def test_lists_give_the_key_line_only(self):
+        text = doc("tools:", "  - Read", "  - Grep", "skills: [a, b]", "hooks: []", "model: x")
+        fields, errors, lines = af.read_frontmatter_lines(text)
+        self.assertEqual(errors, [])
+        self.assertEqual(lines, {"tools": 2, "skills": 5, "hooks": 6, "model": 7})
+
+    def test_key_with_nothing_after_it_has_a_line(self):
+        fields, errors, lines = af.read_frontmatter_lines(doc("name: probe", "memory:", "model: x"))
+        self.assertEqual(errors, [])
+        self.assertIsNone(fields["memory"])
+        self.assertEqual(lines["memory"], 3)
+
+    def test_crlf_and_lone_cr_give_the_same_lines_as_lf(self):
+        text = doc("name: probe", "experimental:", "  cacheTtl: 1h", "tools:", "  - Read",
+                   "model: sonnet")
+        expected = af.read_frontmatter_lines(text)
+        self.assertEqual(expected[2]["experimental.cacheTtl"], 4)
+        self.assertEqual(af.read_frontmatter_lines(text.replace("\n", "\r\n")), expected)
+        self.assertEqual(af.read_frontmatter_lines(text.replace("\n", "\r")), expected)
+
+    def test_blank_and_comment_lines_shift_the_lines(self):
+        text = doc("# a comment", "name: probe", "", "experimental:", "  # note", "",
+                   "  cacheTtl: 1h", "   ", "tools:", "  - Read", "", "# end", "model: sonnet")
+        fields, errors, lines = af.read_frontmatter_lines(text)
+        self.assertEqual(errors, [])
+        self.assertEqual(lines, {
+            "name": 3, "experimental": 5, "experimental.cacheTtl": 8, "tools": 10, "model": 14})
+
+    def test_rejected_field_has_no_line_and_the_error_agrees(self):
+        text = doc("name: probe", "description: Secret: text.", "model: sonnet")
+        fields, errors, lines = af.read_frontmatter_lines(text)
+        self.assertEqual(errors, ["line 3: unquoted colon in a value"])
+        self.assertNotIn("description", fields)
+        self.assertNotIn("description", lines)
+        self.assertEqual(lines, {"name": 2, "model": 4})
+        # Fixed, the same field lands on the line the error named.
+        fixed = af.read_frontmatter_lines(
+            doc("name: probe", "description: Fine text.", "model: sonnet"))
+        self.assertEqual(fixed[2]["description"], 3)
+
+    def test_rejected_block_map_drops_the_parent_and_nested_lines(self):
+        text = doc("experimental:", "  cacheTtl: 1h", "  bad: a: b", "model: x")
+        fields, errors, lines = af.read_frontmatter_lines(text)
+        self.assertEqual(errors, ["line 4: unquoted colon in a value"])
+        self.assertEqual(lines, {"model": 5})
+
+    def test_duplicate_key_keeps_the_first_line(self):
+        fields, errors, lines = af.read_frontmatter_lines(
+            doc("name: one", "model: x", "name: two"))
+        self.assertEqual(errors, ["line 4: duplicate key"])
+        self.assertEqual(fields["name"], "one")
+        self.assertEqual(lines["name"], 2)
+
+    def test_whole_document_failures_have_no_lines(self):
+        for text in ("name: probe\n---\n", "---\nname: probe\n", "", None):
+            fields, errors, lines = af.read_frontmatter_lines(text)
+            self.assertEqual((fields, lines), ({}, {}))
+            self.assertEqual(errors, af.read_frontmatter(text)[1])
+
+    def test_read_frontmatter_is_the_first_two_items(self):
+        samples = [
+            doc("name: probe", "description: Made-up agent.", "model: sonnet"),
+            doc("tools: [Read, Grep, 'Bash']", 'skills: ["a:b", c]', "hooks: []"),
+            doc("experimental:", "  cacheTtl: 1h", "tools:", "  - Read"),
+            doc("description: Secret: text.", "name: probe"),
+            doc("a:", "  b:", "    c: d"),
+            doc("name: one", "name: two"),
+            doc("memory:", "\tname: x"),
+            "---\nname: probe\nno closing fence\n",
+            "no fence at all\n",
+            "",
+            None,
+            doc("name: probe").replace("\n", "\r\n"),
+        ]
+        for text in samples:
+            result = af.read_frontmatter(text)
+            full = af.read_frontmatter_lines(text)
+            self.assertIsInstance(result, tuple)
+            self.assertEqual(len(result), 2)
+            self.assertEqual(len(full), 3)
+            self.assertEqual(result, full[:2])
+            self.assertLessEqual(set(full[2]), {
+                p for k, v in full[0].items()
+                for p in [k] + (["%s.%s" % (k, s) for s in v] if isinstance(v, dict) else [])})
+
+
+class ReadCommandFormatTest(unittest.TestCase):
+    """The read command still prints only an index and a result, never a path."""
+
+    def run_cli(self, text):
+        with tempfile.TemporaryDirectory(dir=helpers._tmp_base()) as tmp:
+            path = os.path.join(tmp, "private-agent-name.md")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(text)
+            res = subprocess.run([sys.executable, SCRIPT, "read", path],
+                                 capture_output=True, text=True)
+        self.assertNotIn("private-agent-name", res.stdout + res.stderr)
+        self.assertNotIn(tmp, res.stdout + res.stderr)
+        return res
+
+    def test_accepted_file_prints_exactly_one_ok_line(self):
+        res = self.run_cli(doc("name: secret-agent", "experimental:", "  cacheTtl: 1h"))
+        self.assertEqual((res.returncode, res.stdout, res.stderr), (0, "1: ok\n", ""))
+
+    def test_rejected_file_prints_the_kind_and_nothing_else(self):
+        res = self.run_cli(doc("description: Secret: text."))
+        self.assertEqual(
+            (res.returncode, res.stdout, res.stderr),
+            (0, "1: rejected: unquoted colon in a value\n", ""))
+
+    def test_several_kinds_print_once_each_in_order(self):
+        res = self.run_cli(doc("a: b: c", "d: e: f", "name: x", "name: y"))
+        self.assertEqual(res.stdout,
+                         "1: rejected: unquoted colon in a value, duplicate key\n")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -1,0 +1,132 @@
+{
+ "date": "2026-10-29",
+ "claude_version": "2.1.302",
+ "ran": "A user, project or local settings file whose text is not a JSON object, written as raw text: a truncated object setting model claude-haiku-4-5 at each layer (i1, i2, i3, i6), the same object with a trailing comma (i4), a top-level list (i5), a line comment above a valid object (i8), and a valid user file as the control (i7).",
+ "result": "Claude Code skipped each such file whole and started normally, with nothing on stderr. The model came from the next valid layer, or Claude Code's default when no other file set one. A trailing comma or a line comment made the file invalid too, so Claude Code does not read settings files leniently. A top-level list was skipped the same way. The control file's model applied.",
+ "method": "dashboard/experiments/harness: claude -p in a throwaway HOME, CLAUDE_CONFIG_DIR and project under $TMPDIR, a fake key and ANTHROPIC_BASE_URL on 127.0.0.1. The case field raw_settings writes the file text byte for byte after the guard's substring checks. fakeapi.py logs the model, output_config.effort and cache_control ttl of each request and answers 400. Each case ran alone through runcase.py. Managed settings were not tested, because writing them needs admin rights.",
+ "results_file": "harness/results-settings-invalid-json.jsonl",
+ "cases": {
+  "i1-user-invalid-alone": {
+   "init_model": "claude-opus-5-5",
+   "sent": [
+    [
+     "main",
+     "claude-opus-5-5",
+     "medium",
+     [
+      "5m(default)"
+     ]
+    ]
+   ],
+   "stderr": ""
+  },
+  "i2-project-invalid-user-valid": {
+   "init_model": "claude-sonnet-5-5",
+   "sent": [
+    [
+     "main",
+     "claude-sonnet-5-5",
+     "medium",
+     [
+      "5m(default)"
+     ]
+    ]
+   ],
+   "stderr": ""
+  },
+  "i3-local-invalid-project-valid": {
+   "init_model": "claude-sonnet-5-5",
+   "sent": [
+    [
+     "main",
+     "claude-sonnet-5-5",
+     "medium",
+     [
+      "5m(default)"
+     ]
+    ]
+   ],
+   "stderr": ""
+  },
+  "i4-user-trailing-comma": {
+   "init_model": "claude-opus-5-5",
+   "sent": [
+    [
+     "main",
+     "claude-opus-5-5",
+     "medium",
+     [
+      "5m(default)"
+     ]
+    ]
+   ],
+   "stderr": ""
+  },
+  "i5-user-list-project-valid": {
+   "init_model": "claude-sonnet-5-5",
+   "sent": [
+    [
+     "main",
+     "claude-sonnet-5-5",
+     "medium",
+     [
+      "5m(default)"
+     ]
+    ]
+   ],
+   "stderr": ""
+  },
+  "i6-user-invalid-project-valid": {
+   "init_model": "claude-sonnet-5-5",
+   "sent": [
+    [
+     "main",
+     "claude-sonnet-5-5",
+     "medium",
+     [
+      "5m(default)"
+     ]
+    ]
+   ],
+   "stderr": ""
+  },
+  "i7-control-user-valid": {
+   "init_model": "claude-haiku-4-5",
+   "sent": [
+    [
+     "main",
+     "claude-haiku-4-5",
+     null,
+     [
+      "5m(default)"
+     ]
+    ]
+   ],
+   "stderr": ""
+  },
+  "i8-user-line-comment": {
+   "init_model": "claude-opus-5-5",
+   "sent": [
+    [
+     "main",
+     "claude-opus-5-5",
+     "medium",
+     [
+      "5m(default)"
+     ]
+    ]
+   ],
+   "stderr": ""
+  }
+ },
+ "case_files": {
+  "i1-user-invalid-alone": "harness/cases-settings-invalid-json.json",
+  "i2-project-invalid-user-valid": "harness/cases-settings-invalid-json.json",
+  "i3-local-invalid-project-valid": "harness/cases-settings-invalid-json.json",
+  "i4-user-trailing-comma": "harness/cases-settings-invalid-json.json",
+  "i5-user-list-project-valid": "harness/cases-settings-invalid-json.json",
+  "i6-user-invalid-project-valid": "harness/cases-settings-invalid-json.json",
+  "i7-control-user-valid": "harness/cases-settings-invalid-json.json",
+  "i8-user-line-comment": "harness/cases-settings-invalid-json.json"
+ }
+}

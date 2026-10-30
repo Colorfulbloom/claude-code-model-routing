@@ -1,0 +1,32 @@
+{
+  "fixture": "settings-user-not-json-skipped",
+  "rule_ids": [
+    "settings-file-unparsed-skipped",
+    "model-main-session-order"
+  ],
+  "note": "The user file is a truncated object, so Claude Code skips it whole. The record's i6 case sent the project file's model. The user file's model, claude-haiku-4-5, never appears as a candidate.",
+  "confidence": "tested",
+  "source": "dashboard/experiments/2026-10-29-settings-invalid-json.json#i6-user-invalid-project-valid",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "settingsFile",
+      "value": null,
+      "status": "ignored",
+      "layer": "user",
+      "file": "config/settings.json",
+      "line": 1,
+      "scope": "main",
+      "rule_id": "settings-file-unparsed-skipped"
+    },
+    {
+      "key": "model",
+      "value": "claude-sonnet-5-5",
+      "status": "in_effect",
+      "layer": "project",
+      "file": "project/.claude/settings.json",
+      "line": 1,
+      "scope": "main"
+    }
+  ]
+}

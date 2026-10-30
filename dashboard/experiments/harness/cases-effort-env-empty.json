@@ -1,0 +1,74 @@
+[
+ {
+  "name": "z1-shell-empty-alone",
+  "user": {
+   "model": "claude-opus-5-5"
+  },
+  "env": {
+   "CLAUDE_CODE_EFFORT_LEVEL": ""
+  }
+ },
+ {
+  "name": "z2-shell-empty-project-high",
+  "user": {
+   "model": "claude-opus-5-5"
+  },
+  "project": {
+   "effortLevel": "high"
+  },
+  "env": {
+   "CLAUDE_CODE_EFFORT_LEVEL": ""
+  }
+ },
+ {
+  "name": "z3-user-block-empty-project-high",
+  "user": {
+   "model": "claude-opus-5-5",
+   "env": {
+    "CLAUDE_CODE_EFFORT_LEVEL": ""
+   }
+  },
+  "project": {
+   "effortLevel": "high"
+  }
+ },
+ {
+  "name": "z4-shell-empty-status",
+  "user": {
+   "model": "claude-opus-5-5"
+  },
+  "project": {
+   "effortLevel": "high"
+  },
+  "env": {
+   "CLAUDE_CODE_EFFORT_LEVEL": ""
+  },
+  "prompt": "/effort status"
+ },
+ {
+  "name": "z5-control-project-high",
+  "user": {
+   "model": "claude-opus-5-5"
+  },
+  "project": {
+   "effortLevel": "high"
+  }
+ },
+ {
+  "name": "z6-shell-empty-agent-frontmatter-high",
+  "user": {
+   "model": "claude-sonnet-5-5"
+  },
+  "env": {
+   "CLAUDE_CODE_EFFORT_LEVEL": ""
+  },
+  "agents": {
+   "probe": "---\nname: probe\ndescription: probe agent\nmodel: claude-haiku-5-5\neffort: high\n---\nMARKER-SUBAGENT you are a probe.\n"
+  },
+  "agent_input": {
+   "description": "probe",
+   "prompt": "go",
+   "subagent_type": "probe"
+  }
+ }
+]

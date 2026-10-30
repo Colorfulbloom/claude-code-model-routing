@@ -773,5 +773,116 @@ class NewFields(GuardTestBase):
         self.assertEqual(os.listdir(self.scratch), [], "throwaway root left behind")
 
 
+class RawSettings(GuardTestBase):
+    """raw_settings: layer text written byte for byte, with substring checks on the text."""
+
+    LAYERS = ("user", "project", "local")
+
+    def refused_in_each_layer(self, text, mention):
+        for layer in self.LAYERS:
+            with self.subTest(layer=layer, text=text):
+                self.assert_refused({"name": "t", "raw_settings": {layer: text}},
+                                    mention="raw_settings %s" % layer if mention is None else mention)
+
+    def test_raw_settings_that_is_not_an_object(self):
+        for bad in ("{}", ["user"], None, 5, True):
+            with self.subTest(raw_settings=bad):
+                self.assert_refused({"name": "t", "raw_settings": bad},
+                                    mention="raw_settings is not an object")
+
+    def test_raw_settings_layer_that_is_not_user_project_or_local(self):
+        for bad in ("cli_settings", "User", "managed", "", "../x", "settings"):
+            with self.subTest(layer=bad):
+                self.assert_refused({"name": "t", "raw_settings": {bad: "{"}},
+                                    mention="not user, project or local")
+
+    def test_raw_settings_layer_that_is_also_a_normal_field(self):
+        for layer in self.LAYERS:
+            with self.subTest(layer=layer):
+                self.assert_refused({"name": "t", layer: {"model": "claude-haiku-4-5"},
+                                     "raw_settings": {layer: '{"model": "x"'}},
+                                    mention="also set as a normal")
+
+    def test_raw_settings_value_that_is_not_a_string(self):
+        for bad in (5, None, True, ["{"], {"a": 1}):
+            with self.subTest(value=bad):
+                self.refused_in_each_layer(bad, "is not a string")
+
+    def test_raw_settings_value_that_is_empty(self):
+        self.refused_in_each_layer("", "is empty")
+
+    def test_raw_settings_value_that_is_too_long(self):
+        self.refused_in_each_layer("[" + " " * 511 + "1", "longer than 512")
+
+    def test_raw_settings_value_at_the_length_limit_is_accepted(self):
+        runcase = load_runcase()
+        runcase.check_case({"name": "t", "raw_settings": {"user": "[" + " " * 510 + "1"}})
+
+    def test_raw_settings_value_with_a_character_outside_printable_ascii(self):
+        for bad in ("\t", "\r", "\x00", "\x0b", "\x1b", "\x7f", "\x85", "\u00e9", "\u2028",
+                    "\u4e2d"):
+            self.refused_in_each_layer('{"model": "x%s"' % bad, "outside printable ASCII")
+
+    def test_raw_settings_value_with_a_backslash(self):
+        self.refused_in_each_layer('{"model": "x\\n"', "backslash")
+        self.refused_in_each_layer('{"mo\\u0064el": "x"', "backslash")
+
+    def test_raw_settings_value_with_a_forbidden_substring(self):
+        runcase = load_runcase()
+        words = sorted(runcase.FORBIDDEN_KEYS_LOWER) + ["mcp", "env", "helper", "plugin", "otel"]
+        for word in words:
+            for form in (word, word.upper(), word.capitalize()):
+                with self.subTest(word=form):
+                    self.refused_in_each_layer('["x", "%s"' % form, " holds ")
+
+    def test_raw_settings_value_with_hooks_in_mixed_case(self):
+        self.refused_in_each_layer('{"Hooks": [', "holds hooks")
+        self.refused_in_each_layer('{"hOoKs"', "holds hooks")
+
+    def test_raw_settings_value_with_env(self):
+        self.refused_in_each_layer('{"env": {"ANTHROPIC_MODEL": "x"', "holds env")
+
+    def test_raw_settings_value_that_is_a_json_object(self):
+        for text in ('{"model": "claude-haiku-4-5"}', "{}", ' {"model": 1}\n'):
+            self.refused_in_each_layer(text, "is a JSON object")
+
+    def test_raw_settings_text_that_is_not_an_object_is_accepted(self):
+        runcase = load_runcase()
+        for text in ('{"model": "claude-haiku-4-5"', '["x"]', '{"model": "claude-haiku-4-5",}',
+                     "[]", "null", "5", '"x"', "not json", '{"a": 1}\n{"b": 2}', "x\ny z"):
+            for layer in self.LAYERS:
+                with self.subTest(layer=layer, text=text):
+                    runcase.check_case({"name": "t", "raw_settings": {layer: text}})
+        runcase.check_case({"name": "t", "raw_settings": dict.fromkeys(self.LAYERS, '["x"]'),
+                            "cli_settings": {"model": "claude-haiku-4-5"}})
+
+    def test_raw_settings_text_lands_byte_for_byte_at_each_layer(self):
+        self.tree_marker = os.path.join(self.tmp, "tree.json")
+        with open(os.path.join(self.bin, "claude"), "w") as fh:
+            fh.write(TREE_CLAUDE % self.tree_marker)
+        raw = {"user": '{"model": "claude-haiku-4-5"', "project": '["x"]\n',
+               "local": '{"model": "claude-haiku-4-5",}\n\n  '}
+        r = self.run_case({"name": "ok", "raw_settings": raw})
+        self.assertEqual(r.returncode, 0, "stdout=%r stderr=%r" % (r.stdout, r.stderr))
+        with open(self.tree_marker) as fh:
+            files = json.load(fh)["tree"]
+        self.assertEqual(files["config/settings.json"], raw["user"])
+        self.assertEqual(files["project/.claude/settings.json"], raw["project"])
+        self.assertEqual(files["project/.claude/settings.local.json"], raw["local"])
+
+    def test_raw_settings_leaves_other_layers_unwritten(self):
+        self.tree_marker = os.path.join(self.tmp, "tree.json")
+        with open(os.path.join(self.bin, "claude"), "w") as fh:
+            fh.write(TREE_CLAUDE % self.tree_marker)
+        r = self.run_case({"name": "ok", "raw_settings": {"project": "["},
+                           "user": {"model": "claude-haiku-4-5"}})
+        self.assertEqual(r.returncode, 0, "stdout=%r stderr=%r" % (r.stdout, r.stderr))
+        with open(self.tree_marker) as fh:
+            files = json.load(fh)["tree"]
+        self.assertEqual(files["project/.claude/settings.json"], "[")
+        self.assertEqual(json.loads(files["config/settings.json"]), {"model": "claude-haiku-4-5"})
+        self.assertNotIn("project/.claude/settings.local.json", files)
+
+
 if __name__ == "__main__":
     unittest.main()

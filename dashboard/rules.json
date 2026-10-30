@@ -3,6 +3,7 @@
   "models": [
     {
       "id": "claude-haiku-4-5",
+      "display_name": "Haiku 4.5",
       "aliases": [],
       "effort_levels": [],
       "default_effort": null,
@@ -17,6 +18,7 @@
     },
     {
       "id": "claude-opus-4-6",
+      "display_name": "Opus 4.6",
       "aliases": [],
       "effort_levels": [
         "low",
@@ -40,6 +42,7 @@
     },
     {
       "id": "claude-sonnet-4-6",
+      "display_name": "Sonnet 4.6",
       "aliases": [],
       "effort_levels": [
         "low",
@@ -63,6 +66,7 @@
     },
     {
       "id": "claude-opus-4-7",
+      "display_name": "Opus 4.7",
       "aliases": [],
       "effort_levels": [
         "low",
@@ -87,6 +91,7 @@
     },
     {
       "id": "claude-opus-4-8",
+      "display_name": "Opus 4.8",
       "aliases": [],
       "effort_levels": [
         "low",
@@ -111,6 +116,7 @@
     },
     {
       "id": "claude-opus-5",
+      "display_name": "Opus 5",
       "aliases": [],
       "effort_levels": [
         "low",
@@ -135,6 +141,7 @@
     },
     {
       "id": "claude-sonnet-5",
+      "display_name": "Sonnet 5",
       "aliases": [],
       "effort_levels": [
         "low",
@@ -159,6 +166,7 @@
     },
     {
       "id": "claude-fable-5",
+      "display_name": "Fable 5",
       "aliases": [],
       "effort_levels": [
         "low",
@@ -183,6 +191,7 @@
     },
     {
       "id": "claude-fable-5-1",
+      "display_name": "Fable 5.1",
       "aliases": [
         "fable"
       ],
@@ -209,6 +218,7 @@
     },
     {
       "id": "claude-opus-5-5",
+      "display_name": "Opus 5.5",
       "aliases": [
         "opus"
       ],
@@ -235,6 +245,7 @@
     },
     {
       "id": "claude-sonnet-5-5",
+      "display_name": "Sonnet 5.5",
       "aliases": [
         "sonnet"
       ],
@@ -261,6 +272,7 @@
     },
     {
       "id": "claude-haiku-5-5",
+      "display_name": "Haiku 5.5",
       "aliases": [
         "haiku"
       ],
@@ -550,7 +562,7 @@
           "status": "unknown"
         }
       ],
-      "reason": "Nothing sets the model, so the session starts on Claude Code's default model. The account type decides it, unless ANTHROPIC_DEFAULT_MODEL, an organization default or a model recorded on the account applies. So the dashboard can't say which model it is. Run /status in a session to see it.",
+      "reason": "Nothing the dashboard reads sets the model, so the session starts on Claude Code's default model. The account type decides it, unless ANTHROPIC_DEFAULT_MODEL, an organization default or a model recorded on the account applies. So the dashboard can't say which model it is. To check, run /status in a new session started in this project.",
       "quotes": [
         {
           "doc_url": "https://code.claude.com/docs/en/model-config#default-model-setting",
@@ -1552,7 +1564,7 @@
           "status": "default"
         }
       ],
-      "reason": "CLAUDE_CODE_EFFORT_LEVEL is {value}, so Claude Code sends no effort level and the API's own default for {model} applies. /effort status shows this as auto.",
+      "reason": "CLAUDE_CODE_EFFORT_LEVEL is set to {value}, so Claude Code sends no effort level and the API's own default for {model} applies. /effort status shows this as auto.",
       "quotes": [
         {
           "doc_url": "https://code.claude.com/docs/en/env-vars#variables",
@@ -1565,6 +1577,124 @@
         "claude_version": "2.1.302",
         "date": "2026-10-29"
       }
+    },
+    {
+      "rule_id": "effort-level-user-settings-model-unknown",
+      "key": "effortLevel",
+      "scope": "main",
+      "layer_order": [
+        "env",
+        "flag",
+        "managed",
+        "cli",
+        "local",
+        "project",
+        "user",
+        "default"
+      ],
+      "conditions": [
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "when": "model_unknown",
+          "status": "unknown"
+        }
+      ],
+      "reason": "{file} sets a top-level effortLevel of {value}, but the dashboard doesn't know the session's model. Opus 5.5 and models released after it ignore this key in the user file, and earlier models use it. So the dashboard can't say whether it counts. To check, run /effort status in a new session started in this project.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/settings-reference#effortlevel",
+          "quote": "Opus 5.5 and models released after it ignore it and start at their own default until you save a level for them, which `/effort` writes under `modelSettings`. In project, local, and managed settings, and with `--settings`, this key applies to every model."
+        },
+        {
+          "doc_url": "https://code.claude.com/docs/en/model-config#set-the-effort-level",
+          "quote": "If you set `effortLevel` in managed settings, Claude Code applies it at the settings step of the effort resolution order, and users can still change the level with `/effort` or `--effort`."
+        }
+      ],
+      "experiment": "experiments/2026-10-29-effort-user-key-by-model.json",
+      "confidence": "documented",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-29"
+      },
+      "combine": "highest_layer"
+    },
+    {
+      "rule_id": "effort-env-empty-ignored",
+      "key": "effortLevel",
+      "scope": "main",
+      "layer_order": [
+        "env",
+        "flag",
+        "managed",
+        "cli",
+        "local",
+        "project",
+        "user",
+        "default"
+      ],
+      "conditions": [
+        {
+          "layer": "env",
+          "models": [
+            "*"
+          ],
+          "via": "CLAUDE_CODE_EFFORT_LEVEL",
+          "values": [
+            ""
+          ],
+          "status": "ignored"
+        }
+      ],
+      "reason": "CLAUDE_CODE_EFFORT_LEVEL is set but empty. Claude Code treats an empty value as not set, so the next source decides the effort. To send no level at all, set it to auto or unset.",
+      "quotes": [],
+      "experiment": "experiments/2026-10-29-effort-env-empty.json",
+      "confidence": "tested",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-29"
+      },
+      "combine": "highest_layer"
+    },
+    {
+      "rule_id": "agent-effort-env-empty-ignored",
+      "key": "effort",
+      "scope": "agent",
+      "layer_order": [
+        "env",
+        "agent",
+        "flag",
+        "managed",
+        "cli",
+        "local",
+        "project",
+        "user",
+        "default"
+      ],
+      "conditions": [
+        {
+          "layer": "env",
+          "models": [
+            "*"
+          ],
+          "via": "CLAUDE_CODE_EFFORT_LEVEL",
+          "values": [
+            ""
+          ],
+          "status": "ignored"
+        }
+      ],
+      "reason": "CLAUDE_CODE_EFFORT_LEVEL is set but empty. Claude Code treats an empty value as not set, so the next source decides the effort for {agent}.",
+      "quotes": [],
+      "experiment": "experiments/2026-10-29-effort-env-empty.json",
+      "confidence": "tested",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-29"
+      },
+      "combine": "highest_layer"
     },
     {
       "rule_id": "effort-default-model-unknown",
@@ -1591,7 +1721,7 @@
           "status": "unknown"
         }
       ],
-      "reason": "Nothing sets an effort level that counts, and the dashboard can't tell which model the main session runs on. So it can't say that model's default level. Run /effort status in a session to see the level.",
+      "reason": "Nothing the dashboard reads sets an effort level that counts. It can't name the default level either, because it doesn't know the session's model. Either nothing it reads sets a model, or that model isn't in its model list. To check, run /effort status in a new session started in this project.",
       "quotes": [],
       "experiment": null,
       "confidence": "assumed",
@@ -3350,7 +3480,7 @@
           ]
         }
       ],
-      "reason": "Nothing sets the main conversation's cache lifetime, so the plan decides it. On a subscription it's one hour within plan usage, five minutes once usage credits start. On an API key or a cloud provider it's five minutes. With no plan in the dashboard config, the dashboard can't tell which applies.",
+      "reason": "Nothing the dashboard reads sets the main conversation's cache lifetime, so the plan decides it. On a subscription it's one hour within plan usage, five minutes once usage credits start. On an API key or a cloud provider it's five minutes. The dashboard can't tell when usage credits start. With no plan in the dashboard config, it can't tell the plan either. To check, run claude -p \"hello\" --output-format json in this project and read usage.cache_creation.",
       "quotes": [
         {
           "doc_url": "https://code.claude.com/docs/en/prompt-caching#choose-the-ttl-yourself",
@@ -3427,12 +3557,12 @@
           ],
           "via": "CLAUDE_CODE_AUTO_COMPACT_WINDOW",
           "values": [
-            "unset"
+            ""
           ],
           "status": "ignored"
         }
       ],
-      "reason": "CLAUDE_CODE_AUTO_COMPACT_WINDOW is empty in {file}, and Claude Code ignores an empty value, so the next source sets the auto-compact window.",
+      "reason": "CLAUDE_CODE_AUTO_COMPACT_WINDOW is set but empty. Claude Code ignores an empty value, so the next source sets the auto-compact window.",
       "quotes": [],
       "experiment": "experiments/2026-10-29-auto-compact-window.json",
       "confidence": "tested",
@@ -3652,7 +3782,7 @@
           "status": "unknown"
         }
       ],
-      "reason": "Nothing sets the auto-compact window, so Claude Code uses the window tuned for the model. On Opus 5.5 that window is 1000000 tokens. Only Opus 5.5 was checked, so for any other model the dashboard can't say what the window is. Run /autocompact in a session to see its window.",
+      "reason": "Nothing the dashboard reads sets the auto-compact window, so Claude Code uses the window tuned for the model. On Opus 5.5 that window is 1000000 tokens. Only Opus 5.5 was checked, so for any other model the dashboard can't say what the window is. To check, run /autocompact in a new session started in this project.",
       "quotes": [
         {
           "doc_url": "https://code.claude.com/docs/en/settings-reference#modelsettings",
@@ -4387,6 +4517,172 @@
         }
       ],
       "experiment": "experiments/2026-10-29-agent-files.json",
+      "confidence": "tested",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-29"
+      }
+    },
+    {
+      "rule_id": "settings-file-unreadable",
+      "key": "settingsFile",
+      "scope": "main",
+      "layer_order": [
+        "managed",
+        "local",
+        "project",
+        "user"
+      ],
+      "combine": "all",
+      "conditions": [
+        {
+          "layer": "managed",
+          "models": [
+            "*"
+          ],
+          "status": "unknown",
+          "when": "unreadable"
+        }
+      ],
+      "reason": "The dashboard can't read {file}, so it can't tell which values that file sets. If the system denies Claude Code the read too, every session starts without that file's policy. To check, run /status in a new session started in this project, or run claude doctor in a terminal. Both record a managed file Claude Code couldn't read.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/managed-settings#find-entries-claude-code-dropped",
+          "quote": "If the operating system denied the read, for example on a root-only file, every session starts without that source's policies."
+        },
+        {
+          "doc_url": "https://code.claude.com/docs/en/managed-settings#find-entries-claude-code-dropped",
+          "quote": "For any other read failure, such as an I/O error, every session exits at startup with a message to contact an administrator."
+        }
+      ],
+      "experiment": "experiments/2026-10-29-managed-settings-macos.json",
+      "confidence": "documented",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-29"
+      }
+    },
+    {
+      "rule_id": "settings-file-unreadable-untested",
+      "key": "settingsFile",
+      "scope": "main",
+      "layer_order": [
+        "managed",
+        "local",
+        "project",
+        "user"
+      ],
+      "combine": "all",
+      "conditions": [
+        {
+          "layer": "local",
+          "models": [
+            "*"
+          ],
+          "status": "unknown",
+          "when": "unreadable"
+        },
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "status": "unknown",
+          "when": "unreadable"
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "status": "unknown",
+          "when": "unreadable"
+        }
+      ],
+      "reason": "The dashboard can't read {file}, so it can't tell which values that file sets. It can't tell whether Claude Code reads it either. To check, run /status in a new session started in this project. Its Setting sources line lists each settings file Claude Code loaded.",
+      "quotes": [],
+      "experiment": null,
+      "confidence": "assumed",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-29"
+      }
+    },
+    {
+      "rule_id": "settings-file-managed-unparsed",
+      "key": "settingsFile",
+      "scope": "main",
+      "layer_order": [
+        "managed",
+        "local",
+        "project",
+        "user"
+      ],
+      "combine": "all",
+      "conditions": [
+        {
+          "layer": "managed",
+          "models": [
+            "*"
+          ],
+          "status": "unknown",
+          "when": "unparsed"
+        }
+      ],
+      "reason": "{file} isn't valid JSON, or its top level isn't an object, so the dashboard can't tell what it sets. Claude Code refuses to start while a managed file is in that state, so no new session starts until it's fixed. To check, start claude in a terminal. The error it prints names the file.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/managed-settings#find-entries-claude-code-dropped",
+          "quote": "When a managed settings file, drop-in file, MDM plist, or HKLM registry value is present but can't be parsed as a JSON object, Claude Code refuses to start and prints an error naming the source, even when another admin source delivers a valid policy."
+        }
+      ],
+      "experiment": null,
+      "confidence": "documented",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-29"
+      }
+    },
+    {
+      "rule_id": "settings-file-unparsed-skipped",
+      "key": "settingsFile",
+      "scope": "main",
+      "layer_order": [
+        "managed",
+        "local",
+        "project",
+        "user"
+      ],
+      "combine": "all",
+      "conditions": [
+        {
+          "layer": "local",
+          "models": [
+            "*"
+          ],
+          "status": "ignored",
+          "when": "unparsed"
+        },
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "status": "ignored",
+          "when": "unparsed"
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "status": "ignored",
+          "when": "unparsed"
+        }
+      ],
+      "reason": "{file} isn't valid JSON, or its top level isn't an object. Claude Code skips the whole file, so nothing in it applies. The next file or Claude Code's default decides each value instead. To see what's wrong, run claude doctor in a terminal.",
+      "quotes": [],
+      "experiment": "experiments/2026-10-29-settings-invalid-json.json",
       "confidence": "tested",
       "verified_on": {
         "claude_version": "2.1.302",

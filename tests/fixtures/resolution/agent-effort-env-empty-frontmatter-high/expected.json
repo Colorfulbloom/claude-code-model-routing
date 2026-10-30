@@ -1,0 +1,33 @@
+{
+  "fixture": "agent-effort-env-empty-frontmatter-high",
+  "rule_ids": [
+    "agent-effort-env-empty-ignored",
+    "agent-effort-order"
+  ],
+  "confidence": "tested",
+  "source": "dashboard/experiments/2026-10-29-effort-env-empty.json#z6-shell-empty-agent-frontmatter-high",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "effort",
+      "value": "high",
+      "status": "in_effect",
+      "layer": "agent",
+      "file": "config/agents/probe.md",
+      "scope": "agent",
+      "agent": "probe",
+      "model": "claude-haiku-5-5"
+    },
+    {
+      "key": "effort",
+      "value": "",
+      "status": "ignored",
+      "layer": "env",
+      "file": "session.json:shell_env",
+      "scope": "agent",
+      "agent": "probe",
+      "via": "CLAUDE_CODE_EFFORT_LEVEL",
+      "rule_id": "agent-effort-env-empty-ignored"
+    }
+  ]
+}

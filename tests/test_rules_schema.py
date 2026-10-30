@@ -39,7 +39,8 @@ GOOD_RULE = {
 
 def _catalog_entry(mid, aliases, levels, default):
     return {
-        "id": mid, "aliases": aliases, "effort_levels": levels, "default_effort": default,
+        "id": mid, "display_name": mid.replace("claude-", "").replace("-", " ").title(),
+        "aliases": aliases, "effort_levels": levels, "default_effort": default,
         "quotes": [{
             "doc_url": "https://code.claude.com/docs/en/model-config",
             "quote": "Made-up quote for the %s entry." % mid,
@@ -607,10 +608,10 @@ class WhenConditionTest(TempDirMixin, unittest.TestCase):
     def test_every_when_case_passes(self):
         for case in rules_schema.WHEN_CASES:
             with self.subTest(when=case):
-                status = ("unknown" if case in ("reader_rejected_but_loads", "reader_rejected_untested")
+                status = ("unknown" if case in ("reader_rejected_but_loads", "reader_rejected_untested",
+                                                "unreadable")
                           else "ignored")
-                layer = "default" if case == "model_unknown" else "user"
-                self.assertEqual(self.errors(self.cond(when=case, status=status, layer=layer)), [])
+                self.assertEqual(self.errors(self.cond(when=case, status=status)), [])
 
     def test_unknown_when_fails(self):
         for bad in ("other", "", "NOT_MD_FILE"):
@@ -639,11 +640,11 @@ class WhenConditionTest(TempDirMixin, unittest.TestCase):
                 self.assertEqual(self.errors(self.cond(when="model_unknown", layer="default",
                                                        status=status)), [])
 
-    def test_model_unknown_is_rejected_on_other_layers(self):
+    def test_model_unknown_is_allowed_on_other_layers(self):
         for layer in ("user", "project", "env"):
             with self.subTest(layer=layer):
-                self.assertRejected(self.cond(when="model_unknown", layer=layer),
-                                    "when model_unknown is only for a condition on the default layer")
+                self.assertEqual(self.errors(self.cond(when="model_unknown", layer=layer,
+                                                       status="unknown")), [])
 
     def test_file_key_rule_with_when_passes(self):
         rule = self.cond(when="not_md_file")
@@ -1435,12 +1436,111 @@ class ReaderRejectedUntestedTest(TempDirMixin, unittest.TestCase):
                                     "when reader_rejected_untested needs status unknown")
 
 
+class DisplayNameTest(TempDirMixin, unittest.TestCase):
+    def test_good_model_passes(self):
+        self.assertEqual(self.model_errors(self.model()), [])
+
+    def test_missing_display_name_fails(self):
+        self.assertModelRejected(self.model(display_name=DROP), "missing field display_name")
+
+    def test_empty_or_non_string_display_name_fails(self):
+        for bad in ("", "   ", None, 5, ["Opus"], True):
+            with self.subTest(display_name=bad):
+                self.assertModelRejected(self.model(display_name=bad),
+                                         "display_name must be a non-empty string")
+
+    def test_duplicate_display_name_fails_in_a_document(self):
+        models = copy.deepcopy(GOOD_MODELS)
+        models[1]["display_name"] = models[0]["display_name"]
+        self.assertDocRejected(self.document(models=models), "display_name")
+        self.assertDocRejected(self.document(models=models), "is also on model")
+
+    def test_every_real_model_has_a_display_name(self):
+        with open(rules_schema.RULES_PATH, encoding="utf-8") as fh:
+            data = json.load(fh)
+        names = [m["display_name"] for m in data["models"]]
+        self.assertEqual(len(names), len(set(names)))
+        self.assertEqual(dict((m["id"], m["display_name"]) for m in data["models"])["claude-fable-5-1"],
+                         "Fable 5.1")
+
+
+class SettingsFileCasesTest(TempDirMixin, unittest.TestCase):
+    ORDER = ["managed", "local", "project", "user"]
+
+    def rule_with(self, when, status, layer="user"):
+        return self.rule(key="settingsFile", reason="{file} can't be used.",
+                         layer_order=self.ORDER, combine="all",
+                         conditions=[{"layer": layer, "models": ["*"], "status": status,
+                                      "when": when}])
+
+    def test_new_cases_are_when_cases(self):
+        self.assertIn("unparsed", rules_schema.WHEN_CASES)
+        self.assertIn("unreadable", rules_schema.WHEN_CASES)
+
+    def test_unparsed_passes_with_ignored_and_unknown(self):
+        for status in ("ignored", "unknown"):
+            with self.subTest(status=status):
+                self.assertEqual(self.errors(self.rule_with("unparsed", status)), [])
+
+    def test_unreadable_passes_with_unknown(self):
+        self.assertEqual(self.errors(self.rule_with("unreadable", "unknown")), [])
+
+    def test_unreadable_with_other_statuses_fails(self):
+        for status in ("ignored", "invalid", "in_effect", "overridden", "lowered", "default"):
+            with self.subTest(status=status):
+                self.assertRejected(self.rule_with("unreadable", status),
+                                    "when unreadable needs status unknown")
+
+    def test_real_settings_file_rules_validate(self):
+        with open(rules_schema.RULES_PATH, encoding="utf-8") as fh:
+            data = json.load(fh)
+        ids = ["settings-file-unreadable", "settings-file-unreadable-untested",
+               "settings-file-managed-unparsed", "settings-file-unparsed-skipped"]
+        found = [r for r in data["rules"] if r["rule_id"] in ids]
+        self.assertEqual([r["rule_id"] for r in found], ids)
+        for rule in found:
+            with self.subTest(rule=rule["rule_id"]):
+                self.assertEqual((rule["key"], rule["scope"], rule["combine"]),
+                                 ("settingsFile", "main", "all"))
+                self.assertEqual(rule["layer_order"], self.ORDER)
+        self.assertEqual(rules_schema.load_and_validate(), [])
+
+    def test_unreadable_is_split_between_managed_and_the_untested_layers(self):
+        with open(rules_schema.RULES_PATH, encoding="utf-8") as fh:
+            rules = {r["rule_id"]: r for r in json.load(fh)["rules"]}
+        tested = rules["settings-file-unreadable"]
+        untested = rules["settings-file-unreadable-untested"]
+        self.assertEqual([c["layer"] for c in tested["conditions"]], ["managed"])
+        self.assertEqual(tested["confidence"], "documented")
+        self.assertTrue(tested["quotes"])
+        self.assertEqual([c["layer"] for c in untested["conditions"]],
+                         ["local", "project", "user"])
+        for cond in untested["conditions"]:
+            self.assertEqual((cond["status"], cond["when"]), ("unknown", "unreadable"))
+        self.assertEqual((untested["confidence"], untested["quotes"], untested["experiment"]),
+                         ("assumed", [], None))
+        # The two reasons share their first sentence. Each then names its own check.
+        first = "The dashboard can't read {file}, so it can't tell which values that file sets."
+        self.assertTrue(tested["reason"].startswith(first))
+        self.assertTrue(untested["reason"].startswith(first))
+        self.assertNotEqual(untested["reason"], tested["reason"])
+        self.assertEqual(untested["verified_on"], tested["verified_on"])
+        self.assertEqual((untested["layer_order"], untested["combine"]),
+                         (tested["layer_order"], tested["combine"]))
+
+
 class Step3RealRulesTest(unittest.TestCase):
     def setUp(self):
         with open(rules_schema.RULES_PATH, encoding="utf-8") as fh:
             self.data = json.load(fh)
         self.rules = {r["rule_id"]: r for r in self.data["rules"]}
         self.variables = {v["name"]: v for v in self.data["variables"]}
+
+    def test_the_model_unknown_effort_rule_is_documented_not_tested(self):
+        # No run had no model, so the rule rests on its quotes. Its fixture says documented too.
+        rule = self.rules["effort-level-user-settings-model-unknown"]
+        self.assertEqual(rule["confidence"], "documented")
+        self.assertTrue(rule["quotes"])
 
     def test_variables_follow_models_in_the_spec_order(self):
         self.assertEqual(list(self.data), ["schema_version", "models", "variables", "rules"])
