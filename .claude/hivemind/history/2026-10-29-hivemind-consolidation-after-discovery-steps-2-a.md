@@ -1,9 +1,9 @@
 ### F-8cf3 HiveMind consolidation after discovery steps 2 and 3
-status: in-progress
+status: shipped
 kind: content
 dates: 2026-10-29 .. 2026-10-29
 refs:
-  commit: pending (branch chore/hivemind-consolidation)
+  commit: c57acf37c8c605cde9860b7121c08013bf7e7427 (branch chore/hivemind-consolidation, merged into development)
   file: .claude/hivemind/topics/testing.md
   file: .claude/hivemind/topics/dead-ends.md
 summary: Folded 126 inbox run files (30 proposals, 11 contradictions) from F-775c, F-e861, F-36e5 and F-9fdd into the testing and dead-ends topics.
