@@ -72,7 +72,27 @@ def sub(ts, agent, run, **kw):
     return rec(ts, run_id=run, agent_type=agent, **kw)
 
 
+def oldest_by_folder(records, projects, skipped=None):
+    """What the reader would hand over: {folder: oldest record ts}, per folder.
+
+    skipped is a datetime held by an old skipped file in every folder of the
+    records and the projects, or None for no skipped file.
+    """
+    out = {}
+    for r in records:
+        if r.folder not in out or r.ts_utc < out[r.folder]:
+            out[r.folder] = r.ts_utc
+    if skipped is not None:
+        folders = set(out) | set(p["folder"] for p in projects if p.get("folder"))
+        for folder in folders:
+            out[folder] = min(out.get(folder, skipped), skipped)
+    return out
+
+
 def views(records, scope="all", now=NOW, tz=NY, oldest_seen=None, projects=(PROJECT_A,), **kw):
+    """oldest_seen is None, a datetime held by a skipped file in every folder, or a dict."""
+    if not isinstance(oldest_seen, dict):
+        oldest_seen = oldest_by_folder(records, projects, oldest_seen)
     return usage.build_views(records, scope, now, tz, PRICES, CATALOG, oldest_seen,
                              projects=projects, **kw)
 
@@ -271,14 +291,16 @@ class NoEarlierDataTests(unittest.TestCase):
 
     def test_an_older_skipped_file_moves_the_oldest_data_back(self):
         rows = [rec("2026-10-30T12:00:00Z", output=1)]
-        out = views(rows, oldest_seen=utc("2026-09-01T04:00:00Z"))
+        out = views(rows, oldest_seen={"-work-a": utc("2026-09-01T04:00:00Z")})
         self.assertEqual({"today": False, "7d": False, "30d": False}, self.previous_is_none(out))
-        out = views(rows, oldest_seen=utc("2026-09-01T04:00:01Z"))
+        out = views(rows, oldest_seen={"-work-a": utc("2026-09-01T04:00:01Z")})
         self.assertEqual({"today": False, "7d": False, "30d": True}, self.previous_is_none(out))
 
     def test_oldest_seen_later_than_the_oldest_record_changes_nothing(self):
         rows = [rec("2026-10-10T12:00:00Z", output=1)]
-        out = views(rows, oldest_seen=utc("2026-10-30T00:00:00Z"))
+        out = views(rows, oldest_seen={"-work-a": utc("2026-10-10T12:00:00Z")})
+        self.assertEqual({"today": False, "7d": False, "30d": True}, self.previous_is_none(out))
+        out = views(rows, oldest_seen=utc("2026-10-30T00:00:00Z"))   # the helper keeps the earlier
         self.assertEqual({"today": False, "7d": False, "30d": True}, self.previous_is_none(out))
 
     def test_no_data_at_all_gives_no_previous(self):
@@ -294,9 +316,46 @@ class NoEarlierDataTests(unittest.TestCase):
         self.assertIsNotNone(views(rows, scope="all", projects=both)["today"]["previous"])
         self.assertIsNotNone(views(rows, scope="all", projects=both)["7d"]["previous"])
         self.assertIsNone(views(rows, scope="all", projects=both)["30d"]["previous"])
-        # A skipped older file holds data for any scope.
-        seen = views(rows, scope="b", projects=both, oldest_seen=utc("2026-08-01T00:00:00Z"))
+        # A skipped older file in b's own folder gives b a previous.
+        seen = views(rows, scope="b", projects=both,
+                     oldest_seen={"-work-a": utc("2026-10-02T12:00:00Z"), "-work-b": utc("2026-08-01T00:00:00Z")})
         self.assertIsNotNone(seen["30d"]["previous"])
+
+    def test_a_project_with_no_folder_or_no_key_has_no_previous(self):
+        rows = [rec("2026-10-30T12:00:00Z", output=1)]
+        nowhere = {"key": "n", "name": "Nowhere", "folder": None}
+        out = views(rows, scope="n", projects=(PROJECT_A, nowhere), oldest_seen={"-work-a": EARLY})
+        self.assertEqual({"today": True, "7d": True, "30d": True}, self.previous_is_none(out))
+        out = views(rows, scope="a", oldest_seen={})
+        self.assertEqual({"today": True, "7d": True, "30d": True}, self.previous_is_none(out))
+
+    def test_a_repeated_oldest_row_gives_a_new_project_no_previous(self):
+        # Project a's oldest row (Oct 2) is written twice and dedupe keeps the later copy.
+        # Project b is new: its only row is from yesterday and no file was skipped.
+        # The oldest moment of b is its own row, so no range of b has a previous.
+        b_row = rec("2026-10-29T15:00:00Z", "mb", output=1, folder="-work-b")
+        unique = [rec("2026-10-02T12:00:00Z", "ma", output=5), b_row]
+        repeated = [rec("2026-10-02T12:00:00Z", "ma", output=5),
+                    rec("2026-10-02T12:00:05Z", "ma", output=5), b_row]
+        both = (PROJECT_A, PROJECT_B)
+        seen = {}
+        for name, rows in (("unique", unique), ("repeated", repeated)):
+            out = views(rows, scope="b", projects=both)
+            seen[name] = self.previous_is_none(out)
+            self.assertEqual({"today": True, "7d": True, "30d": True}, seen[name], name)
+            self.assertEqual(0, out["today"]["totals"]["tokens"], name)
+            self.assertEqual(1, out["7d"]["totals"]["tokens"], name)
+        self.assertEqual(seen["unique"], seen["repeated"])
+
+    def test_a_skipped_file_in_one_folder_gives_a_previous_only_there(self):
+        rows = [rec("2026-10-30T12:00:00Z", "ma", output=1),
+                rec("2026-10-30T12:00:00Z", "mb", output=1, folder="-work-b")]
+        both = (PROJECT_A, PROJECT_B)
+        seen = {"-work-a": utc("2026-08-01T00:00:00Z"), "-work-b": utc("2026-10-30T12:00:00Z")}
+        out_a = views(rows, scope="a", projects=both, oldest_seen=seen)
+        out_b = views(rows, scope="b", projects=both, oldest_seen=seen)
+        self.assertEqual({"today": False, "7d": False, "30d": False}, self.previous_is_none(out_a))
+        self.assertEqual({"today": True, "7d": True, "30d": True}, self.previous_is_none(out_b))
 
 
 # ---------------------------------------------------------------- time zone and buckets
@@ -797,10 +856,16 @@ class DeltaTests(unittest.TestCase):
         self.assertIsNone(out["previous"])
         self.assertEqual({"tokens_pct": None, "cost_pct": None, "runs_pct": None, "hit_rate_pts": None}, out["deltas"])
 
-    def test_a_current_window_with_no_prompt_tokens_counts_as_zero_for_the_rate(self):
+    def test_a_current_window_with_no_prompt_tokens_has_no_rate_delta(self):
         rows = [rec("2026-10-29T15:00:00Z", input=50, cache_read=50), rec("2026-10-30T15:00:00Z", output=5)]
         d = views(rows, oldest_seen=EARLY)["today"]["deltas"]
-        self.assertAlmostEqual(-50.0, d["hit_rate_pts"], places=9)
+        self.assertIsNone(d["hit_rate_pts"])
+
+    def test_a_previous_rate_of_zero_gives_a_number(self):
+        rows = [rec("2026-10-29T15:00:00Z", input=100, cache_read=0),    # 0.0
+                rec("2026-10-30T15:00:00Z", input=50, cache_read=50)]    # 0.5
+        d = views(rows, oldest_seen=EARLY)["today"]["deltas"]
+        self.assertAlmostEqual(50.0, d["hit_rate_pts"], places=9)
 
 
 # ---------------------------------------------------------------- axis
@@ -1099,6 +1164,7 @@ class TestDemoSet(unittest.TestCase):
               "requests": 3259, "runs": 190, "sessions": 53}
     README_COST = 319.61503237
     NAMES = ("Tidewater reporting", "Driftwood", "Harbor Light")
+    EMPTY = ("Saltmarsh", "Lantern")
 
     @classmethod
     def setUpClass(cls):
@@ -1115,9 +1181,14 @@ class TestDemoSet(unittest.TestCase):
         shown = [{"key": p["key"], "name": p["name"], "folder": folders[p["key"]]} for p in projects]
         cls.totals = {}
         for name in cls.NAMES:
-            built = usage.build_views(result.records, name, now, tz, PRICES, CATALOG, result.oldest_seen,
+            built = usage.build_views(result.records, name, now, tz, PRICES, CATALOG, result.oldest_by_folder,
                                       projects=shown)
             cls.totals[name] = built["30d"]["totals"]
+        cls.previous = {}
+        for name in cls.EMPTY:
+            built = usage.build_views(result.records, name, now, tz, PRICES, CATALOG, result.oldest_by_folder,
+                                      projects=shown)
+            cls.previous[name] = dict((r, built[r]["previous"]) for r in ("today", "7d", "30d"))
 
     @classmethod
     def tearDownClass(cls):
@@ -1129,6 +1200,10 @@ class TestDemoSet(unittest.TestCase):
             self.assertEqual(want, got[field], field)
         self.assertAlmostEqual(self.README_COST, got["cost"], places=6)
         self.assertEqual(0, got["unpriced_requests"])
+
+    def test_saltmarsh_and_lantern_have_no_previous_on_any_range(self):
+        for name in self.EMPTY:
+            self.assertEqual({"today": None, "7d": None, "30d": None}, self.previous[name], name)
 
     def test_every_listed_project_matches_the_truth(self):
         for name in self.NAMES:

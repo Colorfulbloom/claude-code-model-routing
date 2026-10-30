@@ -307,9 +307,13 @@ def build(out_dir, now=None, tz_name=DEFAULT_TZ):
     """Build the set into out_dir and return the truth dict (also truth.json).
 
     The five paths the set owns inside out_dir are replaced, so a second build
-    into the same folder leaves no stale transcripts.
+    into the same folder leaves no stale transcripts. A folder that holds
+    anything but no truth.json is not ours, so it is refused before any delete.
     """
     real_out = os.path.realpath(out_dir)
+    if (os.path.lexists(real_out) and (not os.path.isdir(real_out) or os.listdir(real_out))
+            and not os.path.isfile(os.path.join(real_out, "truth.json"))):
+        raise ValueError("%s is not empty and is not a demo set (no truth.json), so nothing was deleted" % real_out)
     os.makedirs(real_out, exist_ok=True)
     for name in ("config", "projects", "managed"):
         shutil.rmtree(os.path.join(real_out, name), ignore_errors=True)

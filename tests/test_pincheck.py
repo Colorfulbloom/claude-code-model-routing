@@ -309,10 +309,22 @@ class TestMismatchedRuns(unittest.TestCase):
     def test_no_run_has_an_effort(self):
         runs = [run(OPUS, None, "r1"), run(OPUS, None, "r2")]
         got = check(self.ROWS, runs)
-        self.assertEqual("cannot_check", got["effort"]["state"])
+        self.assertIsNone(got["effort"]["state"])
         self.assertEqual("matches", got["model"]["state"])
-        self.assertEqual("cannot_check", got["state"])
+        self.assertEqual("matches", got["state"])
         self.assertEqual((0, 2), (got["mismatched_runs"], got["total_runs"]))
+
+    def test_a_known_expected_value_with_no_recorded_run_value_adds_nothing(self):
+        rows = [agent_file(), entry("model", OPUS), entry("effort", "high")]
+        runs = [run(OPUS, None, "r1"), run(OPUS, None, "r2")]
+        got = check(rows, runs)
+        self.assertEqual("matches", got["state"])
+        self.assertIsNone(got["effort"]["state"])
+        # an Unknown expected value is still cannot_check, even with no run value
+        rows = [agent_file(), entry("model", OPUS), entry("effort", "high", "unknown")]
+        got = check(rows, runs)
+        self.assertEqual("cannot_check", got["effort"]["state"])
+        self.assertEqual("cannot_check", got["state"])
 
     def test_a_cannot_check_setting_adds_nothing_to_n(self):
         rows = [agent_file(), entry("model", OPUS), entry("effort", "high", "unknown")]
@@ -427,7 +439,7 @@ class TestDemoSet(unittest.TestCase):
         cls.entries = resolve.resolve(inputs, rules, resolve.load_agent_fields())
 
         def build(scope):
-            return usage.build_views(result.records, scope, now, tz, PRICES, CATALOG, result.oldest_seen,
+            return usage.build_views(result.records, scope, now, tz, PRICES, CATALOG, result.oldest_by_folder,
                                      projects=cls.shown, pin_fn=pincheck.checker(cls.entries, CATALOG))
         cls.single = build(cls.PROJECT)["30d"]
         cls.everything = build("all")["30d"]

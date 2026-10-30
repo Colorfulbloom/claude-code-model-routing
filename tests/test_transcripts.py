@@ -20,6 +20,8 @@ from unittest import mock
 import helpers
 
 sys.path.insert(0, os.path.join(helpers.REPO, "dashboard"))
+import prices as prices_mod  # noqa: E402
+import resolve  # noqa: E402
 import transcripts  # noqa: E402
 
 CASES = os.path.join(helpers.FIXTURES, "transcripts")
@@ -318,6 +320,69 @@ class ScanTests(TmpCase):
         age(drop, 70)
         result = transcripts.Reader(cfg).read(NOW)
         self.assertEqual(datetime.datetime(2026, 6, 1, 10, 0, tzinfo=UTC), result.oldest_seen)
+
+    def test_oldest_by_folder_has_one_value_per_folder_with_data(self):
+        cfg = self.config()
+        write_lines(self.main_path(cfg, S1, folder="-a-proj"), [
+            row_line("m1", "r1", "2026-10-01T10:00:00.000Z"),
+            row_line("m2", "r2", "2026-10-05T10:00:00.000Z")])
+        write_lines(self.main_path(cfg, S2, folder="-b-proj"), [
+            row_line("m3", "r3", "2026-10-03T10:00:00.000Z", sid=S2)])
+        for folder, sid in (("-a-proj", S1), ("-b-proj", S2)):
+            age(self.main_path(cfg, sid, folder=folder), 1)
+        result = transcripts.Reader(cfg).read(NOW)
+        self.assertEqual({"-a-proj": datetime.datetime(2026, 10, 1, 10, 0, tzinfo=UTC),
+                          "-b-proj": datetime.datetime(2026, 10, 3, 10, 0, tzinfo=UTC)},
+                         result.oldest_by_folder)
+        self.assertEqual(datetime.datetime(2026, 10, 1, 10, 0, tzinfo=UTC), result.oldest_seen)
+
+    def test_oldest_by_folder_counts_a_skipped_file_only_in_its_own_folder(self):
+        cfg = self.config()
+        keep_a = self.main_path(cfg, S1, folder="-a-proj")
+        drop_a = self.main_path(cfg, S2, folder="-a-proj")
+        keep_b = self.main_path(cfg, S1, folder="-b-proj")
+        write_lines(keep_a, [row_line("m1", "r1", "2026-10-10T10:00:00.000Z")])
+        write_lines(drop_a, [row_line("m2", "r2", "2026-06-01T10:00:00.000Z", sid=S2)])
+        write_lines(keep_b, [row_line("m3", "r3", "2026-10-20T10:00:00.000Z")])
+        age(keep_a, 1)
+        age(keep_b, 1)
+        ts = (NOW - datetime.timedelta(days=70)).timestamp()
+        os.utime(drop_a, (ts, ts))
+        result = transcripts.Reader(cfg).read(NOW)
+        self.assertEqual(1, result.notes["skipped_old_files"])
+        self.assertEqual({"-a-proj": datetime.datetime.fromtimestamp(ts, UTC),
+                          "-b-proj": datetime.datetime(2026, 10, 20, 10, 0, tzinfo=UTC)},
+                         result.oldest_by_folder)
+        self.assertEqual(datetime.datetime.fromtimestamp(ts, UTC), result.oldest_seen)
+
+    def test_oldest_by_folder_has_a_key_for_a_folder_with_only_a_skipped_file(self):
+        cfg = self.config()
+        drop = self.main_path(cfg, S1, folder="-old-proj")
+        write_lines(drop, [row_line("m1", "r1", "2026-06-01T10:00:00.000Z")])
+        ts = (NOW - datetime.timedelta(days=70)).timestamp()
+        os.utime(drop, (ts, ts))
+        result = transcripts.Reader(cfg).read(NOW)
+        self.assertEqual([], result.records)
+        self.assertEqual({"-old-proj": datetime.datetime.fromtimestamp(ts, UTC)}, result.oldest_by_folder)
+
+    def test_oldest_by_folder_is_empty_with_nothing_to_read(self):
+        result = transcripts.Reader(self.config()).read(NOW)
+        self.assertEqual({}, result.oldest_by_folder)
+
+    def test_a_modifier_that_is_not_a_string_is_kept_as_text_and_has_no_price(self):
+        cfg = self.config()
+        usage = {"input_tokens": 10, "output_tokens": 5, "cache_read_input_tokens": 0, "speed": 7}
+        write_lines(self.main_path(cfg), [
+            row_line("m1", "r1", "2026-11-02T10:00:00.000Z", usage=usage),
+            row_line("m2", "r2", "2026-11-02T10:00:01.000Z")])
+        age(self.main_path(cfg), 1)
+        first, second = transcripts.Reader(cfg).read(NOW).records
+        self.assertEqual("7", first.speed)
+        self.assertIsNone(second.speed)    # a missing value stays None and prices as standard
+        prices = prices_mod.load_prices()
+        catalog = resolve.load_rules()["models"]
+        self.assertIsNone(prices_mod.price(first, prices, catalog))
+        self.assertIsNotNone(prices_mod.price(second, prices, catalog))
 
     def test_naive_now_is_taken_as_utc(self):
         cfg = self.config()

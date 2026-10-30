@@ -22,7 +22,7 @@ Record = collections.namedtuple(
     "effort cwd git_branch is_sidechain input output cache_read cache_write_5m "
     "cache_write_1h thinking speed service_tier inference_geo",
 )
-ReadResult = collections.namedtuple("ReadResult", "records notes oldest_seen")
+ReadResult = collections.namedtuple("ReadResult", "records notes oldest_seen oldest_by_folder")
 
 # One entry per file. offset is the end of the last complete line that was parsed.
 _Entry = collections.namedtuple(
@@ -148,6 +148,13 @@ def _text(value):
     return value if isinstance(value, str) else None
 
 
+def _label(value):
+    """None when missing, the string itself, else str(value) so pricing refuses it."""
+    if value is None or isinstance(value, str):
+        return value
+    return str(value)
+
+
 def _empty_stats():
     return {"malformed": 0, "synthetic": 0, "no_id": 0}
 
@@ -259,9 +266,9 @@ def _make_record(row, found, agent_type, stats):
         cache_write_5m=five,
         cache_write_1h=one_hour,
         thinking=thinking,
-        speed=_text(usage.get("speed")),
-        service_tier=_text(usage.get("service_tier")),
-        inference_geo=_text(usage.get("inference_geo")),
+        speed=_label(usage.get("speed")),
+        service_tier=_label(usage.get("service_tier")),
+        inference_geo=_label(usage.get("inference_geo")),
     )
 
 
@@ -292,11 +299,15 @@ class Reader:
         records = []
         seen = set()
         oldest_skipped = None
+        skipped_by_folder = {}
         for item in sorted(found, key=lambda f: f.path):
             if item.st.st_mtime < cutoff:
                 notes["skipped_old_files"] += 1
                 if oldest_skipped is None or item.st.st_mtime < oldest_skipped:
                     oldest_skipped = item.st.st_mtime
+                low = skipped_by_folder.get(item.folder)
+                if low is None or item.st.st_mtime < low:
+                    skipped_by_folder[item.folder] = item.st.st_mtime
                 continue
             entry = self._load(item)
             if entry is None:
@@ -314,7 +325,18 @@ class Reader:
             skipped_dt = datetime.datetime.fromtimestamp(oldest_skipped, _UTC)
             if oldest is None or skipped_dt < oldest:
                 oldest = skipped_dt
-        return ReadResult(records, notes, oldest)
+        # Per folder: the earlier of its oldest record and its oldest skipped file.
+        by_folder = {}
+        for rec in records:
+            low = by_folder.get(rec.folder)
+            if low is None or rec.ts_utc < low:
+                by_folder[rec.folder] = rec.ts_utc
+        for folder, mtime in skipped_by_folder.items():
+            skipped_dt = datetime.datetime.fromtimestamp(mtime, _UTC)
+            low = by_folder.get(folder)
+            if low is None or skipped_dt < low:
+                by_folder[folder] = skipped_dt
+        return ReadResult(records, notes, oldest, by_folder)
 
     def _scan(self, root):
         """Transcript files under root plus a count of everything else.

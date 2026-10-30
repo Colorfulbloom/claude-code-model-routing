@@ -14,8 +14,12 @@ project's folder is worked out outside, by transcripts.project_folders.
 records are transcripts.Record rows. scope is a project key or "all". now is an
 aware datetime. tz is a tzinfo (a zoneinfo zone in the server). prices and
 catalog are the prices.json document and the rules.json models list.
-oldest_seen is the oldest moment the reader could see, skipped old files
-included, or None. projects is a list of {"key", "name", "folder"}, where
+oldest_seen is a dict {folder name: aware datetime}, the oldest moment the
+reader could see in each folder (its oldest record or its oldest skipped old
+file), from ReadResult.oldest_by_folder. A folder with nothing seen has no key.
+The effective oldest moment is the smallest value over the scope's folders (all
+values for "all"). A project with no folder, or no key, has none, so its
+previous is None. projects is a list of {"key", "name", "folder"}, where
 folder is a transcript folder name or None. reader_notes is the reader's notes
 dict (malformed_lines, synthetic_rows, no_id_rows, skipped_old_files).
 
@@ -49,8 +53,9 @@ Shapes (the ticket's View shape, plus the additions named here):
             deltas, by_model, by_effort, by_agent, bucket_unit, buckets, axis,
             sessions, by_project, notes}
     deltas = {tokens_pct, cost_pct, runs_pct, hit_rate_pts}  (additive key)
-      each is None when previous is None or the baseline is 0. A zero change is 0.
-      Hit rate is in percentage points, the others in relative percent.
+      The relative ones are None when previous is None or the baseline is 0. A zero
+      change is 0. Hit rate is in percentage points and is None when previous is
+      None or either hit rate is None. A previous hit rate of 0.0 gives a number.
     Agg = {tokens, input, output, cache_read, cache_write, cache_write_5m,
            cache_write_1h, thinking, cost, cost_by_kind, unpriced_requests,
            unpriced_tokens, hit_rate, requests, runs, sessions}
@@ -404,9 +409,10 @@ def _deltas(totals, previous):
     if previous is None:
         return {"tokens_pct": None, "cost_pct": None, "runs_pct": None, "hit_rate_pts": None}
     prev_rate = previous["hit_rate"]
+    cur_rate = totals["hit_rate"]
     points = None
-    if prev_rate is not None:
-        points = ((totals["hit_rate"] or 0.0) - prev_rate) * 100.0
+    if prev_rate is not None and cur_rate is not None:
+        points = (cur_rate - prev_rate) * 100.0
     return {
         "tokens_pct": _rel_pct(totals["tokens"], previous["tokens"]),
         "cost_pct": _rel_pct(totals["cost"], previous["cost"]),
@@ -479,16 +485,13 @@ def build_views(records, scope, now, tz, prices, catalog, oldest_seen,
             listed_by_folder.setdefault(folder, project)
     ctx.listed = listed_by_folder
 
-    # One pass over every record: session facts, folder names, the oldest moment.
+    # One pass over every record: session facts and folder names.
     cwd_counts = {}
-    oldest_all = None
     for rec in records:
         info = ctx.sessions.get(rec.session_id)
         if info is None:
             info = ctx.sessions[rec.session_id] = _SessionInfo()
         info.add(rec)
-        if oldest_all is None or rec.ts_utc < oldest_all:
-            oldest_all = rec.ts_utc
         if rec.cwd and rec.folder not in listed_by_folder:
             counts = cwd_counts.get(rec.folder)
             if counts is None:
@@ -510,15 +513,12 @@ def build_views(records, scope, now, tz, prices, catalog, oldest_seen,
         folder = project.get("folder") if project else None
         scoped = [r for r in records if r.folder == folder] if folder is not None else []
 
-    oldest_scope = None
-    for rec in scoped:
-        if oldest_scope is None or rec.ts_utc < oldest_scope:
-            oldest_scope = rec.ts_utc
-    seen = _aware(oldest_seen) if oldest_seen is not None else None
-    if seen is not None and (oldest_all is None or seen < oldest_all):
-        ctx.eff_oldest = seen
+    seen = oldest_seen or {}
+    if scope == ALL:
+        values = list(seen.values())
     else:
-        ctx.eff_oldest = oldest_scope
+        values = [seen[folder]] if folder is not None and folder in seen else []
+    ctx.eff_oldest = min(_aware(v) for v in values) if values else None
 
     windows = {}
     low = None

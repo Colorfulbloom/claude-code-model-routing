@@ -87,6 +87,25 @@ class Reproducible(unittest.TestCase):
         build_demo.build(out, now="2026-10-29T18:00")
         self.assertNotEqual(first, tree_hash(out), "--now changes the output")
 
+    def test_a_folder_that_is_not_a_demo_set_is_refused_and_left_alone(self):
+        out = os.path.join(new_dir(self), "set")
+        keep = os.path.join(out, "projects", "mine")
+        os.makedirs(keep)
+        with open(os.path.join(keep, "note.txt"), "w", encoding="utf-8") as fh:
+            fh.write("not part of the demo")
+        with self.assertRaises(ValueError):
+            build_demo.build(out)
+        self.assertTrue(os.path.isfile(os.path.join(keep, "note.txt")))
+        self.assertFalse(os.path.exists(os.path.join(out, "truth.json")))
+
+    def test_an_empty_folder_and_an_earlier_demo_set_are_both_fine(self):
+        out = os.path.join(new_dir(self), "set")
+        os.makedirs(out)
+        build_demo.build(out)
+        self.assertTrue(os.path.isfile(os.path.join(out, "truth.json")))
+        build_demo.build(out)
+        self.assertTrue(os.path.isfile(os.path.join(out, "truth.json")))
+
     def test_defaults(self):
         self.assertEqual(build_demo.DEFAULT_NOW, "2026-10-30T18:00")
         self.assertEqual(build_demo.DEFAULT_TZ, "America/New_York")

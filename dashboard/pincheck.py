@@ -29,6 +29,9 @@ Setting = {state, pinned, expected, cap, ran}
             file and line are None when no maxEffortLevel entry won for that
             model in the entries.
   ran       distinct values the runs showed, most common first
+  state is cannot_check only when the expected value is Unknown. When the
+  expected value is known but no run recorded a value, state is None and the
+  setting adds nothing to the agent's state, like a setting with no pin.
 
 Agent with no file in the folders read, and "@unnamed": the result is None. An
 agent file that pins neither setting gives a PinCheck whose state is None and
@@ -187,8 +190,10 @@ def _setting(entries, row, kind, runs, catalog):
     }
     if not runs:
         return setting, values, expected_key
-    if expected_key is None or not values:
+    if expected_key is None:
         setting["state"] = CANNOT_CHECK
+    elif not values:
+        pass  # a known expected value and no recorded run value: nothing to check
     elif all(v == expected_key for v in values):
         if pin is win:
             setting["state"] = MATCHES_LOWERED if win.get("status") == "lowered" else MATCHES
