@@ -297,7 +297,7 @@ class RequestRules(unittest.TestCase):
         hosts = ["127.0.0.1:%d" % (self.port + 1), "evil.example", "evil.example:%d" % self.port,
                  "127.0.0.1", "localhost", "planted-host.example:%d" % self.port, "", None]
         for host in hosts:
-            for path in ("/", "/api/settings", "/static/tokens.css", "/nope", "/api/nope"):
+            for path in ("/", "/api/settings", "/api/usage", "/static/tokens.css", "/nope", "/api/nope"):
                 status, heads, body = self.srv.request("GET", path, host=host)
                 self.assert_refusal(status, heads, body)
                 self.assertNotIn(b"planted-host", body)
@@ -336,7 +336,7 @@ class RequestRules(unittest.TestCase):
         for value, status in (("same-origin", 200), ("none", 200), ("SAME-ORIGIN", 200),
                               ("cross-site", 403), ("same-site", 403), ("", 403),
                               ("planted-site", 403)):
-            for path in ("/api/settings", "/", "/static/tokens.css"):
+            for path in ("/api/settings", "/api/usage", "/", "/static/tokens.css"):
                 got, heads, body = self.srv.request("GET", path, {"Sec-Fetch-Site": value})
                 self.assertEqual(got, status, (value, path))
                 self.assertNotIn("access-control-allow-origin", heads)
@@ -354,7 +354,7 @@ class RequestRules(unittest.TestCase):
         self.assertEqual(self.srv.request("GET", "/?x=1", load)[0], 200)
         self.assertEqual(self.srv.request("HEAD", "/", load)[0], 403)
         self.assertEqual(self.srv.request("POST", "/", load)[0], 403)
-        for path in ("/api/settings", "/api/projects", "/static/tokens.css", "/static/index.html"):
+        for path in ("/api/settings", "/api/projects", "/api/usage", "/static/tokens.css", "/static/index.html"):
             self.assertEqual(self.srv.request("GET", path, load)[0], 403, path)
         for change in ({"Sec-Fetch-Mode": "no-cors"}, {"Sec-Fetch-Mode": "cors"},
                        {"Sec-Fetch-Dest": "iframe"}, {"Sec-Fetch-Dest": "script"}, {"Sec-Fetch-Dest": "empty"}):
@@ -364,7 +364,7 @@ class RequestRules(unittest.TestCase):
 
     def test_no_cors_header_on_any_response(self):
         probes = [("GET", "/", {}), ("GET", "/api/settings", {"Origin": "http://localhost:%d" % self.port}),
-                  ("GET", "/nope", {}), ("POST", "/api/settings", {}),
+                  ("GET", "/api/usage", {}), ("GET", "/nope", {}), ("POST", "/api/settings", {}),
                   ("GET", "/api/settings", {"Origin": "http://evil.example"}),
                   ("OPTIONS", "/api/settings", {"Origin": "http://evil.example",
                                                 "Access-Control-Request-Method": "GET"})]
@@ -375,7 +375,7 @@ class RequestRules(unittest.TestCase):
 
     def test_other_methods_get_405(self):
         for method in ("POST", "PUT", "DELETE", "OPTIONS", "PROPFIND", "PATCH", "TRACE", "CONNECT"):
-            for path in ("/api/settings", "/", "/nope"):
+            for path in ("/api/settings", "/api/usage", "/", "/nope"):
                 body = b"x=1" if method in ("POST", "PUT", "PATCH") else None
                 status, heads, data = self.srv.request(method, path, body=body)
                 self.assertEqual(status, 405, (method, path))
@@ -384,7 +384,7 @@ class RequestRules(unittest.TestCase):
 
     def test_every_response_carries_the_security_headers(self):
         probes = [("GET", "/"), ("GET", "/api/settings"), ("GET", "/nope"), ("POST", "/"),
-                  ("HEAD", "/api/settings"), ("GET", "/static/tokens.css")]
+                  ("HEAD", "/api/settings"), ("GET", "/api/usage"), ("GET", "/static/tokens.css")]
         for method, path in probes:
             _, heads, _ = self.srv.request(method, path)
             self.assertEqual(heads["content-security-policy"], CSP, (method, path))
@@ -396,7 +396,7 @@ class RequestRules(unittest.TestCase):
         self.assertEqual(heads["content-security-policy"], CSP)
 
     def test_head_matches_get_without_a_body(self):
-        for path in ("/", "/api/settings", "/static/tokens.css", "/nope"):
+        for path in ("/", "/api/settings", "/api/usage", "/static/tokens.css", "/nope"):
             g_status, g_heads, g_body = self.srv.request("GET", path)
             h_status, h_heads, h_body = self.srv.request("HEAD", path)
             self.assertEqual(h_status, g_status, path)
@@ -697,7 +697,8 @@ class Secrets(TempCase):
             write_json(os.path.join(folder, "session.json"), {"flags": flags})
             proc = self.start(["--fixture", folder], name="flags-" + name)
             seen = []
-            for path in ("/api/settings", "/api/settings?project=all", "/api/projects"):
+            for path in ("/api/settings", "/api/settings?project=all", "/api/projects",
+                         "/api/usage", "/api/usage?project=all"):
                 status, heads, body = proc.request("GET", path)
                 seen.append(json.dumps(heads) + body.decode("utf-8", "replace"))
             settings = json.loads(proc.request("GET", "/api/settings")[2].decode("utf-8"))
@@ -993,6 +994,7 @@ class NoWrites(TempCase):
         proc = self.start(["--fixture", fixture, "--config-dir", cfg, "--project", project], env=env,
                           script=script, python_args=["-X", "pycache_prefix="])
         for method, path in (("GET", "/"), ("GET", "/static/tokens.css"), ("GET", "/api/settings"),
+                             ("GET", "/api/usage"), ("GET", "/api/projects"),
                              ("HEAD", "/api/settings"), ("GET", "/nope"), ("POST", "/"),
                              ("PROPFIND", "/"), ("GET", "/static/%2e%2e/server.py")):
             proc.request(method, path)
@@ -1062,7 +1064,7 @@ class Isolation(TempCase):
                        ANTHROPIC_MODEL="canary-shell-model", CLAUDE_CODE_EFFORT_LEVEL="canary-shell-effort")
         proc = self.start(["--fixture", folder], env=env, script=driver, python_args=["-B"], name="audit")
         bodies = []
-        for path in ("/api/settings", "/", "/static/tokens.css", "/nope"):
+        for path in ("/api/settings", "/api/usage", "/api/projects", "/", "/static/tokens.css", "/nope"):
             bodies.append(proc.request("GET", path)[2].decode("utf-8", "replace"))
         proc.stop()
         everything = "\n".join(bodies + [proc.stdout(), proc.stderr()])

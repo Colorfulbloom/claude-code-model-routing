@@ -17,7 +17,10 @@ Fixture run. --fixture FOLDER reads a folder laid out like
 tests/fixtures/resolution/<case>: config/, project/, managed/ and session.json.
 Every one of those may be missing. The shell is session.json's shell_env, never
 the real environment, and the managed folder is FOLDER/managed, never the real
-one. CLAUDE_CONFIG_DIR and HOME are not consulted.
+one. CLAUDE_CONFIG_DIR and HOME are not consulted. The zone is session.json's
+"tz", else shell_env's TZ, and the clock is its "now" (an ISO time with an
+offset) when it has one, else the real clock. The usage routes read the
+transcripts in config/projects/, and a thread warms that read at start-up.
 
 Safety rules the handler keeps:
   * The Host header must be 127.0.0.1:<port> or localhost:<port>, and an Origin
@@ -38,6 +41,7 @@ sys.dont_write_bytecode = True  # before any repo module is imported
 
 import argparse  # noqa: E402
 import dataclasses  # noqa: E402
+import datetime  # noqa: E402
 import http.server  # noqa: E402
 import json  # noqa: E402
 import os  # noqa: E402
@@ -50,8 +54,8 @@ if HERE not in sys.path:
     sys.path.insert(0, HERE)
 
 import api_settings  # noqa: E402
+import api_usage  # noqa: E402
 import collect  # noqa: E402
-import projects  # noqa: E402
 import resolve  # noqa: E402
 
 HOST = "127.0.0.1"
@@ -59,6 +63,7 @@ DEFAULT_PORT = 8377
 STATIC_DIR = os.path.join(HERE, "static")
 STATIC_PREFIX = "/static/"
 INDEX = "index.html"
+LOCALTIME_LINK = "/etc/localtime"
 
 # Where Claude Code keeps file-based managed settings, from
 # https://code.claude.com/docs/en/managed-settings.md (macOS; Linux and WSL; Windows).
@@ -100,8 +105,9 @@ DRAIN_CAP = 65536
 
 # One line per route. Each is a function (ctx, query) -> (status, payload).
 ROUTES = {
-    "/api/projects": projects.api_projects,
+    "/api/projects": api_usage.api_projects,
     "/api/settings": api_settings.settings,
+    "/api/usage": api_usage.usage,
 }
 
 
@@ -128,6 +134,11 @@ class Context:
     agent_fields: list
     static_dir: str = STATIC_DIR
     project_explicit: bool = False  # --project was given
+    tz_name: object = None  # the TZ value, or None
+    localtime_link: object = None  # the /etc/localtime link to read, or None
+    fixed_now: object = None  # an aware datetime that replaces the clock, or None
+    usage_cache: object = dataclasses.field(default_factory=api_usage.Cache, compare=False,
+                                            repr=False)
 
 
 def default_config_dir(env, cwd):
@@ -176,7 +187,9 @@ def live_context(config_dir, project_dir, env, platform, rules, agent_fields,
         shell_label=None,
         rules=rules,
         agent_fields=agent_fields,
-        project_explicit=project_explicit)
+        project_explicit=project_explicit,
+        tz_name=env.get("TZ") or None,
+        localtime_link=LOCALTIME_LINK)
 
 
 def mask_flags(flags):
@@ -198,6 +211,9 @@ def fixture_context(folder, config_dir, project_dir, rules, agent_fields,
     session = _read_object(os.path.join(folder, "session.json"))
     shell_env = session.get("shell_env")
     flags = session.get("flags")
+    shell_zone = shell_env.get("TZ") if isinstance(shell_env, dict) else None
+    tz_name = session.get("tz") if isinstance(session.get("tz"), str) else (
+        shell_zone if isinstance(shell_zone, str) else None)
     return Context(
         config_dir=config_dir or os.path.join(folder, "config"),
         project_dir=project_dir or os.path.join(folder, "project"),
@@ -210,7 +226,20 @@ def fixture_context(folder, config_dir, project_dir, rules, agent_fields,
         shell_label=resolve.LABEL_SHELL,
         rules=rules,
         agent_fields=agent_fields,
-        project_explicit=project_explicit)
+        project_explicit=project_explicit,
+        tz_name=tz_name,
+        fixed_now=_fixture_now(session.get("now")))
+
+
+def _fixture_now(value):
+    """The fixture's clock: an ISO time with an offset, else None (the real clock)."""
+    if not isinstance(value, str):
+        return None
+    try:
+        moment = datetime.datetime.fromisoformat(value)
+    except ValueError:
+        return None
+    return moment if moment.utcoffset() is not None else None
 
 
 # --------------------------------------------------------------------------
@@ -476,6 +505,7 @@ def main(argv=None, env=None):
         sys.stderr.write("server: cannot listen on 127.0.0.1:%d, the port may be in use\n"
                          % args.port)
         return 1
+    api_usage.start_warm(ctx)
     sys.stdout.write("http://%s:%d/\n" % (HOST, server.server_address[1]))
     sys.stdout.flush()
     try:
