@@ -36,3 +36,16 @@ created: 2026-10-29
 last_used: 2026-10-29
 uses: 0
 retired: 2026-10-30 retired-by-lead
+
+### T-baa7 Broken pty tests can leave stray processes
+fact: test_picker.py and test_hivemind.py drive real ptys; a broken one can leave a hung unittest process.
+check: grep -n "import pty" tests/test_picker.py tests/test_hivemind.py
+evidence: tests/test_picker.py, tests/test_hivemind.py
+fp: f1a30ccfdcab
+as_of: 203ae0d 2026-10-30
+author: deep-reasoner
+created: 2026-10-20
+last_used: 2026-10-21
+uses: 3
+superseded_by: T-7629
+retired: 2026-10-30 superseded

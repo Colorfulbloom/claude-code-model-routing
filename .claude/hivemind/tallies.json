@@ -131,6 +131,20 @@
           "duration_ms": 33963,
           "effort": "high",
           "v": 53910
+        },
+        {
+          "agent_id": "ab5324ea80e6f7123",
+          "date": "2026-10-30",
+          "duration_ms": 44126,
+          "effort": "high",
+          "v": 52713
+        },
+        {
+          "agent_id": "aec97e2e58c33cb1f",
+          "date": "2026-10-30",
+          "duration_ms": 36953,
+          "effort": "high",
+          "v": 51904
         }
       ]
     },
@@ -150,6 +164,18 @@
           "duration_ms": 46814,
           "effort": "medium",
           "v": 47941
+        }
+      ]
+    },
+    "browser-check|judge|claude-sonnet-5-5|high": {
+      "last_date": "2026-10-30",
+      "samples": [
+        {
+          "agent_id": "ada0a8f9416f04613",
+          "date": "2026-10-30",
+          "duration_ms": 213593,
+          "effort": "high",
+          "v": 101033
         }
       ]
     },
@@ -358,6 +384,54 @@
           "effort": "medium",
           "round": 3,
           "v": 7835
+        },
+        {
+          "agent_id": "a3ed9bdf8c77ec31b",
+          "date": "2026-10-30",
+          "duration_ms": 15493,
+          "effort": "medium",
+          "round": 2,
+          "v": 3290
+        },
+        {
+          "agent_id": "a3ed9bdf8c77ec31b",
+          "date": "2026-10-30",
+          "duration_ms": 16484,
+          "effort": "medium",
+          "round": 3,
+          "v": 3795
+        },
+        {
+          "agent_id": "a3ed9bdf8c77ec31b",
+          "date": "2026-10-30",
+          "duration_ms": 16731,
+          "effort": "medium",
+          "round": 4,
+          "v": 5405
+        },
+        {
+          "agent_id": "a3ed9bdf8c77ec31b",
+          "date": "2026-10-30",
+          "duration_ms": 7831,
+          "effort": "medium",
+          "round": 5,
+          "v": 3065
+        },
+        {
+          "agent_id": "a3ed9bdf8c77ec31b",
+          "date": "2026-10-30",
+          "duration_ms": 9021,
+          "effort": "medium",
+          "round": 6,
+          "v": 4435
+        },
+        {
+          "agent_id": "a3ed9bdf8c77ec31b",
+          "date": "2026-10-30",
+          "duration_ms": 12415,
+          "effort": "medium",
+          "round": 7,
+          "v": 2966
         }
       ]
     },
@@ -461,6 +535,34 @@
           "duration_ms": 14694,
           "effort": "medium",
           "v": 17041
+        },
+        {
+          "agent_id": "a3ed9bdf8c77ec31b",
+          "date": "2026-10-30",
+          "duration_ms": 13780,
+          "effort": "medium",
+          "v": 19885
+        },
+        {
+          "agent_id": "abdf1c991bcd3625e",
+          "date": "2026-10-30",
+          "duration_ms": 8239,
+          "effort": "medium",
+          "v": 19191
+        },
+        {
+          "agent_id": "a62406cd8a7cea92c",
+          "date": "2026-10-30",
+          "duration_ms": 20589,
+          "effort": "medium",
+          "v": 31992
+        },
+        {
+          "agent_id": "a775a80a0a11910b0",
+          "date": "2026-10-30",
+          "duration_ms": 89836,
+          "effort": "medium",
+          "v": 43269
         }
       ]
     },
@@ -978,6 +1080,55 @@
         }
       ]
     },
+    "docs-line+resumed|tech-writer|claude-opus-5-5|xhigh": {
+      "last_date": "2026-10-30",
+      "samples": [
+        {
+          "agent_id": "a0e670ed63c796142",
+          "date": "2026-10-30",
+          "duration_ms": 35988,
+          "effort": "xhigh",
+          "round": 2,
+          "v": 12169
+        }
+      ]
+    },
+    "docs-line|tech-writer|claude-opus-5-5|xhigh": {
+      "last_date": "2026-10-30",
+      "samples": [
+        {
+          "agent_id": "a0e670ed63c796142",
+          "date": "2026-10-30",
+          "duration_ms": 246670,
+          "effort": "xhigh",
+          "v": 70540
+        }
+      ]
+    },
+    "docs|tech-writer|claude-opus-5-5|xhigh": {
+      "last_date": "2026-10-30",
+      "samples": [
+        {
+          "agent_id": "adcb9b9a6b3f538b1",
+          "date": "2026-10-30",
+          "duration_ms": 74693,
+          "effort": "xhigh",
+          "v": 30921
+        }
+      ]
+    },
+    "e2e-checks|fast-worker|claude-sonnet-5-5|high": {
+      "last_date": "2026-10-30",
+      "samples": [
+        {
+          "agent_id": "aa65560e92f2e5c8e",
+          "date": "2026-10-30",
+          "duration_ms": 319911,
+          "effort": "high",
+          "v": 142816
+        }
+      ]
+    },
     "fact-check|scout|claude-haiku-5-5|medium": {
       "last_date": "2026-10-30",
       "samples": [
@@ -987,6 +1138,30 @@
           "duration_ms": 19264,
           "effort": "medium",
           "v": 33362
+        }
+      ]
+    },
+    "feature-build|fast-worker|claude-sonnet-5-5|high": {
+      "last_date": "2026-10-30",
+      "samples": [
+        {
+          "agent_id": "a8a5674d01eb742c5",
+          "date": "2026-10-30",
+          "duration_ms": 534226,
+          "effort": "high",
+          "v": 192072
+        }
+      ]
+    },
+    "feature-build|fast-worker|claude-sonnet-5-5|medium": {
+      "last_date": "2026-10-30",
+      "samples": [
+        {
+          "agent_id": "a258e94cc7c60c278",
+          "date": "2026-10-30",
+          "duration_ms": 261863,
+          "effort": "medium",
+          "v": 119041
         }
       ]
     },
@@ -1093,6 +1268,30 @@
           "effort": "high",
           "round": 5,
           "v": 24859
+        },
+        {
+          "agent_id": "ad987261573bb771b",
+          "date": "2026-10-30",
+          "duration_ms": 247172,
+          "effort": "high",
+          "round": 2,
+          "v": 26301
+        },
+        {
+          "agent_id": "a73b8dee3c621a106",
+          "date": "2026-10-30",
+          "duration_ms": 363846,
+          "effort": "high",
+          "round": 2,
+          "v": 35804
+        },
+        {
+          "agent_id": "a73b8dee3c621a106",
+          "date": "2026-10-30",
+          "duration_ms": 465599,
+          "effort": "high",
+          "round": 3,
+          "v": 43019
         }
       ]
     },
@@ -1133,6 +1332,20 @@
           "duration_ms": 4011049,
           "effort": "high",
           "v": 329816
+        },
+        {
+          "agent_id": "ad987261573bb771b",
+          "date": "2026-10-30",
+          "duration_ms": 1754740,
+          "effort": "high",
+          "v": 219672
+        },
+        {
+          "agent_id": "a73b8dee3c621a106",
+          "date": "2026-10-30",
+          "duration_ms": 2847838,
+          "effort": "high",
+          "v": 282411
         }
       ]
     },
@@ -1238,6 +1451,13 @@
           "duration_ms": 33564,
           "effort": "medium",
           "v": 17618
+        },
+        {
+          "agent_id": "a7640c8c7a0f464fe",
+          "date": "2026-10-30",
+          "duration_ms": 31539,
+          "effort": "medium",
+          "v": 17319
         }
       ]
     },
@@ -1289,19 +1509,14 @@
         }
       ]
     },
-    "hivemind-ab-test-control|Explore|claude-haiku-5-5|unknown": {
+    "hivemind-ab-control|Explore|claude-haiku-5-5|unknown": {
       "last_date": "2026-10-20",
       "samples": [
         {
           "agent_id": "a5e42d1a53db6b59c",
           "date": "2026-10-20",
           "v": 32322
-        }
-      ]
-    },
-    "hivemind-ab-test-pty-control|Explore|claude-haiku-5-5|unknown": {
-      "last_date": "2026-10-20",
-      "samples": [
+        },
         {
           "agent_id": "a4aec8e9c98159ce4",
           "date": "2026-10-20",
@@ -1314,33 +1529,48 @@
         }
       ]
     },
-    "hivemind-ab-test|scout|claude-haiku-5-5|unknown": {
-      "last_date": "2026-10-20",
-      "samples": [
-        {
-          "agent_id": "a63a679fe5db1b608",
-          "date": "2026-10-20",
-          "v": 15638
-        },
-        {
-          "agent_id": "afcec3f2dff444454",
-          "date": "2026-10-20",
-          "v": 17557
-        },
-        {
-          "agent_id": "a405fbcffd1086728",
-          "date": "2026-10-20",
-          "v": 20380
-        }
-      ]
-    },
-    "hivemind-capture-fix|fast-worker|claude-sonnet-5-5|unknown": {
-      "last_date": "2026-10-20",
+    "hivemind-build|fast-worker|claude-sonnet-5-5|unknown": {
+      "last_date": "2026-10-22",
       "samples": [
         {
           "agent_id": "a13d44739c9e47239",
           "date": "2026-10-20",
           "v": 101567
+        },
+        {
+          "agent_id": "aeebbc68ec728c599",
+          "date": "2026-10-20",
+          "v": 39985
+        },
+        {
+          "agent_id": "a460bccf6d0f5fda6",
+          "date": "2026-10-21",
+          "v": 229121
+        },
+        {
+          "agent_id": "aeaaeb10d792c8f80",
+          "date": "2026-10-21",
+          "v": 128984
+        },
+        {
+          "agent_id": "ac8f75e8bb99a8db3",
+          "date": "2026-10-21",
+          "v": 75099
+        },
+        {
+          "agent_id": "a0a5c2afaed1d96f1",
+          "date": "2026-10-21",
+          "v": 111101
+        },
+        {
+          "agent_id": "a66ae1c715e17c86b",
+          "date": "2026-10-22",
+          "v": 61870
+        },
+        {
+          "agent_id": "a72034671bfe8dfd5",
+          "date": "2026-10-22",
+          "v": 58410
         }
       ]
     },
@@ -1377,9 +1607,9 @@
         {
           "agent_id": "a782ef3f0e958f0cc",
           "date": "2026-10-30",
-          "duration_ms": 279649,
+          "duration_ms": 692512,
           "effort": "high",
-          "v": 118905
+          "v": 150619
         }
       ]
     },
@@ -1404,88 +1634,18 @@
         }
       ]
     },
-    "hivemind-guard-test|fast-worker|claude-sonnet-5-5|unknown": {
-      "last_date": "2026-10-20",
-      "samples": [
-        {
-          "agent_id": "aeebbc68ec728c599",
-          "date": "2026-10-20",
-          "v": 39985
-        }
-      ]
-    },
-    "hivemind-history-core|fast-worker|claude-sonnet-5-5|unknown": {
-      "last_date": "2026-10-21",
-      "samples": [
-        {
-          "agent_id": "a460bccf6d0f5fda6",
-          "date": "2026-10-21",
-          "v": 229121
-        }
-      ]
-    },
-    "hivemind-history-integration|fast-worker|claude-sonnet-5-5|unknown": {
-      "last_date": "2026-10-21",
-      "samples": [
-        {
-          "agent_id": "aeaaeb10d792c8f80",
-          "date": "2026-10-21",
-          "v": 128984
-        }
-      ]
-    },
-    "hivemind-history-review|scout|claude-haiku-5-5|unknown": {
-      "last_date": "2026-10-21",
-      "samples": [
-        {
-          "agent_id": "a0f01da3874f2ae16",
-          "date": "2026-10-21",
-          "v": 105862
-        },
-        {
-          "agent_id": "a91c706f5046240fe",
-          "date": "2026-10-21",
-          "v": 61532
-        }
-      ]
-    },
-    "hivemind-live-test|scout|claude-haiku-5-5|unknown": {
-      "last_date": "2026-10-20",
-      "samples": [
-        {
-          "agent_id": "a8185b9e6f9c9a065",
-          "date": "2026-10-20",
-          "v": 11853
-        }
-      ]
-    },
-    "hivemind-phase2-fixes|fast-worker|claude-sonnet-5-5|unknown": {
-      "last_date": "2026-10-21",
-      "samples": [
-        {
-          "agent_id": "ac8f75e8bb99a8db3",
-          "date": "2026-10-21",
-          "v": 75099
-        }
-      ]
-    },
-    "hivemind-phase2-spec|deep-reasoner|claude-opus-5-5|unknown": {
+    "hivemind-feature|deep-reasoner|claude-opus-5-5|unknown": {
       "last_date": "2026-10-21",
       "samples": [
         {
           "agent_id": "a52d457729d43f3a6",
           "date": "2026-10-21",
           "v": 200796
-        }
-      ]
-    },
-    "hivemind-phase2-verify|verifier|claude-sonnet-5-5|unknown": {
-      "last_date": "2026-10-21",
-      "samples": [
+        },
         {
-          "agent_id": "a39c6c37e679926ad",
+          "agent_id": "a7841fd252246d371",
           "date": "2026-10-21",
-          "v": 118966
+          "v": 221558
         }
       ]
     },
@@ -1502,63 +1662,94 @@
         }
       ]
     },
-    "hivemind-resume-kind-inherit|fast-worker|claude-sonnet-5-5|unknown": {
-      "last_date": "2026-10-22",
+    "hivemind-review|scout|claude-haiku-5-5|unknown": {
+      "last_date": "2026-10-21",
       "samples": [
         {
-          "agent_id": "a66ae1c715e17c86b",
-          "date": "2026-10-22",
-          "v": 61870
-        }
-      ]
-    },
-    "hivemind-sessionstart-calibration|scout|claude-haiku-5-5|unknown": {
-      "last_date": "2026-10-20",
-      "samples": [
+          "agent_id": "a63a679fe5db1b608",
+          "date": "2026-10-20",
+          "v": 15638
+        },
+        {
+          "agent_id": "afcec3f2dff444454",
+          "date": "2026-10-20",
+          "v": 17557
+        },
+        {
+          "agent_id": "a405fbcffd1086728",
+          "date": "2026-10-20",
+          "v": 20380
+        },
+        {
+          "agent_id": "a8185b9e6f9c9a065",
+          "date": "2026-10-20",
+          "v": 11853
+        },
         {
           "agent_id": "ab66d193df1df9701",
           "date": "2026-10-20",
           "v": 19966
-        }
-      ]
-    },
-    "hivemind-tally-data-fix|fast-worker|claude-sonnet-5-5|unknown": {
-      "last_date": "2026-10-22",
-      "samples": [
+        },
         {
-          "agent_id": "a72034671bfe8dfd5",
-          "date": "2026-10-22",
-          "v": 58410
-        }
-      ]
-    },
-    "hivemind-tally-rounds-fix|deep-reasoner|claude-opus-5-5|unknown": {
-      "last_date": "2026-10-21",
-      "samples": [
-        {
-          "agent_id": "a7841fd252246d371",
+          "agent_id": "a0f01da3874f2ae16",
           "date": "2026-10-21",
-          "v": 221558
+          "v": 105862
+        },
+        {
+          "agent_id": "a91c706f5046240fe",
+          "date": "2026-10-21",
+          "v": 61532
         }
       ]
     },
-    "hivemind-tally-rounds-impl|fast-worker|claude-sonnet-5-5|unknown": {
+    "hivemind-verify|verifier|claude-sonnet-5-5|unknown": {
       "last_date": "2026-10-21",
       "samples": [
         {
-          "agent_id": "a0a5c2afaed1d96f1",
+          "agent_id": "a39c6c37e679926ad",
           "date": "2026-10-21",
-          "v": 111101
-        }
-      ]
-    },
-    "hivemind-tally-rounds-verify|verifier|claude-sonnet-5-5|unknown": {
-      "last_date": "2026-10-21",
-      "samples": [
+          "v": 118966
+        },
         {
           "agent_id": "a31bfb4295db21dec",
           "date": "2026-10-21",
           "v": 112890
+        }
+      ]
+    },
+    "page-build|fast-worker|claude-sonnet-5-5|high": {
+      "last_date": "2026-10-30",
+      "samples": [
+        {
+          "agent_id": "ac6f327350b55cbd6",
+          "date": "2026-10-30",
+          "duration_ms": 624585,
+          "effort": "high",
+          "v": 221479
+        }
+      ]
+    },
+    "page-build|fast-worker|claude-sonnet-5-5|medium": {
+      "last_date": "2026-10-30",
+      "samples": [
+        {
+          "agent_id": "a97314648e23bf4a6",
+          "date": "2026-10-30",
+          "duration_ms": 330223,
+          "effort": "medium",
+          "v": 136684
+        }
+      ]
+    },
+    "page-fix|fast-worker|claude-sonnet-5-5|medium": {
+      "last_date": "2026-10-30",
+      "samples": [
+        {
+          "agent_id": "a41f67c95e56a1424",
+          "date": "2026-10-30",
+          "duration_ms": 92227,
+          "effort": "medium",
+          "v": 72311
         }
       ]
     },
@@ -1676,7 +1867,7 @@
       ]
     },
     "pr-description|tech-writer|claude-opus-5-5|medium": {
-      "last_date": "2026-10-29",
+      "last_date": "2026-10-30",
       "samples": [
         {
           "agent_id": "a3c4bf80db43120d8",
@@ -1684,6 +1875,13 @@
           "duration_ms": 30001,
           "effort": "medium",
           "v": 22549
+        },
+        {
+          "agent_id": "ab21a5538d234f222",
+          "date": "2026-10-30",
+          "duration_ms": 69078,
+          "effort": "medium",
+          "v": 29109
         }
       ]
     },
@@ -1855,6 +2053,30 @@
           "duration_ms": 935957,
           "effort": "high",
           "v": 256276
+        }
+      ]
+    },
+    "rule-add|fast-worker|claude-sonnet-5-5|high": {
+      "last_date": "2026-10-30",
+      "samples": [
+        {
+          "agent_id": "aee1e18743faae6eb",
+          "date": "2026-10-30",
+          "duration_ms": 289763,
+          "effort": "high",
+          "v": 104279
+        }
+      ]
+    },
+    "rule-add|fast-worker|claude-sonnet-5-5|medium": {
+      "last_date": "2026-10-30",
+      "samples": [
+        {
+          "agent_id": "a08dc7e0d25471e7b",
+          "date": "2026-10-30",
+          "duration_ms": 91183,
+          "effort": "medium",
+          "v": 68048
         }
       ]
     },

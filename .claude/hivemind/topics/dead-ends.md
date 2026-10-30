@@ -27,11 +27,11 @@ fact: code.claude.com headings carry custom ids, so check anchors against the re
 check: curl -sL https://code.claude.com/docs/en/sub-agents | grep -o 'id="supported-frontmatter-fields"'
 evidence: tests/test_doc_anchors.py, dashboard/rules.json
 fp: 6ca7160c12a6
-as_of: 203ae0d 2026-10-30
+as_of: 3fd2d26 2026-10-30
 author: verifier
 created: 2026-10-29
 last_used: 2026-10-30
-uses: 3
+uses: 5
 promote: approved
 
 ### D-6bed Patching os.stat alone misses pathlib on Python 3.9
@@ -69,7 +69,7 @@ last_used: 2026-10-30
 uses: 0
 
 ### D-3ca7 Worktree agents: git -C, computed command names, busy heredocs
-fact: The worktree guard refuses what it cannot check first: git -C <dir>, a command named by a variable or a quoted path with a space, and a heredoc body mixing quotes, backticks and $( ). Plain heredocs, even into the scratchpad, variables as arguments and for loops ran (October 30 probes). A new isolation worktree starts at origin/main, not development.
+fact: The worktree guard refuses what it cannot check first: git -C <dir>, a command named by a variable or a quoted path with a space, and a heredoc body mixing quotes, backticks and $( ). Plain heredocs, even after cd or into the scratchpad, variables as arguments, gh --jq pipes and for loops ran (October 30 probes). A new isolation worktree starts at origin/main, not development.
 check: in a worktree-isolated agent run: git -C . log -1 --oneline
 evidence: .gitignore
 fp: 2e3aab966fe0
