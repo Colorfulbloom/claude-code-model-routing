@@ -89,6 +89,33 @@ def folder_matches(project_path, folder, first_cwd=None):
     return folder.startswith(full[:_MAX_UNITS] + "-")
 
 
+def project_folders(projects, records):
+    """Map each listed project key to its transcript folder name, or None.
+
+    projects is a list of {"key", "name", "path"}. The first cwd seen in each
+    folder (in record order) is the first_cwd that folder_matches needs for a
+    long path. A folder with no record cannot match. When two folders match,
+    the one seen first in records wins.
+    """
+    first_cwd = {}
+    for rec in records:
+        if rec.folder not in first_cwd:
+            first_cwd[rec.folder] = rec.cwd
+        elif first_cwd[rec.folder] is None and rec.cwd is not None:
+            first_cwd[rec.folder] = rec.cwd
+    out = {}
+    for project in projects:
+        found = None
+        path = project.get("path")
+        if isinstance(path, str) and path:
+            for folder, cwd in first_cwd.items():
+                if folder_matches(path, folder, cwd):
+                    found = folder
+                    break
+        out[project["key"]] = found
+    return out
+
+
 def _parse_ts(value):
     """Aware UTC datetime from YYYY-MM-DDTHH:MM:SS[.f{1,6}](Z|+-HH:MM), else None."""
     if not isinstance(value, str):
