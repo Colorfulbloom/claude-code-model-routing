@@ -631,14 +631,14 @@ class PtyTests(unittest.TestCase):
 
     def test_curses_picker_change_scout(self):
         # Summary: j, Enter (Change). Agents: j x4 to scout, Enter. Model: j (sonnet),
-        # Enter. Effort: j (medium), Enter. Agents: j j (Done), Enter. Review: Enter (Install).
+        # Enter. Effort: j (high), Enter. Agents: j j (Done), Enter. Review: Enter (Install).
         keys = [("Model routing installer", "j"), (None, "\n"), (None, "jjjj"), (None, "\n"),
                 (None, "j"), (None, "\n"), (None, "j"), (None, "\n"), (None, "jj"), (None, "\n"),
                 (None, "\n")]
         code, out = self.run_pty("xterm-256color", keys)
         self.assertEqual(code, 0, out[-800:])
         self.assertIn("Agent models: picker", out)
-        self.assertIn("haiku low  ->  sonnet medium", out)
+        self.assertIn("haiku medium  ->  sonnet high", out)
         self.assertNotIn("replace    agents/scout.md", out)
         self.assertIn("  add        agents/scout.md", out)
         self.assertFalse(os.path.exists(self.config), "dry run must not create the config dir")
