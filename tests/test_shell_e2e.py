@@ -190,6 +190,73 @@ class Page:
         return out
 
 
+class Chrome:
+    """A headless Chrome with a throwaway profile under parent_dir, and one tab driven over the DevTools protocol.
+
+    Attributes: proc, ws, page, err_path (Chrome's stderr) and profile. close() undoes all of it.
+    """
+
+    def __init__(self, parent_dir, extra_args=()):
+        self.ws = None
+        self.proc = None
+        self.err_fh = None
+        self.profile = tempfile.mkdtemp(prefix="mr-chrome-", dir=parent_dir)
+        self.err_path = os.path.join(self.profile, "chrome.err")
+        self.err_fh = open(self.err_path, "wb")
+        self.proc = subprocess.Popen(
+            [CHROME, "--headless=new", "--remote-debugging-port=0", "--user-data-dir=" + os.path.join(self.profile, "data"),
+             "--no-first-run", "--no-default-browser-check", "--disable-gpu", "--disable-extensions",
+             "--enable-logging=stderr", "--v=0"] + list(extra_args) + ["about:blank"],
+            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=self.err_fh)
+        try:
+            port = self._debug_port()
+            conn = http.client.HTTPConnection("127.0.0.1", port, timeout=15)
+            conn.request("GET", "/json/list")
+            targets = [t for t in json.loads(conn.getresponse().read()) if t.get("type") == "page"]
+            conn.close()
+            if not targets:
+                conn = http.client.HTTPConnection("127.0.0.1", port, timeout=15)
+                conn.request("PUT", "/json/new?about:blank")
+                targets = [json.loads(conn.getresponse().read())]
+                conn.close()
+            path = urllib.parse.urlparse(targets[0]["webSocketDebuggerUrl"]).path
+            self.ws = WebSocket("127.0.0.1", port, path)
+            self.page = Page(self.ws)
+            for method in ("Page.enable", "Runtime.enable", "Log.enable"):
+                self.page.call(method)
+        except BaseException:
+            self.close()
+            raise
+
+    def _debug_port(self):
+        active = os.path.join(self.profile, "data", "DevToolsActivePort")
+        deadline = time.time() + 30
+        while time.time() < deadline:
+            if os.path.exists(active):
+                with open(active, encoding="utf-8") as fh:
+                    first = fh.readline().strip()
+                if first.isdigit():
+                    return int(first)
+            if self.proc.poll() is not None:
+                raise AssertionError("Chrome exited early: %s" % open(self.err_path, errors="replace").read()[-400:])
+            time.sleep(0.1)
+        raise AssertionError("Chrome did not open a debugging port")
+
+    def close(self):
+        if self.ws:
+            self.ws.close()
+        if self.proc and self.proc.poll() is None:
+            self.proc.terminate()
+            try:
+                self.proc.wait(10)
+            except subprocess.TimeoutExpired:
+                self.proc.kill()
+                self.proc.wait(10)
+        if self.err_fh:
+            self.err_fh.close()
+        helpers.rmtree_force(self.profile)
+
+
 @unittest.skipUnless(os.environ.get("MR_E2E") == "1", "set MR_E2E=1 to run the headless Chrome checks")
 @unittest.skipIf(CHROME is None, "Chrome was not found (set MR_CHROME to its path)")
 class ShellE2E(unittest.TestCase):
@@ -206,67 +273,22 @@ class ShellE2E(unittest.TestCase):
         ]})
         cls.srv = start(cls.root, ["--fixture", folder])
         cls.base = "http://127.0.0.1:%d/" % cls.srv.port
-        cls.profile = tempfile.mkdtemp(prefix="mr-chrome-", dir=helpers._tmp_base())
-        cls.err_path = os.path.join(cls.profile, "chrome.err")
-        cls.err_fh = open(cls.err_path, "wb")
-        cls.chrome = subprocess.Popen(
-            [CHROME, "--headless=new", "--remote-debugging-port=0", "--user-data-dir=" + os.path.join(cls.profile, "data"),
-             "--no-first-run", "--no-default-browser-check", "--disable-gpu", "--disable-extensions",
-             "--enable-logging=stderr", "--v=0", "about:blank"],
-            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=cls.err_fh)
         try:
-            port = cls._debug_port()
-            conn = http.client.HTTPConnection("127.0.0.1", port, timeout=15)
-            conn.request("GET", "/json/list")
-            targets = [t for t in json.loads(conn.getresponse().read()) if t.get("type") == "page"]
-            conn.close()
-            if not targets:
-                conn = http.client.HTTPConnection("127.0.0.1", port, timeout=15)
-                conn.request("PUT", "/json/new?about:blank")
-                targets = [json.loads(conn.getresponse().read())]
-                conn.close()
-            path = urllib.parse.urlparse(targets[0]["webSocketDebuggerUrl"]).path
-            cls.ws = WebSocket("127.0.0.1", port, path)
-            cls.page = Page(cls.ws)
-            for method in ("Page.enable", "Runtime.enable", "Log.enable"):
-                cls.page.call(method)
+            cls.chrome = Chrome(helpers._tmp_base())
         except BaseException:
             cls.tearDownClass()
             raise
-
-    @classmethod
-    def _debug_port(cls):
-        active = os.path.join(cls.profile, "data", "DevToolsActivePort")
-        deadline = time.time() + 30
-        while time.time() < deadline:
-            if os.path.exists(active):
-                with open(active, encoding="utf-8") as fh:
-                    first = fh.readline().strip()
-                if first.isdigit():
-                    return int(first)
-            if cls.chrome.poll() is not None:
-                raise AssertionError("Chrome exited early: %s" % open(cls.err_path, errors="replace").read()[-400:])
-            time.sleep(0.1)
-        raise AssertionError("Chrome did not open a debugging port")
+        cls.page = cls.chrome.page
+        cls.err_path = cls.chrome.err_path
 
     @classmethod
     def tearDownClass(cls):
-        if getattr(cls, "ws", None):
-            cls.ws.close()
-        if getattr(cls, "chrome", None) and cls.chrome.poll() is None:
-            cls.chrome.terminate()
-            try:
-                cls.chrome.wait(10)
-            except subprocess.TimeoutExpired:
-                cls.chrome.kill()
-                cls.chrome.wait(10)
-        if getattr(cls, "err_fh", None):
-            cls.err_fh.close()
+        if getattr(cls, "chrome", None):
+            cls.chrome.close()
         if getattr(cls, "srv", None):
             cls.srv.stop()
-        for path in (getattr(cls, "profile", None), getattr(cls, "root", None)):
-            if path:
-                helpers.rmtree_force(path)
+        if getattr(cls, "root", None):
+            helpers.rmtree_force(cls.root)
 
     def open(self, hash_="#/overview", width=1440):
         self.page.open(self.base + hash_, width)

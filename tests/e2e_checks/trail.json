@@ -1,0 +1,4 @@
+{"page": "trail", "routes": [
+  {"hash": "#/settings/builder/effort", "texts": ["What decides the effort for builder"]},
+  {"hash": "#/settings/@main/effortLevel", "texts": ["What decides the main session's effortLevel"]}
+]}

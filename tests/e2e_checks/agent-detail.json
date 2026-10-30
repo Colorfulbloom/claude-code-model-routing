@@ -1,0 +1,4 @@
+{"page": "agent-detail", "routes": [
+  {"hash": "#/agents/builder", "texts": ["builder"]},
+  {"hash": "#/agents/@main", "texts": ["Main session"]}
+]}
