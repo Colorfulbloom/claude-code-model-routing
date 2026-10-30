@@ -22,7 +22,11 @@ Record = collections.namedtuple(
     "effort cwd git_branch is_sidechain input output cache_read cache_write_5m "
     "cache_write_1h thinking speed service_tier inference_geo",
 )
-ReadResult = collections.namedtuple("ReadResult", "records notes oldest_seen oldest_by_folder")
+# signature is a hash over the files a read used (path, size, mtime and meta file
+# identity, or the path alone for a file skipped as old). It changes when any of
+# them does, so a caller can tell a read that found nothing new.
+ReadResult = collections.namedtuple(
+    "ReadResult", "records notes oldest_seen oldest_by_folder signature", defaults=(None,))
 
 # One entry per file. offset is the end of the last complete line that was parsed.
 _Entry = collections.namedtuple(
@@ -278,6 +282,9 @@ class Reader:
         self.horizon_days = horizon_days
         self._cache = {}
         self._lock = threading.Lock()
+        # How many transcript files the last scan found. Set while a read runs, and
+        # read by other threads without the lock. None until the first scan ends.
+        self.files_found = None
 
     def read(self, now):
         with self._lock:
@@ -288,6 +295,7 @@ class Reader:
             now = now.replace(tzinfo=_UTC)
         cutoff = (now - datetime.timedelta(days=self.horizon_days)).timestamp()
         found, ignored = self._scan(os.path.join(self.config_dir, "projects"))
+        self.files_found = len(found)
 
         notes = {
             "malformed_lines": 0,
@@ -300,8 +308,10 @@ class Reader:
         seen = set()
         oldest_skipped = None
         skipped_by_folder = {}
+        signature = []
         for item in sorted(found, key=lambda f: f.path):
             if item.st.st_mtime < cutoff:
+                signature.append((item.path,))
                 notes["skipped_old_files"] += 1
                 if oldest_skipped is None or item.st.st_mtime < oldest_skipped:
                     oldest_skipped = item.st.st_mtime
@@ -313,6 +323,7 @@ class Reader:
             if entry is None:
                 continue
             seen.add(item.path)
+            signature.append((item.path, entry.size, entry.mtime_ns, entry.meta_sig))
             records.extend(entry.records)
             notes["malformed_lines"] += entry.stats["malformed"]
             notes["synthetic_rows"] += entry.stats["synthetic"]
@@ -336,7 +347,7 @@ class Reader:
             low = by_folder.get(folder)
             if low is None or skipped_dt < low:
                 by_folder[folder] = skipped_dt
-        return ReadResult(records, notes, oldest, by_folder)
+        return ReadResult(records, notes, oldest, by_folder, hash(tuple(signature)))
 
     def _scan(self, root):
         """Transcript files under root plus a count of everything else.

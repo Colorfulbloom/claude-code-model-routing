@@ -7,7 +7,8 @@ The committed files next to this script (config/, projects/, session.json) are
 copied into out_dir, then transcripts are written under
 out_dir/config/projects/<sanitize(out_dir/projects/<name>)>/. Transcripts are
 never committed. out_dir/managed/ is an empty stand-in for the managed folder,
-so a run on the set never reads the real one.
+so a run on the set never reads the real one. The built session.json adds "now"
+(UTC, with an offset) and "tz" to the committed one.
 
 Same arguments give the same bytes. One seeded random.Random(39) drives every
 choice and every id. Local times convert to UTC through the named zone.
@@ -328,6 +329,16 @@ def build(out_dir, now=None, tz_name=DEFAULT_TZ):
                                     dt.time(0, 0), tzinfo=zone).astimezone(UTC)
 
     _copy_committed(real_out)
+    # The built session.json also holds the demo's clock and zone, so a server run on
+    # the set reads the same moment the files were made for. Generated file times
+    # follow the demo's now, and on the real clock the set would age out of the windows.
+    session_path = os.path.join(real_out, "session.json")
+    with open(session_path, encoding="utf-8") as fh:
+        session = json.load(fh)
+    session["now"] = now_utc.isoformat()
+    session["tz"] = tz_name
+    with open(session_path, "w", encoding="utf-8", newline="\n") as fh:
+        fh.write(json.dumps(session, indent=2, sort_keys=True) + "\n")
     rng = random.Random(SEED)
     requests = _generate(rng, real_out, os.path.join(real_out, "config"), now_utc, now_local, zone)
 

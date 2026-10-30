@@ -12,6 +12,8 @@ The defaults are `--now 2026-10-30T18:00` and `--tz America/New_York`.
 
 The build copies `config/`, `projects/` and `session.json` into `out_dir`, adds an empty `managed/` folder, and writes transcripts into `out_dir/config/projects/`. Transcripts are never committed, and the same arguments give the same bytes. A run on the set never reads the real managed folder, shell or `~/.claude`.
 
+The built `session.json` is the committed one plus `now` (the demo clock, UTC with an offset) and `tz` (the zone name). A server started with `--fixture <out_dir>` reads both, so the set stays inside the usage windows instead of aging out on the real clock.
+
 `build_demo.py` also writes `out_dir/truth.json`, an independent count of what it generated for the 30 days up to `--now`.
 
 The paths committed in `config/routing-dashboard.json` are relative to the set. The build makes them absolute under `out_dir`.
