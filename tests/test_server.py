@@ -758,7 +758,9 @@ class Entries(TempCase):
             self.assertEqual(status, 200)
             answer = json.loads(body)
             self.assertEqual(answer["entries"], expected, name)
-            self.assertEqual(set(answer), {"project", "state", "entries"})
+            self.assertEqual(set(answer), {
+                "project", "state", "entries", "no_user_settings", "shell_label", "path_display",
+                "config_dir_display", "config_file_display", "models"})
 
     def test_a_fixture_folder_may_be_empty(self):
         folder = os.path.join(self.root, "empty")
