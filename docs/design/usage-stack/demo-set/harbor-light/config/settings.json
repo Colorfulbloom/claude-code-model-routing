@@ -1,0 +1,7 @@
+{
+  "model": "claude-opus-5-5",
+  "effortLevel": "xhigh",
+  "env": {
+    "ANTHROPIC_API_KEY": "sk-ant-demo-not-a-real-key"
+  }
+}

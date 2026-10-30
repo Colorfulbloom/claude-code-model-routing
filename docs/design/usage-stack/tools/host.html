@@ -1,0 +1,5 @@
+<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;background:#888}iframe{display:block;margin:0 auto;border:0;width:375px;height:100px}</style></head>
+<body><iframe id="f"></iframe><script>
+var q=new URLSearchParams(location.search);var f=document.getElementById('f');f.src=q.get('p');
+addEventListener('message',function(e){if(e.data&&e.data.h){f.style.height=e.data.h+'px';document.documentElement.setAttribute('data-h',e.data.h);document.documentElement.setAttribute('data-ox',e.data.ox?1:0)}});
+</script></body></html>
