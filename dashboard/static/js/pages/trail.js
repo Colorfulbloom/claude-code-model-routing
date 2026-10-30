@@ -53,8 +53,8 @@ const withoutScheme = (url) => String(url).replace(/^https:\/\//, "");
 
 // The place a value came from, with its layer first: "Project settings, <source>".
 function layeredSource(entry, payload) {
-  const layer = layerText(entry);
-  return (layer ? layer + ", " : "") + sourceText(entry, payload);
+  const layer = layerText(entry, payload);
+  return (layer ? layer + ", " : "") + sourceText(entry, payload, true);
 }
 
 // True when the value was read from the shell: its file is the shell, or it is a default that came through a
@@ -69,7 +69,7 @@ function fromShell(entry, payload) {
 // One entry of the row, big for the winner and a card for the others.
 function entryNode(entry, payload, big) {
   const value = valueText(entry, payload);
-  const layer = layerText(entry);
+  const layer = layerText(entry, payload);
   const hasBecomes = entry.becomes !== undefined && entry.becomes !== null;
   const shell = fromShell(entry, payload);
   return h("div", { class: ["en", big ? "en-big" : "en-card"], "data-status": entry.status },
@@ -94,7 +94,12 @@ function metaBlock(payload, row) {
   if (modelText !== null) lines.push(h("div", null, h("dt", null, t("f_model")), h("dd", null, modelText)));
   if (row.setting === "effortLevel" || row.setting === "effort") {
     const cap = winnerFor(payload, MAIN_KEY, "maxEffortLevel");
-    if (cap) {
+    // The cap row describes the main session's model, and a per-model cap has no row for other models. An agent
+    // row shows the line only when its model is the main session's. Two unknown models aren't the same model.
+    const mainModel = winnerFor(payload, MAIN_KEY, "model");
+    const known = Boolean(model && mainModel && model.value !== null && model.value !== undefined);
+    const sameModel = row.agent === MAIN_KEY || (known && model.value === mainModel.value);
+    if (cap && sameModel) {
       const none = cap.status === "default" || cap.value === null || cap.value === undefined;
       lines.push(h("div", null, h("dt", null, t("cap")), h("dd", null,
         none ? t("no_cap") : [
@@ -109,7 +114,7 @@ function metaBlock(payload, row) {
 
 function winnerCard(payload, winner) {
   const value = valueString(winner, payload);
-  const summary = (value ? value + " " : "") + t("status_" + winner.status) + ", " + sourceText(winner, payload);
+  const summary = (value ? value + " " : "") + t("status_" + winner.status) + ", " + sourceText(winner, payload, true);
   return card({
     title: t("sec_winner"), icon: "flag", summary: renderText(summary), open: true, heading: "h3",
     body: h("div", { class: "win" }, entryNode(winner, payload, true)),

@@ -154,8 +154,8 @@ test("source: the three forms and the cases around them", () => {
   const root = show(payload);
   assert.equal(text(sub(tileFor(root, "model"), "tl-src")), "Claude Code's default");
   assert.equal(text(sub(tileFor(root, "effortLevel"), "tl-src")),
-    "Set by CLAUDE_CODE_EFFORT_LEVEL in the env block of ~/work/app/.claude/settings.local.json, line 3");
-  assert.equal(text(sub(tileFor(root, "promptCacheTtl"), "tl-src")), "Set by ENABLE_PROMPT_CACHING_1H in the shell");
+    "~/work/app/.claude/settings.local.json, line 3");
+  assert.equal(text(sub(tileFor(root, "promptCacheTtl"), "tl-src")), "Shell");
   assert.equal(text(sub(tileFor(root, "autoCompactWindow"), "tl-src")), "Shell");
   assert.equal(byClass(root, "en-note").length, 0, "a shell source carries no note on a tile");
 });
@@ -226,10 +226,10 @@ test("unknown: model-main-default-unknown shows Unknown with its reason and no v
   assert.ok(sub(effort, "en-note"));
 });
 
-test("the env block of a fixture reads as Set by ... in the env block of ...", () => {
+test("the env block of a fixture reads as the file and line on a tile", () => {
   const root = show(real("env-block-over-shell"));
   const tile = tileFor(root, "model");
-  assert.match(text(sub(tile, "tl-src")), /^Set by ANTHROPIC_MODEL in the env block of config\/settings\.json, line \d+$/);
+  assert.match(text(sub(tile, "tl-src")), /^config\/settings\.json, line \d+$/);
 });
 
 // ---------------------------------------------------------------- states
@@ -483,7 +483,7 @@ test("trail: a value through a variable names the variable and where it was set"
   const block = mount(real("env-block-over-shell"), "@main", "model").root;
   const win = winnerNode(block);
   assert.match(text(sub(win, "pa")), /^Set by ANTHROPIC_MODEL in the env block of config\/settings\.json, line \d+$/);
-  assert.equal(sub(win, "ly"), undefined, "an env layer has no layer word");
+  assert.equal(text(sub(win, "ly")), "User settings", "an env block value takes the layer of its file");
   assert.equal(sub(win, "en-note"), undefined, "a settings file is not the shell");
 });
 
@@ -499,8 +499,12 @@ test("source: a default with a via reads from the variable's row, and stays the 
   assert.equal(settings.sourceText(viaDefault, handPayload([other, viaDefault])), "Claude Code's default");
   // The tile on the Settings page reads the same way.
   const tileRoot = show(handPayload([blockRow, { ...viaDefault, key: "promptCacheTtl" }]));
-  assert.equal(text(sub(tileFor(tileRoot, "promptCacheTtl"), "tl-src")),
-    "Set by ENABLE_X in the env block of ~/.claude/settings.json, line 5");
+  assert.equal(text(sub(tileFor(tileRoot, "promptCacheTtl"), "tl-src")), "~/.claude/settings.json, line 5");
+  // Short drops the variable, and a default with a via still resolves through its row.
+  assert.equal(settings.sourceText(viaDefault, handPayload([shellRow, viaDefault]), true), "Shell");
+  assert.equal(settings.sourceText(viaDefault, handPayload([blockRow, viaDefault]), true), "~/.claude/settings.json, line 5");
+  assert.equal(settings.sourceText(viaDefault, handPayload([viaDefault]), true), "Claude Code's default");
+  assert.equal(settings.sourceText(entry({ file: "a/b.json", line: 7, via: "X" }), handPayload([]), true), "a/b.json, line 7");
 });
 
 test("trail: a hidden value shows the word, with its explanation", () => {
@@ -668,11 +672,40 @@ test("trail: an agent row opens at #/settings/probe/effort with its own title an
   const { root } = mount(payload, "probe", "effort");
   assert.equal(text(byClass(root, "tr-title")[0]), "What decides the effort for probe");
   assert.equal(text(ddOf(metaLine(root, "Model"))), "Fable 5.1 (claude-fable-5-1)");
-  assert.equal(text(ddOf(metaLine(root, "Effort cap"))), "not set");
+  assert.equal(metaLine(root, "Effort cap"), undefined, "an agent on another model than @main has no cap line");
   assert.equal(summaryOf(cardOf(root, "Winner")), "high Default, Claude Code's default");
   assert.equal(tilesOf(root).filter((n) => n.getAttribute("aria-current") === "true").length, 0, "no tile is current");
   assert.equal(tilesOf(root).length, 4, "the main session tiles still show");
   assert.equal(router.parseHash("#/settings/probe/effort?project=app").name, "trail");
+});
+
+test("trail: an agent row shows the cap line only when its model is the main session's", () => {
+  const cap = entry({ key: "maxEffortLevel", value: "high", layer: "project", file: "~/app/.claude/settings.json", line: 3 });
+  const mainModel = entry({ key: "model", value: "claude-opus-5-5" });
+  const agentEffort = (agentModel) => [mainModel, cap,
+    entry({ key: "model", agent: "builder", value: agentModel }),
+    entry({ key: "effort", agent: "builder", value: "xhigh", status: "lowered", becomes: "high" })];
+  const same = mount(trailPayload(agentEffort("claude-opus-5-5")), "builder", "effort").root;
+  assert.equal(text(sub(ddOf(metaLine(same, "Effort cap")), "val")), "high");
+  const other = mount(trailPayload(agentEffort("claude-fable-5-1")), "builder", "effort").root;
+  assert.equal(metaLine(other, "Effort cap"), undefined);
+  assert.ok(metaLine(other, "Model"), "the model line stays");
+  const main = mount(trailPayload([mainModel, cap, E({ value: "xhigh" })]), "@main", "effortLevel").root;
+  assert.ok(metaLine(main, "Effort cap"), "an @main row always shows the cap line");
+});
+
+test("layer: an env block value takes the layer of its file, and a shell value has none", () => {
+  const block = entry({ layer: "env", file: "~/app/.claude/settings.local.json", line: 3, via: "X" });
+  const files = [{ path: "~/app/.claude/settings.local.json", layer: "local" }];
+  assert.equal(settings.layerText(block, { files }), "Local settings");
+  assert.equal(settings.layerText(block), "");
+  assert.equal(settings.layerText(block, { files: [] }), "");
+  assert.equal(settings.layerText(entry({ layer: "env", file: "Shell" }), { files }), "");
+  assert.equal(settings.layerText(entry({ layer: "user" }), { files }), "User settings");
+  const win = winnerNode(mount(trailPayload([block], [], { files }), "@main", "effortLevel").root);
+  assert.equal(text(sub(win, "ly")), "Local settings");
+  const shell = entry({ layer: "env", file: "Shell", line: undefined });
+  assert.equal(sub(winnerNode(mount(trailPayload([shell], [], { files }), "@main", "effortLevel").root), "ly"), undefined);
 });
 
 test("trail: an agent file row has no value and names the agent file", () => {
@@ -769,7 +802,7 @@ test("trail: the demo's effort trail has winner, losers, rules and file lines", 
   ], [ruleRec("effort-lowered-by-cap"), ruleRec("effort-level-layer-order"), ruleRec("effort-level-user-settings-opus-5-5")]);
   const { root } = mount(payload, "@main", "effortLevel");
   assert.equal(summaryOf(cardOf(root, "Winner")),
-    "xhigh Lowered, Set by CLAUDE_CODE_EFFORT_LEVEL in the env block of projects/tidewater/.claude/settings.local.json, line 3");
+    "xhigh Lowered, projects/tidewater/.claude/settings.local.json, line 3");
   assert.equal(summaryOf(cardOf(root, "Other values found")), "2 values, 2 didn't count");
   assert.deepEqual(byClass(cardOf(root, "Other values found"), "pa").map(text),
     ["projects/tidewater/.claude/settings.json, line 7", "config/settings.json, line 3"]);

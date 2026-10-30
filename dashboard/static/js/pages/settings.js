@@ -48,19 +48,20 @@ export function valueText(entry, payload, plain = false) {
 
 // Where an entry comes from, as the screen words it. A default that names a variable in via, such as
 // ENABLE_PROMPT_CACHING_1H, takes its source from the winner of that variable's own row (env.<variable>),
-// because the value came through the variable. Without such a row it reads as the default.
-export function sourceText(entry, payload) {
+// because the value came through the variable. Without such a row it reads as the default. With short true,
+// an entry with a via reads as the file and line, or Shell, as it does without one (the tile and the summaries).
+export function sourceText(entry, payload, short = false) {
   const file = entry.file;
   if (file === null || file === undefined) {
     const variable = entry.via ? winnerOf(payload, "env." + entry.via) : null;
     if (variable && variable.file !== null && variable.file !== undefined) {
-      return sourceText({ ...entry, file: variable.file, line: variable.line }, payload);
+      return sourceText({ ...entry, file: variable.file, line: variable.line }, payload, short);
     }
     return t("default_src");
   }
   const isShell = file === payload.shell_label;
-  if (entry.via && isShell) return t("set_by_shell", { variable: entry.via });
-  if (entry.via) return t("set_by_block", { variable: entry.via, path: file, line: entry.line });
+  if (entry.via && !short && isShell) return t("set_by_shell", { variable: entry.via });
+  if (entry.via && !short) return t("set_by_block", { variable: entry.via, path: file, line: entry.line });
   if (isShell) return t("shell");
   if (entry.line !== undefined && entry.line !== null) return t("file_line", { path: file, line: entry.line });
   return file;
@@ -68,9 +69,12 @@ export function sourceText(entry, payload) {
 
 const LAYERS = ["user", "project", "local", "managed"];
 
-// The layer of an entry in words. Any other layer, such as default, gives "" and the caller leaves it out.
-export function layerText(entry) {
-  return LAYERS.includes(entry.layer) ? t("layer_" + entry.layer) : "";
+// The layer of an entry in words. An entry from an env block has layer env, so with a payload the layer of the
+// file it was read from stands in. Any other layer, such as default, gives "" and the caller leaves it out.
+export function layerText(entry, payload = null) {
+  if (LAYERS.includes(entry.layer)) return t("layer_" + entry.layer);
+  const file = ((payload && payload.files) || []).find((f) => f.path === entry.file);
+  return file && LAYERS.includes(file.layer) ? t("layer_" + file.layer) : "";
 }
 
 // The name of a setting in lower case, for a title. An unknown key shows as written.
@@ -111,7 +115,7 @@ function tile(ctx, payload, spec, entry, active) {
   h("div", { class: "tl-mid" },
     value === null ? null : h("span", { class: "tl-v" }, value),
     hasBecomes ? h("span", { class: "runs" }, t("runs_as_cell", { becomes: entry.becomes })) : null),
-  h("div", { class: "tl-src" }, renderText(sourceText(entry, payload))),
+  h("div", { class: "tl-src" }, renderText(sourceText(entry, payload, true))),
   entry.status === "unknown" && entry.reason ? h("p", { class: "en-note" }, renderText(entry.reason)) : null);
 }
 
