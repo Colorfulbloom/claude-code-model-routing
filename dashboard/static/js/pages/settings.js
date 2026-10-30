@@ -23,7 +23,7 @@ const HIDDEN = "hidden"; // what collect.py leaves in place of a value that look
 
 // The value of an entry as plain text. plain true is the Settings tile, where a model shows its display
 // name alone. A null value is "" here, and a model row shows its name and id otherwise.
-function valueString(entry, payload, plain = false) {
+export function valueString(entry, payload, plain = false) {
   const value = entry.value;
   if (value === null || value === undefined) return "";
   if (value === HIDDEN) return t("hidden");
@@ -46,10 +46,18 @@ export function valueText(entry, payload, plain = false) {
   return text;
 }
 
-// Where an entry comes from, as the screen words it.
+// Where an entry comes from, as the screen words it. A default that names a variable in via, such as
+// ENABLE_PROMPT_CACHING_1H, takes its source from the winner of that variable's own row (env.<variable>),
+// because the value came through the variable. Without such a row it reads as the default.
 export function sourceText(entry, payload) {
   const file = entry.file;
-  if (file === null || file === undefined) return t("default_src");
+  if (file === null || file === undefined) {
+    const variable = entry.via ? winnerOf(payload, "env." + entry.via) : null;
+    if (variable && variable.file !== null && variable.file !== undefined) {
+      return sourceText({ ...entry, file: variable.file, line: variable.line }, payload);
+    }
+    return t("default_src");
+  }
   const isShell = file === payload.shell_label;
   if (entry.via && isShell) return t("set_by_shell", { variable: entry.via });
   if (entry.via) return t("set_by_block", { variable: entry.via, path: file, line: entry.line });
@@ -147,7 +155,44 @@ export function renderSettingsBody(root, ctx, activeSetting = null) {
   return payload;
 }
 
+// Depth-first search through childNodes, which a real element and the test DOM both have.
+function findNode(node, test) {
+  if (node.nodeType === 1 && test(node)) return node;
+  for (const child of Array.from(node.childNodes || [])) {
+    const found = findNode(child, test);
+    if (found) return found;
+  }
+  return null;
+}
+
+// The trail sets this when Escape closes it. The next Settings render takes it and moves focus.
+let pendingReturn = null;
+
+// Remember where focus goes when the Settings page is drawn next: the tile of a main session row, else the
+// page heading, because a trail opened by route may have no cell behind it.
+export function returnFocusTo(agent, setting) {
+  pendingReturn = { agent, setting };
+}
+
+function takeReturnFocus(root) {
+  const { agent, setting } = pendingReturn;
+  pendingReturn = null;
+  const tile = agent === MAIN_KEY
+    ? findNode(root, (n) => n.getAttribute("data-setting") === setting) : null;
+  if (tile) {
+    tile.focus();
+    return;
+  }
+  const heading = findNode(root, (n) => String(n.tagName).toLowerCase() === "h1");
+  if (heading) {
+    heading.setAttribute("tabindex", "-1");
+    heading.focus();
+  }
+}
+
 export function render(root, ctx) {
   clear(root);
   renderSettingsBody(root, ctx);
+  // Every page draws on every route change, so only the Settings route takes the record.
+  if (ctx.route.name === "settings" && pendingReturn) takeReturnFocus(root);
 }

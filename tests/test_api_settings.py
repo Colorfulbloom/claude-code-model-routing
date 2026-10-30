@@ -1,12 +1,13 @@
-"""Tests for the /api/settings route (dashboard/api_settings.py), the fields ticket #41 added.
+"""Tests for the /api/settings route (dashboard/api_settings.py), the fields tickets #41 and #42 added.
 
 The route is called through server.ROUTES with server.fixture_context, once per fixture in
 tests/fixtures/resolution, then on small folders built here for the project states and on the demo
-set. Every run reads only the repo and its own temp folders.
+set. One test asks a real server over HTTP. Every run reads only the repo and its own temp folders.
 """
 import dataclasses
 import json
 import os
+import re
 import sys
 import tempfile
 import unittest
@@ -15,15 +16,24 @@ import helpers
 
 sys.path.insert(0, os.path.join(helpers.REPO, "dashboard"))
 sys.path.insert(0, os.path.join(helpers.FIXTURES, "demo"))
+import api_settings  # noqa: E402
 import build_demo  # noqa: E402
 import projects  # noqa: E402
 import resolve  # noqa: E402
 import server  # noqa: E402
+import test_server  # noqa: E402
 
 FIXTURE_DIR = os.path.join(helpers.FIXTURES, "resolution")
 RULES = resolve.load_rules()
 FIELDS = resolve.load_agent_fields()
 ROUTE = server.ROUTES["/api/settings"]
+ANSWER_KEYS = {
+    "project", "state", "entries", "no_user_settings", "shell_label", "path_display",
+    "config_dir_display", "config_file_display", "models", "rows", "rules", "files"}
+REFERENCE_PAGE = os.path.join(helpers.REPO, "docs", "rules-reference.md")
+REFERENCE_URL = "https://github.com/Colorfulbloom/claude-code-model-routing/blob/main/docs/rules-reference.md"
+EXPERIMENT_BASE = "https://github.com/Colorfulbloom/claude-code-model-routing/blob/main/dashboard/"
+WINNING = ("in_effect", "lowered", "default")
 
 
 def fixture_names():
@@ -88,9 +98,7 @@ class EveryFixture(unittest.TestCase):
         folder = os.path.join(FIXTURE_DIR, "effort-user-top-level-xhigh-ignored-opus-5-5")
         ctx = context(folder)
         _status, payload = call(ctx)
-        self.assertEqual(set(payload), {
-            "project", "state", "entries", "no_user_settings", "shell_label", "path_display",
-            "config_dir_display", "config_file_display", "models"})
+        self.assertEqual(set(payload), ANSWER_KEYS)
         self.assertEqual(main_value(payload, "effortLevel"), "medium")
 
     def test_a_fixture_with_a_user_file_and_one_without(self):
@@ -196,6 +204,227 @@ class DemoSet(unittest.TestCase):
             shown.append((winner["value"], winner["status"], winner.get("becomes")))
         # Both files say xhigh, but Tidewater's Opus 5.5 cap runs it as high and Driftwood's model is unknown.
         self.assertEqual(shown, [("xhigh", "lowered", "high"), ("xhigh", "unknown", None)])
+
+    def test_main_session_effort_traces_to_winner_losers_rule_and_file_line(self):
+        out = new_dir(self, "api-demo-trail-")
+        build_demo.build(out)
+        first = projects.load(context(out)).projects[0]
+        ctx = context(out, project_dir=first.path)
+        status, payload = call(ctx, first.key)
+        self.assertEqual(status, 200)
+        row = next(r for r in payload["rows"] if r["agent"] == "@main" and r["setting"] == "effortLevel")
+        entries = [payload["entries"][i] for i in row["entries"]]
+        # The winner, then the two values that lost, each with its file and line.
+        self.assertEqual([(e["value"], e["status"]) for e in entries],
+                         [("xhigh", "lowered"), ("medium", "overridden"), ("xhigh", "ignored")])
+        winner = entries[0]
+        self.assertEqual(winner["becomes"], "high")
+        self.assertEqual(winner["via"], "CLAUDE_CODE_EFFORT_LEVEL")
+        self.assertEqual((winner["file"], winner["line"]),
+                         ("projects/tidewater-reporting/.claude/settings.local.json", 3))
+        self.assertEqual((entries[1]["file"], entries[1]["line"]),
+                         ("projects/tidewater-reporting/.claude/settings.json", 7))
+        self.assertEqual((entries[2]["file"], entries[2]["line"]), ("config/settings.json", 3))
+        for entry in entries:
+            self.assertTrue(entry["reason"])
+        # The rules behind the row, with their trail fields.
+        self.assertEqual(row["rule_ids"], ["effort-lowered-by-cap", "effort-level-layer-order",
+                                           "effort-level-user-settings-opus-5-5"])
+        for rule_id in row["rule_ids"]:
+            rule = payload["rules"][rule_id]
+            self.assertEqual(rule["confidence"], "tested")
+            self.assertTrue(rule["verified_on"]["claude_version"])
+            self.assertEqual(rule["reference_url"], REFERENCE_URL + "#" + rule_id)
+        # The model and the cap that the trail's meta block reads are rows of their own.
+        model = next(r for r in payload["rows"] if r["agent"] == "@main" and r["setting"] == "model")
+        self.assertEqual(payload["entries"][model["entries"][0]]["value"], "claude-opus-5-5")
+        cap = next(r for r in payload["rows"] if r["agent"] == "@main" and r["setting"] == "maxEffortLevel")
+        self.assertEqual(payload["entries"][cap["entries"][0]]["value"], "high")
+        self.assertEqual([f["status"] for f in payload["files"]], ["ok", "ok", "ok"])
+        self.assertEqual([f["layer"] for f in payload["files"]], ["local", "project", "user"])
+
+
+def reference_headings():
+    """The rule ids that have a "### <id>" heading in docs/rules-reference.md."""
+    with open(REFERENCE_PAGE, encoding="utf-8") as fh:
+        return set(re.findall(r"(?m)^### (\S+)\s*$", fh.read()))
+
+
+class EveryRow(unittest.TestCase):
+    """The trail's data, for every row of every fixture."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.headings = reference_headings()
+        cls.answers = {}
+        for name in fixture_names():
+            status, payload = call(context(os.path.join(FIXTURE_DIR, name)))
+            assert status == 200, name
+            cls.answers[name] = payload
+
+    def test_there_are_fixtures_to_walk(self):
+        self.assertGreater(len(self.answers), 60)
+
+    def test_rows_cover_each_entry_exactly_once(self):
+        for name, payload in self.answers.items():
+            with self.subTest(name):
+                seen = []
+                for row in payload["rows"]:
+                    seen.extend(row["entries"])
+                self.assertEqual(sorted(seen), list(range(len(payload["entries"]))))
+                self.assertEqual(len(seen), len(set(seen)))
+
+    def test_agent_and_setting_are_unique_and_a_row_has_one_scope(self):
+        for name, payload in self.answers.items():
+            with self.subTest(name):
+                keys = [(row["agent"], row["setting"]) for row in payload["rows"]]
+                self.assertEqual(len(keys), len(set(keys)))
+                for row in payload["rows"]:
+                    entries = [payload["entries"][i] for i in row["entries"]]
+                    self.assertEqual({e["scope"] for e in entries}, {row["scope"]})
+                    self.assertEqual({e["key"] for e in entries}, {row["setting"]})
+                    agents = {e.get("agent") or "@main" for e in entries}
+                    self.assertEqual(agents, {row["agent"]})
+                    self.assertEqual(row["entries"], sorted(row["entries"]))
+
+    def test_the_first_entry_of_a_row_is_its_winner(self):
+        for name, payload in self.answers.items():
+            with self.subTest(name):
+                for row in payload["rows"]:
+                    for index in row["entries"][1:]:
+                        self.assertNotIn(payload["entries"][index]["status"], WINNING, row)
+
+    def test_every_entry_has_value_status_source_and_reason(self):
+        for name, payload in self.answers.items():
+            with self.subTest(name):
+                for entry in payload["entries"]:
+                    for field in ("value", "status", "layer", "file", "reason"):
+                        self.assertIn(field, entry, entry)
+                    self.assertIsInstance(entry["status"], str)
+                    self.assertTrue(entry["status"])
+                    self.assertIsInstance(entry["reason"], str)
+                    self.assertTrue(entry["reason"].strip(), entry)
+                    if entry["file"] is not None:
+                        self.assertIsInstance(entry["file"], str)
+
+    def test_row_rule_ids_join_the_entries_rule_ids_without_repeats(self):
+        for name, payload in self.answers.items():
+            with self.subTest(name):
+                for row in payload["rows"]:
+                    expected = []
+                    for index in row["entries"]:
+                        for rule_id in payload["entries"][index]["rule_ids"]:
+                            if rule_id not in expected:
+                                expected.append(rule_id)
+                    self.assertEqual(row["rule_ids"], expected)
+                    self.assertEqual(len(row["rule_ids"]), len(set(row["rule_ids"])))
+
+    def test_every_rule_id_has_a_record_with_a_working_reference_link(self):
+        for name, payload in self.answers.items():
+            with self.subTest(name):
+                named = {rule_id for row in payload["rows"] for rule_id in row["rule_ids"]}
+                self.assertEqual(set(payload["rules"]), named)
+                for rule_id in named:
+                    rule = payload["rules"][rule_id]
+                    self.assertEqual(rule["rule_id"], rule_id)
+                    self.assertIn(rule["confidence"], ("tested", "documented", "assumed"))
+                    self.assertTrue(rule["verified_on"]["claude_version"])
+                    self.assertTrue(rule["verified_on"]["date"])
+                    self.assertEqual(rule["reference_url"], REFERENCE_URL + "#" + rule_id)
+                    self.assertIn(rule_id, self.headings, "docs/rules-reference.md has no ### " + rule_id)
+                    self.assertIsInstance(rule["quotes"], list)
+                    for quote in rule["quotes"]:
+                        self.assertTrue(quote["doc_url"].startswith("https://"))
+                        self.assertTrue(quote["quote"])
+
+    def test_experiment_links_point_into_dashboard(self):
+        seen = 0
+        for payload in self.answers.values():
+            for rule in payload["rules"].values():
+                if rule["experiment"] is None:
+                    self.assertIsNone(rule["experiment_url"])
+                    continue
+                seen += 1
+                self.assertEqual(rule["experiment_url"], EXPERIMENT_BASE + rule["experiment"])
+                self.assertTrue(os.path.isfile(os.path.join(helpers.REPO, "dashboard", rule["experiment"])),
+                                rule["experiment"])
+        self.assertGreater(seen, 0)
+
+    def test_a_rule_record_has_exactly_the_trail_fields(self):
+        for payload in self.answers.values():
+            for rule in payload["rules"].values():
+                self.assertEqual(set(rule), {"rule_id", "confidence", "verified_on", "quotes", "experiment",
+                                             "experiment_url", "reference_url"})
+                self.assertEqual(set(rule["verified_on"]), {"claude_version", "date"})
+
+    def test_files_match_the_settings_files_that_exist(self):
+        for name, payload in self.answers.items():
+            with self.subTest(name):
+                self.assertEqual(payload["no_user_settings"], not any(f["layer"] == "user" for f in payload["files"]))
+                for file in payload["files"]:
+                    self.assertIn(file["status"], ("ok", "unparsed", "unreadable"))
+                    self.assertIn(file["layer"], ("managed", "local", "project", "user"))
+                    self.assertIsInstance(file["path"], str)
+                    self.assertEqual("entry_status" in file, file["status"] != "ok", file)
+
+
+class TrailData(unittest.TestCase):
+    def test_a_file_that_did_not_parse_names_its_settingsfile_status(self):
+        payload = call(context(os.path.join(FIXTURE_DIR, "settings-user-not-json-skipped")))[1]
+        self.assertEqual(payload["files"], [
+            {"layer": "project", "path": "project/.claude/settings.json", "status": "ok"},
+            {"layer": "user", "path": "config/settings.json", "status": "unparsed", "entry_status": "ignored"}])
+        row = next(r for r in payload["rows"] if r["setting"] == "settingsFile")
+        self.assertEqual(payload["entries"][row["entries"][0]]["file"], "config/settings.json")
+
+    def test_a_main_row_and_an_agent_row_use_their_keys(self):
+        payload = call(context(os.path.join(FIXTURE_DIR, "agent-reader-rejected-but-loads")))[1]
+        pairs = {(r["agent"], r["setting"]) for r in payload["rows"]}
+        self.assertIn(("@main", "effortLevel"), pairs)
+        self.assertIn(("probe", "effort"), pairs)
+        self.assertIn(("probe", "agentFile"), pairs)
+
+    def test_the_lowered_fixture_row(self):
+        payload = call(context(os.path.join(FIXTURE_DIR, "effort-lowered-by-cap")))[1]
+        row = next(r for r in payload["rows"] if r["agent"] == "@main" and r["setting"] == "effortLevel")
+        self.assertEqual(row["scope"], "main")
+        self.assertEqual(row["rule_ids"], ["effort-lowered-by-cap", "effort-level-layer-order"])
+        rule = payload["rules"]["effort-lowered-by-cap"]
+        self.assertEqual(rule["experiment_url"],
+                         EXPERIMENT_BASE + "experiments/2026-10-29-effort-cap-transcript.json")
+        self.assertEqual(rule["reference_url"], REFERENCE_URL + "#effort-lowered-by-cap")
+        self.assertTrue(rule["quotes"])
+
+    def test_a_missing_folder_has_no_rows_rules_or_files(self):
+        root = new_dir(self)
+        config = os.path.join(root, "config")
+        write_json(os.path.join(config, projects.CONFIG_FILE),
+                   {"projects": [{"name": "Listed", "path": os.path.join(root, "gone")}]})
+        os.makedirs(os.path.join(root, "work"))
+        ctx = context(root, config_dir=config, project_dir=os.path.join(root, "work"))
+        payload = call(ctx, "listed")[1]
+        self.assertEqual(payload["state"], "missing_folder")
+        self.assertEqual((payload["rows"], payload["rules"], payload["files"]), ([], {}, []))
+        self.assertEqual(set(payload), ANSWER_KEYS - {"no_user_settings"})
+
+    def test_constants(self):
+        self.assertEqual(api_settings.REFERENCE_URL, REFERENCE_URL)
+        self.assertEqual(api_settings.EXPERIMENT_BASE, EXPERIMENT_BASE)
+
+
+class OverHttp(test_server.TempCase):
+    def test_a_real_request_returns_the_trail_fields(self):
+        name = "effort-lowered-by-cap"
+        folder = os.path.join(FIXTURE_DIR, name)
+        expected = json.loads(json.dumps(call(context(folder))[1]))
+        proc = self.start(["--fixture", folder], name=name)
+        status, _, body = proc.request("GET", "/api/settings")
+        self.assertEqual(status, 200)
+        answer = json.loads(body)
+        self.assertEqual(set(answer), ANSWER_KEYS)
+        self.assertEqual(answer, expected)
+        self.assertEqual(answer["rules"]["effort-lowered-by-cap"]["reference_url"],
+                         REFERENCE_URL + "#effort-lowered-by-cap")
 
 
 if __name__ == "__main__":

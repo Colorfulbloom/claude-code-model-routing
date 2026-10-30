@@ -1,4 +1,4 @@
-"""Runs the browser-free checks of the Settings page in tests/js/settings_checks.mjs with Node.
+"""Runs the browser-free checks of the Settings page and its trail in tests/js/settings_checks.mjs with Node.
 
 A first step writes real /api/settings answers for a few resolution fixtures into a temp folder, the way
 the route builds them, and passes that folder to the checks in MR_PAYLOADS. The checks load the real
@@ -31,6 +31,9 @@ CASES = (
     "model-main-default-unknown",
     "effort-lowered-by-cap",
     "env-block-over-shell",
+    "prompt-cache-force-5m-over-everything",
+    "agent-effort-default-fable-5-1",
+    "settings-user-not-json-skipped",
 )
 
 
