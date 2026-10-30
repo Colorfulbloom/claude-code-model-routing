@@ -3,13 +3,31 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Routing Dashboard</title>
+<title></title>
 <link rel="stylesheet" href="/static/tokens.css">
+<link rel="stylesheet" href="/static/app.css">
+<script type="module" src="/static/js/app.js"></script>
 </head>
 <body>
-<main>
-<h1>Routing Dashboard</h1>
-<p>The server is running. The page is not built yet.</p>
+<div class="app">
+<aside class="sb" id="sidebar"></aside>
+<div class="main">
+<header class="topbar" id="topbar"></header>
+<main class="content">
+<section data-page="overview" hidden></section>
+<section data-page="all-projects" hidden></section>
+<section data-page="agents" hidden></section>
+<section data-page="agent-detail" hidden></section>
+<section data-page="models" hidden></section>
+<section data-page="sessions" hidden></section>
+<section data-page="session-detail" hidden></section>
+<section data-page="settings" hidden></section>
+<section data-page="trail" hidden></section>
+<section data-page="attention" hidden></section>
+<section data-page="files" hidden></section>
+<section data-page="rules" hidden></section>
 </main>
+</div>
+</div>
 </body>
 </html>
