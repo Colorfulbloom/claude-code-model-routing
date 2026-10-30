@@ -1,0 +1,32 @@
+{
+  "fixture": "agent-effort-model-settings-main-model-only",
+  "rule_ids": [
+    "agent-effort-default-by-model"
+  ],
+  "note": "A modelSettings level for the main model does not carry over to an agent on another model.",
+  "confidence": "tested",
+  "source": "dashboard/experiments/2026-10-29-agent-effort.json#ag-noeffort-user-ms-main",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "effortLevel",
+      "value": "low",
+      "status": "in_effect",
+      "layer": "user",
+      "file": "config/settings.json",
+      "scope": "main",
+      "model": "claude-sonnet-5-5",
+      "path": "modelSettings.claude-sonnet-5-5.effortLevel"
+    },
+    {
+      "key": "effort",
+      "value": "medium",
+      "status": "default",
+      "layer": "default",
+      "file": null,
+      "scope": "agent",
+      "agent": "probe",
+      "model": "claude-haiku-5-5"
+    }
+  ]
+}

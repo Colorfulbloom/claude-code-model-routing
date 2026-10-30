@@ -1,0 +1,34 @@
+{
+  "fixture": "auto-compact-env-below-floor",
+  "rule_ids": [
+    "auto-compact-window-values",
+    "auto-compact-window-order"
+  ],
+  "confidence": "tested",
+  "source": "dashboard/experiments/2026-10-29-auto-compact-window.json#a11",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "autoCompactWindow",
+      "value": 50000,
+      "status": "in_effect",
+      "layer": "env",
+      "file": "session.json:shell_env",
+      "scope": "main",
+      "model": "claude-opus-5-5",
+      "via": "CLAUDE_CODE_AUTO_COMPACT_WINDOW",
+      "becomes": 100000,
+      "rule_id": "auto-compact-window-values",
+      "reason": "session.json:shell_env sets the auto-compact window to 50000. For CLAUDE_CODE_AUTO_COMPACT_WINDOW, Claude Code ignores a value that isn't a number and lowers one above 1000000 to 1000000. It raises a value below 100000 to 100000, so that value still shows In effect. The docs say Claude Code caps a raised or lowered value at the model's context window too. The dashboard's model list has no context windows yet, so it leaves that cap out. On 2.1.302, 200k ran at 100000, and the k suffix needs v2.1.304. In a settings file, Claude Code ignores a value below 100000."
+    },
+    {
+      "key": "autoCompactWindow",
+      "value": 200000,
+      "status": "overridden",
+      "layer": "user",
+      "file": "config/settings.json",
+      "scope": "main",
+      "model": "claude-opus-5-5"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "fixture": "effort-project-top-level-xhigh-opus-5-5",
+  "rule_ids": [
+    "effort-level-layer-order"
+  ],
+  "note": "No xhigh run exists for this case. The record ran the same layout with effortLevel low, and Opus 5.5 sent low from the project key. The expected outcome here comes from the documented rule plus that low run, so confidence is documented, not tested.",
+  "confidence": "documented",
+  "source": "dashboard/experiments/2026-10-29-effort-user-key-by-model.json#p-top-low-opus55",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "effortLevel",
+      "value": "xhigh",
+      "status": "in_effect",
+      "layer": "project",
+      "file": "project/.claude/settings.json",
+      "scope": "main",
+      "model": "claude-opus-5-5"
+    }
+  ]
+}

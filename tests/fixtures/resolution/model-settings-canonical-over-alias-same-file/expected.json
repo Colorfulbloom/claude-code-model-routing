@@ -1,0 +1,32 @@
+{
+  "fixture": "model-settings-canonical-over-alias-same-file",
+  "rule_ids": [
+    "model-settings-name-matching"
+  ],
+  "note": "The alias entry comes first in the file, and the canonical entry still wins. Only canonical over alias was tested, not the other name forms.",
+  "confidence": "tested",
+  "source": "dashboard/experiments/2026-10-29-model-settings-name-matching.json#ms-alias-and-canon-alias-first",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "effortLevel",
+      "value": "high",
+      "status": "in_effect",
+      "layer": "user",
+      "file": "config/settings.json",
+      "scope": "main",
+      "model": "claude-opus-5-5",
+      "path": "modelSettings.claude-opus-5-5.effortLevel"
+    },
+    {
+      "key": "effortLevel",
+      "value": "low",
+      "status": "overridden",
+      "layer": "user",
+      "file": "config/settings.json",
+      "scope": "main",
+      "model": "claude-opus-5-5",
+      "path": "modelSettings.opus.effortLevel"
+    }
+  ]
+}

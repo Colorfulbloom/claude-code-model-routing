@@ -1,0 +1,24 @@
+{
+  "fixture": "agent-effort-default-fable-5-1",
+  "rule_ids": [
+    "agent-effort-default-by-model",
+    "agent-effort-order"
+  ],
+  "confidence": "tested",
+  "source": "dashboard/experiments/2026-10-29-agent-effort.json#ag-noeffort-fable-nothing",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "effort",
+      "value": "high",
+      "status": "default",
+      "layer": "default",
+      "file": null,
+      "scope": "agent",
+      "agent": "probe",
+      "model": "claude-fable-5-1",
+      "rule_id": "agent-effort-default-by-model",
+      "reason": "Nothing sets an effort level that counts for claude-fable-5-1, so probe runs at that model's default, high. A level that counts only for the main session's model doesn't carry over to probe."
+    }
+  ]
+}

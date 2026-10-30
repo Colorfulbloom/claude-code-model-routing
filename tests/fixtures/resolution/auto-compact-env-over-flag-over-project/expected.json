@@ -12,7 +12,7 @@
       "value": 300000,
       "status": "in_effect",
       "layer": "env",
-      "file": null,
+      "file": "session.json:shell_env",
       "scope": "main"
     },
     {
@@ -20,7 +20,7 @@
       "value": 400000,
       "status": "overridden",
       "layer": "flag",
-      "file": null,
+      "file": "session.json:flags",
       "scope": "main"
     },
     {

@@ -14,7 +14,9 @@
       "layer": "env",
       "file": "session.json:shell_env",
       "scope": "agent",
-      "agent": "probe"
+      "agent": "probe",
+      "rule_id": "agent-effort-order",
+      "reason": "CLAUDE_CODE_EFFORT_LEVEL sets the effort for probe. CLAUDE_CODE_EFFORT_LEVEL beats the agent's effort frontmatter, which beats --effort and the settings that count for its own model."
     },
     {
       "key": "effort",

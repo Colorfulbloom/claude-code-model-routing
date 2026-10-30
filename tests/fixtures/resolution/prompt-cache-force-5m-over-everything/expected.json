@@ -4,7 +4,6 @@
     "prompt-cache-force-5m",
     "subagent-prompt-cache-force-5m"
   ],
-  "note": "The env entries for CLAUDE_CODE_PROMPT_CACHE_TTL and CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL are left out on purpose. FORCE_PROMPT_CACHING_5M overrides them, but a rule condition can't name a variable yet, so the rules would mark them in_effect. Add them back as overridden when #5 lets a condition name a variable.",
   "confidence": "tested",
   "source": "dashboard/experiments/2026-10-29-prompt-cache-sources.json#k3",
   "claude_version": "2.1.302",
@@ -14,9 +13,18 @@
       "value": "5m",
       "status": "in_effect",
       "layer": "env",
-      "file": null,
+      "file": "session.json:shell_env",
       "scope": "main",
       "via": "FORCE_PROMPT_CACHING_5M"
+    },
+    {
+      "key": "promptCacheTtl",
+      "value": "1h",
+      "status": "overridden",
+      "layer": "env",
+      "file": "session.json:shell_env",
+      "scope": "main",
+      "via": "CLAUDE_CODE_PROMPT_CACHE_TTL"
     },
     {
       "key": "promptCacheTtl",
@@ -40,10 +48,20 @@
       "value": "5m",
       "status": "in_effect",
       "layer": "env",
-      "file": null,
+      "file": "session.json:shell_env",
       "scope": "agent",
       "agent": "probe",
       "via": "FORCE_PROMPT_CACHING_5M"
+    },
+    {
+      "key": "subagentPromptCacheTtl",
+      "value": "1h",
+      "status": "overridden",
+      "layer": "env",
+      "file": "session.json:shell_env",
+      "scope": "agent",
+      "agent": "probe",
+      "via": "CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL"
     },
     {
       "key": "subagentPromptCacheTtl",

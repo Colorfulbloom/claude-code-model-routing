@@ -4,7 +4,7 @@
     "claude_version": "2.1.302",
     "date": "2026-10-29"
   },
-  "doc_url": "https://code.claude.com/docs/en/sub-agents#frontmatter-reference",
+  "doc_url": "https://code.claude.com/docs/en/sub-agents#supported-frontmatter-fields",
   "fields": [
     {
       "field": "name",

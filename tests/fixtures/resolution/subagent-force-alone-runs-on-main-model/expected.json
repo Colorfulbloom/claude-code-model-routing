@@ -1,0 +1,33 @@
+{
+  "fixture": "subagent-force-alone-runs-on-main-model",
+  "rule_ids": [
+    "subagent-model-force-alone",
+    "subagent-model-order"
+  ],
+  "confidence": "documented",
+  "source": "https://code.claude.com/docs/en/sub-agents#run-every-subagent-on-one-model",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "model",
+      "value": "claude-sonnet-5-5",
+      "status": "default",
+      "layer": "default",
+      "scope": "agent",
+      "agent": "probe",
+      "rule_id": "subagent-model-force-alone",
+      "reason": "CLAUDE_CODE_SUBAGENT_MODEL_FORCE is on and CLAUDE_CODE_SUBAGENT_MODEL isn't set, so probe runs on the main session's model. Claude Code ignores the model in the agent's frontmatter, and Claude can't pass one at dispatch."
+    },
+    {
+      "key": "model",
+      "value": "claude-haiku-5-5",
+      "status": "ignored",
+      "layer": "agent",
+      "file": "config/agents/probe.md",
+      "scope": "agent",
+      "agent": "probe",
+      "rule_id": "subagent-model-force-alone",
+      "reason": "CLAUDE_CODE_SUBAGENT_MODEL_FORCE is on and CLAUDE_CODE_SUBAGENT_MODEL isn't set, so probe runs on the main session's model. Claude Code ignores the model in the agent's frontmatter, and Claude can't pass one at dispatch."
+    }
+  ]
+}
