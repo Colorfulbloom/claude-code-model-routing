@@ -601,17 +601,18 @@ test("trail: a rule with no quotes and no experiment leaves those parts out", ()
   assert.equal(sub(item, "ru-x"), undefined);
 });
 
-test("trail: a link only goes in when it starts with https://", () => {
+test("trail: a link only goes in when it passes the external pattern", () => {
   const rule = ruleRec("bad", {
     reference_url: "javascript:alert(1)",
     quotes: [{ doc_url: "http://code.claude.com/x", quote: "q" }, { doc_url: "//evil.example/x", quote: "q2" },
-      { doc_url: "https://ok.example/a\nb", quote: "q3" }],
+      { doc_url: "https://ok.example/a\nb", quote: "q3" }, { doc_url: "https://user:pw@evil.example/x", quote: "q4" },
+      { doc_url: "https://ok.example\\@evil.example/x", quote: "q5" }],
     experiment: "experiments/x.json", experiment_url: "/etc/passwd",
   });
   const { root } = mount(trailPayload([E({ rule_ids: ["bad"] })], [rule]), "@main", "effortLevel");
   const item = byClass(cardOf(root, "Rules behind this value"), "ru")[0];
   const links = item.find((n) => n.tagName === "a");
-  assert.equal(links.length, 5);
+  assert.equal(links.length, 7);
   for (const a of links) {
     assert.equal(a.getAttribute("href"), null);
     assert.equal(a.getAttribute("target"), null);

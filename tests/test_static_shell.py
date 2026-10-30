@@ -5,6 +5,7 @@ never on the real ~/.claude) and asks it for every file under static/, to check 
 Content-Security-Policy header.
 """
 import html.parser
+import json
 import os
 import re
 import unittest
@@ -40,6 +41,37 @@ def strip_js_comments(text):
     text = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
     text = re.sub(r"(?m)^\s*//.*$", "", text)
     return re.sub(r"(?m)\s//\s.*$", "", text)
+
+
+EXTERNAL_LITERAL = re.compile(r"const EXTERNAL_URL = /(.*)/;")
+# Ways to put a URL into the page without h(), externalLink or setLocalHref, or to name a scheme in code.
+LINK_BYPASS_OUTSIDE_H = (
+    r"\.setAttribute\(\s*[\"'](?:href|src|action|formaction|xlink:href)[\"']",  # a link attribute by name
+    r"\.setAttribute\(\s*[^\"'\s]",  # a name worked out at run time, or a template string
+    r"\.setAttribute\(\s*[\"'][^\"']*[\"']\s*\+",  # a name built by joining strings
+    r"(?i)\.setAttributeNS\(",
+    r"(?i)\[\s*[\"'`]setAttribute",
+)
+LINK_BYPASS_EVERYWHERE = (
+    r"\.(?:href|src|action|formAction)\s*=(?!=)",
+    r"\[\s*[\"'`](?:href|src|action|formAction)[\"'`]\s*\]\s*=(?!=)",
+    r"(?i)\bhttps?\b",  # any scheme, whichever way its slashes are written
+    r"(?i)\\x2f|\\u002f|\\u\{0*2f\}",  # an escaped slash spelled as a code
+)
+
+
+def link_bypasses(text, name):
+    """Return the patterns text breaks. In h.js the one EXTERNAL_URL literal and its helpers are exempt."""
+    if name == "h.js":
+        text = EXTERNAL_LITERAL.sub("", text, count=1)
+    patterns = LINK_BYPASS_EVERYWHERE if name == "h.js" else LINK_BYPASS_EVERYWHERE + LINK_BYPASS_OUTSIDE_H
+    return [pattern for pattern in patterns if re.search(pattern, text)]
+
+
+def js_function(text, name):
+    """Return the body of a top-level `export function name`, up to its closing brace at column 0."""
+    start = text.index("export function %s(" % name)
+    return text[start:text.index("\n}\n", start)]
 
 
 def split_top(text, sep):
@@ -221,6 +253,82 @@ class JsModules(unittest.TestCase):
             self.assertIsNotNone(pattern.match(value), repr(value))
         self.assertNotIn("UNSAFE_URL", text)
         self.assertRegex(text, r"URL_ATTRS\.has\(name\) && !SAFE_URL\.test\(")
+
+    def external_url(self):
+        # The EXTERNAL_URL literal as a Python pattern, with the same "$" change as above.
+        text = strip_js_comments((JS_DIR / "h.js").read_text(encoding="utf-8"))
+        found = EXTERNAL_LITERAL.findall(text)
+        self.assertEqual(len(found), 1, "h.js needs one EXTERNAL_URL literal")
+        self.assertTrue(found[0].endswith("$"), found[0])
+        return re.compile(found[0][:-1] + r"\Z")
+
+    def test_the_external_link_pattern_refuses_hostile_values(self):
+        pattern = self.external_url()
+        refused = [
+            "", "x", "#/x", "/api/x", " https://a.example/", "https://", "https:/a.example", "https:a.example",
+            "HTTPS://a.example/",
+            "http://a.example/", "ftp://a.example/", "file:///etc/passwd", "data:text/html,x",
+            "javascript:alert(1)", "JaVaScRiPt:alert(1)", "java\tscript:alert(1)", "https://a.example/javascript:x y",
+            "//a.example/x", "/\\a.example/x", "\\\\a.example\\x",
+            "https://user@a.example/", "https://user:pw@a.example/", "https://a.example@b.example/",
+            "https://a.example:pw@b.example/", "https://a.example\\@b.example/", "https://@a.example/",
+            "https://a.example\\x", "https://a.example/\\x", "https://-a.example/", "https://a.example:port/",
+            "https://a.example/\tx", "https://a.\texample/", "https://a.example/\nx", "https://a.example/\rx",
+            "https://a.example/x\n", "https://a.example/\x00", "https://a.example/\x1f", "https://a.example/\x7f",
+            "https://a.example/ x", "https://a.example/ x",
+        ]
+        allowed = [
+            "https://code.claude.com/docs/en/settings-reference#maxeffortlevel",
+            "https://github.com/Colorfulbloom/claude-code-model-routing/blob/main/docs/rules-reference.md#a-rule",
+            "https://a.example", "https://a.example:8443/x?y=z#w", "https://a.example/@x",
+        ]
+        for value in refused:
+            self.assertIsNone(pattern.match(value), repr(value))
+        for value in allowed:
+            self.assertIsNotNone(pattern.match(value), repr(value))
+
+    def test_every_link_the_server_sends_passes_the_external_pattern(self):
+        pattern = self.external_url()
+        rules = json.loads((REPO / "dashboard" / "rules.json").read_text(encoding="utf-8"))
+        urls = {quote["doc_url"] for item in rules["rules"] + rules["models"] for quote in item.get("quotes", [])}
+        api = (REPO / "dashboard" / "api_settings.py").read_text(encoding="utf-8")
+        urls.update(re.findall(r"REPO_BLOB = \"([^\"]+)\"", api))
+        self.assertGreater(len(urls), 10)
+        for url in sorted(urls):
+            self.assertIsNotNone(pattern.match(url), url)
+
+    def test_link_paths_go_through_the_two_helpers_in_h_js(self):
+        text = strip_js_comments((JS_DIR / "h.js").read_text(encoding="utf-8"))
+        external = js_function(text, "externalLink")
+        local = js_function(text, "setLocalHref")
+        self.assertRegex(external, r"!EXTERNAL_URL\.test\(url\)\) return link;")
+        self.assertRegex(external, r"typeof url !== \"string\"")
+        self.assertRegex(local, r"if \(SAFE_URL\.test\(")
+        self.assertEqual(external.count('setAttribute("href"'), 1)
+        self.assertEqual(local.count('setAttribute("href"'), 1)
+        self.assertEqual(text.count('setAttribute("href"'), 2, "h.js sets href only in the two helpers")
+        self.assertEqual(text.count("EXTERNAL_URL.test("), 1, "only externalLink runs EXTERNAL_URL")
+        self.assertEqual(text.count("EXTERNAL_URL"), 2, "the literal and its one use")
+
+    def test_no_file_gets_around_the_link_helpers(self):
+        for path in sorted(JS_DIR.rglob("*.js")):
+            text = strip_js_comments(path.read_text(encoding="utf-8")).replace(SVG_NAMESPACE, "")
+            self.assertEqual(link_bypasses(text, path.name), [], path.name)
+
+    def test_the_link_check_catches_each_bypass(self):
+        # Each of these must fail the check above, in any file that is not h.js.
+        bypasses = [
+            'link.setAttribute("href", url);', "link.setAttribute('href', url);", "link.setAttribute(`href`, url);",
+            'link.setAttribute( "href", url);', 'link.setAttribute("src", url);', 'link.setAttribute("xlink:href", url);',
+            'link.setAttribute("hr" + "ef", url);', "link.setAttribute(name, url);",
+            'link.setAttributeNS(null, "href", url);', 'link["setAttribute"]("href", url);',
+            "link.href = url;", 'link["href"] = url;', "const u = /^https:\\/\\/x/;", "const u = /^https:\\x2f\\x2f/;",
+            'const u = "https:\\u002f\\u002fx";', 'const u = "https:" + "//x";', 'const u = "HTTP" + ":";',
+            'const u = "a\\/\\x2f";',
+        ]
+        for line in bypasses:
+            self.assertNotEqual(link_bypasses(line, "trail.js"), [], line)
+        self.assertEqual(link_bypasses('link.setAttribute("aria-label", word);', "trail.js"), [])
 
     def test_references_stay_local(self):
         for path in sorted(JS_DIR.rglob("*.js")):

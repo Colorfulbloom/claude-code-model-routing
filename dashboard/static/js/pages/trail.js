@@ -5,9 +5,9 @@
 //
 // The panel works from the server's rows, entries and rules, not from any tile, so it opens for any row,
 // agents included. Every value, path and quote comes from the server as data, so it goes in as text through
-// h.js and renderText, never as markup. A link goes in only when it starts with https:// (see extLink).
+// h.js and renderText, never as markup. A link to another site goes through externalLink in h.js.
 
-import { h, clear } from "../h.js";
+import { h, clear, externalLink } from "../h.js";
 import { t, renderText, fmtTime } from "../format.js";
 import { MAIN_KEY } from "../router.js";
 import { card, chip } from "../components.js";
@@ -15,7 +15,6 @@ import {
   renderSettingsBody, valueText, valueString, sourceText, layerText, settingWord, winnerOf, returnFocusTo,
 } from "./settings.js";
 
-const EXTERNAL = /^https:\/\/[^\s\x00-\x1f\x7f]+$/;
 const LOST = ["overridden", "ignored", "invalid"]; // the statuses that did not count
 const CONFIDENCE_ORDER = ["tested", "documented", "assumed"];
 
@@ -37,19 +36,8 @@ function winnerFor(payload, agent, setting) {
 
 // ---------------------------------------------------------------- pieces
 
-// A link to a page outside the dashboard. h.js only lets local values into an href, so the value is set here,
-// and only when it starts with https://. Anything else gives text with no link.
-function extLink(attrs, url, label) {
-  const link = h("a", attrs, label);
-  if (typeof url === "string" && EXTERNAL.test(url)) {
-    link.setAttribute("href", url);
-    link.setAttribute("target", "_blank");
-    link.setAttribute("rel", "noopener noreferrer");
-  }
-  return link;
-}
-
-const withoutScheme = (url) => String(url).replace(/^https:\/\//, "");
+// A doc link shows its address without the scheme.
+const withoutScheme = (url) => String(url).replace(/^[a-z]+:[\\/]+/i, "");
 
 // The place a value came from, with its layer first: "Project settings, <source>".
 function layeredSource(entry, payload) {
@@ -141,7 +129,7 @@ function quotesBlock(rule) {
   return h("details", { class: "qd" },
     h("summary", null, t("quotes_toggle", { n: quotes.length })),
     h("ul", { class: "ru-q" }, quotes.map((q) => h("li", null,
-      extLink({}, q.doc_url, withoutScheme(q.doc_url)),
+      externalLink({}, q.doc_url, withoutScheme(q.doc_url)),
       // The docs mark code with backticks. The screen shows the words alone.
       h("q", null, renderText(String(q.quote).replace(/`/g, "")))))));
 }
@@ -151,7 +139,7 @@ function ruleItem(rule) {
   const verified = rule.verified_on || {};
   return h("li", { class: ["ru", "ru-" + confidence] },
     h("div", { class: "ru-top" },
-      extLink({ class: "ru-id", "aria-label": t("rule_link_sr", { rule_id: rule.rule_id }) }, rule.reference_url, rule.rule_id),
+      externalLink({ class: "ru-id", "aria-label": t("rule_link_sr", { rule_id: rule.rule_id }) }, rule.reference_url, rule.rule_id),
       h("span", { class: ["cf", "cf-" + confidence] }, t("conf_" + confidence))),
     confidence === "assumed" ? h("p", { class: "ru-def" }, t("assumed_def")) : null,
     h("p", { class: "ru-ck" }, t("checked", {
@@ -162,7 +150,7 @@ function ruleItem(rule) {
     quotesBlock(rule),
     rule.experiment ? h("p", { class: "ru-x" },
       h("span", { class: "ru-l" }, t("experiment")),
-      extLink({}, rule.experiment_url, "dashboard/" + rule.experiment)) : null);
+      externalLink({}, rule.experiment_url, "dashboard/" + rule.experiment)) : null);
 }
 
 function rulesCard(payload, row) {

@@ -9,6 +9,9 @@ const URL_ATTRS = new Set(["href", "src", "action", "formaction", "xlink:href"])
 // reads the value, so "/\t/host" would turn into "//host". Any other value is refused and the attribute is
 // dropped, so the element is built without it.
 const SAFE_URL = /^(?:#|\/(?![\/\\]))[^\x00-\x1f\x7f]*$/;
+// The one way to a page outside the dashboard, used only by externalLink. https only, with a plain host and
+// an optional port. No credentials before the host, no whitespace, control character or backslash anywhere.
+const EXTERNAL_URL = /^https:\/\/[a-zA-Z0-9](?:[a-zA-Z0-9.-]*[a-zA-Z0-9])?(?::[0-9]+)?(?:[\/?#][^\s\\\x00-\x1f\x7f]*)?$/;
 
 function classText(value) {
   if (Array.isArray(value)) return value.filter(Boolean).join(" ");
@@ -71,6 +74,23 @@ export function s(tag, attrs, ...children) {
   applyAttrs(el, attrs);
   appendAll(el, children);
   return el;
+}
+
+// An <a> to a page outside the dashboard, opened in a new tab with no opener or referrer. A value that fails
+// EXTERNAL_URL gives the same element with no href, so the label still shows as text.
+export function externalLink(attrs, url, label) {
+  const link = h("a", attrs, label);
+  if (typeof url !== "string" || !EXTERNAL_URL.test(url)) return link;
+  link.setAttribute("href", url);
+  link.setAttribute("target", "_blank");
+  link.setAttribute("rel", "noopener noreferrer");
+  return link;
+}
+
+// Change the href of an element that already exists. The value passes SAFE_URL, as in h(), or the href goes.
+export function setLocalHref(el, value) {
+  if (SAFE_URL.test(String(value))) el.setAttribute("href", String(value));
+  else el.removeAttribute("href");
 }
 
 export function frag(...children) {
