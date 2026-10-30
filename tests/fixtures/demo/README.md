@@ -16,6 +16,8 @@ The build copies `config/`, `projects/` and `session.json` into `out_dir`, adds 
 
 The paths committed in `config/routing-dashboard.json` are relative to the set. The build makes them absolute under `out_dir`.
 
+Serve a built set with `/usr/bin/python3 dashboard/server.py --fixture <out_dir>`. On the committed folder, `--fixture tests/fixtures/demo` shows every project as Folder not found, because a relative path resolves against `config/`, the folder that holds `routing-dashboard.json`, not against the set.
+
 ## Planted cases
 
 Each row is a case planted on purpose, with where it lives and the screen it drives.

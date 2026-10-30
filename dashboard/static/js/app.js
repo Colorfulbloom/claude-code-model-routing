@@ -1,0 +1,272 @@
+// Boot and wiring. Load the strings, then /api/projects, then /api/usage, /api/settings, /api/rules and
+// /api/files in parallel. Each page renders again when its own data arrives, and a route the server
+// does not answer yet leaves that page's stub showing.
+//
+// Switching range fetches nothing. Switching project fetches that project's payloads once and keeps
+// them in memory. A network error or a 5xx is not kept: /api/projects, the project payloads, rules and files are
+// asked for again on the next route change or project change, and never on a range change. A 4xx stays,
+// because 404 is the normal answer for a route the server does not have yet.
+//
+// <html> gets data-rendered="1" when boot finishes, "error" if /api/projects failed ("0" if boot itself failed)
+// and data-ox="1" when the page scrolls sideways, for the end-to-end checks. A retry that recovers
+// /api/projects sets data-rendered back to "1".
+
+import { createApi } from "./api.js";
+import { setStrings, t, DEFAULT_RANGE } from "./format.js";
+import {
+  PAGES, ALL_KEY, parseHash, hashFor, sectionFor, navFor, showSection, onRouteChange,
+} from "./router.js";
+import { createShell } from "./shell.js";
+import * as overview from "./pages/overview.js";
+import * as agents from "./pages/agents.js";
+import * as agentDetail from "./pages/agent-detail.js";
+import * as models from "./pages/models.js";
+import * as sessions from "./pages/sessions.js";
+import * as sessionDetail from "./pages/session-detail.js";
+import * as settings from "./pages/settings.js";
+import * as trail from "./pages/trail.js";
+import * as attention from "./pages/attention.js";
+import * as files from "./pages/files.js";
+import * as rules from "./pages/rules.js";
+import * as allProjects from "./pages/all-projects.js";
+
+const MODULES = {
+  overview, agents, "agent-detail": agentDetail, models, sessions, "session-detail": sessionDetail,
+  settings, trail, attention, files, rules, "all-projects": allProjects,
+};
+
+// Which pages each payload feeds. The overview also shows the Needs attention card.
+const USAGE_PAGES = ["overview", "agents", "agent-detail", "models", "sessions", "session-detail", "all-projects"];
+const SETTINGS_PAGES = ["overview", "settings", "trail", "attention"];
+
+const root = document.documentElement;
+const api = createApi();
+const state = {
+  projects: [],
+  current: null,
+  version: null,
+  route: { name: "overview", params: {}, query: {} },
+  project: ALL_KEY,
+  range: DEFAULT_RANGE,
+  usage: new Map(),
+  settings: new Map(),
+  rules: null,
+  files: null,
+};
+const loading = new Map();
+let sections = {};
+let shell = null;
+
+// ---------------------------------------------------------------- state to page context
+
+function projectInfo() {
+  const known = state.projects.find((p) => p.key === state.project);
+  return { key: state.project, name: known ? known.name : t("all_projects"), state: known ? known.state : null };
+}
+
+function go(name, params, patch) {
+  const query = Object.assign({}, state.route.query, patch);
+  window.location.hash = hashFor(name, params, query);
+}
+
+// What a page module receives. data.* is null until that payload arrives, then { ok, status, data }.
+function context() {
+  return {
+    route: { name: state.route.name, params: state.route.params },
+    project: projectInfo(),
+    projects: state.projects,
+    range: state.range,
+    version: state.version,
+    data: {
+      usage: state.usage.get(state.project) || null,
+      settings: state.settings.get(state.project) || null,
+      rules: state.rules,
+      files: state.files,
+    },
+    hashFor: (name, params) => hashFor(name, params, state.route.query),
+    setRange: (range) => go(state.route.name, state.route.params, { range }),
+  };
+}
+
+// A rebuilt page head removes the range radio that held focus. Note the section it was in, then focus the
+// active radio of the rebuilt control in that section.
+function focusedRangeSection() {
+  let el = document.activeElement;
+  let inGroup = false;
+  while (el && el !== document.body) {
+    if (el.getAttribute && el.getAttribute("role") === "radiogroup") inGroup = true;
+    if (inGroup && el.getAttribute && el.getAttribute("data-page")) return el;
+    el = el.parentNode;
+  }
+  return null;
+}
+
+function renderPages(names) {
+  const keep = focusedRangeSection();
+  const ctx = context();
+  for (const name of names) {
+    try {
+      MODULES[name].render(sections[name], ctx);
+    } catch (err) {
+      console.error("page " + name + " failed to render", err);
+    }
+  }
+  if (keep && !keep.contains(document.activeElement)) {
+    const radio = keep.querySelector('[role="radio"][aria-checked="true"]');
+    if (radio) radio.focus();
+  }
+  measure();
+}
+
+function measure() {
+  root.setAttribute("data-ox", root.scrollWidth > root.clientWidth ? "1" : "0");
+}
+
+// ---------------------------------------------------------------- data
+
+// Asks for a project's two payloads once. Later calls return the same promise.
+function loadProject(key) {
+  if (loading.has(key)) return loading.get(key);
+  const done = Promise.all([
+    api.usage(key).then((res) => {
+      state.usage.set(key, res);
+      if (key === state.project) renderPages(USAGE_PAGES);
+    }),
+    api.settings(key).then((res) => {
+      state.settings.set(key, res);
+      if (key === state.project) renderPages(SETTINGS_PAGES);
+    }),
+  ]);
+  loading.set(key, done);
+  // A failed answer that the api did not keep (network error, 5xx) is asked for again next time.
+  done.then(() => { if (!api.hasProject(key) && loading.get(key) === done) loading.delete(key); });
+  return done;
+}
+
+// The api returns its kept promise when it has one, so a page already holding that answer is not drawn again.
+function loadShared() {
+  return Promise.all([
+    api.rules().then((res) => { if (state.rules !== res) { state.rules = res; renderPages(["rules"]); } }),
+    api.files().then((res) => { if (state.files !== res) { state.files = res; renderPages(["files"]); } }),
+  ]);
+}
+
+let projectsOk = false;
+let projectsRes = null;
+let projectsRetry = null;
+
+function readProjects(res) {
+  projectsRes = res;
+  projectsOk = Boolean(res.ok);
+  const body = res.ok && res.data && typeof res.data === "object" ? res.data : {};
+  const list = Array.isArray(body.projects) ? body.projects : [];
+  state.projects = list.filter((p) => p && typeof p.key === "string" && typeof p.name === "string");
+  state.current = typeof body.current === "string" ? body.current : null;
+  // Version, time zone and reader arrive in later tickets, so all three are optional.
+  const version = body.version;
+  state.version = typeof version === "string" ? version : (version && version.installed) || null;
+}
+
+// ---------------------------------------------------------------- routing
+
+function applyTheme(theme) {
+  if (theme) root.setAttribute("data-theme", theme);
+  else root.removeAttribute("data-theme");
+}
+
+function resolveProject(wanted) {
+  const keys = state.projects.map((p) => p.key);
+  if (wanted && (wanted === ALL_KEY || keys.includes(wanted))) return wanted;
+  if (state.current && keys.includes(state.current)) return state.current;
+  return keys.length ? keys[0] : ALL_KEY;
+}
+
+let started = false;
+
+// A failed /api/projects is asked for again, once at a time. When it recovers the page is drawn again from
+// the same address, so the switcher fills and data-rendered becomes "1".
+function retryProjects() {
+  if (projectsOk || projectsRetry) return;
+  projectsRetry = api.projects().then((res) => {
+    projectsRetry = null;
+    if (res === projectsRes) return;
+    readProjects(res);
+    if (!projectsOk) return;
+    root.setAttribute("data-rendered", "1");
+    handle(parseHash(window.location.hash), true);
+  });
+}
+
+// A route is its page and parameters, without the query. The same route in the same project is a range or
+// theme change, which fetches nothing.
+const routeKey = (route) => hashFor(route.name, route.params, {});
+
+function handle(route, force) {
+  let parsed = route;
+  if (!parsed.known) {
+    // An unknown route shows the overview. Rewrite the address without adding a history entry.
+    const hash = hashFor("overview", {}, parsed.query);
+    window.history.replaceState(null, "", hash);
+    parsed = parseHash(hash);
+  }
+  const previous = state.route.name;
+  const project = resolveProject(parsed.query.project);
+  const fetches = !started || force || routeKey(parsed) !== routeKey(state.route) || project !== state.project;
+  state.route = parsed;
+  state.project = project;
+  state.range = parsed.query.range || DEFAULT_RANGE;
+  applyTheme(parsed.query.theme);
+  document.title = t("tab_title", { project: projectInfo().name });
+  shell.update({
+    projects: state.projects, project: state.project, nav: navFor(parsed), query: parsed.query, version: state.version,
+  });
+  showSection(sections, sectionFor(parsed, state.project));
+  if (fetches) {
+    loadProject(state.project);
+    if (started && !force) {
+      retryProjects();
+      loadShared();
+    }
+  }
+  renderPages(PAGES);
+  if (started && !force && previous !== parsed.name) window.scrollTo(0, 0);
+}
+
+// ---------------------------------------------------------------- boot
+
+function collectSections() {
+  const found = {};
+  document.querySelectorAll("main [data-page]").forEach((el) => { found[el.getAttribute("data-page")] = el; });
+  for (const name of PAGES) {
+    if (!found[name]) throw new Error("index.html has no section for " + name);
+  }
+  return found;
+}
+
+async function boot() {
+  const strings = await api.strings();
+  if (!strings.ok) throw new Error("strings.json did not load");
+  setStrings(strings.data);
+  readProjects(await api.projects());
+
+  sections = collectSections();
+  shell = createShell({
+    sidebar: document.getElementById("sidebar"),
+    topbar: document.getElementById("topbar"),
+    onProject: (key) => go(state.route.name, state.route.params, { project: key }),
+  });
+  onRouteChange(handle);
+  handle(parseHash(window.location.hash));
+  started = true;
+
+  await Promise.all([loadProject(state.project), loadShared()]);
+  measure();
+  // Only /api/projects decides this. The other routes 404 today, and a held-back one must not block it.
+  root.setAttribute("data-rendered", projectsOk ? "1" : "error");
+}
+
+window.addEventListener("resize", measure);
+boot().catch((err) => {
+  console.error("the dashboard could not start", err);
+  root.setAttribute("data-rendered", "0");
+});
