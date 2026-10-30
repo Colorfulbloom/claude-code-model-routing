@@ -1,9 +1,9 @@
 ### F-ce69 Phase 1 data path: shared helpers, field lines, collectors, masking, resolver on collectors (#32-#36)
-status: in-progress
+status: shipped
 kind: code
 dates: 2026-10-29 .. 2026-10-29
 refs:
-  commit: pending (branch feature/phase1-data-path)
+  commit: a54765ae4eeaecf0ac9fcdf9fb71cb6e1bb237ca (branch feature/phase1-data-path, merged into development)
 summary: Issues #32 to #36 (epic #16). Installer frontmatter helpers moved to agent_md.py; the strict reader returns field lines; dashboard/collect.py reads settings, env, agents and rules files with path, line and masking; resolve() works only on collected data, carries lines, shows ~/ paths and display names, and adds settingsFile rows; harness raw_settings plus two records (invalid settings JSON, empty CLAUDE_CODE_EFFORT_LEVEL). Facts T-735d, T-6b2f; refreshed T-7629, D-1534.
 decisions:
 - agent_md.py sits at the repo root beside install.py, because the installer runs from the repo and the hooks keep their own code; the strict reader stays in dashboard/agent_frontmatter.py.
