@@ -35,9 +35,10 @@ SESSION_TOKEN = "{session}"
 LOG_LINE = re.compile(r"^(\S+) (['\"])(/.*)\2 (\S+)$")
 
 # Every status cell and pill needs its mark glyph and its word (components.js chip and pinPill, app.css .st).
+# The Read pill on Files read is a file state, not one of the seven statuses, and app.css hides its mark (.st-read .mk), so it is left out.
 STATUS_BAD = """(() => {
   const bad = [];
-  document.querySelectorAll('main .st').forEach((el) => {
+  document.querySelectorAll('main .st:not(.st-read)').forEach((el) => {
     const word = (el.textContent || '').trim();
     const label = '"' + word + '" in ' + el.className;
     const mk = el.querySelector(':scope > .mk');

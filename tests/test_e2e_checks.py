@@ -9,9 +9,13 @@ import unittest
 
 import helpers
 import test_pages_e2e as pages
+import test_settings_e2e as settings_e2e
 
 INDEX = os.path.join(helpers.REPO, "dashboard", "static", "index.html")
+STRINGS_FILE = os.path.join(helpers.REPO, "dashboard", "static", "strings.json")
 ROUTE_KEYS = {"hash", "texts"}
+with open(STRINGS_FILE, encoding="utf-8") as _fh:
+    STRINGS = json.load(_fh)
 
 
 def data_pages():
@@ -54,9 +58,24 @@ class ChecksFiles(unittest.TestCase):
         detail = [r for r in routes if r[0] == "session-detail"]
         self.assertEqual([r[1] for r in detail], ["#/sessions/abc-123"])
         self.assertIn("Tidewater reporting", detail[0][2])
-        self.assertEqual(sum(1 for r in routes if r[0] in ("agent-detail", "trail")), 5)
+        self.assertEqual(sum(1 for r in routes if r[0] in ("agent-detail", "trail")), 6)
         self.assertEqual(len(routes) * len(pages.THEMES) * len(pages.WIDTHS), 84)
         self.assertFalse([r for r in routes if pages.SESSION_TOKEN in r[1]])
+
+    def test_settings_and_trail_texts_avoid_the_forms_innertext_changes(self):
+        """The sweep reads innerText, which keeps line breaks and applies text-transform. Check what needs no browser."""
+        uppercased = {t.lower() for t in (STRINGS[k] for k in ("f_model", "f_effort", "f_cache", "f_compact", "cap", "experiment"))}
+        for name in ("settings", "trail"):
+            with open(os.path.join(pages.CHECKS_DIR, name + ".json"), encoding="utf-8") as fh:
+                data = json.load(fh)
+            for route in data["routes"]:
+                for text in route["texts"]:
+                    where = (name, route["hash"], text)
+                    self.assertEqual(text, text.strip(), where)
+                    self.assertNotIn("\n", text, where)
+                    self.assertNotIn("  ", text, where)
+                    self.assertNotIn("{", text, where)  # an unfilled slot
+                    self.assertNotIn(text.lower(), uppercased, where)  # .tl-l, .ru-l and .meta dt show these in capitals
 
 
 class Helpers(unittest.TestCase):
@@ -91,7 +110,8 @@ class Helpers(unittest.TestCase):
         self.assertEqual(pages.screenshot_name("agent-detail", "#/agents/@main", 375, "dark"), "agent-detail-agents-main-375-dark.png")
 
     def test_check_scripts_are_expressions(self):
-        for script in (pages.STATUS_BAD, pages.STACK_BAD, pages.LABEL_BAD, pages.HEAD_HEIGHTS):
+        for script in (pages.STATUS_BAD, pages.STACK_BAD, pages.LABEL_BAD, pages.HEAD_HEIGHTS,
+                       settings_e2e.TEXT_CONTRAST_BAD, settings_e2e.ASSUMED_CHECK):
             self.assertTrue(script.startswith("(() =>") and script.endswith("})()"))
 
     def test_label_script_fills_one_page_name(self):
@@ -106,6 +126,7 @@ class Gating(unittest.TestCase):
     @unittest.skipIf(os.environ.get("MR_E2E") == "1", "with MR_E2E=1 the browser class runs")
     def test_browser_class_skips_without_the_opt_in(self):
         self.assertTrue(pages.PagesE2E.__unittest_skip__)
+        self.assertTrue(settings_e2e.SettingsE2E.__unittest_skip__)
 
 
 if __name__ == "__main__":
