@@ -30,6 +30,7 @@
     "service_tier": {"standard": 1},
     "inference_geo": {
       "global": 1,
+      "not_available": 1,
       "us": {
         "multiplier": 1.1,
         "models": [
