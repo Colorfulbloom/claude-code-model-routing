@@ -24,6 +24,32 @@
    default fg on its bg    15.31  pass    default fg on its bg    13.90  pass
    unknown fg on its bg     6.67  pass    unknown fg on its bg     7.98  pass
    Every status fg also passes 4.5:1 on bg and surface (lowest 6.11 light, 7.23 dark).
+   Shell and chart pairs (same method, computed by tests/test_tokens_contrast.py).
+   Light                                         Dark
+   text on page-bg             15.31  pass       text on page-bg             13.90  pass
+   text on card-bg             16.56  pass       text on card-bg             15.33  pass
+   text on sidebar-bg          15.31  pass       text on sidebar-bg          13.90  pass
+   text-muted on page-bg        6.17  pass       text-muted on page-bg        7.23  pass
+   text-muted on card-bg        6.67  pass       text-muted on card-bg        7.98  pass
+   text-muted on sidebar-bg     6.17  pass       text-muted on sidebar-bg     7.23  pass
+   text on nav-active-bg       13.20  pass       text on nav-active-bg       10.58  pass
+   accent on nav-active-bg      5.16  pass       accent on nav-active-bg      6.07  pass
+   text on nav-hover-bg        13.88  pass       text on nav-hover-bg        11.98  pass
+   text-muted on nav-hover-bg   5.59  pass       text-muted on nav-hover-bg   6.23  pass
+   cat-1 on card-bg             4.42  pass       cat-1 on card-bg             5.08  pass
+   cat-2 on card-bg             3.06  pass       cat-2 on card-bg             5.43  pass
+   cat-3 on card-bg             3.07  pass       cat-3 on card-bg             6.02  pass
+   cat-4 on card-bg             3.08  pass       cat-4 on card-bg             4.68  pass
+   cat-1 on page-bg             4.08  pass       cat-1 on page-bg             4.60  pass
+   cat-2 on page-bg             2.83  below 3    cat-2 on page-bg             4.92  pass
+   cat-3 on page-bg             2.84  below 3    cat-3 on page-bg             5.45  pass
+   cat-4 on page-bg             2.85  below 3    cat-4 on page-bg             4.25  pass
+   rk-1 on card-bg              1.54  below 3    rk-1 on card-bg              3.43  pass
+   rk-2 on card-bg              2.50  below 3    rk-2 on card-bg              5.08  pass
+   rk-3 on card-bg              4.42  pass       rk-3 on card-bg              8.76  pass
+   rk-4 on card-bg              9.91  pass       rk-4 on card-bg             13.96  pass
+   Accepted exception, non-text, light only (owner, October 30): --rk-1 1.54 and --rk-2 2.50 on the white card, under the 3:1 floor. Holds only while every stacked bar keeps legend totals or a kinds table, and a visible start edge.
+   Light --cat-2 to --cat-4 reach 3:1 on the card only (2.83, 2.84 and 2.85 on page-bg), so series colors stay on cards.
    * non-text, 3:1 floor. "border" is a decorative hairline, never the only boundary of a control. */
 
 :root {
@@ -51,6 +77,15 @@
   --status-default-mark: "\25C7"; --status-default-fg: #1b1f24; --status-default-bg: #f5f6f8;         /* hollow diamond */
   --status-unknown-mark: "?"; --status-unknown-fg: #555d67; --status-unknown-bg: #ffffff;             /* question mark, dashed border */
   --status-unknown-border: dashed;
+
+  /* Shell and chart tokens (round 2 and round 3). */
+  --page-bg: var(--surface); --card-bg: var(--bg); --sidebar-bg: var(--surface);
+  --nav-active-bg: #dfe6f2; --nav-hover-bg: #eaebed;
+  --shadow-card: 0 1px 2px rgba(27,31,36,.06), 0 4px 14px rgba(27,31,36,.06);
+  --chart-track: var(--surface-2); --chart-gap: var(--bg);
+  --cat-1: #2a78d6; --cat-2: #04a873; --cat-3: #c78600; --cat-4: #dc7099;
+  --rk-1: #b7d3f6; --rk-2: #6da7ec; --rk-3: #2a78d6; --rk-4: #104281;
+  --chart-grid: var(--border); --chart-axis: var(--text-muted);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -66,6 +101,13 @@
     --status-lowered-fg: #c9b0f0; --status-lowered-bg: #2c2240;
     --status-default-fg: #e8eaed; --status-default-bg: #1a1e23;
     --status-unknown-fg: #a4abb4; --status-unknown-bg: #111417;
+    --page-bg: var(--surface); --card-bg: var(--bg); --sidebar-bg: var(--surface);
+    --nav-active-bg: #293342; --nav-hover-bg: #262a2f;
+    --shadow-card: 0 1px 2px rgba(0,0,0,.5), 0 6px 18px rgba(0,0,0,.35);
+    --chart-track: var(--surface-2); --chart-gap: var(--bg);
+    --cat-1: #3987e5; --cat-2: #199e70; --cat-3: #c98500; --cat-4: #d55181;
+    --rk-1: #256abf; --rk-2: #3987e5; --rk-3: #86b6ef; --rk-4: #cde2fb;
+    --chart-grid: var(--border); --chart-axis: var(--text-muted);
   }
 }
 
@@ -81,6 +123,13 @@
   --status-lowered-fg: #c9b0f0; --status-lowered-bg: #2c2240;
   --status-default-fg: #e8eaed; --status-default-bg: #1a1e23;
   --status-unknown-fg: #a4abb4; --status-unknown-bg: #111417;
+  --page-bg: var(--surface); --card-bg: var(--bg); --sidebar-bg: var(--surface);
+  --nav-active-bg: #293342; --nav-hover-bg: #262a2f;
+  --shadow-card: 0 1px 2px rgba(0,0,0,.5), 0 6px 18px rgba(0,0,0,.35);
+  --chart-track: var(--surface-2); --chart-gap: var(--bg);
+  --cat-1: #3987e5; --cat-2: #199e70; --cat-3: #c98500; --cat-4: #d55181;
+  --rk-1: #256abf; --rk-2: #3987e5; --rk-3: #86b6ef; --rk-4: #cde2fb;
+  --chart-grid: var(--border); --chart-axis: var(--text-muted);
 }
 
 body { background: var(--bg); color: var(--text); font: var(--text-md)/var(--leading-body) var(--font-sans); }
