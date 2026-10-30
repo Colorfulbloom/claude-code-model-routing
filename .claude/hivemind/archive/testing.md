@@ -24,3 +24,15 @@ created: 2026-10-21
 last_used: 2026-10-21
 uses: 1
 retired: 2026-10-29 retired-by-lead
+
+### T-735d install.py imports agent_md.py from its own folder
+fact: The installer's frontmatter helpers live in agent_md.py at the repo root; install.py puts its folder on sys.path, and snapshot_source copies the module.
+check: grep -n "agent_md" install.py tests/helpers.py
+evidence: install.py, tests/helpers.py
+fp: 00b6816b8d22
+as_of: 84354c6 2026-10-29
+author: deep-reasoner
+created: 2026-10-29
+last_used: 2026-10-29
+uses: 0
+retired: 2026-10-30 retired-by-lead
