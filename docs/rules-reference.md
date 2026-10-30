@@ -329,7 +329,7 @@ Quotes:
 
 Reason:
 
-> PENDING-P2 {value} in {file} is replaced for {model} by that file's per-model cap.
+> {file} sets a top-level maxEffortLevel of {value}, but the same settings source also sets a modelSettings cap for {model}. That entry replaces this one for {model} only.
 
 Quotes:
 

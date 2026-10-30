@@ -1207,9 +1207,11 @@ class PerModelCapReplacesTopLevelTests(ResolveCase):
         self.assertEqual(top["status"], "overridden")
         self.assertEqual(top["rule_id"], "max-effort-level-replaced-in-file")
         self.assertIn("max-effort-level-replaced-in-file", top["rule_ids"])
-        rule = next(r for r in RULES["rules"] if r["rule_id"] == "max-effort-level-replaced-in-file")
-        self.assertEqual(top["reason"], rule["reason"].format(
-            value="low", file=self.PROJECT, model="Sonnet 5.5"))
+        self.assertEqual(top["model"], "claude-sonnet-5-5")
+        self.assertEqual(top["reason"], (
+            "%s sets a top-level maxEffortLevel of low, but the same settings source also "
+            "sets a modelSettings cap for Sonnet 5.5. That entry replaces this one for "
+            "Sonnet 5.5 only." % self.PROJECT))
         self.assertEqual((effort["status"], effort["value"]), ("in_effect", "xhigh"))
 
     def test_a_cap_in_a_second_file_still_wins_as_the_lowest(self):
