@@ -34,6 +34,14 @@ reader does not know is kept as read, never dropped.
 read_frontmatter returns (fields, errors). A value is a string, a list of
 strings, a dict of strings, or None for a key with nothing after it. Numbers and
 booleans stay strings, because the reader does not interpret them.
+
+read_frontmatter_lines returns (fields, errors, lines), where fields and errors
+are what read_frontmatter returns. lines maps a field path to its 1-based line
+number, counting the opening fence as line 1, the same count the error messages
+use. A top-level field's path is its key ("model"). A key inside a block map
+adds a dotted path ("experimental.cacheTtl"). A block list or a flow list gives
+only the line of its key. A field the reader dropped because of an error has no
+entry.
 """
 import json
 import os
@@ -195,20 +203,31 @@ def _indent_of(line):
 
 def read_frontmatter(text):
     """Return (fields, errors). Errors read "line N: <kind>"."""
+    fields, errors, _ = read_frontmatter_lines(text)
+    return fields, errors
+
+
+def read_frontmatter_lines(text):
+    """Return (fields, errors, lines). lines maps a field path to its 1-based line.
+
+    A nested key has a dotted path, such as "experimental.cacheTtl". A list gives
+    the line of its key only. Only a path present in fields has an entry.
+    """
     fields = {}
     errors = []
+    field_lines = {}
     if not isinstance(text, str):
-        return fields, ["line 1: not text"]
+        return fields, ["line 1: not text"], field_lines
     lines = text.replace("\r\n", "\n").replace("\r", "\n").split("\n")
     if lines[0].rstrip() != "---":
-        return fields, ["line 1: missing opening fence"]
+        return fields, ["line 1: missing opening fence"], field_lines
     close = None
     for n in range(1, len(lines)):
         if lines[n].rstrip() == "---":
             close = n
             break
     if close is None:
-        return fields, ["line 1: missing closing fence"]
+        return fields, ["line 1: missing closing fence"], field_lines
 
     def err(n, kind):
         errors.append("line %d: %s" % (n + 1, kind))
@@ -265,6 +284,7 @@ def read_frontmatter(text):
                     i += 1
             if not failed and not has_dup:
                 fields[key] = value
+                field_lines[key] = n + 1
             continue
         # Empty value: a block list, a block map, or nothing.
         block = []
@@ -280,15 +300,23 @@ def read_frontmatter(text):
         if not block:
             if not has_dup:
                 fields[key] = None
+                field_lines[key] = n + 1
             continue
-        value, bad = _parse_block(block, err)
+        sub_lines = {}
+        value, bad = _parse_block(block, err, sub_lines)
         if not bad and not has_dup:
             fields[key] = value
-    return fields, errors
+            field_lines[key] = n + 1
+            for sub, sub_n in sub_lines.items():
+                field_lines["%s.%s" % (key, sub)] = sub_n
+    return fields, errors, field_lines
 
 
-def _parse_block(block, err):
-    """Parse the indented lines under an empty value. Returns (value, bad)."""
+def _parse_block(block, err, sub_lines=None):
+    """Parse the indented lines under an empty value. Returns (value, bad).
+
+    For a block map, sub_lines (when given) gets each nested key's 1-based line.
+    """
     first_n, first = block[0]
     if "\t" in first[:len(first) - len(first.lstrip(" \t"))]:
         err(first_n, "tab in an indent")
@@ -348,12 +376,17 @@ def _parse_block(block, err):
                 continue
             if raw == "":
                 mapping[sub] = None
+                if sub_lines is not None:
+                    sub_lines[sub] = n + 1
                 continue
             try:
                 mapping[sub] = _parse_scalar(raw)
             except _Reject as exc:
                 err(n, str(exc))
                 bad = True
+            else:
+                if sub_lines is not None:
+                    sub_lines[sub] = n + 1
     return (items if is_list else mapping), bad
 
 

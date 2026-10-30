@@ -1,0 +1,22 @@
+{
+  "fixture": "effort-user-top-level-model-unknown",
+  "rule_ids": [
+    "effort-level-user-settings-model-unknown"
+  ],
+  "note": "The record has no run without a model. Its per-model results show Opus 5.5 and later ignore the user top-level key and older models read it, so the outcome depends on a model nobody names and the entry is unknown.",
+  "confidence": "documented",
+  "source": "dashboard/experiments/2026-10-29-effort-user-key-by-model.json",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "effortLevel",
+      "value": "high",
+      "status": "unknown",
+      "layer": "user",
+      "file": "config/settings.json",
+      "line": 2,
+      "scope": "main",
+      "rule_id": "effort-level-user-settings-model-unknown"
+    }
+  ]
+}

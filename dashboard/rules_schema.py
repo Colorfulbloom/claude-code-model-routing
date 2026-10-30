@@ -17,6 +17,8 @@ models is the model catalog: a non-empty list in release order, oldest first.
 A model:
 
     id              unique, lowercase words joined by hyphens (claude-opus-5-5)
+    display_name    the name shown on screen ("Opus 5.5"): a non-empty string,
+                    unique across the catalog
     aliases         list, may be empty, of names that mean this model (opus).
                     Each alias is lowercase letters only, and no alias may
                     appear on two models.
@@ -49,7 +51,7 @@ A rule:
 
     rule_id       unique, lowercase words joined by hyphens
     key           the setting, as a dotted path (effortLevel, experimental.cacheTtl),
-                  or a kind of file the dashboard lists (agentFile, rulesFile)
+                  or a kind of file the dashboard lists (agentFile, rulesFile, settingsFile)
     scope         main, agent or model
     layer_order   layer ids, highest precedence first
     combine       how the candidates for the key combine. highest_layer: the
@@ -146,7 +148,8 @@ and unset when the config has no `plan` field. Without `plans`, any plan
 matches.
 
 A condition's `when` is one of WHEN_CASES. It names the file case the condition
-covers, for keys about files rather than values (agentFile, rulesFile):
+covers, for keys about files rather than values (agentFile, rulesFile,
+settingsFile):
 
     same_name_in_layer  two or more files in the layer declare the same name
     not_md_file         the file name does not end in .md
@@ -167,8 +170,13 @@ covers, for keys about files rather than values (agentFile, rulesFile):
                         did not test, so nobody knows whether Claude Code loads
                         the file. The status is unknown, as above.
     unknown_field       the frontmatter sets a field Claude Code does not read
+    unparsed            a settings file (settingsFile) that is not valid JSON, or
+                        whose top level is not an object
+    unreadable          a settings file (settingsFile) that exists but cannot be
+                        read, for example a permission error. The dashboard
+                        cannot say what the file sets, so the status is unknown.
     model_unknown       the row's model is unknown, so a default cannot be named.
-                        Only a condition on the default layer may use it.
+                        A condition on any layer may use it.
 
 A condition's `default_value` is only for the default status: the value the
 default yields, as a non-empty string. With a value_order or an effort key it
@@ -253,7 +261,7 @@ PLANS = ("subscription", "api_key", "cloud_provider", "unset")
 # File cases a condition's `when` can name.
 WHEN_CASES = ("same_name_in_layer", "not_md_file", "no_name", "no_description",
               "parse_error", "reader_rejected_but_loads", "reader_rejected_untested",
-              "unknown_field", "model_unknown")
+              "unknown_field", "unparsed", "unreadable", "model_unknown")
 
 # What a computed `becomes` works out.
 COMPUTED_BECOMES = ("cap", "fallback")
@@ -269,7 +277,7 @@ VARIABLE_FIELDS = {"name", "value", "rows"}
 VARIABLE_ROW_FIELDS = {"key", "scope", "layer"}
 RANGE_FIELDS = {"min", "max"}
 MODEL_FIELDS = {
-    "id", "aliases", "effort_levels", "default_effort",
+    "id", "display_name", "aliases", "effort_levels", "default_effort",
     "quotes", "experiment", "confidence",
 }
 RULE_FIELDS = {
@@ -520,6 +528,9 @@ def check_model(model, base_dir=HERE):
 
     if "id" in model and not (isinstance(model["id"], str) and MODEL_ID_RE.match(model["id"])):
         err("id must be lowercase words joined by hyphens")
+
+    if "display_name" in model and not _text(model["display_name"]):
+        err("display_name must be a non-empty string")
 
     if "aliases" in model:
         aliases = model["aliases"]
@@ -858,8 +869,8 @@ def _check_condition(cond, order, model_ids=None, levels=None, key=None, scope=N
         elif when in ("reader_rejected_but_loads", "reader_rejected_untested") \
                 and status != "unknown":
             errors.append("when %s needs status unknown" % when)
-        elif when == "model_unknown" and cond.get("layer") != "default":
-            errors.append("when model_unknown is only for a condition on the default layer")
+        elif when == "unreadable" and status != "unknown":
+            errors.append("when unreadable needs status unknown")
     if "via" in cond:
         errors.extend(_check_via(cond["via"], cond.get("layer"), key, scope, variables))
     if "if_set" in cond:
@@ -950,6 +961,7 @@ def validate(data, base_dir=HERE):
         catalog_ids = []
         seen_ids = set()
         alias_owner = {}
+        name_owner = {}
         for model in models:
             errors.extend(check_model(model, base_dir))
             if not isinstance(model, dict):
@@ -960,6 +972,13 @@ def validate(data, base_dir=HERE):
                     errors.append("model %s: duplicate id" % mid)
                 seen_ids.add(mid)
                 catalog_ids.append(mid)
+            name = model.get("display_name")
+            if _text(name):
+                owner = name_owner.get(name)
+                if owner is not None:
+                    errors.append("model %s: display_name %s is also on model %s"
+                                  % (mid, name, owner))
+                name_owner.setdefault(name, mid)
             aliases = model.get("aliases")
             if isinstance(aliases, list):
                 for alias in aliases:

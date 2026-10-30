@@ -3,7 +3,7 @@
 Usage: runcase.py <case.json> <port>
 
 case.json: {"name": ..., "user": {...}, "project": {...}, "local": {...},
-            "cli_settings": {...}, "env": {...}, "args": [...],
+            "cli_settings": {...}, "raw_settings": {"user": "text"}, "env": {...}, "args": [...],
             "agents": {"<name>": "<agent file text>"}, "agent_input": {...},
             "agent_files": [{"where": "user", "path": "a.md", "text": "..."}],
             "cwd": "project", "git_init": false,
@@ -38,6 +38,14 @@ that is not blank or a comment must be a key. Braces and backslashes are refused
 frontmatter, as is a line with a colon after an unclosed [. hooks, mcpServers and
 initialPrompt are refused in any case. A text with no closing fence is not loaded by
 Claude Code, so only forbidden keys and lookalike closing fences are refused in it.
+
+raw_settings is optional: an object whose keys are a subset of "user", "project" and
+"local". Each value is a string written byte for byte, with no json.dump, to the path that
+layer uses, so a case can test a settings file that is not a JSON object. A layer may not
+be in both raw_settings and its normal field. A value is 1 to RAW_SETTINGS_MAX characters of
+printable ASCII plus "\\n", with no backslash. It may not hold, in any case, a forbidden
+settings key, "mcp", "env", "helper", "plugin" or "otel" as a substring, and it may not
+parse as a JSON object (use the normal field for that).
 
 Claude Code only ever talks to fakeapi.py on 127.0.0.1, with a fake key. The
 script refuses to run when the caller's shell sets ANTHROPIC_API_KEY,
@@ -91,6 +99,15 @@ SETTINGS_FORBIDDEN_KEYS = ("hooks", "statusLine", "apiKeyHelper", "awsAuthRefres
                            "extraKnownMarketplaces", "enabledPlugins", "agent")
 FORBIDDEN_KEYS_LOWER = frozenset(k.lower() for k in SETTINGS_FORBIDDEN_KEYS)
 FILE_LAYERS = ("user", "project", "local", "cli_settings")
+# raw_settings: the layers it may name, where each goes (relative to the throwaway root),
+# its length limit, the characters a value may hold and the substrings it may not hold.
+RAW_LAYERS = {"user": ("config", "settings.json"),
+              "project": ("project", ".claude", "settings.json"),
+              "local": ("project", ".claude", "settings.local.json")}
+RAW_SETTINGS_MAX = 512
+RAW_OK_CHARS = re.compile("[\x20-\x7e\n]*")
+RAW_FORBIDDEN_SUBSTRINGS = tuple(sorted(FORBIDDEN_KEYS_LOWER)) + ("mcp", "env", "helper",
+                                                                  "plugin", "otel")
 # Agent frontmatter keys a case may not set, compared in lower case. initialPrompt
 # would get around the prompt allowlist.
 AGENT_FORBIDDEN_KEYS = ("hooks", "mcpservers", "initialprompt")
@@ -320,6 +337,40 @@ def check_agent_files(items, agents):
     return out
 
 
+def check_raw_settings(case):
+    """Refuse a raw_settings value that is not allowed. Raw text gets substring checks."""
+    if "raw_settings" not in case:
+        return
+    raw = case["raw_settings"]
+    if not isinstance(raw, dict):
+        refuse("case raw_settings is not an object")
+    for layer, text in raw.items():
+        if layer not in RAW_LAYERS:
+            refuse("raw_settings names %r, which is not user, project or local" % (layer,))
+        if case.get(layer) is not None:
+            refuse("raw_settings %s is also set as a normal %s field" % (layer, layer))
+        if not isinstance(text, str):
+            refuse("raw_settings %s is not a string" % layer)
+        if not text:
+            refuse("raw_settings %s is empty" % layer)
+        if len(text) > RAW_SETTINGS_MAX:
+            refuse("raw_settings %s is longer than %d characters" % (layer, RAW_SETTINGS_MAX))
+        if not RAW_OK_CHARS.fullmatch(text):
+            refuse("raw_settings %s holds a character outside printable ASCII and newline" % layer)
+        if "\\" in text:
+            refuse("raw_settings %s holds a backslash" % layer)
+        low = text.lower()
+        for word in RAW_FORBIDDEN_SUBSTRINGS:
+            if word in low:
+                refuse("raw_settings %s holds %s" % (layer, word))
+        try:
+            parsed = json.loads(text)
+        except (ValueError, RecursionError):
+            continue
+        if isinstance(parsed, dict):
+            refuse("raw_settings %s is a JSON object; use the normal %s field" % (layer, layer))
+
+
 def init_agents(init):
     """Return the init row's agents list as strings cut to INIT_AGENT_MAX, or None."""
     agents = init.get("agents") if isinstance(init, dict) else None
@@ -351,6 +402,7 @@ def check_case(case):
             if str(key).lower() in FORBIDDEN_KEYS_LOWER or "mcp" in str(key).lower():
                 refuse("%s settings set %s" % (layer, key))
         check_env("%s settings env block" % layer, data.get("env"))
+    check_raw_settings(case)
     args = case.get("args") or []
     if not isinstance(args, list):
         refuse("case args are not a list")
@@ -463,11 +515,16 @@ def main():
     put(os.path.join(cfg, "settings.json"), case.get("user"))
     put(os.path.join(proj, ".claude", "settings.json"), case.get("project"))
     put(os.path.join(proj, ".claude", "settings.local.json"), case.get("local"))
+    bases = {"config": cfg, "project": proj}
+    for layer, text in (case.get("raw_settings") or {}).items():
+        parts = RAW_LAYERS[layer]
+        # newline="" so the text lands byte for byte.
+        with open(os.path.join(bases[parts[0]], *parts[1:]), "w", newline="") as fh:
+            fh.write(text)
     for name, text in (case.get("agents") or {}).items():
         os.makedirs(os.path.join(cfg, "agents"), exist_ok=True)
         with open(os.path.join(cfg, "agents", name + ".md"), "w") as fh:
             fh.write(text)
-    bases = {"config": cfg, "project": proj}
     for where, segments, text in agent_files:
         parts = AGENT_FILE_WHERE[where]
         target = os.path.join(bases[parts[0]], *parts[1:], *segments)

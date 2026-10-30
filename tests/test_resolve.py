@@ -5,12 +5,15 @@ the parts of the resolver. Every run reads only the repo and its own temp
 folders. A guard test fails if the resolver touches a path under the real home
 or calls os.path.expanduser.
 """
+import builtins
 import contextlib
 import copy
+import dataclasses
 import io
 import json
 import os
 import pwd
+import pathlib
 import re
 import shutil
 import sys
@@ -19,12 +22,15 @@ import unittest
 from unittest import mock
 
 import helpers
+from helpers import home_guard
 
 sys.path.insert(0, os.path.join(helpers.REPO, "dashboard"))
+import collect  # noqa: E402
 import resolve  # noqa: E402
 import rules_schema  # noqa: E402
 
 FIXTURE_DIR = os.path.join(helpers.REPO, "tests", "fixtures", "resolution")
+REAL_MANAGED = "/Library/Application Support/ClaudeCode"
 RULES = resolve.load_rules()
 FIELDS = resolve.load_agent_fields()
 
@@ -51,81 +57,6 @@ def _make_fixture_test(name):
 for _name in _fixture_names():
     _test = _make_fixture_test(_name)
     setattr(FixtureTests, _test.__name__, _test)
-
-
-@contextlib.contextmanager
-def home_guard(homes, allowed=()):
-    """Record every path under `homes` that code touches, and refuse the home lookups.
-
-    Yields the list of paths seen. Each path is judged by os.path.realpath as
-    well as os.path.abspath, so a symlink into a home fails like the home does.
-    Paths under `allowed` (the repo) are skipped. The guard wraps the builtin
-    open, io.open, the os calls that read the file system, and the pathlib
-    methods that read or resolve a path (pathlib in Python 3.9 keeps its own copy of os.stat,
-    so patching os.stat alone does not catch them). Path.home and
-    os.path.expanduser raise, because calling them is the lookup the resolver
-    must never make.
-    """
-    import builtins
-    import pathlib
-    roots = set()
-    for home in homes:
-        roots.update({os.path.abspath(home), os.path.realpath(home)})
-    skip = {os.path.realpath(a) for a in allowed} | {os.path.abspath(a) for a in allowed}
-    seen = []
-    busy = []
-
-    def inside(full, bases):
-        return any(full == b or full.startswith(b + os.sep) for b in bases)
-
-    def note(path):
-        if busy or isinstance(path, int):
-            return
-        busy.append(True)
-        try:
-            try:
-                text = os.fsdecode(os.fspath(path))
-            except TypeError:
-                return
-            for full in {os.path.abspath(text), os.path.realpath(text)}:
-                if inside(full, roots) and not inside(full, skip):
-                    seen.append(full)
-                    return
-        finally:
-            busy.pop()
-
-    def watch_function(owner, name):
-        original = getattr(owner, name)
-
-        def wrapper(path=".", *args, **kwargs):
-            note(path)
-            return original(path, *args, **kwargs)
-        return mock.patch.object(owner, name, wrapper)
-
-    def watch_method(name):
-        original = getattr(pathlib.Path, name)
-
-        def wrapper(self, *args, **kwargs):
-            note(str(self))
-            return original(self, *args, **kwargs)
-        return mock.patch.object(pathlib.Path, name, wrapper)
-
-    def refuse(label):
-        def fail(*_args, **_kwargs):
-            raise AssertionError("resolve called " + label)
-        return fail
-
-    with contextlib.ExitStack() as stack:
-        for owner, name in ((builtins, "open"), (io, "open"), (os, "open"), (os, "scandir"),
-                            (os, "listdir"), (os, "stat"), (os, "lstat"), (os, "access"),
-                            (os, "walk")):
-            stack.enter_context(watch_function(owner, name))
-        for name in ("read_text", "read_bytes", "iterdir", "exists", "open", "stat", "is_dir",
-                     "is_file", "glob", "rglob", "resolve"):
-            stack.enter_context(watch_method(name))
-        stack.enter_context(mock.patch.object(os.path, "expanduser", refuse("os.path.expanduser")))
-        stack.enter_context(mock.patch.object(pathlib.Path, "home", refuse("Path.home")))
-        yield seen
 
 
 class GuardTests(unittest.TestCase):
@@ -204,6 +135,11 @@ def _write(path, content):
         fh.write(content if isinstance(content, str) else json.dumps(content))
 
 
+def pretty(obj):
+    """JSON text with one key per line, so a key's line number is not 1."""
+    return json.dumps(obj, indent=2) + "\n"
+
+
 def agent_text(name="probe", description="Made-up agent.", model=None, extra=""):
     lines = ["---"]
     if name is not None:
@@ -226,10 +162,18 @@ class ResolveCase(unittest.TestCase):
         self.tmp = tempfile.mkdtemp(prefix="resolve-", dir=helpers._tmp_base())
         self.addCleanup(shutil.rmtree, self.tmp, True)
 
-    def run_resolve(self, user=None, project=None, local=None, user_agents=None,
+    def make_inputs(self, user=None, project=None, local=None, user_agents=None,
                     project_agents=None, user_rules=None, project_rules=None,
                     shell_env=None, flags=None, cli=None, plan=None, managed=None,
-                    rules=RULES):
+                    rules=RULES, home=None, root=True, managed_mode=None,
+                    shell_label=resolve.LABEL_SHELL):
+        """Write the files, run the collectors and return the resolver's Inputs.
+
+        `managed` is written to managed/managed-settings.json in the throwaway
+        tree, then given the file mode `managed_mode` when that is set. The
+        shell label is the fixtures' one, so shell entries read
+        session.json:shell_env. `root` False leaves the paths absolute.
+        """
         config = os.path.join(self.tmp, "config")
         proj = os.path.join(self.tmp, "project")
         os.makedirs(config, exist_ok=True)
@@ -240,6 +184,12 @@ class ResolveCase(unittest.TestCase):
             _write(os.path.join(proj, ".claude", "settings.json"), project)
         if local is not None:
             _write(os.path.join(proj, ".claude", "settings.local.json"), local)
+        if managed is not None:
+            path = os.path.join(self.tmp, "managed", "managed-settings.json")
+            _write(path, managed)
+            if managed_mode is not None:
+                os.chmod(path, managed_mode)
+                self.addCleanup(os.chmod, path, 0o600)
         for rel, text in (user_agents or {}).items():
             _write(os.path.join(config, "agents", rel), text)
         for rel, text in (project_agents or {}).items():
@@ -248,11 +198,16 @@ class ResolveCase(unittest.TestCase):
             _write(os.path.join(config, "rules", rel), text)
         for rel, text in (project_rules or {}).items():
             _write(os.path.join(proj, ".claude", "rules", rel), text)
-        inputs = resolve.Inputs(
-            config_dir=config, project_dir=proj, shell_env=shell_env or {},
-            flags=flags or [], cli_settings=cli, plan=plan, managed=managed,
-            root=self.tmp)
-        return resolve.resolve(inputs, rules, FIELDS)
+        collected = collect.collect(
+            config_dir=config, project_dir=proj,
+            managed_dir=os.path.join(self.tmp, "managed"),
+            shell_env=shell_env or {}, rules=rules)
+        return resolve.Inputs(
+            collected=collected, flags=flags or [], cli_settings=cli, plan=plan,
+            home=home, root=self.tmp if root else None, shell_label=shell_label)
+
+    def run_resolve(self, rules=RULES, **kw):
+        return resolve.resolve(self.make_inputs(rules=rules, **kw), rules, FIELDS)
 
     @staticmethod
     def rows(entries, key, scope="main", agent=None):
@@ -271,8 +226,8 @@ class ResolveCase(unittest.TestCase):
 
 class EnvBlockTests(ResolveCase):
     def test_shell_alone_is_in_effect(self):
-        entries = self.run_resolve(shell_env={"FOO": "a"})
-        entry = self.only(entries, "env.FOO")
+        entries = self.run_resolve(shell_env={"ANTHROPIC_MODEL": "a"})
+        entry = self.only(entries, "env.ANTHROPIC_MODEL")
         self.assertEqual((entry["layer"], entry["file"], entry["status"], entry["value"]),
                          ("env", "session.json:shell_env", "in_effect", "a"))
 
@@ -620,8 +575,7 @@ class ExplanationTests(ResolveCase):
 
     def test_the_order_rule_is_the_widest_rule_of_the_row_not_a_narrow_one(self):
         # effort-level-user-settings-opus-5-5 comes first in rules.json but names one layer.
-        ctx = resolve._Context(
-            resolve.Inputs(config_dir=self.tmp, project_dir=self.tmp), RULES, FIELDS)
+        ctx = resolve._Context(self.make_inputs(), RULES, FIELDS)
         for scope, key, wanted in (
                 ("main", "effortLevel", "effort-level-layer-order"),
                 ("main", "autoCompactWindow", "auto-compact-window-order"),
@@ -743,6 +697,53 @@ class AgentEffortTests(ResolveCase):
         got = self.rows(entries, "effort", "agent", "probe")
         self.assertEqual([(e["layer"], e["value"], e["status"]) for e in got],
                          [("default", "medium", "default")])
+
+
+class MainEffortModelUnknownTests(ResolveCase):
+    """The user's top-level effortLevel depends on a model, so it is unknown without one."""
+
+    def user_entries(self, user):
+        entries = self.rows(self.run_resolve(user=user), "effortLevel")
+        return [e for e in entries if e["layer"] == "user"]
+
+    def test_no_model_leaves_the_user_key_unknown(self):
+        got = self.user_entries({"effortLevel": "high"})
+        self.assertEqual([(e["value"], e["status"], e["rule_id"]) for e in got],
+                         [("high", "unknown", "effort-level-user-settings-model-unknown")])
+
+    def test_a_model_that_reads_the_key_keeps_it_in_effect(self):
+        got = self.user_entries({"model": "claude-opus-4-6", "effortLevel": "high"})
+        self.assertEqual([(e["value"], e["status"]) for e in got], [("high", "in_effect")])
+
+
+class EmptyEffortEnvTests(ResolveCase):
+    """An empty CLAUDE_CODE_EFFORT_LEVEL is not set, and only the word unset sends none."""
+
+    ENV = "CLAUDE_CODE_EFFORT_LEVEL"
+
+    def test_empty_matches_the_empty_rule_not_the_unset_rule(self):
+        entries = self.run_resolve(user={"model": "claude-opus-5-5"},
+                                   project={"effortLevel": "high"}, shell_env={self.ENV: ""})
+        env = [e for e in self.rows(entries, "effortLevel") if e["layer"] == "env"]
+        self.assertEqual([(e["status"], e["rule_id"]) for e in env],
+                         [("ignored", "effort-env-empty-ignored")])
+
+    def test_the_word_unset_still_sends_no_level(self):
+        entries = self.run_resolve(user={"model": "claude-opus-5-5"},
+                                   project={"effortLevel": "high"}, shell_env={self.ENV: "unset"})
+        env = [e for e in self.rows(entries, "effortLevel") if e["layer"] == "env"]
+        self.assertEqual([(e["status"], e["rule_id"]) for e in env],
+                         [("default", "effort-env-auto-sends-none")])
+
+    def test_empty_does_not_win_for_an_agent(self):
+        entries = self.run_resolve(
+            user={"model": "claude-sonnet-5-5"}, shell_env={self.ENV: ""},
+            user_agents={"probe.md": agent_text(model="claude-haiku-5-5", extra="effort: high\n")})
+        got = self.rows(entries, "effort", "agent", "probe")
+        self.assertIn(("env", "ignored", "agent-effort-env-empty-ignored"),
+                      [(e["layer"], e["status"], e.get("rule_id")) for e in got])
+        self.assertIn(("agent", "high", "in_effect"),
+                      [(e["layer"], e["value"], e["status"]) for e in got])
 
 
 class AgentAutoCompactTests(ResolveCase):
@@ -937,7 +938,7 @@ class DefaultReasonTests(ResolveCase):
         entry = self.entry(entries, "effort", "agent", "probe")
         self.assertEqual((entry["value"], entry["status"], entry["rule_id"], entry["model"]),
                          ("high", "default", "agent-effort-default-by-model", "claude-fable-5-1"))
-        self.assertIn("claude-fable-5-1", entry["reason"])
+        self.assertIn("Fable 5.1", entry["reason"])
         self.assertIn("high", entry["reason"])
 
     def test_a_model_without_effort_gets_a_default_with_no_value_in_its_reason(self):
@@ -951,7 +952,7 @@ class DefaultReasonTests(ResolveCase):
                          (None, "default", "agent-effort-default-no-effort-support"))
         for entry in (main, agent):
             self.assertNotIn("default, .", entry["reason"])
-            self.assertIn("claude-haiku-4-5", entry["reason"])
+            self.assertIn("Haiku 4.5", entry["reason"])
         # the by-model rule leaves such a model alone, so one rule explains the default
         self.assertNotIn("effort-default-by-model", main["rule_ids"])
 
@@ -1141,9 +1142,35 @@ class ReasonTests(ResolveCase):
         entries = self.run_resolve(user={"model": "claude-opus-5-5", "effortLevel": "low"})
         entry = next(e for e in self.rows(entries, "effortLevel") if e["status"] == "ignored")
         self.assertEqual(entry["reason"], (
-            "claude-opus-5-5 ignores the top-level effortLevel in config/settings.json. Opus 5.5 "
+            "Opus 5.5 ignores the top-level effortLevel in config/settings.json. Opus 5.5 "
             "and later models take a user settings level only from modelSettings."))
         self.assertNotIn("{", self.only(entries, "promptCacheTtl")["reason"])
+
+    def test_a_shell_source_reads_the_shell_in_a_reason_and_keeps_its_label(self):
+        for label in (resolve.LABEL_SHELL, resolve.LIVE_SHELL_LABEL):
+            with self.subTest(label=label):
+                entries = self.run_resolve(
+                    shell_env={"CLAUDE_CODE_EFFORT_LEVEL": "max"},
+                    user={"model": "claude-opus-5-5", "maxEffortLevel": "high"},
+                    shell_label=label)
+                lowered = next(e for e in self.rows(entries, "effortLevel")
+                               if e["status"] == "lowered")
+                self.assertEqual(lowered["rule_id"], "effort-lowered-by-cap")
+                self.assertEqual(lowered["file"], label)
+                self.assertEqual(lowered["reason"], (
+                    "max from the shell runs as high, because maxEffortLevel caps "
+                    "Opus 5.5 at high."))
+                block = self.only(entries, "env.CLAUDE_CODE_EFFORT_LEVEL")
+                self.assertTrue(block["reason"].startswith(
+                    "env.CLAUDE_CODE_EFFORT_LEVEL comes from the shell."))
+
+    def test_a_file_source_keeps_its_name_in_a_reason(self):
+        entries = self.run_resolve(
+            user={"model": "claude-opus-5-5", "maxEffortLevel": "high",
+                  "env": {"CLAUDE_CODE_EFFORT_LEVEL": "max"}})
+        lowered = next(e for e in self.rows(entries, "effortLevel") if e["status"] == "lowered")
+        self.assertIn("max from config/settings.json runs as high", lowered["reason"])
+        self.assertNotIn("the shell", lowered["reason"])
 
     def test_every_entry_has_a_reason_unless_no_rule_decided(self):
         entries = self.run_resolve(user={"model": "claude-opus-5-5"},
@@ -1224,6 +1251,476 @@ class RuleErrorTests(ResolveCase):
         entries = self.run_resolve(user=self.SETTINGS, rules=self.mini(rule))
         entry = self.only(entries, "model")
         self.assertEqual((entry["status"], entry["rule_id"]), ("unknown", None))
+
+
+def _blocked(label):
+    def fail(*_args, **_kwargs):
+        raise AssertionError("resolve called " + label)
+    return fail
+
+
+@contextlib.contextmanager
+def no_file_access():
+    """Make every call that opens, lists or stats a file raise."""
+    with contextlib.ExitStack() as stack:
+        for owner, name in ((builtins, "open"), (io, "open"), (os, "open"), (os, "listdir"),
+                            (os, "scandir"), (os, "walk"), (os, "stat"), (os, "lstat"),
+                            (os, "access"), (os.path, "exists"), (os.path, "isdir"),
+                            (os.path, "isfile")):
+            stack.enter_context(mock.patch.object(owner, name, _blocked(
+                "%s.%s" % (owner.__name__, name))))
+        for name in ("read_text", "read_bytes", "open", "stat", "iterdir", "exists", "is_dir",
+                     "is_file", "resolve"):
+            stack.enter_context(mock.patch.object(pathlib.Path, name, _blocked("Path." + name)))
+        yield
+
+
+class NoFileAccessTests(unittest.TestCase):
+    def test_resolve_opens_nothing_for_any_fixture(self):
+        loaded = [(name, resolve.load_fixture(os.path.join(FIXTURE_DIR, name), RULES)[0])
+                  for name in _fixture_names()]
+        self.assertGreater(len(loaded), 60)
+        with no_file_access():
+            for name, inputs in loaded:
+                with self.subTest(fixture=name):
+                    self.assertTrue(resolve.resolve(inputs, RULES, FIELDS))
+
+    def test_the_patch_stops_each_kind_of_access(self):
+        probes = (lambda: open(__file__), lambda: io.open(__file__), lambda: os.listdir("."),
+                  lambda: os.stat("."), lambda: os.path.isdir("."),
+                  lambda: pathlib.Path(".").exists(), lambda: pathlib.Path(__file__).read_text())
+        for probe in probes:
+            with no_file_access():
+                with self.assertRaises(AssertionError):
+                    probe()
+
+    def test_resolve_needs_the_field_list(self):
+        inputs = resolve.load_fixture(os.path.join(FIXTURE_DIR, "env-block-over-shell"), RULES)[0]
+        with self.assertRaises(TypeError):
+            resolve.resolve(inputs, RULES)
+
+
+class LineTests(ResolveCase):
+    """Every entry whose value came from a real file carries its line."""
+
+    USER = {
+        "model": "claude-sonnet-5-5",
+        "effortLevel": "low",
+        "modelSettings": {"sonnet": {"effortLevel": "high"}},
+        "env": {"CLAUDE_CODE_AUTO_COMPACT_WINDOW": "150000", "MADE_UP_NOTE": "x"},
+    }
+
+    def test_a_file_entry_has_an_integer_line_and_the_others_have_none(self):
+        entries = self.run_resolve(
+            user=pretty(self.USER), project=pretty({"promptCacheTtl": "1h"}),
+            cli={"effortLevel": "low"}, flags=["--effort", "high"],
+            shell_env={"ANTHROPIC_MODEL": "claude-haiku-5-5"},
+            user_agents={"probe.md": agent_text(extra="zeta: 1\n")},
+            project_rules={"a.md": "x", "b.txt": "x"})
+        labels = {resolve.LABEL_SHELL, resolve.LABEL_FLAGS, resolve.LABEL_CLI}
+        seen = set()
+        for entry in entries:
+            with self.subTest(row=(entry["key"], entry["scope"], entry["layer"], entry["file"])):
+                if entry["file"] is None or entry["file"] in labels:
+                    self.assertNotIn("line", entry)
+                else:
+                    self.assertIsInstance(entry["line"], int)
+                    self.assertNotIsInstance(entry["line"], bool)
+                seen.add(entry["file"] in labels)
+        self.assertEqual(seen, {True, False})
+
+    def test_settings_lines(self):
+        entries = self.run_resolve(user=pretty(self.USER))
+        model = self.only(entries, "model")
+        self.assertEqual((model["file"], model["line"]), ("config/settings.json", 2))
+        nested = [e for e in self.rows(entries, "effortLevel") if e.get("path")]
+        self.assertEqual([(e["path"], e["line"]) for e in nested],
+                         [("modelSettings.sonnet.effortLevel", 6)])
+        top = [e for e in self.rows(entries, "effortLevel") if e["layer"] == "user"
+               and not e.get("path")]
+        self.assertEqual([e["line"] for e in top], [3])
+
+    def test_env_block_lines_reach_the_variable_rows(self):
+        entries = self.run_resolve(user=pretty(self.USER))
+        note = self.only(entries, "env.MADE_UP_NOTE")
+        self.assertEqual((note["file"], note["line"]), ("config/settings.json", 11))
+        window = self.only(entries, "env.CLAUDE_CODE_AUTO_COMPACT_WINDOW")
+        self.assertEqual(window["line"], 10)
+        fed = self.only(entries, "autoCompactWindow")
+        self.assertEqual((fed["via"], fed["file"], fed["line"]),
+                         ("CLAUDE_CODE_AUTO_COMPACT_WINDOW", "config/settings.json", 10))
+
+    def test_managed_lines_name_the_file_the_key_came_from(self):
+        entries = self.run_resolve(managed=pretty({"model": "claude-haiku-5-5"}),
+                                   user=pretty({"model": "claude-sonnet-5-5"}))
+        got = self.rows(entries, "model")
+        self.assertEqual([(e["layer"], e["file"], e["line"]) for e in got],
+                         [("managed", "managed/managed-settings.json", 2),
+                          ("user", "config/settings.json", 2)])
+
+    def test_agent_lines(self):
+        text = agent_text(model="claude-haiku-5-5",
+                          extra="experimental:\n  cacheTtl: 1h\nzeta: 1")
+        entries = self.run_resolve(user={"model": "claude-sonnet-5-5"},
+                                   user_agents={"probe.md": text})
+        agent = lambda key: self.only(entries, key, "agent", "probe")  # noqa: E731
+        self.assertEqual(agent("model")["line"], 4)
+        self.assertEqual(agent("subagentPromptCacheTtl")["line"], 6)
+        self.assertEqual(agent("subagentPromptCacheTtl")["layer"], "agent")
+        files = self.rows(entries, "agentFile", "agent", "probe")
+        self.assertEqual([(e["status"], e.get("field"), e["line"]) for e in files],
+                         [("in_effect", None, 2), ("ignored", "zeta", 7)])
+
+    def test_a_rejected_agent_file_names_the_line_of_its_first_error(self):
+        entries = self.run_resolve(user_agents={
+            "tab.md": "---\nname: tab\n\tdescription: x\n---\n",
+            "flow.md": "---\nname: flow\ndescription: [x\n---\n",
+            "nodesc.md": agent_text("nodesc", None),
+            "notes.txt": agent_text("notes")})
+        lines = {e["agent"]: e["line"] for e in entries if e["key"] == "agentFile"}
+        self.assertEqual(lines, {"tab": 3, "flow": 3, "nodesc": 1, "notes": 1})
+
+    def test_rules_files_and_unparsed_settings_files(self):
+        entries = self.run_resolve(user_rules={"a.md": "x"}, project="{\n  \"model\": 1,\n}\n")
+        self.assertEqual([e["line"] for e in self.rows(entries, "rulesFile")], [1])
+        broken = self.only(entries, "settingsFile")
+        self.assertEqual((broken["layer"], broken["line"]), ("project", 3))
+
+    def test_a_shell_value_and_a_default_carry_no_line(self):
+        entries = self.run_resolve(shell_env={"ANTHROPIC_MODEL": "claude-haiku-5-5"},
+                                   shell_label=resolve.LIVE_SHELL_LABEL)
+        shell = self.only(entries, "env.ANTHROPIC_MODEL")
+        self.assertEqual((shell["file"], "line" in shell), ("Shell", False))
+        default = self.only(entries, "promptCacheTtl")
+        self.assertEqual((default["file"], "line" in default), (None, False))
+
+
+class HomeDisplayTests(ResolveCase):
+    def test_display_path_is_a_pure_string_function(self):
+        show = resolve.display_path
+        self.assertEqual(show("/x/a/f.json", home="/x/a"), "~/f.json")
+        self.assertEqual(show("/x/a/f.json", home="/x/a/"), "~/f.json")
+        self.assertEqual(show("/x/a", home="/x/a"), "~")
+        self.assertEqual(show("/x/ab/f.json", home="/x/a"), "/x/ab/f.json")
+        self.assertEqual(show("/x/a/f.json", home="/x/a", root="/x/a"), "f.json")
+        self.assertEqual(show("/x/a/b/f.json", home="/x/a", root="/x/a/b"), "f.json")
+        self.assertEqual(show("/x/a/f.json"), "/x/a/f.json")
+        self.assertEqual(show("/x/a/f.json", home="/"), "/x/a/f.json")
+
+    def test_entries_and_reasons_show_a_tilde_for_the_home_folder(self):
+        inputs = self.make_inputs(
+            user={"model": "claude-opus-5-5", "effortLevel": "low"},
+            user_agents={"probe.md": agent_text(extra="zeta: 1")},
+            user_rules={"a.md": "x"}, project="{broken", home=self.tmp, root=False)
+        with home_guard([self.tmp]) as seen:
+            entries = resolve.resolve(inputs, RULES, FIELDS)
+        self.assertEqual(seen, [])
+        files = [e["file"] for e in entries if e["file"]]
+        self.assertTrue(files)
+        for file in files:
+            self.assertTrue(file.startswith("~/"), file)
+        for entry in entries:
+            self.assertNotIn(self.tmp, entry["reason"])
+        ignored = next(e for e in self.rows(entries, "effortLevel") if e["status"] == "ignored")
+        self.assertEqual(ignored["file"], "~/config/settings.json")
+        self.assertIn("~/config/settings.json", ignored["reason"])
+        broken = self.only(entries, "settingsFile")
+        self.assertIn("~/project/.claude/settings.json", broken["reason"])
+
+    def test_a_sibling_folder_that_starts_with_the_home_name_is_not_shortened(self):
+        entries = self.run_resolve(user={"model": "claude-opus-5-5"},
+                                   home=os.path.join(self.tmp, "conf"), root=False)
+        model = self.only(entries, "model")
+        self.assertEqual(model["file"], os.path.join(self.tmp, "config", "settings.json"))
+
+    def test_a_root_beats_the_home_folder(self):
+        entries = self.run_resolve(user={"model": "claude-opus-5-5"}, home=self.tmp)
+        self.assertEqual(self.only(entries, "model")["file"], "config/settings.json")
+
+
+class DisplayNameTests(ResolveCase):
+    def test_a_reason_shows_the_display_name_and_the_entry_keeps_the_id(self):
+        entries = self.run_resolve(user={"model": "claude-opus-5-5", "effortLevel": "low"})
+        ignored = next(e for e in self.rows(entries, "effortLevel") if e["status"] == "ignored")
+        self.assertEqual(ignored["model"], "claude-opus-5-5")
+        self.assertIn("Opus 5.5", ignored["reason"])
+        self.assertNotIn("claude-opus-5-5", ignored["reason"])
+        default = next(e for e in self.rows(entries, "effortLevel") if e["status"] == "default")
+        self.assertEqual(default["model"], "claude-opus-5-5")
+        self.assertNotIn("claude-opus-5-5", default["reason"])
+
+    def test_every_catalog_model_has_its_display_name_in_reasons(self):
+        for model in RULES["models"]:
+            with self.subTest(model=model["id"]):
+                entries = self.run_resolve(user={"model": model["id"]})
+                got = [e for e in self.rows(entries, "effortLevel") if e.get("model") == model["id"]]
+                self.assertTrue(got)
+                for entry in got:
+                    self.assertNotIn(model["id"], entry["reason"])
+
+
+class UnreadableSettingsFileTests(ResolveCase):
+    """A settings file the dashboard cannot read hides the values it could set."""
+
+    MAIN = ("model", "maxEffortLevel", "effortLevel", "autoCompactWindow", "promptCacheTtl")
+    AGENT = ("model", "effort", "autoCompactWindow", "subagentPromptCacheTtl")
+
+    def setUp(self):
+        super().setUp()
+        if os.geteuid() == 0:
+            self.skipTest("root reads a file with mode 000")
+
+    def unreadable(self, **kw):
+        kw.setdefault("user", {"model": "claude-sonnet-5-5"})
+        kw.setdefault("user_agents", {"probe.md": agent_text()})
+        return self.run_resolve(managed="{}", managed_mode=0, **kw)
+
+    def assert_unknown(self, entry, source):
+        self.assertEqual(entry["status"], "unknown", entry)
+        self.assertEqual(entry["rule_id"], source["rule_id"])
+        self.assertEqual(entry["rule_ids"], source["rule_ids"])
+        self.assertEqual(entry["reason"], source["reason"])
+        self.assertNotIn("becomes", entry)
+
+    def test_the_rows_a_managed_file_could_set_show_unknown_with_the_rule(self):
+        entries = self.unreadable(shell_env={"CLAUDE_CODE_EFFORT_LEVEL": "low"})
+        source = self.only(entries, "settingsFile")
+        self.assertEqual((source["layer"], source["status"], source["rule_id"], source["line"],
+                          source["file"]),
+                         ("managed", "unknown", "settings-file-unreadable", 1,
+                          "managed/managed-settings.json"))
+        self.assertIn("managed/managed-settings.json", source["reason"])
+        for key in self.MAIN:
+            with self.subTest(row=key):
+                self.assert_unknown(self.only(entries, key), source)
+        for key in self.AGENT:
+            with self.subTest(row=("probe", key)):
+                self.assert_unknown(self.only(entries, key, "agent", "probe"), source)
+        self.assert_unknown(self.only(entries, "env.CLAUDE_CODE_EFFORT_LEVEL"), source)
+
+    def test_an_unknown_winner_keeps_its_value_layer_file_and_line(self):
+        entries = self.unreadable(user=pretty({"model": "claude-sonnet-5-5"}))
+        model = self.only(entries, "model")
+        self.assertEqual((model["value"], model["layer"], model["file"], model["line"]),
+                         ("claude-sonnet-5-5", "user", "config/settings.json", 2))
+
+    def test_a_model_flag_still_wins_and_stays_in_effect(self):
+        entries = self.unreadable(flags=["--model", "claude-haiku-5-5"])
+        model = self.rows(entries, "model")
+        self.assertEqual((model[0]["layer"], model[0]["value"], model[0]["status"]),
+                         ("flag", "claude-haiku-5-5", "in_effect"))
+        self.assertEqual(model[0]["rule_id"], "model-main-session-order")
+        self.assertEqual(self.only(entries, "maxEffortLevel")["status"], "unknown")
+
+    def test_the_unknown_model_leaves_the_rows_that_depend_on_it_unknown(self):
+        entries = self.unreadable()
+        self.assertEqual(self.only(entries, "model")["status"], "unknown")
+        self.assertIsNone(self.only(entries, "effortLevel").get("model"))
+        self.assertIsNone(self.only(entries, "model", "agent", "probe")["value"])
+
+    def test_a_managed_file_that_is_not_json_follows_its_own_rule(self):
+        entries = self.run_resolve(managed="{not json", user={"model": "claude-sonnet-5-5"},
+                                   user_agents={"probe.md": agent_text()})
+        source = self.only(entries, "settingsFile")
+        self.assertEqual((source["status"], source["rule_id"]),
+                         ("unknown", "settings-file-managed-unparsed"))
+        for key in self.MAIN:
+            with self.subTest(row=key):
+                self.assert_unknown(self.only(entries, key), source)
+        for key in self.AGENT:
+            with self.subTest(row=("probe", key)):
+                self.assert_unknown(self.only(entries, key, "agent", "probe"), source)
+
+    def lock_user_file(self):
+        """Write an empty user settings.json with mode 000, and restore it on cleanup."""
+        config = os.path.join(self.tmp, "config", "settings.json")
+        os.makedirs(os.path.dirname(config), exist_ok=True)
+        _write(config, "{}")
+        os.chmod(config, 0)
+        self.addCleanup(os.chmod, config, 0o600)
+
+    def test_an_unreadable_user_file_hides_what_ranks_below_its_env_block(self):
+        self.lock_user_file()
+        entries = self.run_resolve(project={"model": "claude-sonnet-5-5"},
+                                   flags=["--model", "claude-haiku-5-5"])
+        source = self.only(entries, "settingsFile")
+        self.assertEqual((source["layer"], source["rule_id"]),
+                         ("user", "settings-file-unreadable-untested"))
+        self.assertEqual([e["status"] for e in self.rows(entries, "model")],
+                         ["in_effect", "overridden"])
+        self.assert_unknown(self.only(entries, "promptCacheTtl"), source)
+
+    def test_a_managed_env_block_keeps_the_model_in_effect_over_an_unreadable_user_file(self):
+        self.lock_user_file()
+        entries = self.run_resolve(managed={"env": {"ANTHROPIC_MODEL": "claude-haiku-5-5"}})
+        env = self.only(entries, "env.ANTHROPIC_MODEL")
+        self.assertEqual((env["layer"], env["status"]), ("managed", "in_effect"))
+        model = self.only(entries, "model")
+        self.assertEqual((model["layer"], model["via"], model["value"], model["status"]),
+                         ("env", "ANTHROPIC_MODEL", "claude-haiku-5-5", "in_effect"))
+        # The model is known, so the effort row sees it. It stays unknown for its
+        # own reason: a default ranks below the user file, which could set it.
+        effort = self.only(entries, "effortLevel")
+        self.assertEqual(effort["model"], "claude-haiku-5-5")
+        self.assertEqual((effort["layer"], effort["status"], effort["rule_id"]),
+                         ("default", "unknown", "settings-file-unreadable-untested"))
+
+    def test_a_project_env_block_keeps_the_model_in_effect_over_an_unreadable_user_file(self):
+        self.lock_user_file()
+        entries = self.run_resolve(project={"env": {"ANTHROPIC_MODEL": "claude-haiku-5-5"}})
+        env = self.only(entries, "env.ANTHROPIC_MODEL")
+        self.assertEqual((env["layer"], env["status"]), ("project", "in_effect"))
+        model = self.only(entries, "model")
+        self.assertEqual((model["value"], model["status"]), ("claude-haiku-5-5", "in_effect"))
+
+    def test_a_shell_only_variable_is_unknown_over_an_unreadable_user_file(self):
+        self.lock_user_file()
+        entries = self.run_resolve(shell_env={"ANTHROPIC_MODEL": "claude-haiku-5-5"})
+        env = self.only(entries, "env.ANTHROPIC_MODEL")
+        self.assertEqual((env["layer"], env["status"], env["rule_id"]),
+                         ("env", "unknown", "settings-file-unreadable-untested"))
+        model = self.only(entries, "model")
+        self.assertEqual((model["via"], model["status"], model["rule_id"]),
+                         ("ANTHROPIC_MODEL", "unknown", "settings-file-unreadable-untested"))
+
+    def test_a_managed_file_is_unreadable_under_the_tested_rule(self):
+        entries = self.unreadable()
+        self.assertEqual(self.only(entries, "settingsFile")["rule_id"], "settings-file-unreadable")
+
+    def test_local_and_project_files_are_unreadable_under_the_untested_rule(self):
+        for layer, rel in (("local", os.path.join("project", ".claude", "settings.local.json")),
+                           ("project", os.path.join("project", ".claude", "settings.json"))):
+            with self.subTest(layer=layer):
+                path = os.path.join(self.tmp, rel)
+                _write(path, "{}")
+                os.chmod(path, 0)
+                try:
+                    source = self.only(self.run_resolve(), "settingsFile")
+                finally:
+                    os.chmod(path, 0o600)
+                    os.remove(path)
+                self.assertEqual((source["layer"], source["status"], source["rule_id"]),
+                                 (layer, "unknown", "settings-file-unreadable-untested"))
+
+
+class ParsedFileTests(ResolveCase):
+    def test_an_unparsed_user_file_is_skipped_and_the_others_resolve_as_normal(self):
+        entries = self.run_resolve(user="{\"model\": \"claude-haiku-4-5\"",
+                                   project={"model": "claude-sonnet-5-5"})
+        source = self.only(entries, "settingsFile")
+        self.assertEqual((source["layer"], source["status"], source["rule_id"], source["line"]),
+                         ("user", "ignored", "settings-file-unparsed-skipped", 1))
+        self.assertIn("config/settings.json", source["reason"])
+        model = self.only(entries, "model")
+        self.assertEqual((model["layer"], model["value"], model["status"]),
+                         ("project", "claude-sonnet-5-5", "in_effect"))
+        self.assertEqual(model["rule_id"], "model-main-session-order")
+        for entry in entries:
+            if entry["key"] != "settingsFile":
+                self.assertNotEqual(entry["rule_id"], "settings-file-unparsed-skipped")
+
+    def test_no_unparsed_file_means_no_settings_file_row(self):
+        entries = self.run_resolve(user={"model": "claude-sonnet-5-5"})
+        self.assertEqual(self.rows(entries, "settingsFile"), [])
+
+
+class LiveInputsTests(ResolveCase):
+    def test_live_inputs_carry_no_flags_and_no_settings_content(self):
+        collected = self.make_inputs(user={"model": "claude-sonnet-5-5"},
+                                     project={"effortLevel": "low"},
+                                     shell_env={"ANTHROPIC_MODEL": "claude-haiku-5-5"}).collected
+        live = resolve.Inputs(collected)
+        self.assertEqual((live.flags, live.cli_settings, live.plan, live.home, live.root,
+                          live.shell_label), ([], None, None, None, None, "Shell"))
+        entries = resolve.resolve(live, RULES, FIELDS)
+        self.assertTrue(entries)
+        self.assertEqual({e["layer"] for e in entries} & {"flag", "cli"}, set())
+        self.assertFalse(any(e["file"] in (resolve.LABEL_FLAGS, resolve.LABEL_CLI)
+                             for e in entries))
+        shell = self.only(entries, "env.ANTHROPIC_MODEL")
+        self.assertEqual(shell["file"], "Shell")
+
+    def test_inputs_are_frozen_and_flags_are_not_shared(self):
+        one, two = resolve.Inputs({}), resolve.Inputs({})
+        self.assertIsNot(one.flags, two.flags)
+        with self.assertRaises(dataclasses.FrozenInstanceError):
+            one.home = "/x"
+
+
+class FixtureRunGuardTests(unittest.TestCase):
+    def test_a_fixture_run_never_reads_the_real_shell_or_the_real_folders(self):
+        home = pwd.getpwuid(os.getuid()).pw_dir
+        made_up = "made-up-effort-zz9"
+        texts = []
+        with mock.patch.dict(os.environ, {"CLAUDE_CODE_EFFORT_LEVEL": made_up}):
+            with home_guard([home, REAL_MANAGED], allowed=[helpers.REPO]) as seen:
+                for name in _fixture_names():
+                    inputs, _expected = resolve.load_fixture(os.path.join(FIXTURE_DIR, name), RULES)
+                    texts.append(json.dumps(resolve.resolve(inputs, RULES, FIELDS)))
+        self.assertEqual(seen, [])
+        self.assertGreater(len(texts), 60)
+        self.assertNotIn(made_up, "".join(texts))
+
+
+class MaskingEndToEndTests(ResolveCase):
+    """Made-up secrets planted in four places reach no entry, but their rows keep place and status."""
+    PLANTED = ("planted-secret-alpha", "planted-secret-bravo", "planted-secret-charlie",
+               "planted-secret-delta", "planted-secret-echo")
+
+    def setUp(self):
+        super().setUp()
+        self.entries = self.run_resolve(
+            user='{\n  "env": {\n    "MADE_UP_TOKEN": "planted-secret-alpha",\n'
+                 '    "ANTHROPIC_MODEL": "claude-haiku-5-5"\n  }\n}\n',
+            managed='{\n  "env": {\n    "MADE_UP_PASSWORD": "planted-secret-charlie"\n  },\n'
+                    '  "madeUpApiKey": "planted-secret-delta"\n}\n',
+            user_agents={"probe.md": "---\nname: probe\ndescription: Made-up agent.\n"
+                                     "madeUpSecret: planted-secret-echo\n"
+                                     "hooks:\n  PreToolUse: Bearer planted-secret-bravo\n---\nBody.\n"},
+            shell_env={"MADE_UP_TOKEN": "planted-secret-bravo", "ANTHROPIC_MODEL": "shell"})
+
+    def test_no_planted_value_is_in_any_entry(self):
+        text = json.dumps(self.entries)
+        for planted in self.PLANTED:
+            with self.subTest(planted=planted):
+                self.assertNotIn(planted, text)
+
+    def test_masked_rows_keep_their_file_line_and_status(self):
+        got = self.rows(self.entries, "env.MADE_UP_TOKEN")
+        self.assertEqual(
+            [(e["layer"], e["value"], e["file"], e.get("line"), e["status"]) for e in got],
+            [("user", "hidden", "config/settings.json", 3, "in_effect"),
+             ("env", "hidden", "session.json:shell_env", None, "overridden")])
+        password = self.only(self.entries, "env.MADE_UP_PASSWORD")
+        self.assertEqual((password["value"], password["file"], password["line"], password["status"]),
+                         ("hidden", "managed/managed-settings.json", 3, "in_effect"))
+        files = self.rows(self.entries, "agentFile", "agent", "probe")
+        self.assertEqual([(e["status"], e.get("field"), e["line"]) for e in files],
+                         [("in_effect", None, 2), ("ignored", "madeUpSecret", 4)])
+        model = self.only(self.entries, "model")
+        self.assertEqual((model["value"], model["via"], model["line"]),
+                         ("claude-haiku-5-5", "ANTHROPIC_MODEL", 4))
+
+
+class FixtureMaskingTests(unittest.TestCase):
+    """A fixture's --settings content is masked before it reaches an entry."""
+
+    def test_cli_settings_env_secret_shows_hidden(self):
+        folder = tempfile.mkdtemp(prefix="resolve-fixture-", dir=helpers._tmp_base())
+        self.addCleanup(shutil.rmtree, folder, True)
+        _write(os.path.join(folder, "session.json"), {
+            "cli_settings": {"env": {"MADE_UP_TOKEN": "planted-secret-foxtrot",
+                                     "MADE_UP_PLAIN": "plain"}}})
+        _write(os.path.join(folder, "expected.json"), [])
+        inputs, _expected = resolve.load_fixture(folder)
+        self.assertEqual(inputs.cli_settings["env"]["MADE_UP_TOKEN"], "hidden")
+        entries = resolve.resolve(inputs, RULES, FIELDS)
+        token = [e for e in entries if e["key"] == "env.MADE_UP_TOKEN"]
+        self.assertEqual([(e["layer"], e["value"], e["status"]) for e in token],
+                         [("cli", "hidden", "in_effect")])
+        plain = [e for e in entries if e["key"] == "env.MADE_UP_PLAIN"]
+        self.assertEqual(plain[0]["value"], "plain")
+        self.assertNotIn("planted-secret-foxtrot", json.dumps(entries))
 
 
 class CompareTests(unittest.TestCase):
@@ -1336,9 +1833,10 @@ class CommandLineTests(ResolveCase):
     def test_load_fixture_reads_the_plan_and_tolerates_missing_folders(self):
         inputs, expected = resolve.load_fixture(
             os.path.join(FIXTURE_DIR, "prompt-cache-plan-api-key-five-minutes"))
-        self.assertEqual((inputs.plan, inputs.managed, inputs.flags, inputs.cli_settings),
-                         ("api_key", None, [], None))
-        self.assertFalse(os.path.exists(inputs.config_dir))
+        self.assertEqual((inputs.plan, inputs.flags, inputs.cli_settings, inputs.home),
+                         ("api_key", [], None, None))
+        self.assertEqual(inputs.shell_label, resolve.LABEL_SHELL)
+        self.assertEqual((inputs.collected["settings"], inputs.collected["settings_files"]), ([], []))
         self.assertEqual(expected["fixture"], "prompt-cache-plan-api-key-five-minutes")
         self.assertEqual(resolve.compare(resolve.resolve(inputs, RULES, FIELDS), expected), [])
 

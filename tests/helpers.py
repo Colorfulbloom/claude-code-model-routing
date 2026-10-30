@@ -6,7 +6,9 @@ the invoking user's real Claude config directory.
 """
 import atexit
 import collections
+import contextlib
 import difflib
+import io
 import json
 import os
 import pwd
@@ -15,6 +17,7 @@ import shutil
 import stat
 import subprocess
 import tempfile
+from unittest import mock
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FIXTURES = os.path.join(REPO, "tests", "fixtures")
@@ -89,7 +92,7 @@ def snapshot_source(root, repo=REPO):
         s = os.path.join(repo, d)
         if os.path.isdir(s):
             shutil.copytree(s, os.path.join(src, d), symlinks=True, ignore=ignore)
-    for f in ("install.py", "install.sh"):
+    for f in ("install.py", "install.sh", "agent_md.py"):
         s = os.path.join(repo, f)
         if os.path.isfile(s):
             shutil.copy2(s, os.path.join(src, f))
@@ -702,3 +705,78 @@ def _rebuild(m, vals):
         last = e
     out.append(line[last:])
     return "".join(out)
+
+
+@contextlib.contextmanager
+def home_guard(homes, allowed=()):
+    """Record every path under `homes` that code touches, and refuse the home lookups.
+
+    Yields the list of paths seen. Each path is judged by os.path.realpath as
+    well as os.path.abspath, so a symlink into a home fails like the home does.
+    Paths under `allowed` (the repo) are skipped. The guard wraps the builtin
+    open, io.open, the os calls that read the file system, and the pathlib
+    methods that read or resolve a path (pathlib in Python 3.9 keeps its own copy of os.stat,
+    so patching os.stat alone does not catch them). Path.home and
+    os.path.expanduser raise, because calling them is the lookup the resolver
+    must never make.
+    """
+    import builtins
+    import pathlib
+    roots = set()
+    for home in homes:
+        roots.update({os.path.abspath(home), os.path.realpath(home)})
+    skip = {os.path.realpath(a) for a in allowed} | {os.path.abspath(a) for a in allowed}
+    seen = []
+    busy = []
+
+    def inside(full, bases):
+        return any(full == b or full.startswith(b + os.sep) for b in bases)
+
+    def note(path):
+        if busy or isinstance(path, int):
+            return
+        busy.append(True)
+        try:
+            try:
+                text = os.fsdecode(os.fspath(path))
+            except TypeError:
+                return
+            for full in {os.path.abspath(text), os.path.realpath(text)}:
+                if inside(full, roots) and not inside(full, skip):
+                    seen.append(full)
+                    return
+        finally:
+            busy.pop()
+
+    def watch_function(owner, name):
+        original = getattr(owner, name)
+
+        def wrapper(path=".", *args, **kwargs):
+            note(path)
+            return original(path, *args, **kwargs)
+        return mock.patch.object(owner, name, wrapper)
+
+    def watch_method(name):
+        original = getattr(pathlib.Path, name)
+
+        def wrapper(self, *args, **kwargs):
+            note(str(self))
+            return original(self, *args, **kwargs)
+        return mock.patch.object(pathlib.Path, name, wrapper)
+
+    def refuse(label):
+        def fail(*_args, **_kwargs):
+            raise AssertionError("resolve called " + label)
+        return fail
+
+    with contextlib.ExitStack() as stack:
+        for owner, name in ((builtins, "open"), (io, "open"), (os, "open"), (os, "scandir"),
+                            (os, "listdir"), (os, "stat"), (os, "lstat"), (os, "access"),
+                            (os, "walk")):
+            stack.enter_context(watch_function(owner, name))
+        for name in ("read_text", "read_bytes", "iterdir", "exists", "open", "stat", "is_dir",
+                     "is_file", "glob", "rglob", "resolve"):
+            stack.enter_context(watch_method(name))
+        stack.enter_context(mock.patch.object(os.path, "expanduser", refuse("os.path.expanduser")))
+        stack.enter_context(mock.patch.object(pathlib.Path, "home", refuse("Path.home")))
+        yield seen

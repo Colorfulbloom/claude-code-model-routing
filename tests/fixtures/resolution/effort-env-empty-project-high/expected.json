@@ -1,0 +1,33 @@
+{
+  "fixture": "effort-env-empty-project-high",
+  "rule_ids": [
+    "effort-env-empty-ignored",
+    "effort-level-layer-order"
+  ],
+  "confidence": "tested",
+  "source": "dashboard/experiments/2026-10-29-effort-env-empty.json#z2-shell-empty-project-high",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "effortLevel",
+      "value": "high",
+      "status": "in_effect",
+      "layer": "project",
+      "file": "project/.claude/settings.json",
+      "line": 2,
+      "scope": "main",
+      "model": "claude-opus-5-5"
+    },
+    {
+      "key": "effortLevel",
+      "value": "",
+      "status": "ignored",
+      "layer": "env",
+      "file": "session.json:shell_env",
+      "scope": "main",
+      "model": "claude-opus-5-5",
+      "via": "CLAUDE_CODE_EFFORT_LEVEL",
+      "rule_id": "effort-env-empty-ignored"
+    }
+  ]
+}

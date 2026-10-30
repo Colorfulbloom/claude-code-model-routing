@@ -2,7 +2,7 @@
 
 Owner-approved facts promoted from HiveMind. Only deep-reasoner edits this file, and only after the owner approves a promotion. Limit: 60 lines.
 
-- T-7629 Full suite: from the repo root, `/usr/bin/python3 -m unittest discover -s tests` runs 986 tests (2 skipped) in about 140 seconds (2026-10-29). Run it alone, not beside a harness batch.
+- T-7629 Full suite: from the repo root, `/usr/bin/python3 -m unittest discover -s tests` runs 1152 tests (2 skipped) in about 165 seconds (2026-10-29). Run it alone, not beside a harness batch.
 - T-5589 Test subsets: `discover -s tests -k <pattern>` or `-p test_x.py` works; dotted names such as `tests.test_x` fail with "No module named 'helpers'".
 - T-c826 MR_TEST_TMP is optional: tests/helpers.py creates the directory when it is set and missing; unset means the system temp dir.
 - T-07ef Settings harness: `dashboard/experiments/harness/` measures precedence with no real API call (fakeapi.py on 127.0.0.1, throwaway HOME). `claude -p "/effort status"` and `"/autocompact"` send no request. Never run a batch as a check.

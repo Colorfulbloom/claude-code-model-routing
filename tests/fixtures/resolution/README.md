@@ -8,6 +8,7 @@ Run them all with `/usr/bin/python3 dashboard/resolve.py`. It prints `<name>: ok
 
 - `config/` is the Claude config dir, with `settings.json`, `agents/` and `rules/`. Agent files here sit in the user layer, and they may sit in subfolders such as `config/agents/a/`.
 - `project/` is the project, with `.claude/settings.json`, `.claude/settings.local.json`, `.claude/agents/` and `.claude/rules/`.
+- `managed/` is the managed settings folder, and it is optional. It may hold `managed-settings.json` and a `managed-settings.d/` folder of drop-in files. The runner reads it, never the real managed folder.
 - `session.json` holds the shell environment (`shell_env`), the flags (`flags`) and any `--settings` content (`cli_settings`).
 - `dashboard.json` is the dashboard's own config. A fixture adds it only when the case depends on the plan, and its `plan` is `subscription`, `api_key` or `cloud_provider`. Without the file the plan is unset.
 - `expected.json` holds the rule ids, the confidence, the source and the expected resolution.
@@ -24,6 +25,7 @@ One convention names the file and the key, so the runner can compare them as wri
 - A value from the shell environment has the layer `env` and the file `session.json:shell_env`. A value set by an `env` block in a settings file has the layer of that file and the file itself. The variable's row then reads the winning value, with the layer `env` and the settings file as its file.
 - A flag has the layer `flag` and the file `session.json:flags`. A `--settings` file has the layer `cli` and the file `session.json:cli_settings`.
 - The default layer has the file `null`.
+- An entry whose value came from a real file also carries `line`, the line of that value in the file. A shell value, a default and the fixture-only labels (`session.json:flags`, `session.json:cli_settings` and `session.json:shell_env`) carry no `line`.
 - A `modelSettings` entry uses the key of the row it feeds (`effortLevel` for the main session, `effort` for an agent, `autoCompactWindow` or `maxEffortLevel`) and the scope of that row, not `model`. Its `path` names the entry, such as `modelSettings.opus.effortLevel`, and its `model` names the catalog id.
 - A `via` field names the environment variable behind an `env` or `default` entry, such as `FORCE_PROMPT_CACHING_5M`.
 - A `becomes` field holds what a lowered value runs as, or the clamp on an auto-compact window. A `raw` field holds the text an agent's `model` field had when it was `inherit`.

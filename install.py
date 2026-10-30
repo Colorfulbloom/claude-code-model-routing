@@ -16,6 +16,16 @@ import sys
 import tempfile
 import time
 
+HERE = os.path.dirname(os.path.abspath(__file__))
+if HERE not in sys.path:
+    sys.path.insert(0, HERE)
+
+from agent_md import (  # noqa: E402
+    LINE_RE, MissingFieldsError, find_agent_md_files, find_field_lines,
+    frontmatter_name, frontmatter_span, parse_agent_defaults, read_bytes_text,
+    render_agent, split_line, strip_quotes,
+)
+
 # ============================================================================
 # Messages
 # Every string a user reads lives in this section. Reword freely, but keep the
@@ -193,11 +203,6 @@ def die_text(fmt, *args):
     return InstallError(fmt % args if args else fmt)
 
 
-def read_bytes_text(path):
-    with open(path, "rb") as fh:
-        return fh.read().decode("utf-8", "surrogateescape")
-
-
 def byte_key(text):
     return text.encode("utf-8", "surrogateescape")
 
@@ -319,74 +324,6 @@ def detect_claude_version():
     except OSError:
         text = ""
     return text.split("\n")[0]
-
-
-# ---- Frontmatter parse and render -------------------------------------------
-
-LINE_RE = re.compile(r"[^\n]*\n|[^\n]+")
-
-
-def split_line(line):
-    """(content, ending) with ending one of \\r\\n, \\n or empty."""
-    if line.endswith("\r\n"):
-        return line[:-2], "\r\n"
-    if line.endswith("\n"):
-        return line[:-1], "\n"
-    return line, ""
-
-
-def frontmatter_span(lines):
-    """Index range (1, end) of frontmatter lines, or None without frontmatter."""
-    if not lines or split_line(lines[0])[0] != "---":
-        return None
-    for idx in range(1, len(lines)):
-        if split_line(lines[idx])[0] == "---":
-            return (1, idx)
-    return None
-
-
-def strip_quotes(value):
-    value = value.strip()
-    if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
-        value = value[1:-1]
-    return value.strip()
-
-
-def find_field_lines(lines, span):
-    found = {}
-    for idx in range(span[0], span[1]):
-        content = split_line(lines[idx])[0]
-        for key in ("model", "effort"):
-            if key not in found and content.startswith(key + ":"):
-                found[key] = idx
-    return found
-
-
-def parse_agent_defaults(text, label):
-    """(model, effort) from the frontmatter. Raises InstallError naming `label`."""
-    lines = LINE_RE.findall(text)
-    span = frontmatter_span(lines)
-    found = find_field_lines(lines, span) if span else {}
-    if "model" not in found or "effort" not in found:
-        raise die_text(MSG_ERR_AGENT_FRONTMATTER, label)
-    values = []
-    for key in ("model", "effort"):
-        content = split_line(lines[found[key]])[0]
-        values.append(strip_quotes(content[len(key) + 1:]))
-    return (values[0], values[1])
-
-
-def render_agent(text, model, effort, label="agent file"):
-    """Replaces only the first model: and effort: lines inside the frontmatter."""
-    lines = LINE_RE.findall(text)
-    span = frontmatter_span(lines)
-    found = find_field_lines(lines, span) if span else {}
-    if "model" not in found or "effort" not in found:
-        raise die_text(MSG_ERR_AGENT_FRONTMATTER, label)
-    for key, value in (("model", model), ("effort", effort)):
-        ending = split_line(lines[found[key]])[1]
-        lines[found[key]] = "%s: %s%s" % (key, value, ending)
-    return "".join(lines)
 
 
 # ---- Choices ----------------------------------------------------------------
@@ -1341,44 +1278,6 @@ def print_backup_summary(ctx):
 
 # ---- Same-name agent scan ---------------------------------------------------
 
-def frontmatter_name(path):
-    """The value of the first name: line inside the frontmatter, or None."""
-    try:
-        text = read_bytes_text(path)
-    except OSError:
-        return None
-    lines = text.split("\n")
-    if lines[0] != "---":
-        return None
-    for line in lines[1:]:
-        if line == "---":
-            return None
-        if line.startswith("name:"):
-            value = line[len("name:"):].strip(" \t\n\r\v\f")
-            if len(value) >= 3 and value[0] == value[-1] and value[0] in "\"'":
-                value = value[1:-1]
-            return value
-    return None
-
-
-def find_agent_md_files(agents_dir):
-    """Regular files and symlinks named *.md, anywhere under agents_dir, in the
-    order `find` prints them: directory order, descending into a real directory
-    right when it is met. Not sorted."""
-    found = []
-    try:
-        entries = list(os.scandir(agents_dir))
-    except OSError:
-        return found
-    for entry in entries:
-        is_link = entry.is_symlink()
-        if entry.name.endswith(".md") and (is_link or entry.is_file(follow_symlinks=False)):
-            found.append(entry.path)
-        if not is_link and entry.is_dir(follow_symlinks=False):
-            found.extend(find_agent_md_files(entry.path))
-    return found
-
-
 def scan_samename(ctx, plan):
     """Read-only. Warns about files under <target>/agents/ that are not ours but
     whose frontmatter name equals one of our agent names."""
@@ -1672,6 +1571,10 @@ def main(argv=None):
         sys.stdout.flush()
         if str(exc):
             sys.stderr.write(str(exc))
+        return 1
+    except MissingFieldsError as exc:
+        sys.stdout.flush()
+        sys.stderr.write(MSG_ERR_AGENT_FRONTMATTER % exc.label)
         return 1
     except KeyboardInterrupt:
         sys.stdout.flush()
