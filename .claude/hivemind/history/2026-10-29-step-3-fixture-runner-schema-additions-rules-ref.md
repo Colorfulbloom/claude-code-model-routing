@@ -1,9 +1,9 @@
 ### F-9fdd Step 3: fixture runner, schema additions, rules reference page (#5, #15, #14)
-status: in-progress
+status: shipped
 kind: code
 dates: 2026-10-29 .. 2026-10-29
 refs:
-  commit: pending (branch feature/step-3)
+  commit: 61b1e07c00e265c1ab1ea8b4ff90b3f71208fadf (branch feature/step-3, merged into development)
 summary: First resolver dashboard/resolve.py runs all 46 fixtures green; schema v3 gained variables, via, if_set, range with int becomes, ceiling combine, name_form and reader_rejected_untested; 2 new rules (43 total); generated docs/rules-reference.md with placeholder copy; suite 985 OK (2 skipped) after the verifier fix round. Stopped at the 400K budget before the tech-writer pass.
 decisions:
 - Variable-to-layer mapping lives in rules.json `variables` (optional top level, schema stays v3); list order is precedence inside one layer, which is what makes FORCE_PROMPT_CACHING_5M beat CLAUDE_CODE_PROMPT_CACHE_TTL.
