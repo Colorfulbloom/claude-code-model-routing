@@ -50,6 +50,7 @@ if HERE not in sys.path:
 
 import api_settings  # noqa: E402
 import collect  # noqa: E402
+import projects  # noqa: E402
 import resolve  # noqa: E402
 
 HOST = "127.0.0.1"
@@ -98,6 +99,7 @@ DRAIN_CAP = 65536
 
 # One line per route. Each is a function (ctx, query) -> (status, payload).
 ROUTES = {
+    "/api/projects": projects.api_projects,
     "/api/settings": api_settings.settings,
 }
 
@@ -124,6 +126,7 @@ class Context:
     rules: dict
     agent_fields: list
     static_dir: str = STATIC_DIR
+    project_explicit: bool = False  # --project was given
 
 
 def default_config_dir(env, cwd):
@@ -157,7 +160,8 @@ def _read_object(path):
     return data if isinstance(data, dict) else {}
 
 
-def live_context(config_dir, project_dir, env, platform, rules, agent_fields):
+def live_context(config_dir, project_dir, env, platform, rules, agent_fields,
+                 project_explicit=False):
     """Context for a run on the real machine."""
     return Context(
         config_dir=config_dir,
@@ -170,10 +174,12 @@ def live_context(config_dir, project_dir, env, platform, rules, agent_fields):
         cli_settings=None,
         shell_label=None,
         rules=rules,
-        agent_fields=agent_fields)
+        agent_fields=agent_fields,
+        project_explicit=project_explicit)
 
 
-def fixture_context(folder, config_dir, project_dir, rules, agent_fields):
+def fixture_context(folder, config_dir, project_dir, rules, agent_fields,
+                    project_explicit=False):
     """Context for a fixture run. Reads nothing from the real machine."""
     folder = os.path.abspath(folder)
     session = _read_object(os.path.join(folder, "session.json"))
@@ -190,7 +196,8 @@ def fixture_context(folder, config_dir, project_dir, rules, agent_fields):
         cli_settings=collect.mask(session.get("cli_settings")),
         shell_label=resolve.LABEL_SHELL,
         rules=rules,
-        agent_fields=agent_fields)
+        agent_fields=agent_fields,
+        project_explicit=project_explicit)
 
 
 # --------------------------------------------------------------------------
@@ -429,10 +436,12 @@ def main(argv=None, env=None):
     config_dir = os.path.abspath(args.config_dir) if args.config_dir else None
     project_dir = os.path.abspath(args.project) if args.project else None
     if args.fixture is not None:
-        ctx = fixture_context(args.fixture, config_dir, project_dir, rules, agent_fields)
+        ctx = fixture_context(args.fixture, config_dir, project_dir, rules, agent_fields,
+                              project_explicit=args.project is not None)
     else:
         ctx = live_context(config_dir or default_config_dir(env, cwd), project_dir or cwd,
-                           env, sys.platform, rules, agent_fields)
+                           env, sys.platform, rules, agent_fields,
+                           project_explicit=args.project is not None)
     try:
         server = Server(ctx, args.port)
     except OSError:

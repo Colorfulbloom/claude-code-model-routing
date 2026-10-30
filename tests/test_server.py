@@ -692,8 +692,7 @@ class Entries(TempCase):
         names = []
         for name in sorted(os.listdir(FIXTURE_DIR)):
             path = os.path.join(FIXTURE_DIR, name)
-            if os.path.isfile(os.path.join(path, "expected.json")) \
-                    and not os.path.exists(os.path.join(path, "dashboard.json")):
+            if os.path.isfile(os.path.join(path, "expected.json")):
                 names.append(name)
         return names
 
@@ -707,7 +706,8 @@ class Entries(TempCase):
             ctx = server.fixture_context(folder, None, None, RULES, FIELDS)
             status, payload = api_settings.settings(ctx, {})
             self.assertEqual(status, 200)
-            self.assertEqual(json.loads(json.dumps(payload)), {"entries": expected}, name)
+            self.assertEqual(json.loads(json.dumps(payload))["entries"], expected, name)
+            self.assertEqual(payload["project"], "project")
 
     def test_http_entries_equal_resolve_for_a_committed_case(self):
         for name in ("env-block-over-shell", "agent-project-over-user"):
@@ -717,7 +717,9 @@ class Entries(TempCase):
             proc = self.start(["--fixture", folder], name=name)
             status, _, body = proc.request("GET", "/api/settings")
             self.assertEqual(status, 200)
-            self.assertEqual(json.loads(body), {"entries": expected}, name)
+            answer = json.loads(body)
+            self.assertEqual(answer["entries"], expected, name)
+            self.assertEqual(set(answer), {"project", "state", "entries"})
 
     def test_a_fixture_folder_may_be_empty(self):
         folder = os.path.join(self.root, "empty")
