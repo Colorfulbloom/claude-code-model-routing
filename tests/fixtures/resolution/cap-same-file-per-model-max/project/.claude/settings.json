@@ -1,0 +1,8 @@
+{
+  "maxEffortLevel": "low",
+  "modelSettings": {
+    "claude-sonnet-5-5": {
+      "maxEffortLevel": "max"
+    }
+  }
+}

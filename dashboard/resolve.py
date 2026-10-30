@@ -580,12 +580,15 @@ def settings_candidates(ctx, row):
     skey = SETTINGS_KEYS.get((row["scope"], row["key"]))
     field = MODEL_SETTINGS_FIELDS.get(row["key"])
     for src in ctx.settings:
+        top = None
         if skey is not None and src["data"].get(skey) is not None:
             file, line = ctx.spot(src, (skey,))
-            out.append(_candidate(src["layer"], file, _show_value(row, src["data"][skey]),
-                                  line))
+            top = _candidate(src["layer"], file, _show_value(row, src["data"][skey]), line)
+            out.append(top)
         table = src["data"].get("modelSettings")
         if field is not None and row.get("model") and isinstance(table, dict):
+            # Entries for this model in this file: (name form index, value).
+            found = []
             for name, entry in table.items():
                 model_id, form = normalize_model(name, ctx.catalog)
                 if model_id != row["model"] or not isinstance(entry, dict) \
@@ -598,6 +601,16 @@ def settings_candidates(ctx, row):
                     path="modelSettings.%s.%s" % (name, field),
                     name_form=form, model=model_id, rule_key=rule_key, rule_scope="model",
                     rank=(0, rules_schema.NAME_FORMS.index(form), 0)))
+                found.append((rules_schema.NAME_FORMS.index(form), entry[field]))
+            if top is not None and row["key"] == "maxEffortLevel" and found:
+                # A valid per-model cap replaces this file's top-level cap for the
+                # model. If several name forms match, the lowest NAME_FORMS index
+                # decides, and on a tie any valid entry counts. A value that is
+                # not a level replaces nothing.
+                best = min(index for index, _value in found)
+                if any(index == best and isinstance(value, str)
+                       and value in rules_schema.EFFORT_LEVELS for index, value in found):
+                    top["replaced_in_source"] = True
     for flag, rows in FLAGS.items():
         if flag in ctx.flags and (row["key"], row["scope"]) in rows:
             out.append(_candidate("flag", LABEL_FLAGS, _show_value(row, ctx.flags[flag]),
@@ -738,6 +751,9 @@ def _condition_matches(ctx, row, cand, cond):
         if cond["layer"] == "default" and not cand.get("synth"):
             return False
         if not _model_unknown(ctx, row):
+            return False
+    elif cond.get("when") == "replaced_in_source":
+        if not cand.get("replaced_in_source"):
             return False
     elif "when" in cond and cand.get("case") != cond["when"]:
         return False
@@ -1019,6 +1035,10 @@ def resolve_row(ctx, row, cands):
         votes = votes_for(ctx, row, cand)
         statuses = {cond["status"] for _rule, cond in votes}
         status = next((s for s in EXCLUDING if s in statuses), None)
+        if status is None and cand.get("replaced_in_source"):
+            # The same file's per-model cap replaces this one. It stays in the
+            # row as overridden and never joins the lowest-value selection.
+            status = "overridden"
         if status:
             excluded.append(_make_entry(ctx, row, cand, status, votes))
         else:
@@ -1083,7 +1103,9 @@ def _finish(ctx, entries, order_id, winner):
     row's order rule (order_id) for a winner or an overridden entry.
 
     An overridden entry is explained by the order rule, because the row's order
-    is why it lost, and rule_ids also holds any rule that voted overridden. A
+    is why it lost, unless a rule voted overridden with a `when` (a file case
+    such as replaced_in_source). That rule explains it instead. rule_ids also
+    holds any rule that voted overridden. A
     winning entry (in_effect, lowered, default or unknown) lists its voters,
     the most specific first (see SPECIFIC_KEYS), then rules.json order, and the
     order rule follows them with no repeats.
@@ -1095,7 +1117,11 @@ def _finish(ctx, entries, order_id, winner):
         if entry["status"] == "overridden":
             ids = {r["rule_id"] for r, c in votes if c["status"] == "overridden"}
             ids.add(order_id)
-            entry["rule_id"] = order_id
+            # A vote that names a file case (when) says why this entry lost, so
+            # it stands for the entry instead of the order rule.
+            cased = [r["rule_id"] for r, c in votes
+                     if c["status"] == "overridden" and "when" in c]
+            entry["rule_id"] = cased[0] if cased else order_id
             entry["rule_ids"] = [r["rule_id"] for r in ctx.rules if r["rule_id"] in ids]
         else:
             matched = [(r, c) for r, c in votes if c["status"] == entry["status"]]

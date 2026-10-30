@@ -177,6 +177,9 @@ settingsFile):
                         cannot say what the file sets, so the status is unknown.
     model_unknown       the row's model is unknown, so a default cannot be named.
                         A condition on any layer may use it.
+    replaced_in_source  a maxEffortLevel set at the top level of a settings file
+                        that the same file replaces for this model with its own
+                        modelSettings maxEffortLevel. Needs status overridden.
 
 A condition's `default_value` is only for the default status: the value the
 default yields, as a non-empty string. With a value_order or an effort key it
@@ -261,7 +264,8 @@ PLANS = ("subscription", "api_key", "cloud_provider", "unset")
 # File cases a condition's `when` can name.
 WHEN_CASES = ("same_name_in_layer", "not_md_file", "no_name", "no_description",
               "parse_error", "reader_rejected_but_loads", "reader_rejected_untested",
-              "unknown_field", "unparsed", "unreadable", "model_unknown")
+              "unknown_field", "unparsed", "unreadable", "model_unknown",
+              "replaced_in_source")
 
 # What a computed `becomes` works out.
 COMPUTED_BECOMES = ("cap", "fallback")
@@ -871,6 +875,10 @@ def _check_condition(cond, order, model_ids=None, levels=None, key=None, scope=N
             errors.append("when %s needs status unknown" % when)
         elif when == "unreadable" and status != "unknown":
             errors.append("when unreadable needs status unknown")
+        elif when == "replaced_in_source" and (status != "overridden"
+                                               or key != "maxEffortLevel"):
+            errors.append("when replaced_in_source needs status overridden "
+                          "and key maxEffortLevel")
     if "via" in cond:
         errors.extend(_check_via(cond["via"], cond.get("layer"), key, scope, variables))
     if "if_set" in cond:
