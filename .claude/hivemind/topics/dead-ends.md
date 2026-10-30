@@ -68,13 +68,13 @@ created: 2026-10-30
 last_used: 2026-10-30
 uses: 0
 
-### D-3ca7 Worktree agents cannot use git -C or shell variables
-fact: The worktree isolation guard refuses git -C <dir> and a plain command with a shell variable, because it cannot check them before the run. git a && git b, a short heredoc and a literal for loop ran (October 30 probe).
+### D-3ca7 Worktree agents: git -C, computed command names, busy heredocs
+fact: The worktree guard refuses what it cannot check first: git -C <dir>, a command named by a variable or a quoted path with a space, and a heredoc body mixing quotes, backticks and $( ). Plain heredocs, even into the scratchpad, variables as arguments and for loops ran (October 30 probes). A new isolation worktree starts at origin/main, not development.
 check: in a worktree-isolated agent run: git -C . log -1 --oneline
 evidence: .gitignore
 fp: 2e3aab966fe0
-as_of: 203ae0d 2026-10-30
+as_of: 0e72fd4 2026-10-30
 author: deep-reasoner
 created: 2026-10-30
 last_used: 2026-10-30
-uses: 0
+uses: 3

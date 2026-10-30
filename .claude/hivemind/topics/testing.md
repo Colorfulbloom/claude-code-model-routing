@@ -1,27 +1,27 @@
 # testing
 
-### T-7629 Full suite runs 1454 tests in about 178 seconds
-fact: discover -s tests from the repo root runs 1454 tests (2 skipped, they need MR_DOCS_LIVE=1 or MR_SUBAGENT_DOCS) in about 178 s. Run it alone.
+### T-7629 Full suite runs 1598 tests in about 187 seconds
+fact: discover -s tests from the repo root runs 1598 tests in about 187 s, 13 skipped: 11 need MR_E2E=1, 2 need MR_DOCS_LIVE=1 or MR_SUBAGENT_DOCS. Run it alone.
 check: /usr/bin/python3 -m unittest discover -s tests 2>&1 | tail -3
 evidence: tests
-fp: b402e1bc7158
-as_of: 203ae0d 2026-10-30
+fp: da7a47291eda
+as_of: 0e72fd4 2026-10-30
 author: deep-reasoner
 created: 2026-10-20
 last_used: 2026-10-30
-uses: 14
-promote: approved
+uses: 15
+promote: proposed
 
 ### T-5589 Subsets run through discover -k; dotted names fail
 fact: Dotted names (python3 -m unittest tests.test_x) fail with "No module named 'helpers'"; use discover -s tests -k <pattern> or -p test_x.py.
 check: /usr/bin/python3 -m unittest tests.test_parity 2>&1 | grep "No module named"
 evidence: tests/helpers.py
 fp: 99286733860d
-as_of: 203ae0d 2026-10-30
+as_of: 0e72fd4 2026-10-30
 author: deep-reasoner
 created: 2026-10-20
 last_used: 2026-10-30
-uses: 49
+uses: 52
 promote: approved
 
 ### T-c826 MR_TEST_TMP is optional and created when missing
@@ -29,11 +29,11 @@ fact: tests/helpers.py _tmp_base creates MR_TEST_TMP if set and missing; unset m
 check: grep -n -A4 "def _tmp_base" tests/helpers.py
 evidence: tests/helpers.py
 fp: 99286733860d
-as_of: 203ae0d 2026-10-30
+as_of: 0e72fd4 2026-10-30
 author: deep-reasoner
 created: 2026-10-20
 last_used: 2026-10-30
-uses: 27
+uses: 30
 promote: approved
 
 ### T-baa7 Broken pty tests can leave stray processes
@@ -86,11 +86,11 @@ fact: collect.py where maps use tuple keys (modelSettings names hold dots); json
 check: grep -n "def jsonable" tests/test_collect.py
 evidence: dashboard/collect.py, tests/test_collect.py
 fp: b27ebfc18420
-as_of: 203ae0d 2026-10-30
+as_of: 0e72fd4 2026-10-30
 author: deep-reasoner
 created: 2026-10-29
 last_used: 2026-10-30
-uses: 2
+uses: 3
 
 ### T-3ad1 tests/*.py must not hold home paths
 fact: NoHomePathsInTestsTest bans the home path prefixes in every tests/*.py file, so sample paths use a neutral root such as /work/. tests/fixtures/ is not scanned.
