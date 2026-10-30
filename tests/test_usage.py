@@ -7,10 +7,12 @@ $20 output per million tokens). The zone is America/New_York, whose clocks fall
 back on November 1, 2026 and spring forward on March 8, 2026. Nothing here
 reads the real ~/.claude.
 
-Not covered here: the Tidewater demo check, which waits for the demo builder.
+The Tidewater demo check at the end builds the demo set and compares the 30 day
+totals with the README figures and with the demo builder's own truth.
 """
 import datetime
 import itertools
+import json
 import os
 import shutil
 import sys
@@ -22,6 +24,8 @@ from unittest import mock
 import helpers
 
 sys.path.insert(0, os.path.join(helpers.REPO, "dashboard"))
+sys.path.insert(0, os.path.join(helpers.FIXTURES, "demo"))
+import build_demo  # noqa: E402
 import prices as prices_mod  # noqa: E402
 import resolve  # noqa: E402
 import transcripts  # noqa: E402
@@ -1082,6 +1086,60 @@ class ProjectFolderTests(unittest.TestCase):
         self.assertEqual(7, out["today"]["totals"]["tokens"])
         everything = views(rows, scope="all", projects=projects)["today"]["by_project"]
         self.assertEqual([("App", True), ("elsewhere", False)], [(p["name"], p["listed"]) for p in everything])
+
+
+# ---------------------------------------------------------------- Tidewater demo check
+
+class TestDemoSet(unittest.TestCase):
+    """The usage views on the built demo set, against the README and the truth file."""
+
+    # Figures from tests/fixtures/demo/README.md, Tidewater reporting, default arguments.
+    README = {"input": 5987439, "output": 3317776, "cache_read": 89076369,
+              "cache_write_5m": 17040156, "cache_write_1h": 1827034, "thinking": 999663,
+              "requests": 3259, "runs": 190, "sessions": 53}
+    README_COST = 319.61503237
+    NAMES = ("Tidewater reporting", "Driftwood", "Harbor Light")
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = os.path.realpath(tempfile.mkdtemp(prefix="d-", dir=helpers._tmp_base()))
+        out = os.path.join(cls.tmp, "set")
+        cls.truth = build_demo.build(out)
+        now = datetime.datetime.strptime(cls.truth["window"]["end"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
+        tz = zoneinfo.ZoneInfo(cls.truth["window"]["tz"])
+        result = transcripts.Reader(os.path.join(out, "config")).read(now)
+        with open(os.path.join(out, "config", "routing-dashboard.json"), encoding="utf-8") as fh:
+            listed = json.load(fh)["projects"]
+        projects = [{"key": p["name"], "name": p["name"], "path": p["path"]} for p in listed]
+        folders = transcripts.project_folders(projects, result.records)
+        shown = [{"key": p["key"], "name": p["name"], "folder": folders[p["key"]]} for p in projects]
+        cls.totals = {}
+        for name in cls.NAMES:
+            built = usage.build_views(result.records, name, now, tz, PRICES, CATALOG, result.oldest_seen,
+                                      projects=shown)
+            cls.totals[name] = built["30d"]["totals"]
+
+    @classmethod
+    def tearDownClass(cls):
+        helpers.rmtree_force(cls.tmp)
+
+    def test_tidewater_matches_the_readme(self):
+        got = self.totals["Tidewater reporting"]
+        for field, want in self.README.items():
+            self.assertEqual(want, got[field], field)
+        self.assertAlmostEqual(self.README_COST, got["cost"], places=6)
+        self.assertEqual(0, got["unpriced_requests"])
+
+    def test_every_listed_project_matches_the_truth(self):
+        for name in self.NAMES:
+            got = self.totals[name]
+            want = self.truth["projects"][name]
+            for field in ("input", "output", "cache_read", "cache_write_5m", "cache_write_1h",
+                          "thinking", "requests", "runs", "sessions", "unpriced_requests"):
+                self.assertEqual(want[field], got[field], (name, field))
+            self.assertAlmostEqual(want["cost"], got["cost"], places=6, msg=name)
+        self.assertGreater(self.totals["Driftwood"]["unpriced_requests"], 0)
+        self.assertEqual(0, self.totals["Harbor Light"]["unpriced_requests"])
 
 
 if __name__ == "__main__":
