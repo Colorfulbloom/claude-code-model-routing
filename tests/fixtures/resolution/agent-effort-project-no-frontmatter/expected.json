@@ -1,0 +1,21 @@
+{
+  "fixture": "agent-effort-project-no-frontmatter",
+  "rule_ids": [
+    "agent-effort-order"
+  ],
+  "confidence": "tested",
+  "source": "dashboard/experiments/2026-10-29-agent-effort.json#ag-noeffort-proj-low",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "effort",
+      "value": "low",
+      "status": "in_effect",
+      "layer": "project",
+      "file": "project/.claude/settings.json",
+      "scope": "agent",
+      "agent": "probe",
+      "model": "claude-haiku-5-5"
+    }
+  ]
+}

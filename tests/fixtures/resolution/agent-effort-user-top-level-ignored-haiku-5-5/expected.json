@@ -1,0 +1,43 @@
+{
+  "fixture": "agent-effort-user-top-level-ignored-haiku-5-5",
+  "rule_ids": [
+    "agent-effort-user-settings-opus-5-5",
+    "agent-effort-default-by-model"
+  ],
+  "note": "The user top-level effortLevel counts for the Fable 5.1 main session, but the Haiku 5.5 agent ignores it, so the agent runs at medium.",
+  "confidence": "tested",
+  "source": "dashboard/experiments/2026-10-29-agent-effort.json#ag-noeffort-user-top-fable-main",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "effortLevel",
+      "value": "low",
+      "status": "in_effect",
+      "layer": "user",
+      "file": "config/settings.json",
+      "scope": "main",
+      "model": "claude-fable-5-1"
+    },
+    {
+      "key": "effort",
+      "value": "medium",
+      "status": "default",
+      "layer": "default",
+      "file": null,
+      "scope": "agent",
+      "agent": "probe",
+      "model": "claude-haiku-5-5"
+    },
+    {
+      "key": "effort",
+      "value": "low",
+      "status": "ignored",
+      "layer": "user",
+      "file": "config/settings.json",
+      "scope": "agent",
+      "agent": "probe",
+      "model": "claude-haiku-5-5",
+      "rule_id": "agent-effort-user-settings-opus-5-5"
+    }
+  ]
+}

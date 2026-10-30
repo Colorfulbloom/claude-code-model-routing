@@ -1,0 +1,47 @@
+{
+  "fixture": "auto-compact-agent-env-not-a-number",
+  "rule_ids": [
+    "agent-auto-compact-window-values",
+    "agent-auto-compact-window"
+  ],
+  "note": "The variable wins unless Claude Code ignores its value. A value that is not a number is ignored, so the frontmatter lowers the session window.",
+  "confidence": "assumed",
+  "source": "assumed: https://code.claude.com/docs/en/sub-agents#subagent-auto-compact-window",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "autoCompactWindow",
+      "value": 300000,
+      "status": "in_effect",
+      "layer": "agent",
+      "file": "config/agents/probe.md",
+      "scope": "agent",
+      "agent": "probe",
+      "model": "claude-opus-5-5",
+      "rule_id": "agent-auto-compact-window-values"
+    },
+    {
+      "key": "autoCompactWindow",
+      "value": 1000000,
+      "status": "overridden",
+      "layer": "default",
+      "file": null,
+      "scope": "agent",
+      "agent": "probe",
+      "model": "claude-opus-5-5",
+      "rule_id": "agent-auto-compact-window"
+    },
+    {
+      "key": "autoCompactWindow",
+      "value": "abc",
+      "status": "ignored",
+      "layer": "env",
+      "file": "session.json:shell_env",
+      "scope": "agent",
+      "agent": "probe",
+      "model": "claude-opus-5-5",
+      "via": "CLAUDE_CODE_AUTO_COMPACT_WINDOW",
+      "rule_id": "agent-auto-compact-window-values"
+    }
+  ]
+}

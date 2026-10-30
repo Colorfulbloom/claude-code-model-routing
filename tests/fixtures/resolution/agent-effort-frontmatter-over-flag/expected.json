@@ -24,7 +24,9 @@
       "layer": "flag",
       "file": "session.json:flags",
       "scope": "agent",
-      "agent": "probe"
+      "agent": "probe",
+      "rule_id": "agent-effort-order",
+      "reason": "config/agents/probe.md sets the effort for probe. CLAUDE_CODE_EFFORT_LEVEL beats the agent's effort frontmatter, which beats --effort and the settings that count for its own model."
     }
   ]
 }

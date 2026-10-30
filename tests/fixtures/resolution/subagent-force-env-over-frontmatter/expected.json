@@ -13,10 +13,11 @@
       "value": "claude-fable-5-1",
       "status": "in_effect",
       "layer": "env",
-      "file": null,
+      "file": "session.json:shell_env",
       "scope": "agent",
       "agent": "probe",
-      "via": "CLAUDE_CODE_SUBAGENT_MODEL"
+      "via": "CLAUDE_CODE_SUBAGENT_MODEL",
+      "rule_id": "subagent-model-force"
     },
     {
       "key": "model",
@@ -25,7 +26,8 @@
       "layer": "agent",
       "file": "config/agents/probe.md",
       "scope": "agent",
-      "agent": "probe"
+      "agent": "probe",
+      "rule_id": "subagent-model-force"
     }
   ]
 }

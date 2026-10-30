@@ -134,9 +134,10 @@ class RealRulesFileTest(unittest.TestCase):
         with open(rules_schema.RULES_PATH, encoding="utf-8") as fh:
             data = json.load(fh)
         self.assertIsInstance(data.get("rules"), list)
+        index = rules_schema.variable_index(data["variables"])
         for rule in data["rules"]:
             with self.subTest(rule=rule.get("rule_id")):
-                self.assertEqual(rules_schema.check_rule(rule), [])
+                self.assertEqual(rules_schema.check_rule(rule, variables=index), [])
         self.assertEqual(rules_schema.load_and_validate(), [])
 
     def test_tested_entries_point_to_a_complete_record(self):
@@ -216,20 +217,23 @@ class RealRulesFileTest(unittest.TestCase):
                             "prompt-cache-force-5m-over-everything", "expected.json")
         with open(path, encoding="utf-8") as fh:
             expected = json.load(fh)
-        self.assertIn("note", expected)
+        self.assertNotIn("note", expected)
         seen = 0
         for entry in expected["expect"]:
             if entry["layer"] != "env":
                 continue
             rule = next(r for r in (rules[i] for i in expected["rule_ids"])
-                        if r["key"] == entry["key"])
-            cond = next(c for c in rule["conditions"] if c["layer"] == "env")
-            with self.subTest(via=entry["via"]):
+                        if r["key"] == entry["key"] and r["scope"] == entry["scope"])
+            # The first env condition that matches the entry's variable. A
+            # condition with no via covers every variable the earlier ones don't.
+            cond = next(c for c in rule["conditions"]
+                        if c["layer"] == "env"
+                        and c.get("via", entry["via"]) == entry["via"])
+            with self.subTest(via=entry["via"], key=entry["key"]):
                 self.assertEqual(entry["status"], cond["status"])
             seen += 1
-        # Only the FORCE_PROMPT_CACHING_5M entries; the overridden TTL
-        # variables come back once a condition can name a variable (#5).
-        self.assertEqual(seen, 2)
+        # FORCE_PROMPT_CACHING_5M and the TTL variable, for the main and agent rows.
+        self.assertEqual(seen, 4)
 
     def test_reader_rejected_but_loads_shows_unknown_and_parse_error_stays_invalid(self):
         rules = self.real_rules()
@@ -597,13 +601,16 @@ class WhenConditionTest(TempDirMixin, unittest.TestCase):
     def cond(self, **fields):
         base = {"layer": "user", "models": ["*"], "status": "ignored"}
         base.update(fields)
-        return self.rule(conditions=[base])
+        return self.rule(layer_order=["managed", "cli", "local", "project", "user", "env",
+                                      "default"], conditions=[base])
 
     def test_every_when_case_passes(self):
         for case in rules_schema.WHEN_CASES:
             with self.subTest(when=case):
-                status = "unknown" if case == "reader_rejected_but_loads" else "ignored"
-                self.assertEqual(self.errors(self.cond(when=case, status=status)), [])
+                status = ("unknown" if case in ("reader_rejected_but_loads", "reader_rejected_untested")
+                          else "ignored")
+                layer = "default" if case == "model_unknown" else "user"
+                self.assertEqual(self.errors(self.cond(when=case, status=status, layer=layer)), [])
 
     def test_unknown_when_fails(self):
         for bad in ("other", "", "NOT_MD_FILE"):
@@ -625,6 +632,18 @@ class WhenConditionTest(TempDirMixin, unittest.TestCase):
             with self.subTest(status=status):
                 self.assertRejected(self.cond(when="reader_rejected_but_loads", status=status),
                                     "when reader_rejected_but_loads needs status unknown")
+
+    def test_model_unknown_is_allowed_on_the_default_layer(self):
+        for status in ("default", "unknown"):
+            with self.subTest(status=status):
+                self.assertEqual(self.errors(self.cond(when="model_unknown", layer="default",
+                                                       status=status)), [])
+
+    def test_model_unknown_is_rejected_on_other_layers(self):
+        for layer in ("user", "project", "env"):
+            with self.subTest(layer=layer):
+                self.assertRejected(self.cond(when="model_unknown", layer=layer),
+                                    "when model_unknown is only for a condition on the default layer")
 
     def test_file_key_rule_with_when_passes(self):
         rule = self.cond(when="not_md_file")
@@ -960,7 +979,7 @@ class BecomesTest(TempDirMixin, unittest.TestCase):
         self.assertEqual(self.errors(self.cond(becomes="high")), [])
 
     def test_empty_or_odd_becomes_fails(self):
-        for bad in ("", " ", 5, None, ["high"]):
+        for bad in ("", " ", 1.5, True, None, ["high"]):
             with self.subTest(becomes=bad):
                 self.assertRejected(self.cond(becomes=bad), "becomes must be")
 
@@ -1064,6 +1083,456 @@ class DocumentTest(TempDirMixin, unittest.TestCase):
         errs = rules_schema.load_and_validate(path)
         self.assertEqual(len(errs), 1)
         self.assertIn("cannot read", errs[0])
+
+
+def _var(name="FORCE_PROMPT_CACHING_5M", value="5m", rows=DROP):
+    if rows is DROP:
+        rows = [{"key": "promptCacheTtl", "scope": "main", "layer": "env"}]
+    return {"name": name, "value": value, "rows": rows}
+
+
+class VariablesTest(TempDirMixin, unittest.TestCase):
+    def cache_rule(self, conditions=None, **changes):
+        rule = self.rule(
+            key="promptCacheTtl", scope="main", layer_order=["env", "user", "default"],
+            conditions=conditions or [{"layer": "env", "models": ["*"], "status": "in_effect"}])
+        rule.update(changes)
+        return rule
+
+    def doc(self, variables, rules=None):
+        data = self.document(rules=rules or [self.cache_rule()])
+        if variables is not DROP:
+            data["variables"] = variables
+        return data
+
+    def test_document_without_variables_still_passes(self):
+        self.assertEqual(rules_schema.validate(self.doc(DROP), self.tmp), [])
+
+    def test_good_variables_pass(self):
+        variables = [
+            _var(),
+            _var("CLAUDE_CODE_PROMPT_CACHE_TTL", None),
+            _var("SOME_SWITCH", None, []),
+            _var("ENABLE_PROMPT_CACHING_1H", "1h",
+                 [{"key": "promptCacheTtl", "scope": "main", "layer": "default"}]),
+        ]
+        self.assertEqual(rules_schema.validate(self.doc(variables), self.tmp), [])
+
+    def test_variables_must_be_a_list(self):
+        for bad in ({}, "FORCE", None, 5):
+            with self.subTest(variables=bad):
+                self.assertDocRejected(self.doc(bad), "variables must be a list")
+
+    def test_variable_must_be_an_object(self):
+        self.assertDocRejected(self.doc(["FORCE"]), "variables[0]: not an object")
+
+    def test_variable_fields_are_exact(self):
+        self.assertDocRejected(self.doc([{"name": "A_B", "value": None}]),
+                               "variable A_B: missing field rows")
+        self.assertDocRejected(self.doc([dict(_var("A_B", None, []), extra=1)]),
+                               "variable A_B: unknown field extra")
+
+    def test_name_shape_and_uniqueness(self):
+        for bad in ("force", "1ABC", "A-B", "", None, 5):
+            with self.subTest(name=bad):
+                self.assertDocRejected(self.doc([_var(bad, None, [])]), "name must be capital")
+        self.assertDocRejected(self.doc([_var("A_B", None, []), _var("A_B", None, [])]),
+                               "variable A_B: duplicate name")
+
+    def test_value_is_null_or_a_non_empty_string(self):
+        for good in (None, "5m"):
+            self.assertEqual(rules_schema.validate(
+                self.doc([_var(value=good)]), self.tmp), [])
+        for bad in ("", " ", 5, True, ["5m"]):
+            with self.subTest(value=bad):
+                self.assertDocRejected(self.doc([_var(value=bad)]),
+                                       "value must be null or a non-empty string")
+
+    def test_rows_must_be_a_list_and_may_be_empty(self):
+        self.assertEqual(rules_schema.validate(self.doc([_var(rows=[])]), self.tmp), [])
+        self.assertDocRejected(self.doc([_var(rows={})]), "rows must be a list")
+
+    def test_row_fields_are_checked(self):
+        row = {"key": "promptCacheTtl", "scope": "main", "layer": "env"}
+        self.assertDocRejected(self.doc([_var(rows=["x"])]), "rows[0]: not an object")
+        self.assertDocRejected(self.doc([_var(rows=[{"key": "promptCacheTtl", "scope": "main"}])]),
+                               "rows[0]: missing field layer")
+        self.assertDocRejected(self.doc([_var(rows=[dict(row, extra=1)])]),
+                               "rows[0]: unknown field extra")
+        self.assertDocRejected(self.doc([_var(rows=[dict(row, key="a b")])]),
+                               "rows[0]: key must be")
+        self.assertDocRejected(self.doc([_var(rows=[dict(row, scope="team")])]),
+                               "rows[0]: scope must be one of")
+        for layer in ("user", "flag", "bogus", None):
+            with self.subTest(layer=layer):
+                self.assertDocRejected(self.doc([_var(rows=[dict(row, layer=layer)])]),
+                                       "rows[0]: layer must be one of env, default")
+
+    def test_repeated_row_fails(self):
+        row = {"key": "promptCacheTtl", "scope": "main", "layer": "env"}
+        self.assertDocRejected(self.doc([_var(rows=[row, dict(row)])]),
+                               "rows[1]: repeats an earlier row")
+
+    def test_row_naming_no_rule_fails(self):
+        for row in ({"key": "noSuchKey", "scope": "main", "layer": "env"},
+                    {"key": "promptCacheTtl", "scope": "agent", "layer": "env"},
+                    {"key": "promptCacheTtl", "scope": "main", "layer": "default"}):
+            with self.subTest(row=row):
+                # promptCacheTtl/main has env in its order but not default in this doc
+                rule = self.cache_rule(layer_order=["env", "user"])
+                self.assertDocRejected(self.doc([_var(rows=[row])], [rule]),
+                                       "matches no rule")
+
+    def test_top_level_still_rejects_other_unknown_fields(self):
+        data = self.doc([_var()])
+        data["extra"] = 1
+        self.assertDocRejected(data, "unknown top-level field extra")
+
+
+class ViaAndIfSetTest(TempDirMixin, unittest.TestCase):
+    INDEX = {
+        "FORCE_PROMPT_CACHING_5M": {("promptCacheTtl", "main", "env")},
+        "ENABLE_PROMPT_CACHING_1H": {("promptCacheTtl", "main", "default")},
+        "SWITCH": set(),
+    }
+
+    def rule_with(self, **cond):
+        base = {"layer": "env", "models": ["*"], "status": "in_effect"}
+        base.update(cond)
+        return self.rule(key="promptCacheTtl", scope="main",
+                         layer_order=["env", "user", "default"], conditions=[base])
+
+    def errs(self, rule, index=INDEX):
+        return rules_schema.check_rule(rule, self.tmp, CATALOG_IDS, index)
+
+    def assertBad(self, rule, fragment, index=INDEX):
+        errs = self.errs(rule, index)
+        self.assertTrue(any(fragment in e for e in errs),
+                        "expected %r in %r" % (fragment, errs))
+
+    def test_via_passes_with_a_matching_row(self):
+        self.assertEqual(self.errs(self.rule_with(via="FORCE_PROMPT_CACHING_5M")), [])
+        rule = self.rule_with(layer="default", via="ENABLE_PROMPT_CACHING_1H")
+        self.assertEqual(self.errs(rule), [])
+
+    def test_via_without_the_variables_list_fails(self):
+        self.assertBad(self.rule_with(via="FORCE_PROMPT_CACHING_5M"),
+                       "via needs the variables list", None)
+
+    def test_via_names_an_unknown_variable(self):
+        self.assertBad(self.rule_with(via="NOT_THERE"), "via NOT_THERE is not in the variables")
+
+    def test_via_must_be_a_string(self):
+        for bad in (5, None, ["A"], {"a": 1}):
+            with self.subTest(via=bad):
+                self.assertBad(self.rule_with(via=bad), "via must be a variable name")
+
+    def test_via_on_the_wrong_layer_fails(self):
+        self.assertBad(self.rule_with(layer="user", via="FORCE_PROMPT_CACHING_5M"),
+                       "via is only for a condition on the env or default layer")
+
+    def test_via_needs_a_row_for_the_key_scope_and_layer(self):
+        # The variable has an env row, not a default row.
+        self.assertBad(self.rule_with(layer="default", via="FORCE_PROMPT_CACHING_5M"),
+                       "variable FORCE_PROMPT_CACHING_5M has no row for promptCacheTtl, main, default")
+        # A switch has no rows, so it cannot be named by via.
+        self.assertBad(self.rule_with(via="SWITCH"), "has no row for")
+        rule = self.rule_with(via="FORCE_PROMPT_CACHING_5M")
+        rule["scope"] = "agent"
+        self.assertBad(rule, "has no row for promptCacheTtl, agent, env")
+
+    def test_via_with_a_non_string_key_or_scope_returns_errors(self):
+        for bad in ([], ["a"], {}, {"a": 1}, 5, None):
+            for field in ("key", "scope"):
+                with self.subTest(field=field, value=bad):
+                    rule = self.rule_with(via="FORCE_PROMPT_CACHING_5M")
+                    rule[field] = bad
+                    errs = self.errs(rule)
+                    self.assertTrue(errs)
+                    self.assertTrue(any("via needs the rule key and scope to be strings" in e
+                                        for e in errs), errs)
+
+    def test_if_set_with_a_non_string_key_or_scope_does_not_raise(self):
+        for bad in ([], ["a"], {}, {"a": 1}, 5, None):
+            for field in ("key", "scope"):
+                with self.subTest(field=field, value=bad):
+                    rule = self.rule_with(if_set=["SWITCH"])
+                    rule[field] = bad
+                    self.assertIsInstance(self.errs(rule), list)
+
+    def test_if_set_passes_for_any_listed_variable_including_switches(self):
+        for names in (["FORCE_PROMPT_CACHING_5M"], ["SWITCH", "ENABLE_PROMPT_CACHING_1H"]):
+            with self.subTest(if_set=names):
+                self.assertEqual(self.errs(self.rule_with(if_set=names)), [])
+
+    def test_if_set_on_any_layer_passes(self):
+        rule = self.rule_with(layer="user", if_set=["FORCE_PROMPT_CACHING_5M"],
+                              status="overridden")
+        self.assertEqual(self.errs(rule), [])
+
+    def test_if_set_without_the_variables_list_fails(self):
+        self.assertBad(self.rule_with(if_set=["SWITCH"]), "if_set needs the variables list", None)
+
+    def test_if_set_must_be_a_non_empty_list(self):
+        for bad in ([], "SWITCH", None, 5, {"a": 1}):
+            with self.subTest(if_set=bad):
+                self.assertBad(self.rule_with(if_set=bad),
+                               "if_set must be a non-empty list of variable names")
+
+    def test_if_set_items_are_checked(self):
+        self.assertBad(self.rule_with(if_set=["NOT_THERE"]),
+                       "if_set NOT_THERE is not in the variables")
+        self.assertBad(self.rule_with(if_set=[5]), "if_set item 5 must be a variable name")
+        self.assertBad(self.rule_with(if_set=["SWITCH", "SWITCH"]), "if_set repeats a variable")
+
+
+class RangeAndBecomesIntTest(TempDirMixin, unittest.TestCase):
+    def rule_with(self, **cond):
+        base = {"layer": "user", "models": ["*"], "status": "in_effect"}
+        base.update(cond)
+        return self.rule(key="autoCompactWindow", conditions=[base])
+
+    def test_range_forms_pass(self):
+        for rng in ({"min": 100000, "max": 1000000}, {"max": 99999}, {"min": 1000001},
+                    {"min": 5, "max": 5}, {"min": -3}):
+            with self.subTest(range=rng):
+                self.assertEqual(self.errors(self.rule_with(range=rng)), [])
+
+    def test_range_must_be_an_object(self):
+        for bad in ([], [1, 2], "100000", 5, None):
+            with self.subTest(range=bad):
+                self.assertRejected(self.rule_with(range=bad), "range must be an object")
+
+    def test_range_needs_a_bound_and_no_other_key(self):
+        self.assertRejected(self.rule_with(range={}), "range needs min, max or both")
+        self.assertRejected(self.rule_with(range={"min": 1, "step": 2}),
+                            "range has unknown key step")
+
+    def test_range_bounds_are_integers_not_booleans(self):
+        for bad in ("5", 1.5, True, None, [1]):
+            with self.subTest(min=bad):
+                self.assertRejected(self.rule_with(range={"min": bad}),
+                                    "range min must be an integer")
+            with self.subTest(max=bad):
+                self.assertRejected(self.rule_with(range={"max": bad}),
+                                    "range max must be an integer")
+
+    def test_range_min_above_max_fails(self):
+        self.assertRejected(self.rule_with(range={"min": 10, "max": 9}), "range min is above max")
+
+    def test_integer_becomes_with_a_range_passes_on_lowered_and_in_effect(self):
+        for status in ("lowered", "in_effect"):
+            with self.subTest(status=status):
+                rule = self.rule_with(range={"max": 99999}, becomes=100000, status=status)
+                self.assertEqual(self.errors(rule), [])
+
+    def test_integer_becomes_without_a_range_fails(self):
+        for status in ("lowered", "in_effect"):
+            with self.subTest(status=status):
+                self.assertRejected(self.rule_with(becomes=100000, status=status),
+                                    "an integer becomes needs a range")
+
+    def test_integer_becomes_on_other_statuses_fails(self):
+        for status in ("ignored", "overridden", "invalid", "default", "unknown"):
+            with self.subTest(status=status):
+                self.assertRejected(
+                    self.rule_with(range={"max": 1}, becomes=5, status=status),
+                    "an integer becomes is only for a lowered or in_effect status")
+
+    def test_boolean_becomes_is_not_an_integer(self):
+        self.assertRejected(self.rule_with(range={"max": 1}, becomes=True, status="lowered"),
+                            "becomes must be")
+
+    def test_string_becomes_with_a_range_still_needs_lowered(self):
+        self.assertRejected(self.rule_with(range={"max": 1}, becomes="100000"),
+                            "becomes is only for a lowered status")
+        self.assertEqual(self.errors(
+            self.rule_with(range={"max": 1}, becomes="100000", status="lowered")), [])
+
+    def test_integer_becomes_skips_the_value_order_check(self):
+        rule = self.rule_with(range={"max": 1}, becomes=7, status="lowered")
+        rule.update(combine="lowest_value", value_order=["a", "b"])
+        self.assertEqual(self.errors(rule), [])
+
+
+class CeilingCombineTest(TempDirMixin, unittest.TestCase):
+    ORDER = ["env", "agent", "user", "default"]
+
+    def ceiling(self, **changes):
+        rule = self.rule(layer_order=list(self.ORDER), combine="ceiling", ceiling_layer="agent",
+                         conditions=[{"layer": "user", "models": ["*"], "status": "in_effect"}])
+        rule.update(changes)
+        return rule
+
+    def test_ceiling_with_a_middle_layer_passes(self):
+        self.assertIn("ceiling", rules_schema.COMBINE_MODES)
+        self.assertEqual(self.errors(self.ceiling()), [])
+
+    def test_ceiling_needs_ceiling_layer(self):
+        rule = self.ceiling()
+        del rule["ceiling_layer"]
+        self.assertRejected(rule, "combine ceiling needs ceiling_layer")
+
+    def test_ceiling_layer_without_ceiling_fails(self):
+        self.assertRejected(self.ceiling(combine="highest_layer"),
+                            "ceiling_layer is only for combine ceiling")
+
+    def test_ceiling_layer_must_be_in_layer_order(self):
+        self.assertRejected(self.ceiling(ceiling_layer="flag"),
+                            "ceiling_layer 'flag' is not in layer_order")
+        self.assertRejected(self.ceiling(ceiling_layer=["agent"]), "ceiling_layer")
+
+    def test_ceiling_layer_is_not_the_first_or_last_layer(self):
+        for layer in ("env", "default"):
+            with self.subTest(layer=layer):
+                self.assertRejected(self.ceiling(ceiling_layer=layer),
+                                    "must not be the first or last layer")
+
+
+class NameFormTest(TempDirMixin, unittest.TestCase):
+    def rule_with(self, key="modelSettings", **cond):
+        base = {"layer": "user", "models": ["*"], "status": "in_effect"}
+        base.update(cond)
+        return self.rule(key=key, scope="model", conditions=[base])
+
+    def test_every_name_form_passes_on_model_settings_rules(self):
+        self.assertEqual(rules_schema.NAME_FORMS,
+                         ("canonical", "alias", "dated", "context_1m", "provider"))
+        for key in ("modelSettings", "modelSettings.autoCompactWindow"):
+            for form in rules_schema.NAME_FORMS:
+                with self.subTest(key=key, form=form):
+                    self.assertEqual(self.errors(self.rule_with(key, name_form=form)), [])
+
+    def test_unknown_name_form_fails(self):
+        for bad in ("Canonical", "", "other", 5, None, ["alias"]):
+            with self.subTest(name_form=bad):
+                self.assertRejected(self.rule_with(name_form=bad), "name_form must be one of")
+
+    def test_name_form_on_another_rule_fails(self):
+        for key in ("effortLevel", "modelSettingsX", "model"):
+            with self.subTest(key=key):
+                self.assertRejected(self.rule_with(key, name_form="canonical"),
+                                    "name_form is only for a modelSettings rule")
+
+
+class ReaderRejectedUntestedTest(TempDirMixin, unittest.TestCase):
+    def rule_with(self, status):
+        rule = self.rule(key="agentFile", scope="agent", reason="{file} may not load.",
+                         conditions=[{"layer": "user", "models": ["*"], "status": status,
+                                      "when": "reader_rejected_untested"}])
+        return rule
+
+    def test_is_a_when_case(self):
+        self.assertIn("reader_rejected_untested", rules_schema.WHEN_CASES)
+
+    def test_status_unknown_passes(self):
+        self.assertEqual(self.errors(self.rule_with("unknown")), [])
+
+    def test_other_statuses_fail(self):
+        for status in ("ignored", "invalid", "in_effect", "overridden", "lowered", "default"):
+            with self.subTest(status=status):
+                self.assertRejected(self.rule_with(status),
+                                    "when reader_rejected_untested needs status unknown")
+
+
+class Step3RealRulesTest(unittest.TestCase):
+    def setUp(self):
+        with open(rules_schema.RULES_PATH, encoding="utf-8") as fh:
+            self.data = json.load(fh)
+        self.rules = {r["rule_id"]: r for r in self.data["rules"]}
+        self.variables = {v["name"]: v for v in self.data["variables"]}
+
+    def test_variables_follow_models_in_the_spec_order(self):
+        self.assertEqual(list(self.data), ["schema_version", "models", "variables", "rules"])
+        self.assertEqual(list(self.variables), [
+            "FORCE_PROMPT_CACHING_5M", "CLAUDE_CODE_PROMPT_CACHE_TTL",
+            "CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL", "ENABLE_PROMPT_CACHING_1H",
+            "CLAUDE_CODE_SUBAGENT_MODEL_FORCE", "CLAUDE_CODE_SUBAGENT_MODEL",
+            "ANTHROPIC_MODEL", "CLAUDE_CODE_EFFORT_LEVEL", "CLAUDE_CODE_AUTO_COMPACT_WINDOW"])
+        self.assertEqual(self.variables["FORCE_PROMPT_CACHING_5M"]["value"], "5m")
+        self.assertEqual(self.variables["ENABLE_PROMPT_CACHING_1H"]["value"], "1h")
+        self.assertEqual(self.variables["CLAUDE_CODE_SUBAGENT_MODEL_FORCE"]["rows"], [])
+
+    def test_force_5m_rules_name_the_variable_and_override_the_rest(self):
+        for rid in ("prompt-cache-force-5m", "subagent-prompt-cache-force-5m"):
+            conds = self.rules[rid]["conditions"]
+            with self.subTest(rule=rid):
+                self.assertEqual(conds[0], {"layer": "env", "models": ["*"],
+                                            "via": "FORCE_PROMPT_CACHING_5M",
+                                            "status": "in_effect"})
+                for cond in conds[1:]:
+                    self.assertEqual(cond["status"], "overridden")
+                    self.assertEqual(cond["if_set"], ["FORCE_PROMPT_CACHING_5M"])
+
+    def test_enable_1h_rules_name_their_variable(self):
+        for rid in ("prompt-cache-enable-1h", "subagent-prompt-cache-enable-1h"):
+            with self.subTest(rule=rid):
+                self.assertEqual(self.rules[rid]["conditions"][0]["via"],
+                                 "ENABLE_PROMPT_CACHING_1H")
+
+    def test_subagent_model_force_conditions(self):
+        self.assertEqual(self.rules["subagent-model-force"]["conditions"], [
+            {"layer": "env", "models": ["*"], "via": "CLAUDE_CODE_SUBAGENT_MODEL",
+             "if_set": ["CLAUDE_CODE_SUBAGENT_MODEL_FORCE"], "status": "in_effect"},
+            {"layer": "agent", "models": ["*"],
+             "if_set": ["CLAUDE_CODE_SUBAGENT_MODEL_FORCE", "CLAUDE_CODE_SUBAGENT_MODEL"],
+             "status": "ignored"}])
+
+    def test_auto_compact_window_values_conditions(self):
+        conds = self.rules["auto-compact-window-values"]["conditions"]
+        self.assertEqual(conds[0]["range"], {"min": 100000, "max": 1000000})
+        self.assertEqual((conds[1]["range"], conds[1]["becomes"], conds[1]["status"]),
+                         ({"max": 99999}, 100000, "in_effect"))
+        self.assertEqual((conds[2]["range"], conds[2]["becomes"], conds[2]["status"]),
+                         ({"min": 1000001}, 1000000, "lowered"))
+        self.assertEqual((conds[3]["layer"], conds[3]["status"], "range" in conds[3]),
+                         ("env", "ignored", False))
+        self.assertEqual((conds[4]["layer"], conds[4]["status"]), ("flag", "in_effect"))
+        rest = conds[5:]
+        self.assertEqual([c["layer"] for c in rest[::2]],
+                         ["managed", "cli", "local", "project", "user"])
+        for low, ok in zip(rest[::2], rest[1::2]):
+            self.assertEqual((low["range"], low["status"]), ({"max": 99999}, "ignored"))
+            self.assertEqual((ok["layer"], ok["status"], "range" in ok),
+                             (low["layer"], "in_effect", False))
+        self.assertEqual(len(conds), 15)
+
+    def test_auto_compact_window_default_conditions(self):
+        rule = self.rules["auto-compact-window-default"]
+        self.assertEqual(rule["conditions"], [
+            {"layer": "default", "models": ["claude-opus-5-5"], "status": "default",
+             "default_value": "1000000"},
+            {"layer": "default", "models": ["*"], "status": "unknown"}])
+        order = self.rules["auto-compact-window-order"]
+        self.assertEqual((rule["layer_order"], rule["combine"]),
+                         (order["layer_order"], order["combine"]))
+
+    def test_agent_auto_compact_window_is_a_ceiling_and_still_assumed(self):
+        rule = self.rules["agent-auto-compact-window"]
+        self.assertEqual((rule["combine"], rule["ceiling_layer"], rule["confidence"]),
+                         ("ceiling", "agent", "assumed"))
+
+    def test_model_settings_name_matching_ranks_canonical_first_per_layer(self):
+        rule = self.rules["model-settings-name-matching"]
+        expected = []
+        for layer in rule["layer_order"]:
+            expected.append({"layer": layer, "models": ["*"], "name_form": "canonical",
+                             "status": "in_effect"})
+            expected.append({"layer": layer, "models": ["*"], "status": "in_effect"})
+        self.assertEqual(rule["conditions"], expected)
+
+    def test_untested_reader_rule_follows_the_tested_one(self):
+        order = list(self.rules)
+        self.assertEqual(order.index("agent-file-reader-rejected-untested"),
+                         order.index("agent-file-reader-rejected") + 1)
+        rule = self.rules["agent-file-reader-rejected-untested"]
+        self.assertEqual((rule["key"], rule["scope"], rule["layer_order"], rule["combine"]),
+                         ("agentFile", "agent", ["project", "user"], "highest_layer"))
+        self.assertEqual([(c["layer"], c["when"], c["status"]) for c in rule["conditions"]],
+                         [("project", "reader_rejected_untested", "unknown"),
+                          ("user", "reader_rejected_untested", "unknown")])
+        self.assertEqual((rule["confidence"], rule["experiment"], rule["quotes"]),
+                         ("assumed", None, []))
 
 
 if __name__ == "__main__":

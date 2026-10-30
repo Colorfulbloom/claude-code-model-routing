@@ -12,7 +12,7 @@
       "value": "claude-haiku-5-5",
       "status": "in_effect",
       "layer": "flag",
-      "file": null,
+      "file": "session.json:flags",
       "scope": "main"
     },
     {
@@ -20,7 +20,7 @@
       "value": "claude-sonnet-5-5",
       "status": "overridden",
       "layer": "env",
-      "file": null,
+      "file": "session.json:shell_env",
       "scope": "main"
     },
     {

@@ -1,0 +1,31 @@
+{
+  "fixture": "effort-user-top-level-xhigh-ignored-opus-5-5",
+  "rule_ids": [
+    "effort-level-user-settings-opus-5-5",
+    "effort-default-by-model"
+  ],
+  "note": "No xhigh run exists for this case. The record ran the same layout with effortLevel low, and Opus 5.5 ignored the user top-level key and sent its default, medium. The expected outcome here comes from the documented rule plus that low run, so confidence is documented, not tested.",
+  "confidence": "documented",
+  "source": "dashboard/experiments/2026-10-29-effort-user-key-by-model.json#u-top-low-claude-opus-5-5",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "effortLevel",
+      "value": "xhigh",
+      "status": "ignored",
+      "layer": "user",
+      "file": "config/settings.json",
+      "scope": "main",
+      "model": "claude-opus-5-5"
+    },
+    {
+      "key": "effortLevel",
+      "value": "medium",
+      "status": "default",
+      "layer": "default",
+      "file": null,
+      "scope": "main",
+      "model": "claude-opus-5-5"
+    }
+  ]
+}

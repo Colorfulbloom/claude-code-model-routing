@@ -16,7 +16,8 @@
       "file": "config/settings.json",
       "scope": "agent",
       "agent": "probe",
-      "model": "claude-opus-5-5"
+      "model": "claude-opus-5-5",
+      "path": "modelSettings.claude-opus-5-5.effortLevel"
     }
   ]
 }

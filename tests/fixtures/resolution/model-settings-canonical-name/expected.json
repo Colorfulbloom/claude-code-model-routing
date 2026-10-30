@@ -8,13 +8,14 @@
   "claude_version": "2.1.302",
   "expect": [
     {
-      "key": "modelSettings",
+      "key": "effortLevel",
       "value": "low",
       "status": "in_effect",
       "layer": "user",
       "file": "config/settings.json",
-      "scope": "model",
-      "model": "claude-opus-5-5"
+      "scope": "main",
+      "model": "claude-opus-5-5",
+      "path": "modelSettings.claude-opus-5-5.effortLevel"
     }
   ]
 }

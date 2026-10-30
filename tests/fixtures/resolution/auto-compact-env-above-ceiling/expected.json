@@ -1,0 +1,32 @@
+{
+  "fixture": "auto-compact-env-above-ceiling",
+  "rule_ids": [
+    "auto-compact-window-values",
+    "auto-compact-window-order"
+  ],
+  "confidence": "tested",
+  "source": "dashboard/experiments/2026-10-29-auto-compact-window.json#a12",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "autoCompactWindow",
+      "value": 2000000,
+      "status": "lowered",
+      "layer": "env",
+      "file": "session.json:shell_env",
+      "scope": "main",
+      "model": "claude-opus-5-5",
+      "via": "CLAUDE_CODE_AUTO_COMPACT_WINDOW",
+      "becomes": 1000000
+    },
+    {
+      "key": "autoCompactWindow",
+      "value": 200000,
+      "status": "overridden",
+      "layer": "user",
+      "file": "config/settings.json",
+      "scope": "main",
+      "model": "claude-opus-5-5"
+    }
+  ]
+}

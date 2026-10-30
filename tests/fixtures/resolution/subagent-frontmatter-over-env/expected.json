@@ -21,7 +21,7 @@
       "value": "claude-fable-5-1",
       "status": "overridden",
       "layer": "env",
-      "file": null,
+      "file": "session.json:shell_env",
       "scope": "agent",
       "agent": "probe",
       "via": "CLAUDE_CODE_SUBAGENT_MODEL"

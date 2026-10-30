@@ -1,0 +1,22 @@
+{
+  "fixture": "subagent-model-default-main-model",
+  "rule_ids": [
+    "subagent-model-default",
+    "subagent-model-order"
+  ],
+  "confidence": "tested",
+  "source": "dashboard/experiments/2026-10-29-subagent-model-order.json#s5-inherits-main-model",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "model",
+      "value": "claude-sonnet-5-5",
+      "status": "default",
+      "layer": "default",
+      "file": null,
+      "scope": "agent",
+      "agent": "probe",
+      "rule_id": "subagent-model-default"
+    }
+  ]
+}

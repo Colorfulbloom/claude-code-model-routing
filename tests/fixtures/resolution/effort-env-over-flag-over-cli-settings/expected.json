@@ -12,7 +12,7 @@
       "value": "high",
       "status": "in_effect",
       "layer": "env",
-      "file": null,
+      "file": "session.json:shell_env",
       "scope": "main",
       "model": "claude-sonnet-5-5"
     },
@@ -21,9 +21,11 @@
       "value": "low",
       "status": "overridden",
       "layer": "flag",
-      "file": null,
+      "file": "session.json:flags",
       "scope": "main",
-      "model": "claude-sonnet-5-5"
+      "model": "claude-sonnet-5-5",
+      "rule_id": "effort-level-layer-order",
+      "reason": "CLAUDE_CODE_EFFORT_LEVEL decides the effort. CLAUDE_CODE_EFFORT_LEVEL beats --effort, which beats every settings file. A level picked in a running session with /effort sits between the two, and the dashboard can't see it. Among the files, the highest one with a level that counts for the model wins. In one file, the model's modelSettings level beats the top-level effortLevel, and a canonical-name entry beats an alias entry."
     },
     {
       "key": "effortLevel",
@@ -32,7 +34,8 @@
       "layer": "cli",
       "file": "session.json:cli_settings",
       "scope": "main",
-      "model": "claude-sonnet-5-5"
+      "model": "claude-sonnet-5-5",
+      "rule_id": "effort-level-layer-order"
     }
   ]
 }

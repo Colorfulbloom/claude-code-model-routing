@@ -1,0 +1,52 @@
+{
+  "fixture": "model-main-default-unknown",
+  "rule_ids": [
+    "model-main-default",
+    "effort-default-model-unknown",
+    "subagent-model-default",
+    "agent-effort-default-model-unknown"
+  ],
+  "confidence": "assumed",
+  "source": "assumed: no source says which model Claude Code picks when nothing sets one",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "model",
+      "value": null,
+      "status": "unknown",
+      "layer": "default",
+      "file": null,
+      "scope": "main",
+      "rule_id": "model-main-default"
+    },
+    {
+      "key": "effortLevel",
+      "value": null,
+      "status": "unknown",
+      "layer": "default",
+      "file": null,
+      "scope": "main",
+      "rule_id": "effort-default-model-unknown"
+    },
+    {
+      "key": "model",
+      "value": null,
+      "status": "unknown",
+      "layer": "default",
+      "file": null,
+      "scope": "agent",
+      "agent": "probe",
+      "rule_id": "subagent-model-default"
+    },
+    {
+      "key": "effort",
+      "value": null,
+      "status": "unknown",
+      "layer": "default",
+      "file": null,
+      "scope": "agent",
+      "agent": "probe",
+      "rule_id": "agent-effort-default-model-unknown"
+    }
+  ]
+}

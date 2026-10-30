@@ -1,0 +1,67 @@
+{
+  "fixture": "agent-reader-rejected-untested",
+  "rule_ids": [
+    "agent-file-reader-rejected-untested"
+  ],
+  "note": "Case f2 ran other frontmatter shapes that the dashboard's reader rejects. A flow map was not run, so nobody knows whether Claude Code loads this file.",
+  "confidence": "assumed",
+  "source": "dashboard/experiments/2026-10-29-agent-files.json#f2",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "agentFile",
+      "value": null,
+      "status": "unknown",
+      "layer": "user",
+      "file": "config/agents/probe.md",
+      "scope": "agent",
+      "agent": "probe"
+    },
+    {
+      "key": "model",
+      "value": "claude-sonnet-5-5",
+      "status": "unknown",
+      "layer": "default",
+      "file": null,
+      "scope": "agent",
+      "agent": "probe",
+      "rule_id": "agent-file-reader-rejected-untested",
+      "reason": "config/agents/probe.md has frontmatter the dashboard's reader rejects, in a form nobody has tested in Claude Code. So the dashboard can't say whether Claude Code loads the file or which values apply."
+    },
+    {
+      "key": "effort",
+      "value": "medium",
+      "model": "claude-sonnet-5-5",
+      "status": "unknown",
+      "layer": "default",
+      "file": null,
+      "scope": "agent",
+      "agent": "probe",
+      "rule_id": "agent-file-reader-rejected-untested",
+      "reason": "config/agents/probe.md has frontmatter the dashboard's reader rejects, in a form nobody has tested in Claude Code. So the dashboard can't say whether Claude Code loads the file or which values apply."
+    },
+    {
+      "key": "autoCompactWindow",
+      "value": null,
+      "model": "claude-sonnet-5-5",
+      "status": "unknown",
+      "layer": "default",
+      "file": null,
+      "scope": "agent",
+      "agent": "probe",
+      "rule_id": "agent-file-reader-rejected-untested",
+      "reason": "config/agents/probe.md has frontmatter the dashboard's reader rejects, in a form nobody has tested in Claude Code. So the dashboard can't say whether Claude Code loads the file or which values apply."
+    },
+    {
+      "key": "subagentPromptCacheTtl",
+      "value": "5m",
+      "status": "unknown",
+      "layer": "default",
+      "file": null,
+      "scope": "agent",
+      "agent": "probe",
+      "rule_id": "agent-file-reader-rejected-untested",
+      "reason": "config/agents/probe.md has frontmatter the dashboard's reader rejects, in a form nobody has tested in Claude Code. So the dashboard can't say whether Claude Code loads the file or which values apply."
+    }
+  ]
+}

@@ -1,7 +1,6 @@
 {
   "fixture": "model-settings-higher-file-top-level-wins",
   "rule_ids": [
-    "model-settings-effort-per-model",
     "effort-level-layer-order"
   ],
   "confidence": "tested",
@@ -18,13 +17,14 @@
       "model": "claude-sonnet-5-5"
     },
     {
-      "key": "modelSettings.claude-sonnet-5-5.effortLevel",
+      "key": "effortLevel",
       "value": "low",
       "status": "overridden",
       "layer": "project",
       "file": "project/.claude/settings.json",
-      "scope": "model",
-      "model": "claude-sonnet-5-5"
+      "scope": "main",
+      "model": "claude-sonnet-5-5",
+      "path": "modelSettings.claude-sonnet-5-5.effortLevel"
     }
   ]
 }

@@ -20,7 +20,7 @@
       "value": "2h",
       "status": "invalid",
       "layer": "env",
-      "file": null,
+      "file": "session.json:shell_env",
       "scope": "main",
       "via": "CLAUDE_CODE_PROMPT_CACHE_TTL"
     }
