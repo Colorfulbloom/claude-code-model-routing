@@ -1180,6 +1180,106 @@ class ReasonTests(ResolveCase):
                 self.assertEqual(entry["reason"] == "", entry["rule_id"] is None)
 
 
+class PerModelCapReplacesTopLevelTests(ResolveCase):
+    """A file's modelSettings maxEffortLevel replaces that file's top-level cap."""
+    PROJECT = "project/.claude/settings.json"
+
+    def resolve_caps(self, user=None, project=None, effort="xhigh"):
+        user = dict({"model": "claude-sonnet-5-5"}, **(user or {}))
+        entries = self.run_resolve(user=user, project=project, flags=["--effort", effort])
+        caps = [e for e in self.rows(entries, "maxEffortLevel")]
+        return entries, caps, self.only(entries, "effortLevel")
+
+    @staticmethod
+    def by_value(caps, value, layer="project"):
+        found = [e for e in caps if e["value"] == value and e["layer"] == layer]
+        assert len(found) == 1, found
+        return found[0]
+
+    def test_the_replaced_top_level_entry_is_overridden_by_the_new_rule(self):
+        _entries, caps, effort = self.resolve_caps(project={
+            "maxEffortLevel": "low",
+            "modelSettings": {"claude-sonnet-5-5": {"maxEffortLevel": "xhigh"}}})
+        winner = self.by_value(caps, "xhigh")
+        top = self.by_value(caps, "low")
+        self.assertEqual(winner["status"], "in_effect")
+        self.assertEqual(winner["rule_id"], "model-settings-max-effort-per-model")
+        self.assertEqual(top["status"], "overridden")
+        self.assertEqual(top["rule_id"], "max-effort-level-replaced-in-file")
+        self.assertIn("max-effort-level-replaced-in-file", top["rule_ids"])
+        self.assertEqual(top["model"], "claude-sonnet-5-5")
+        self.assertEqual(top["reason"], (
+            "%s sets a top-level maxEffortLevel of low, but the same settings source also "
+            "sets a modelSettings cap for Sonnet 5.5. That entry replaces this one for "
+            "Sonnet 5.5 only." % self.PROJECT))
+        self.assertEqual((effort["status"], effort["value"]), ("in_effect", "xhigh"))
+
+    def test_a_cap_in_a_second_file_still_wins_as_the_lowest(self):
+        _entries, caps, effort = self.resolve_caps(
+            user={"maxEffortLevel": "low"},
+            project={"maxEffortLevel": "medium",
+                     "modelSettings": {"claude-sonnet-5-5": {"maxEffortLevel": "xhigh"}}})
+        self.assertEqual(self.by_value(caps, "low", "user")["status"], "in_effect")
+        self.assertEqual(self.by_value(caps, "xhigh")["status"], "overridden")
+        replaced = self.by_value(caps, "medium")
+        self.assertEqual(replaced["status"], "overridden")
+        self.assertEqual(replaced["rule_id"], "max-effort-level-replaced-in-file")
+        self.assertEqual((effort["status"], effort["becomes"]), ("lowered", "low"))
+
+    def test_an_entry_for_another_model_replaces_nothing(self):
+        _entries, caps, effort = self.resolve_caps(project={
+            "maxEffortLevel": "low",
+            "modelSettings": {"claude-opus-5-5": {"maxEffortLevel": "xhigh"}}})
+        self.assertEqual([(e["value"], e["status"]) for e in caps], [("low", "in_effect")])
+        self.assertEqual((effort["status"], effort["becomes"]), ("lowered", "low"))
+
+    def test_a_lower_per_model_cap_replaces_a_higher_top_level_cap(self):
+        _entries, caps, effort = self.resolve_caps(effort="high", project={
+            "maxEffortLevel": "xhigh",
+            "modelSettings": {"claude-sonnet-5-5": {"maxEffortLevel": "low"}}})
+        self.assertEqual(self.by_value(caps, "low")["status"], "in_effect")
+        top = self.by_value(caps, "xhigh")
+        self.assertEqual((top["status"], top["rule_id"]),
+                         ("overridden", "max-effort-level-replaced-in-file"))
+        self.assertEqual((effort["status"], effort["becomes"]), ("lowered", "low"))
+
+    def test_a_per_model_max_lowers_nothing(self):
+        _entries, caps, effort = self.resolve_caps(project={
+            "maxEffortLevel": "low",
+            "modelSettings": {"claude-sonnet-5-5": {"maxEffortLevel": "max"}}})
+        self.assertEqual(self.by_value(caps, "max")["status"], "in_effect")
+        self.assertEqual(self.by_value(caps, "low")["status"], "overridden")
+        self.assertEqual(effort["status"], "in_effect")
+        self.assertNotIn("becomes", effort)
+
+    def test_a_per_model_value_that_is_not_a_level_replaces_nothing(self):
+        _entries, caps, effort = self.resolve_caps(project={
+            "maxEffortLevel": "low",
+            "modelSettings": {"claude-sonnet-5-5": {"maxEffortLevel": "turbo"}}})
+        top = self.by_value(caps, "low")
+        self.assertEqual((top["status"], top["rule_id"]),
+                         ("in_effect", "max-effort-level-lowest-cap"))
+        self.assertEqual(self.by_value(caps, "turbo")["status"], "overridden")
+        self.assertEqual((effort["status"], effort["becomes"]), ("lowered", "low"))
+
+    def test_the_lowest_name_form_decides_which_entry_counts(self):
+        for first, second, replaced in (("turbo", "xhigh", False), ("xhigh", "turbo", True)):
+            with self.subTest(canonical=first, alias=second):
+                self.setUp()
+                _entries, caps, _effort = self.resolve_caps(project={
+                    "maxEffortLevel": "low",
+                    "modelSettings": {"sonnet": {"maxEffortLevel": second},
+                                      "claude-sonnet-5-5": {"maxEffortLevel": first}}})
+                top = self.by_value(caps, "low")
+                self.assertEqual(top["status"], "overridden" if replaced else "in_effect")
+
+    def test_only_the_new_rule_votes_overridden_with_a_file_case(self):
+        found = [(r["rule_id"], c["when"]) for r in RULES["rules"] for c in r["conditions"]
+                 if c["status"] == "overridden" and "when" in c]
+        self.assertEqual({rule_id for rule_id, _when in found},
+                         {"max-effort-level-replaced-in-file"})
+
+
 class RuleErrorTests(ResolveCase):
     ENV_RULE = {
         "rule_id": "env-block-order", "key": "env", "scope": "main",

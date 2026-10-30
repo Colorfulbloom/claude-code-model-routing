@@ -599,19 +599,21 @@ class PlansConditionTest(TempDirMixin, unittest.TestCase):
 
 
 class WhenConditionTest(TempDirMixin, unittest.TestCase):
-    def cond(self, **fields):
+    def cond(self, key=DROP, **fields):
         base = {"layer": "user", "models": ["*"], "status": "ignored"}
         base.update(fields)
         return self.rule(layer_order=["managed", "cli", "local", "project", "user", "env",
-                                      "default"], conditions=[base])
+                                      "default"], conditions=[base],
+                         **({} if key is DROP else {"key": key}))
 
     def test_every_when_case_passes(self):
         for case in rules_schema.WHEN_CASES:
             with self.subTest(when=case):
                 status = ("unknown" if case in ("reader_rejected_but_loads", "reader_rejected_untested",
                                                 "unreadable")
-                          else "ignored")
-                self.assertEqual(self.errors(self.cond(when=case, status=status)), [])
+                          else "overridden" if case == "replaced_in_source" else "ignored")
+                key = "maxEffortLevel" if case == "replaced_in_source" else DROP
+                self.assertEqual(self.errors(self.cond(when=case, status=status, key=key)), [])
 
     def test_unknown_when_fails(self):
         for bad in ("other", "", "NOT_MD_FILE"):
@@ -1527,6 +1529,41 @@ class SettingsFileCasesTest(TempDirMixin, unittest.TestCase):
         self.assertEqual(untested["verified_on"], tested["verified_on"])
         self.assertEqual((untested["layer_order"], untested["combine"]),
                          (tested["layer_order"], tested["combine"]))
+
+
+class ReplacedInSourceTest(TempDirMixin, unittest.TestCase):
+    ORDER = ["managed", "local", "project", "user"]
+
+    def rule_with(self, key, status):
+        return self.rule(key=key, reason="{value} in {file} is replaced.",
+                         layer_order=self.ORDER, combine="all",
+                         conditions=[{"layer": "user", "models": ["*"], "status": status,
+                                      "when": "replaced_in_source"}])
+
+    def test_it_is_a_when_case(self):
+        self.assertIn("replaced_in_source", rules_schema.WHEN_CASES)
+
+    def test_passes_with_overridden_on_max_effort_level(self):
+        self.assertEqual(self.errors(self.rule_with("maxEffortLevel", "overridden")), [])
+
+    def test_other_statuses_fail(self):
+        for status in ("ignored", "invalid", "in_effect", "unknown", "lowered", "default"):
+            with self.subTest(status=status):
+                self.assertRejected(self.rule_with("maxEffortLevel", status),
+                                    "when replaced_in_source needs status overridden")
+
+    def test_other_keys_fail(self):
+        for key in ("effortLevel", "settingsFile", "modelSettings.maxEffortLevel"):
+            with self.subTest(key=key):
+                self.assertRejected(self.rule_with(key, "overridden"),
+                                    "and key maxEffortLevel")
+
+    def test_real_rule_validates(self):
+        with open(rules_schema.RULES_PATH, encoding="utf-8") as fh:
+            data = json.load(fh)
+        found = [r for r in data["rules"]
+                 if r["rule_id"] == "max-effort-level-replaced-in-file"]
+        self.assertEqual(len(found), 1)
 
 
 class Step3RealRulesTest(unittest.TestCase):

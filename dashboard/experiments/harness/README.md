@@ -56,6 +56,8 @@ The batch prints one JSON line per case. Compare those lines with `results-2026-
 
 The October 29 effort cases are in `cases-effort-sources.json`, `cases-effort-lowered-invalid.json` and `cases-model-settings.json`. Compare their lines with `results-2026-10-29-effort.jsonl`.
 
+The October 30 cases `ms-cap-same-file-max` and `ms-cap-same-file-invalid` are in `cases-model-settings.json`, so compare their lines with `results-2026-10-30-cap-values.jsonl`.
+
 The October 29 invalid-file cases are in `cases-settings-invalid-json.json`. Compare their lines with `results-settings-invalid-json.jsonl`.
 
 The October 29 cases for an empty CLAUDE_CODE_EFFORT_LEVEL are in `cases-effort-env-empty.json`. Compare their lines with `results-effort-env-empty.jsonl`.

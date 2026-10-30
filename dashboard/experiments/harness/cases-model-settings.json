@@ -313,5 +313,41 @@
    }
   },
   "name": "ms-alias-model-low-status"
+ },
+ {
+  "user": {
+   "model": "claude-sonnet-5-5"
+  },
+  "project": {
+   "maxEffortLevel": "low",
+   "modelSettings": {
+    "claude-sonnet-5-5": {
+     "maxEffortLevel": "max"
+    }
+   }
+  },
+  "args": [
+   "--effort",
+   "xhigh"
+  ],
+  "name": "ms-cap-same-file-max"
+ },
+ {
+  "user": {
+   "model": "claude-sonnet-5-5"
+  },
+  "project": {
+   "maxEffortLevel": "low",
+   "modelSettings": {
+    "claude-sonnet-5-5": {
+     "maxEffortLevel": "turbo"
+    }
+   }
+  },
+  "args": [
+   "--effort",
+   "xhigh"
+  ],
+  "name": "ms-cap-same-file-invalid"
  }
 ]

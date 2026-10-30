@@ -874,6 +874,81 @@
       ]
     },
     {
+      "rule_id": "max-effort-level-replaced-in-file",
+      "key": "maxEffortLevel",
+      "scope": "main",
+      "layer_order": [
+        "managed",
+        "cli",
+        "local",
+        "project",
+        "user"
+      ],
+      "conditions": [
+        {
+          "layer": "managed",
+          "models": [
+            "*"
+          ],
+          "status": "overridden",
+          "when": "replaced_in_source"
+        },
+        {
+          "layer": "cli",
+          "models": [
+            "*"
+          ],
+          "status": "overridden",
+          "when": "replaced_in_source"
+        },
+        {
+          "layer": "local",
+          "models": [
+            "*"
+          ],
+          "status": "overridden",
+          "when": "replaced_in_source"
+        },
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "status": "overridden",
+          "when": "replaced_in_source"
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "status": "overridden",
+          "when": "replaced_in_source"
+        }
+      ],
+      "reason": "{file} sets a top-level maxEffortLevel of {value}, but the same settings source also sets a modelSettings cap for {model}. That entry replaces this one for {model} only.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/settings-reference#maxeffortlevel",
+          "quote": "That entry replaces this key for the model only within the settings source that sets both, such as your user settings or one managed source."
+        }
+      ],
+      "experiment": "experiments/2026-10-29-model-settings-max-effort.json",
+      "confidence": "tested",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-30"
+      },
+      "combine": "lowest_value",
+      "value_order": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ]
+    },
+    {
       "rule_id": "max-effort-level-default",
       "key": "maxEffortLevel",
       "scope": "main",
@@ -3069,7 +3144,7 @@
       "confidence": "tested",
       "verified_on": {
         "claude_version": "2.1.302",
-        "date": "2026-10-29"
+        "date": "2026-10-30"
       },
       "value_order": [
         "low",

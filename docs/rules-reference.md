@@ -99,6 +99,7 @@ Some sources change a session after it starts, and others sit outside what the d
 | effort-level-layer-order | effortLevel | main | Tested | 2.1.302 |
 | model-settings-effort-per-model | modelSettings | model | Tested | 2.1.302 |
 | max-effort-level-lowest-cap | maxEffortLevel | main | Tested | 2.1.302 |
+| max-effort-level-replaced-in-file | maxEffortLevel | main | Tested | 2.1.302 |
 | max-effort-level-default | maxEffortLevel | main | Assumed | 2.1.302 |
 | prompt-cache-ttl-order | promptCacheTtl | main | Tested | 2.1.302 |
 | subagent-prompt-cache-ttl-order | subagentPromptCacheTtl | agent | Tested | 2.1.302 |
@@ -318,6 +319,27 @@ Quotes:
 - Experiment record: [../dashboard/experiments/2026-10-29-max-effort-level-cap.json](../dashboard/experiments/2026-10-29-max-effort-level-cap.json)
 - Confidence: Tested
 - Verified on: Claude Code 2.1.302, October 29, 2026
+
+### max-effort-level-replaced-in-file
+
+- Key: maxEffortLevel
+- Scope: main
+- Combine: lowest_value
+- Layer order (highest first): managed, cli, local, project, user
+
+Reason:
+
+> {file} sets a top-level maxEffortLevel of {value}, but the same settings source also sets a modelSettings cap for {model}. That entry replaces this one for {model} only.
+
+Quotes:
+
+- [https://code.claude.com/docs/en/settings-reference#maxeffortlevel](https://code.claude.com/docs/en/settings-reference#maxeffortlevel)
+
+> That entry replaces this key for the model only within the settings source that sets both, such as your user settings or one managed source.
+
+- Experiment record: [../dashboard/experiments/2026-10-29-model-settings-max-effort.json](../dashboard/experiments/2026-10-29-model-settings-max-effort.json)
+- Confidence: Tested
+- Verified on: Claude Code 2.1.302, October 30, 2026
 
 ### max-effort-level-default
 
@@ -995,7 +1017,7 @@ Quotes:
 
 - Experiment record: [../dashboard/experiments/2026-10-29-model-settings-max-effort.json](../dashboard/experiments/2026-10-29-model-settings-max-effort.json)
 - Confidence: Tested
-- Verified on: Claude Code 2.1.302, October 29, 2026
+- Verified on: Claude Code 2.1.302, October 30, 2026
 
 ### model-settings-auto-compact-window
 
