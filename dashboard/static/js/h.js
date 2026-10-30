@@ -5,9 +5,10 @@
 const SVG_NS = "http://www.w3.org/2000/svg";
 const URL_ATTRS = new Set(["href", "src", "action", "formaction", "xlink:href"]);
 // A link value is allowed only when it starts with "#" or with a single "/" (not "//" and not "/\\", which
-// browsers read as a host). Any other value is refused and the attribute is dropped, so the element is
-// built without it.
-const SAFE_URL = /^(?:#|\/(?![\/\\]))/;
+// browsers read as a host) and holds no control character. A URL parser strips tab and newline before it
+// reads the value, so "/\t/host" would turn into "//host". Any other value is refused and the attribute is
+// dropped, so the element is built without it.
+const SAFE_URL = /^(?:#|\/(?![\/\\]))[^\x00-\x1f\x7f]*$/;
 
 function classText(value) {
   if (Array.isArray(value)) return value.filter(Boolean).join(" ");

@@ -344,7 +344,8 @@ body{background:var(--page-bg)}
 
 /* Added for the shell, not in the approved screens (listed in the U-8 report).
    Each page section is transparent to layout, so its children sit in the .content grid as in the screens.
-   The mobile menu needs an open state: .sb is display:none at 720px and under. */
+   The mobile menu needs an open state: .sb is display:none at 720px and under. shell.js sets top and height on the open
+   panel from the top bar's measured height, so the panel opens below the bar and the menu button stays reachable. */
 .content>[data-page]:not([hidden]){display:contents}
 @media (max-width: 720px){
   .sb.is-open{display:block;position:fixed;top:0;left:0;width:240px;z-index:10;border-right-color:var(--border-strong);box-shadow:var(--shadow-card)}

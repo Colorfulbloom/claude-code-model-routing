@@ -195,16 +195,30 @@ class JsModules(unittest.TestCase):
 
     def test_no_html_injection_or_eval(self):
         banned = (r"\.innerHTML", r"\.outerHTML", r"insertAdjacentHTML", r"document\.write", r"\beval\s*\(",
-                  r"new\s+Function\s*\(", r"setAttribute\(\s*[\"']style[\"']", r"createContextualFragment", r"\.srcdoc")
+                  r"new\s+Function\s*\(", r"setAttribute\(\s*[\"']style[\"']", r"createContextualFragment", r"srcdoc",
+                  r"\bDOMParser\b", r"setHTMLUnsafe")
         for path in sorted(JS_DIR.rglob("*.js")):
             text = strip_js_comments(path.read_text(encoding="utf-8"))
             for pattern in banned:
                 self.assertNotRegex(text, pattern, "%s: %s" % (path.name, pattern))
 
     def test_link_values_use_an_allow_list(self):
-        # h.js drops a href, src or action unless it starts with "#" or a single "/".
+        # Run the pattern itself. A URL parser strips tab and newline before it reads a value, so a
+        # control character inside the value must fail the pattern. Python's "$" also matches before a
+        # final newline, so the literal's trailing "$" becomes "\\Z" here.
         text = strip_js_comments((JS_DIR / "h.js").read_text(encoding="utf-8"))
-        self.assertIn("SAFE_URL", text)
+        found = re.search(r"const SAFE_URL = /(.*)/;", text)
+        self.assertIsNotNone(found, "h.js has no SAFE_URL literal")
+        source = found.group(1)
+        self.assertTrue(source.endswith("$"), source)
+        pattern = re.compile(source[:-1] + r"\Z")
+        refused = ["/\t/evil.example/x", "/\n/evil.example/x", "/\r\\evil.example/x", "//evil", "/\\evil",
+                   "https://x", "javascript:x", " /x", "/x\n", ""]
+        allowed = ["#", "#/x", "/", "/api/x"]
+        for value in refused:
+            self.assertIsNone(pattern.match(value), repr(value))
+        for value in allowed:
+            self.assertIsNotNone(pattern.match(value), repr(value))
         self.assertNotIn("UNSAFE_URL", text)
         self.assertRegex(text, r"URL_ATTRS\.has\(name\) && !SAFE_URL\.test\(")
 

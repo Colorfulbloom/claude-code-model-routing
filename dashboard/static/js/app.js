@@ -3,8 +3,13 @@
 // does not answer yet leaves that page's stub showing.
 //
 // Switching range fetches nothing. Switching project fetches that project's payloads once and keeps
-// them in memory. <html> gets data-rendered="1" when boot finishes, "error" if /api/projects failed ("0" if boot itself failed) and
-// data-ox="1" when the page scrolls sideways, for the end-to-end checks.
+// them in memory. A network error or a 5xx is not kept: /api/projects, the project payloads, rules and files are
+// asked for again on the next route change or project change, and never on a range change. A 4xx stays,
+// because 404 is the normal answer for a route the server does not have yet.
+//
+// <html> gets data-rendered="1" when boot finishes, "error" if /api/projects failed ("0" if boot itself failed)
+// and data-ox="1" when the page scrolls sideways, for the end-to-end checks. A retry that recovers
+// /api/projects sets data-rendered back to "1".
 
 import { createApi } from "./api.js";
 import { setStrings, t, DEFAULT_RANGE } from "./format.js";
@@ -138,16 +143,20 @@ function loadProject(key) {
   return done;
 }
 
+// The api returns its kept promise when it has one, so a page already holding that answer is not drawn again.
 function loadShared() {
   return Promise.all([
-    api.rules().then((res) => { state.rules = res; renderPages(["rules"]); }),
-    api.files().then((res) => { state.files = res; renderPages(["files"]); }),
+    api.rules().then((res) => { if (state.rules !== res) { state.rules = res; renderPages(["rules"]); } }),
+    api.files().then((res) => { if (state.files !== res) { state.files = res; renderPages(["files"]); } }),
   ]);
 }
 
 let projectsOk = false;
+let projectsRes = null;
+let projectsRetry = null;
 
 function readProjects(res) {
+  projectsRes = res;
   projectsOk = Boolean(res.ok);
   const body = res.ok && res.data && typeof res.data === "object" ? res.data : {};
   const list = Array.isArray(body.projects) ? body.projects : [];
@@ -174,7 +183,25 @@ function resolveProject(wanted) {
 
 let started = false;
 
-function handle(route) {
+// A failed /api/projects is asked for again, once at a time. When it recovers the page is drawn again from
+// the same address, so the switcher fills and data-rendered becomes "1".
+function retryProjects() {
+  if (projectsOk || projectsRetry) return;
+  projectsRetry = api.projects().then((res) => {
+    projectsRetry = null;
+    if (res === projectsRes) return;
+    readProjects(res);
+    if (!projectsOk) return;
+    root.setAttribute("data-rendered", "1");
+    handle(parseHash(window.location.hash), true);
+  });
+}
+
+// A route is its page and parameters, without the query. The same route in the same project is a range or
+// theme change, which fetches nothing.
+const routeKey = (route) => hashFor(route.name, route.params, {});
+
+function handle(route, force) {
   let parsed = route;
   if (!parsed.known) {
     // An unknown route shows the overview. Rewrite the address without adding a history entry.
@@ -183,8 +210,10 @@ function handle(route) {
     parsed = parseHash(hash);
   }
   const previous = state.route.name;
+  const project = resolveProject(parsed.query.project);
+  const fetches = !started || force || routeKey(parsed) !== routeKey(state.route) || project !== state.project;
   state.route = parsed;
-  state.project = resolveProject(parsed.query.project);
+  state.project = project;
   state.range = parsed.query.range || DEFAULT_RANGE;
   applyTheme(parsed.query.theme);
   document.title = t("tab_title", { project: projectInfo().name });
@@ -192,9 +221,15 @@ function handle(route) {
     projects: state.projects, project: state.project, nav: navFor(parsed), query: parsed.query, version: state.version,
   });
   showSection(sections, sectionFor(parsed, state.project));
-  loadProject(state.project);
+  if (fetches) {
+    loadProject(state.project);
+    if (started && !force) {
+      retryProjects();
+      loadShared();
+    }
+  }
   renderPages(PAGES);
-  if (started && previous !== parsed.name) window.scrollTo(0, 0);
+  if (started && !force && previous !== parsed.name) window.scrollTo(0, 0);
 }
 
 // ---------------------------------------------------------------- boot

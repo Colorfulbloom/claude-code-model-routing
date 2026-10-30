@@ -81,42 +81,60 @@ export function createShell({ sidebar, topbar, onProject }) {
   topbar.appendChild(right);
 
   // The menu: a button that opens the sidebar at 375. aria-expanded follows the open state.
-  // Opening moves focus to the first nav link and makes the rest of the page (.main, which holds the top bar
-  // and the content) inert. Closing, by any path, lifts the inert state. Escape and a nav link move focus back
-  // to the menu button, because the panel that held focus is gone.
+  // The panel opens below the top bar, so the menu button stays visible and can close it. Its top and height
+  // are measured on open, because the top bar wraps and its height varies at 375, and they are cleared on
+  // close. While the panel is open everything behind it is inert, except the menu button: each child of .main
+  // other than the top bar, and each child of the top bar other than the button. The nodes marked on open
+  // are the nodes cleared on close, whichever path closes. Opening moves focus to the first nav link, and
+  // Tab then reaches the menu button after the nav. Escape, a nav link, a click outside and a hashchange
+  // close the panel and return focus to the button, because the panel that held focus is gone. Widening past
+  // the breakpoint closes it without moving focus, because the button is not where the person was working.
   const main = topbar.parentNode;
+  let blocked = [];
+  const isOpen = () => sidebar.classList.contains("is-open");
+  const elementsOf = (parent) => (parent ? Array.from(parent.childNodes).filter((node) => node.nodeType === 1) : []);
   function setOpen(open) {
+    if (open === isOpen()) return;
     sidebar.classList.toggle("is-open", open);
     menu.setAttribute("aria-expanded", open ? "true" : "false");
-    if (main) {
-      if (open) main.setAttribute("inert", "");
-      else main.removeAttribute("inert");
-    }
     if (open) {
+      const bottom = Math.max(0, topbar.getBoundingClientRect().bottom);
+      sidebar.style.top = bottom + "px";
+      sidebar.style.height = "calc(100vh - " + bottom + "px)";
+      blocked = elementsOf(main).filter((node) => node !== topbar).concat(elementsOf(topbar).filter((node) => node !== menu));
+      blocked.forEach((node) => node.setAttribute("inert", ""));
       const first = links.values().next().value;
       if (first) first.focus();
+    } else {
+      sidebar.style.top = "";
+      sidebar.style.height = "";
+      blocked.forEach((node) => node.removeAttribute("inert"));
+      blocked = [];
     }
   }
-  const isOpen = () => sidebar.classList.contains("is-open");
-  menu.addEventListener("click", () => setOpen(!isOpen()));
+  // Closes and puts focus on the menu button. A nav click closes first, so the hashchange it causes finds the
+  // panel already closed and does nothing more.
+  function closeToButton() {
+    if (!isOpen()) return;
+    setOpen(false);
+    menu.focus();
+  }
+  menu.addEventListener("click", () => {
+    if (isOpen()) closeToButton();
+    else setOpen(true);
+  });
   navEl.addEventListener("click", (event) => {
-    if (isOpen() && event.target.closest && event.target.closest("a")) {
-      setOpen(false);
-      menu.focus();
-    }
+    if (event.target.closest && event.target.closest("a")) closeToButton();
   });
   document.addEventListener("click", (event) => {
     if (!isOpen()) return;
     const target = event.target;
     if (target && (sidebar.contains(target) || menu.contains(target))) return;
-    setOpen(false);
+    closeToButton();
   });
-  window.addEventListener("hashchange", () => { if (isOpen()) setOpen(false); });
+  window.addEventListener("hashchange", closeToButton);
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && isOpen()) {
-      setOpen(false);
-      menu.focus();
-    }
+    if (event.key === "Escape") closeToButton();
   });
   const narrow = window.matchMedia(NARROW);
   const onWide = () => { if (!narrow.matches) setOpen(false); };

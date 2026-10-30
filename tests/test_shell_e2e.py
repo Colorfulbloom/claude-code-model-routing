@@ -360,18 +360,66 @@ class ShellE2E(unittest.TestCase):
         self.page.wait_for("document.documentElement.getAttribute('data-rendered') === '1'")
         state = "document.querySelector('.btn.menu').getAttribute('aria-expanded')"
         shown = "document.querySelector('#sidebar').getBoundingClientRect().width > 0"
+        # What is inert: each child of .main and of the top bar, by class, and whether .main or the button is.
+        inert = ("[...document.querySelectorAll('.main > *, .topbar > *')]"
+                 ".filter(e => e.hasAttribute('inert')).map(e => e.className).sort()")
+        button_free = ("!document.querySelector('.main').hasAttribute('inert') && "
+                       "!document.querySelector('.topbar').hasAttribute('inert') && "
+                       "!document.querySelector('.btn.menu').hasAttribute('inert')")
+        on_button = "document.activeElement === document.querySelector('.btn.menu')"
+        behind = ["content", "tb-right", "tb-title"]
+        menu = "document.querySelector('.btn.menu')"
         self.assertEqual(self.page.eval(state), "false")
         self.assertFalse(self.page.eval(shown))
-        self.page.eval("document.querySelector('.btn.menu').click()")
+        self.assertEqual(self.page.eval(inert), [])
+
+        # Open: the panel sits below the top bar, the page behind it is inert, the button is not.
+        self.page.eval(menu + ".click()")
         self.assertEqual(self.page.eval(state), "true")
         self.assertTrue(self.page.eval(shown))
+        self.assertEqual(self.page.eval(inert), behind)
+        self.assertTrue(self.page.eval(button_free))
+        self.assertAlmostEqual(
+            self.page.eval("document.querySelector('#sidebar').getBoundingClientRect().top"),
+            self.page.eval("document.querySelector('#topbar').getBoundingClientRect().bottom"), delta=1)
+
+        # The button closes the menu and keeps focus.
+        self.page.eval(menu + ".click()")
+        self.assertEqual(self.page.eval(state), "false")
+        self.assertFalse(self.page.eval(shown))
+        self.assertEqual(self.page.eval(inert), [])
+        self.assertTrue(self.page.eval(on_button))
+
+        # Escape.
+        self.page.eval(menu + ".click()")
+        self.assertEqual(self.page.eval(inert), behind)
         self.page.key("Escape")
         self.assertEqual(self.page.eval(state), "false")
         self.assertFalse(self.page.eval(shown))
-        self.page.eval("document.querySelector('.btn.menu').click()")
-        self.assertEqual(self.page.eval(state), "true")
+        self.assertEqual(self.page.eval(inert), [])
+        self.assertTrue(self.page.eval(on_button))
+
+        # A click outside the panel and the button.
+        self.page.eval(menu + ".click()")
+        self.page.eval("document.querySelector('.app').click()")
+        self.assertEqual(self.page.eval(state), "false")
+        self.assertEqual(self.page.eval(inert), [])
+        self.assertTrue(self.page.eval(on_button))
+
+        # A hash change from outside the panel.
+        self.page.eval(menu + ".click()")
+        self.page.eval("location.hash = '#/models'")
+        self.page.wait_for("JSON.stringify(%s) === '[\"models\"]'" % VISIBLE)
+        self.assertEqual(self.page.eval(state), "false")
+        self.assertEqual(self.page.eval(inert), [])
+        self.assertTrue(self.page.eval(on_button))
+
+        # A nav link.
+        self.page.eval(menu + ".click()")
         self.page.eval("document.querySelectorAll('#sidebar .nv')[1].click()")
         self.assertEqual(self.page.eval(state), "false")
+        self.assertEqual(self.page.eval(inert), [])
+        self.assertTrue(self.page.eval(on_button))
         self.page.wait_for("JSON.stringify(%s) === '[\"agents\"]'" % VISIBLE)
 
     def test_menu_button_is_hidden_on_a_wide_screen(self):

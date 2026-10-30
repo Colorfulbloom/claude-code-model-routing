@@ -179,6 +179,18 @@ def live_context(config_dir, project_dir, env, platform, rules, agent_fields,
         project_explicit=project_explicit)
 
 
+def mask_flags(flags):
+    """Mask each launch flag word. A word of the form --name=value keeps its name and masks the value."""
+    out = []
+    for word in flags:
+        if isinstance(word, str) and "=" in word:
+            name, _sep, value = word.partition("=")
+            out.append(name + "=" + collect.mask(value))
+        else:
+            out.append(collect.mask(word))
+    return tuple(out)
+
+
 def fixture_context(folder, config_dir, project_dir, rules, agent_fields,
                     project_explicit=False):
     """Context for a fixture run. Reads nothing from the real machine."""
@@ -193,7 +205,7 @@ def fixture_context(folder, config_dir, project_dir, rules, agent_fields,
         shell_env=dict(shell_env) if isinstance(shell_env, dict) else {},
         home=None,
         root=folder,
-        flags=tuple(flags) if isinstance(flags, list) else (),
+        flags=mask_flags(flags) if isinstance(flags, list) else (),
         cli_settings=collect.mask(session.get("cli_settings")),
         shell_label=resolve.LABEL_SHELL,
         rules=rules,

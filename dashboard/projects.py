@@ -15,8 +15,10 @@ With no usable file the list holds the current project only. An explicit
 --project that is not listed is added at the front. A fixture run falls back to
 FOLDER/dashboard.json for the plan when routing-dashboard.json gives none.
 
-A route is a function (ctx, query) -> (status, payload). Nothing here puts the
-absolute path of a project, its plan or any file content into a response, and
+A route is a function (ctx, query) -> (status, payload). A project's path goes
+into a response only as path_display: relative to the fixture root, as "~/..."
+inside the home folder, and in full when it lies outside both. Nothing here puts
+the path of routing-dashboard.json or any file content into a response, and
 every stderr line is fixed text.
 
 Standard library only, Python 3.9.

@@ -574,6 +574,8 @@ PLANTED = {
     "malformed": "planted-malformed-0016",
     "exception": "sk-planted-exception-0017",
     "project_local": "planted-local-token-0018",
+    "flag_word": "sk-planted-flag-0019",
+    "flag_inline": "sk-planted-flag-inline-0020",
 }
 
 
@@ -599,7 +601,7 @@ def build_secret_fixture(folder):
     write_json(os.path.join(folder, "session.json"), {
         "shell_env": {"ANTHROPIC_MODEL": p["shell_model"], "PLANTED_OTHER": p["shell_other"],
                       "MY_SERVICE_PASSWORD": p["shell_secret_name"]},
-        "flags": [],
+        "flags": ["--model", p["flag_word"], "--effort=" + p["flag_inline"]],
         "cli_settings": {"model": p["cli_value"], "apiKeyHelper": p["cli_key"]},
     })
 
@@ -683,6 +685,28 @@ class Secrets(TempCase):
         self.assertIn("route error 'RuntimeError'", proc.stderr())
         self.assertNotIn("route failed", everything)
         self.assertNotIn("Traceback", everything)
+
+    def test_a_secret_in_a_launch_flag_is_hidden_in_both_forms(self):
+        """A flag value is masked in the separate-word form and in the --flag=value form."""
+        forms = {
+            "word": ["--model", "sk-planted-flag-word-0101"],
+            "inline": ["--model=sk-planted-flag-inline-0102"],
+        }
+        for name, flags in forms.items():
+            folder = os.path.join(self.root, "flags-" + name)
+            write_json(os.path.join(folder, "session.json"), {"flags": flags})
+            proc = self.start(["--fixture", folder], name="flags-" + name)
+            seen = []
+            for path in ("/api/settings", "/api/settings?project=all", "/api/projects"):
+                status, heads, body = proc.request("GET", path)
+                seen.append(json.dumps(heads) + body.decode("utf-8", "replace"))
+            settings = json.loads(proc.request("GET", "/api/settings")[2].decode("utf-8"))
+            proc.stop()
+            everything = "\n".join(seen + [proc.stdout(), proc.stderr()])
+            self.assertNotIn("planted-flag", everything, name)
+            self.assertNotIn("sk-planted", everything, name)
+            # Not vacuous: the flag still reaches the resolver, which reports the masked value.
+            self.assertIn("hidden", json.dumps(settings), name)
 
     def test_planted_values_are_hidden_by_collect(self):
         """The fixture really plants values collect hides, so the test above means something."""
