@@ -1,0 +1,23 @@
+{
+ "records": [
+  {
+   "message_id": "msg_k1",
+   "ts_utc": "2026-11-02T06:10:00+00:00",
+   "agent_type": null
+  },
+  {
+   "message_id": "msg_k2",
+   "ts_utc": "2026-11-02T06:10:01+00:00",
+   "agent_type": "reviewer",
+   "run_id": "mk1"
+  }
+ ],
+ "notes": {
+  "malformed_lines": 0,
+  "synthetic_rows": 0,
+  "no_id_rows": 0,
+  "ignored_files": 0,
+  "skipped_old_files": 0
+ },
+ "oldest_seen": "2026-11-02T06:10:00+00:00"
+}
