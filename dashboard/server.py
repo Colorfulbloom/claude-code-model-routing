@@ -22,7 +22,8 @@ one. CLAUDE_CONFIG_DIR and HOME are not consulted.
 Safety rules the handler keeps:
   * The Host header must be 127.0.0.1:<port> or localhost:<port>, and an Origin
     header, when present, must be http:// plus one of those, and a
-    Sec-Fetch-Site header, when present, must be same-origin or none. Anything
+    Sec-Fetch-Site header, when present, must be same-origin or none. The one
+    exception is a top-level load of "/", which holds no settings. Anything
     else gets a 403 with no settings data. No response carries a CORS header.
   * Only "/", "/static/<file>" and the routes in ROUTES map to anything.
   * A response, a log line or an error message never holds a value
@@ -271,11 +272,26 @@ class Handler(http.server.BaseHTTPRequestHandler):
         return len(origins) == 1 and origins[0].strip().lower() in self._allowed("http://")
 
     def _fetch_site_ok(self):
-        """A browser's no-cors GET from another page sends no Origin but does send this."""
+        """A browser's no-cors GET from another page sends no Origin but does send this.
+
+        One cross-site request is allowed: a top-level load of "/", such as a link
+        on another site. That page holds no settings, and frame-ancestors stops it
+        being framed, so the other site can open it but cannot read anything.
+        """
         sites = self.headers.get_all("Sec-Fetch-Site") or []
         if not sites:
             return True
-        return len(sites) == 1 and sites[0].strip().lower() in ("same-origin", "none")
+        if len(sites) == 1 and sites[0].strip().lower() in ("same-origin", "none"):
+            return True
+        return len(sites) == 1 and self._top_level_page_load()
+
+    def _top_level_page_load(self):
+        modes = self.headers.get_all("Sec-Fetch-Mode") or []
+        dests = self.headers.get_all("Sec-Fetch-Dest") or []
+        path = self.path.partition("#")[0].partition("?")[0]
+        return (self.command == "GET" and path == "/"
+                and [v.strip().lower() for v in modes] == ["navigate"]
+                and [v.strip().lower() for v in dests] == ["document"])
 
     def _drain_body(self):
         """Read a small request body so closing the socket does not reset the reply."""

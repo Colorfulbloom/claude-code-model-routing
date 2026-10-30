@@ -348,6 +348,20 @@ class RequestRules(unittest.TestCase):
         self.assertEqual(self.srv.request("HEAD", "/api/settings", {"Sec-Fetch-Site": "cross-site"})[0], 403)
         self.assertEqual(self.srv.request("POST", "/", {"Sec-Fetch-Site": "cross-site"})[0], 403)
 
+    def test_cross_site_link_opens_the_page_and_nothing_else(self):
+        load = {"Sec-Fetch-Site": "cross-site", "Sec-Fetch-Mode": "navigate", "Sec-Fetch-Dest": "document"}
+        self.assertEqual(self.srv.request("GET", "/", load)[0], 200)
+        self.assertEqual(self.srv.request("GET", "/?x=1", load)[0], 200)
+        self.assertEqual(self.srv.request("HEAD", "/", load)[0], 403)
+        self.assertEqual(self.srv.request("POST", "/", load)[0], 403)
+        for path in ("/api/settings", "/api/projects", "/static/tokens.css", "/static/index.html"):
+            self.assertEqual(self.srv.request("GET", path, load)[0], 403, path)
+        for change in ({"Sec-Fetch-Mode": "no-cors"}, {"Sec-Fetch-Mode": "cors"},
+                       {"Sec-Fetch-Dest": "iframe"}, {"Sec-Fetch-Dest": "script"}, {"Sec-Fetch-Dest": "empty"}):
+            self.assertEqual(self.srv.request("GET", "/", dict(load, **change))[0], 403, change)
+        missing = {"Sec-Fetch-Site": "cross-site", "Sec-Fetch-Mode": "navigate"}
+        self.assertEqual(self.srv.request("GET", "/", missing)[0], 403)
+
     def test_no_cors_header_on_any_response(self):
         probes = [("GET", "/", {}), ("GET", "/api/settings", {"Origin": "http://localhost:%d" % self.port}),
                   ("GET", "/nope", {}), ("POST", "/api/settings", {}),
