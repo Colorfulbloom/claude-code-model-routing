@@ -125,6 +125,7 @@ Some sources change a session after it starts, and others sit outside what the d
 | agent-effort-lowered-by-cap | effort | agent | Tested | 2.1.302 |
 | agent-effort-lowered-unsupported-level | effort | agent | Tested | 2.1.302 |
 | agent-effort-user-settings-opus-5-5 | effort | agent | Tested | 2.1.302 |
+| agent-effort-user-settings-model-unknown | effort | agent | Documented | 2.1.302 |
 | agent-effort-default-model-unknown | effort | agent | Assumed | 2.1.302 |
 | agent-effort-default-no-effort-support | effort | agent | Tested | 2.1.302 |
 | agent-effort-default-by-model | effort | agent | Tested | 2.1.302 |
@@ -914,6 +915,31 @@ Quotes:
 
 - Experiment record: [../dashboard/experiments/2026-10-29-agent-effort.json](../dashboard/experiments/2026-10-29-agent-effort.json)
 - Confidence: Tested
+- Verified on: Claude Code 2.1.302, October 29, 2026
+
+### agent-effort-user-settings-model-unknown
+
+- Key: effort
+- Scope: agent
+- Combine: highest_layer
+- Layer order (highest first): env, agent, flag, managed, cli, local, project, user, default
+
+Reason:
+
+> {file} sets a top-level effortLevel of {value}, but the dashboard can't tell which model {agent} runs on. Opus 5.5 and models released after it ignore this key in the user file, and earlier models use it. So the dashboard can't say whether it counts for {agent}.
+
+Quotes:
+
+- [https://code.claude.com/docs/en/settings-reference#effortlevel](https://code.claude.com/docs/en/settings-reference#effortlevel)
+
+> Opus 5.5 and models released after it ignore it and start at their own default until you save a level for them, which `/effort` writes under `modelSettings`. In project, local, and managed settings, and with `--settings`, this key applies to every model.
+
+- [https://code.claude.com/docs/en/model-config#set-the-effort-level](https://code.claude.com/docs/en/model-config#set-the-effort-level)
+
+> If you set `effortLevel` in managed settings, Claude Code applies it at the settings step of the effort resolution order, and users can still change the level with `/effort` or `--effort`.
+
+- Experiment record: [../dashboard/experiments/2026-10-29-effort-user-key-by-model.json](../dashboard/experiments/2026-10-29-effort-user-key-by-model.json)
+- Confidence: Documented
 - Verified on: Claude Code 2.1.302, October 29, 2026
 
 ### agent-effort-default-model-unknown

@@ -1579,6 +1579,15 @@ class Step3RealRulesTest(unittest.TestCase):
         self.assertEqual(rule["confidence"], "documented")
         self.assertTrue(rule["quotes"])
 
+    def test_the_agent_model_unknown_effort_rule_is_documented_not_tested(self):
+        # Same record and quotes as the main-session twin, so the same confidence.
+        rule = self.rules["agent-effort-user-settings-model-unknown"]
+        twin = self.rules["effort-level-user-settings-model-unknown"]
+        self.assertEqual(rule["confidence"], "documented")
+        self.assertTrue(rule["quotes"])
+        self.assertEqual(rule["quotes"], twin["quotes"])
+        self.assertEqual(rule["verified_on"], twin["verified_on"])
+
     def test_variables_follow_models_in_the_spec_order(self):
         self.assertEqual(list(self.data), ["schema_version", "models", "variables", "rules"])
         self.assertEqual(list(self.variables), [

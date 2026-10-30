@@ -699,6 +699,38 @@ class AgentEffortTests(ResolveCase):
                          [("default", "medium", "default")])
 
 
+class AgentEffortModelUnknownTests(ResolveCase):
+    """The user's top-level effortLevel is unknown for an agent whose model has no name."""
+
+    def user_entries(self, agent_model=None, shell_env=None, main=None):
+        user = {"effortLevel": "high"}
+        if main:
+            user["model"] = main
+        kw = {"shell_env": shell_env} if shell_env else {}
+        entries = self.run_resolve(user=user,
+                                   user_agents={"probe.md": agent_text(model=agent_model)}, **kw)
+        return [e for e in self.rows(entries, "effort", "agent", "probe") if e["layer"] == "user"]
+
+    def test_an_unlisted_frontmatter_model_leaves_the_user_key_unknown(self):
+        got = self.user_entries(agent_model="claude-madeup-9-9")
+        self.assertEqual([(e["value"], e["status"], e["rule_id"]) for e in got],
+                         [("high", "unknown", "agent-effort-user-settings-model-unknown")])
+
+    def test_an_unset_main_model_leaves_the_user_key_unknown(self):
+        got = self.user_entries()
+        self.assertEqual([(e["value"], e["status"], e["rule_id"]) for e in got],
+                         [("high", "unknown", "agent-effort-user-settings-model-unknown")])
+
+    def test_an_unlisted_variable_model_leaves_the_user_key_unknown(self):
+        got = self.user_entries(shell_env={"CLAUDE_CODE_SUBAGENT_MODEL": "claude-madeup-9-9"})
+        self.assertEqual([(e["value"], e["status"], e["rule_id"]) for e in got],
+                         [("high", "unknown", "agent-effort-user-settings-model-unknown")])
+
+    def test_a_listed_model_that_reads_the_key_keeps_it_in_effect(self):
+        got = self.user_entries(agent_model="claude-fable-5-1")
+        self.assertEqual([(e["value"], e["status"]) for e in got], [("high", "in_effect")])
+
+
 class MainEffortModelUnknownTests(ResolveCase):
     """The user's top-level effortLevel depends on a model, so it is unknown without one."""
 

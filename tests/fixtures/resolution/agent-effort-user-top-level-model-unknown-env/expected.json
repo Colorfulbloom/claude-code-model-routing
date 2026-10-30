@@ -1,0 +1,23 @@
+{
+  "fixture": "agent-effort-user-top-level-model-unknown-env",
+  "rule_ids": [
+    "agent-effort-user-settings-model-unknown"
+  ],
+  "note": "CLAUDE_CODE_SUBAGENT_MODEL names a model the catalog doesn't list. Opus 5.5 and later models ignore the user top-level key and older models read it, so the outcome depends on a model the dashboard can't name and the entry is unknown.",
+  "confidence": "documented",
+  "source": "dashboard/experiments/2026-10-29-effort-user-key-by-model.json",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "effort",
+      "value": "high",
+      "status": "unknown",
+      "layer": "user",
+      "file": "config/settings.json",
+      "line": 2,
+      "scope": "agent",
+      "agent": "probe",
+      "rule_id": "agent-effort-user-settings-model-unknown"
+    }
+  ]
+}
