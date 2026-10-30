@@ -6,3 +6,5 @@ __pycache__/
 !docs/design/usage-stack/demo-set/**/.claude/settings.local.json
 # Captures regenerate from the design tools
 docs/design/usage-stack/**/shots/
+# Worktrees for agents and tracks
+.claude/worktrees/
