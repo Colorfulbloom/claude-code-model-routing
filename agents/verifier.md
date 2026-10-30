@@ -1,7 +1,7 @@
 ---
 name: verifier
 description: "Verifier. Use to deep-verify a lead's plan or report before it reaches the owner: checks each load-bearing claim against the project's docs, design mockups and code, and reports what holds, what doesn't, and what is unverified. Read-only."
-model: fable
+model: opus
 effort: high
 disallowedTools: Edit, Write, NotebookEdit
 ---

@@ -41,7 +41,7 @@ Every subagent's output lands in the context of whoever dispatched it. Handing a
 | `judge` | Synthesis and judgment over gathered material, Chrome work. Read-only on files. Replaces the built-in general-purpose agent. |
 | `deep-reasoner` | Feature lead, architecture, hard debugging, algorithms, high-risk code. Runs HiveMind CONSOLIDATION at the end of each feature. |
 | `designer` | New or changed UI, visual design, design critique. Renders two or three directions and recommends one. |
-| `verifier` | Verifies a lead's plan or report claim by claim against the project's sources. Read-only. Its pinned model is for plans and risky milestones; routine milestones pass a cheaper model on the dispatch. |
+| `verifier` | Verifies a lead's plan or report claim by claim against the project's sources. Read-only. It is pinned to Opus at high effort. A dispatch passes `model: fable` only for plans and risky milestones. |
 | `tech-writer` (example, not installed) | A project agent that drafts everything meant for a reader: docs, logs, tickets, commit messages and site copy. See [The example project agent](#the-example-project-agent). |
 
 Each agent's `model` and `effort` are set in its frontmatter; the installer asks you to pick them (see [Choosing models](#choosing-models)). The installer does not set the main model; `/setup-model-routing` offers to.

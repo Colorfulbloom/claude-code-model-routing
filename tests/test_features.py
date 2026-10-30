@@ -113,7 +113,7 @@ class SandboxCase(unittest.TestCase):
 
 class CustomizedInstall(SandboxCase):
     def test_01_agent_flag_fresh_install(self):
-        step = self.run_install("--yes", "--agent", "scout=sonnet:medium")
+        step = self.run_install("--yes", "--agent", "scout=sonnet:high")
         self.assertEqual(step.code, 0, step.err)
         self.assertIn("Agent models: defaults with --agent", step.out)
         repo = repo_agent("scout").decode().splitlines(True)
@@ -122,15 +122,15 @@ class CustomizedInstall(SandboxCase):
         diff = [(a, b) for a, b in zip(repo, got) if a != b]
         self.assertTrue(all(b.startswith(("model:", "effort:")) for _, b in diff), diff)
         self.assertIn("model: sonnet\n", got)
-        self.assertIn("effort: medium\n", got)
+        self.assertIn("effort: high\n", got)
         self.assertEqual(len(diff), 2)
         self.assertEqual(read(self.cpath(CHOICES)).decode(),
-                         self.expected_choices({"scout": ("sonnet", "medium")}))
+                         self.expected_choices({"scout": ("sonnet", "high")}))
         self.assertEqual(os.stat(self.cpath(CHOICES)).st_mode & 0o777, 0o644)
         self.assertIn(CHOICES, read(self.cpath(MANIFEST)).decode().split("\n"))
 
     def test_02_rerun_uses_saved_choices(self):
-        self.run_install("--yes", "--agent", "scout=sonnet:medium")
+        self.run_install("--yes", "--agent", "scout=sonnet:high")
         step = self.run_install()
         self.assertEqual(step.code, 0, step.err)
         self.assertIn("Agent models: saved choices (%s)" % self.sb.normalize(self.cpath(CHOICES)), step.out)
@@ -141,7 +141,7 @@ class CustomizedInstall(SandboxCase):
         self.assertFalse(os.path.isdir(self.cpath("backups")))
 
     def test_03_reset(self):
-        self.run_install("--yes", "--agent", "scout=sonnet:medium")
+        self.run_install("--yes", "--agent", "scout=sonnet:high")
         step = self.run_install("--reset")
         self.assertEqual(step.code, 0, step.err)
         self.assertIn("Agent models: defaults\n", step.out)
