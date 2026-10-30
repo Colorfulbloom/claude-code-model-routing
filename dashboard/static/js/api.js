@@ -13,6 +13,13 @@ export async function fetchJSON(path) {
       } catch (err) {
         return { ok: false, status: res.status, data: null };
       }
+    } else {
+      // Read the error body too, or the response never finishes and the browser keeps it open.
+      try {
+        await res.text();
+      } catch (err) {
+        // Nothing here is kept, so a body that won't read changes nothing.
+      }
     }
     return { ok: res.ok, status: res.status, data };
   } catch (err) {

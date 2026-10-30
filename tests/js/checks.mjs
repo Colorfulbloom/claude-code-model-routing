@@ -106,6 +106,20 @@ test("api: fetchJSON turns a thrown fetch into status 0 and a bad body into ok f
   assert.deepEqual(await fetchJSON("/api/x"), { ok: false, status: 200, data: null });
 });
 
+// A response nobody reads never finishes, so the browser's resource timing leaves it out. That hid the 404
+// on /api/usage from the end-to-end request count.
+test("api: fetchJSON reads an error body, and a body that can't be read changes nothing", async () => {
+  const { fetchJSON } = await import(JS + "api.js");
+  for (const status of [400, 404, 503]) {
+    let read = 0;
+    globalThis.fetch = async () => ({ ok: false, status, text: async () => { read += 1; return "{}"; } });
+    assert.deepEqual(await fetchJSON("/api/x"), { ok: false, status, data: null });
+    assert.equal(read, 1, "status " + status);
+  }
+  globalThis.fetch = async () => ({ ok: false, status: 404, text: async () => { throw new TypeError("gone"); } });
+  assert.deepEqual(await fetchJSON("/api/x"), { ok: false, status: 404, data: null });
+});
+
 // ---------------------------------------------------------------- h.js
 
 test("h: SAFE_URL drops every off-site or control-character value and keeps local ones", async () => {
@@ -160,6 +174,15 @@ test("range change: fetches nothing after a failed project payload, and a route 
   assert.equal(app.calls.length, before, "a range switch retries nothing");
   await app.go("#/agents?project=storefront&range=7d");
   assert.equal(app.count("/api/usage"), 2, "the next route change asks for the payload again");
+});
+
+test("project change: a project picked again fetches nothing, 404 and 400 answers included", async () => {
+  const app = await boot({ hash: "#/overview?project=storefront" });
+  const asked = (key) => app.calls.filter((c) => c.endsWith("?project=" + key)).sort();
+  for (const key of ["docs", "all", "docs"]) await app.go("#/overview?project=" + key);
+  assert.deepEqual(asked("docs"), ["/api/settings?project=docs", "/api/usage?project=docs"]);
+  assert.deepEqual(asked("all"), ["/api/settings?project=all", "/api/usage?project=all"]);
+  assert.equal(app.count("/api/projects"), 1);
 });
 
 test("project change: asks again for a payload that failed", async () => {
