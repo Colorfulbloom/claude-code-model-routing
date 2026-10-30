@@ -201,8 +201,17 @@ class ModifierTests(unittest.TestCase):
                 self.assertAlmostEqual(
                     cost(rec("claude-haiku-4-5", input=1000000, inference_geo=geo)), 1)
 
+    def test_not_available_geo_is_standard(self):
+        for mid in ("claude-opus-4-6", "claude-sonnet-5-5", "claude-haiku-4-5"):
+            with self.subTest(model=mid):
+                self.assertAlmostEqual(
+                    cost(rec(mid, input=1000000, inference_geo="not_available")),
+                    cost(rec(mid, input=1000000)))
+                self.assertIsNotNone(
+                    cost(rec(mid, input=1000, inference_geo="not_available")))
+
     def test_unknown_geo_is_not_priced(self):
-        for geo in ("eu", "US", "", "asia"):
+        for geo in ("eu", "US", "", "asia", "not-available", "NOT_AVAILABLE"):
             with self.subTest(geo=geo):
                 self.assertIsNone(cost(rec(input=1000, inference_geo=geo)))
 
