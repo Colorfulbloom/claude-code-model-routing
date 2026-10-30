@@ -1,0 +1,42 @@
+{
+  "fixture": "cap-per-model-invalid-alone",
+  "rule_ids": [
+    "model-settings-max-effort-values",
+    "max-effort-level-default"
+  ],
+  "confidence": "tested",
+  "source": "dashboard/experiments/2026-10-29-model-settings-max-effort.json#ms-cap-invalid-alone",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "maxEffortLevel",
+      "value": "turbo",
+      "status": "invalid",
+      "layer": "project",
+      "file": "project/.claude/settings.json",
+      "scope": "main",
+      "model": "claude-sonnet-5-5",
+      "path": "modelSettings.claude-sonnet-5-5.maxEffortLevel",
+      "rule_id": "model-settings-max-effort-values"
+    },
+    {
+      "key": "maxEffortLevel",
+      "value": null,
+      "status": "default",
+      "layer": "default",
+      "file": null,
+      "scope": "main",
+      "model": "claude-sonnet-5-5",
+      "rule_id": "max-effort-level-default"
+    },
+    {
+      "key": "effortLevel",
+      "value": "xhigh",
+      "status": "in_effect",
+      "layer": "flag",
+      "file": "session.json:flags",
+      "scope": "main",
+      "model": "claude-sonnet-5-5"
+    }
+  ]
+}

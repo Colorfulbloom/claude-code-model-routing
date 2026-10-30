@@ -2,6 +2,7 @@
   "fixture": "cap-same-file-per-model-invalid",
   "rule_ids": [
     "max-effort-level-lowest-cap",
+    "model-settings-max-effort-values",
     "effort-lowered-by-cap"
   ],
   "confidence": "tested",
@@ -21,12 +22,13 @@
     {
       "key": "maxEffortLevel",
       "value": "turbo",
-      "status": "overridden",
+      "status": "invalid",
       "layer": "project",
       "file": "project/.claude/settings.json",
       "scope": "main",
       "model": "claude-sonnet-5-5",
-      "path": "modelSettings.claude-sonnet-5-5.maxEffortLevel"
+      "path": "modelSettings.claude-sonnet-5-5.maxEffortLevel",
+      "rule_id": "model-settings-max-effort-values"
     },
     {
       "key": "effortLevel",

@@ -349,5 +349,45 @@
    "xhigh"
   ],
   "name": "ms-cap-same-file-invalid"
+ },
+ {
+  "user": {
+   "model": "claude-sonnet-5-5"
+  },
+  "project": {
+   "modelSettings": {
+    "claude-sonnet-5-5": {
+     "maxEffortLevel": "turbo"
+    }
+   }
+  },
+  "args": [
+   "--effort",
+   "xhigh"
+  ],
+  "name": "ms-cap-invalid-alone"
+ },
+ {
+  "user": {
+   "model": "claude-sonnet-5-5"
+  },
+  "project": {
+   "maxEffortLevel": "turbo"
+  },
+  "args": [
+   "--effort",
+   "xhigh"
+  ],
+  "name": "ms-cap-top-level-invalid"
+ },
+ {
+  "user": {
+   "model": "claude-sonnet-5-5"
+  },
+  "project": {
+   "maxEffortLevel": "turbo",
+   "model": "claude-haiku-5-5"
+  },
+  "name": "ms-cap-top-level-invalid-file-loads"
  }
 ]

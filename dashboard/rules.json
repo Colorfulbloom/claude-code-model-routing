@@ -851,7 +851,7 @@
           "status": "in_effect"
         }
       ],
-      "reason": "The lowest cap applies. {value} in {file} can't be raised from another file.",
+      "reason": "The lowest cap applies. The cap in {winner} can't be raised from another file.",
       "quotes": [
         {
           "doc_url": "https://code.claude.com/docs/en/settings-reference#maxeffortlevel",
@@ -3182,6 +3182,286 @@
         {
           "doc_url": "https://code.claude.com/docs/en/settings-reference#maxeffortlevel",
           "quote": "That entry replaces this key for the model only within the settings source that sets both, such as your user settings or one managed source."
+        }
+      ],
+      "experiment": "experiments/2026-10-29-model-settings-max-effort.json",
+      "confidence": "tested",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-30"
+      },
+      "value_order": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ]
+    },
+    {
+      "rule_id": "max-effort-level-values",
+      "key": "maxEffortLevel",
+      "scope": "main",
+      "layer_order": [
+        "managed",
+        "cli",
+        "local",
+        "project",
+        "user"
+      ],
+      "combine": "lowest_value",
+      "conditions": [
+        {
+          "layer": "managed",
+          "models": [
+            "*"
+          ],
+          "values": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "managed",
+          "models": [
+            "*"
+          ],
+          "status": "invalid"
+        },
+        {
+          "layer": "cli",
+          "models": [
+            "*"
+          ],
+          "values": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "cli",
+          "models": [
+            "*"
+          ],
+          "status": "invalid"
+        },
+        {
+          "layer": "local",
+          "models": [
+            "*"
+          ],
+          "values": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "local",
+          "models": [
+            "*"
+          ],
+          "status": "invalid"
+        },
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "values": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "status": "invalid"
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "values": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "status": "invalid"
+        }
+      ],
+      "reason": "{value} isn't a level maxEffortLevel accepts in {file}, so Claude Code skips it and any other cap still applies. A cap takes low, medium, high, xhigh or max.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/settings-reference#maxeffortlevel",
+          "quote": "string, one of `\"low\"`, `\"medium\"`, `\"high\"`, `\"xhigh\"`, or `\"max\"`. A `\"max\"` value sets no cap"
+        }
+      ],
+      "experiment": "experiments/2026-10-29-model-settings-max-effort.json",
+      "confidence": "tested",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-30"
+      },
+      "value_order": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ]
+    },
+    {
+      "rule_id": "model-settings-max-effort-values",
+      "key": "modelSettings.maxEffortLevel",
+      "scope": "model",
+      "layer_order": [
+        "managed",
+        "cli",
+        "local",
+        "project",
+        "user"
+      ],
+      "combine": "lowest_value",
+      "conditions": [
+        {
+          "layer": "managed",
+          "models": [
+            "*"
+          ],
+          "values": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "managed",
+          "models": [
+            "*"
+          ],
+          "status": "invalid"
+        },
+        {
+          "layer": "cli",
+          "models": [
+            "*"
+          ],
+          "values": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "cli",
+          "models": [
+            "*"
+          ],
+          "status": "invalid"
+        },
+        {
+          "layer": "local",
+          "models": [
+            "*"
+          ],
+          "values": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "local",
+          "models": [
+            "*"
+          ],
+          "status": "invalid"
+        },
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "values": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "status": "invalid"
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "values": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "status": "invalid"
+        }
+      ],
+      "reason": "{value} isn't a level a modelSettings cap accepts in {file}, so Claude Code skips it for {model} and any other cap still applies. A cap takes low, medium, high, xhigh or max.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/settings-reference#maxeffortlevel",
+          "quote": "string, one of `\"low\"`, `\"medium\"`, `\"high\"`, `\"xhigh\"`, or `\"max\"`. A `\"max\"` value sets no cap"
         }
       ],
       "experiment": "experiments/2026-10-29-model-settings-max-effort.json",

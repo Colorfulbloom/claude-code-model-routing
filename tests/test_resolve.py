@@ -1291,8 +1291,37 @@ class PerModelCapReplacesTopLevelTests(ResolveCase):
         top = self.by_value(caps, "low")
         self.assertEqual((top["status"], top["rule_id"]),
                          ("in_effect", "max-effort-level-lowest-cap"))
-        self.assertEqual(self.by_value(caps, "turbo")["status"], "overridden")
+        turbo = self.by_value(caps, "turbo")
+        self.assertEqual((turbo["status"], turbo["rule_id"]),
+                         ("invalid", "model-settings-max-effort-values"))
         self.assertEqual((effort["status"], effort["becomes"]), ("lowered", "low"))
+
+    def test_a_cap_reason_names_the_winning_file_on_the_winner_and_on_a_loser(self):
+        wanted = ("The lowest cap applies. The cap in %s can't be raised from another file."
+                  % self.PROJECT)
+        _entries, caps, _effort = self.resolve_caps(
+            user={"maxEffortLevel": "high"}, project={"maxEffortLevel": "low"})
+        winner = self.by_value(caps, "low")
+        loser = self.by_value(caps, "high", "user")
+        self.assertEqual((winner["status"], winner["rule_id"]),
+                         ("in_effect", "max-effort-level-lowest-cap"))
+        self.assertEqual((loser["status"], loser["rule_id"]),
+                         ("overridden", "max-effort-level-lowest-cap"))
+        self.assertEqual(winner["reason"], wanted)
+        self.assertEqual(loser["reason"], wanted)
+
+    def test_a_top_level_value_that_is_not_a_level_is_invalid_and_sets_no_cap(self):
+        _entries, caps, effort = self.resolve_caps(project={"maxEffortLevel": "turbo"})
+        turbo = self.by_value(caps, "turbo")
+        self.assertEqual((turbo["status"], turbo["rule_id"]),
+                         ("invalid", "max-effort-level-values"))
+        self.assertEqual(turbo["reason"], (
+            "turbo isn't a level maxEffortLevel accepts in %s, so Claude Code skips it and "
+            "any other cap still applies. A cap takes low, medium, high, xhigh or max."
+            % self.PROJECT))
+        self.assertEqual([e["status"] for e in caps if e["value"] is None], ["default"])
+        self.assertEqual((effort["status"], effort["value"]), ("in_effect", "xhigh"))
+        self.assertNotIn("becomes", effort)
 
     def test_the_lowest_name_form_decides_which_entry_counts(self):
         for first, second, replaced in (("turbo", "xhigh", False), ("xhigh", "turbo", True)):

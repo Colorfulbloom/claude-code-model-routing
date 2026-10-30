@@ -131,6 +131,8 @@ Some sources change a session after it starts, and others sit outside what the d
 | agent-effort-default-by-model | effort | agent | Tested | 2.1.302 |
 | model-settings-name-matching | modelSettings | model | Tested | 2.1.302 |
 | model-settings-max-effort-per-model | modelSettings.maxEffortLevel | model | Tested | 2.1.302 |
+| max-effort-level-values | maxEffortLevel | main | Tested | 2.1.302 |
+| model-settings-max-effort-values | modelSettings.maxEffortLevel | model | Tested | 2.1.302 |
 | model-settings-auto-compact-window | modelSettings.autoCompactWindow | model | Tested | 2.1.302 |
 | prompt-cache-force-5m | promptCacheTtl | main | Tested | 2.1.302 |
 | subagent-prompt-cache-force-5m | subagentPromptCacheTtl | agent | Tested | 2.1.302 |
@@ -309,7 +311,7 @@ Quotes:
 
 Reason:
 
-> The lowest cap applies. {value} in {file} can't be raised from another file.
+> The lowest cap applies. The cap in {winner} can't be raised from another file.
 
 Quotes:
 
@@ -1040,6 +1042,48 @@ Quotes:
 - [https://code.claude.com/docs/en/settings-reference#maxeffortlevel](https://code.claude.com/docs/en/settings-reference#maxeffortlevel)
 
 > That entry replaces this key for the model only within the settings source that sets both, such as your user settings or one managed source.
+
+- Experiment record: [../dashboard/experiments/2026-10-29-model-settings-max-effort.json](../dashboard/experiments/2026-10-29-model-settings-max-effort.json)
+- Confidence: Tested
+- Verified on: Claude Code 2.1.302, October 30, 2026
+
+### max-effort-level-values
+
+- Key: maxEffortLevel
+- Scope: main
+- Combine: lowest_value
+- Layer order (highest first): managed, cli, local, project, user
+
+Reason:
+
+> {value} isn't a level maxEffortLevel accepts in {file}, so Claude Code skips it and any other cap still applies. A cap takes low, medium, high, xhigh or max.
+
+Quotes:
+
+- [https://code.claude.com/docs/en/settings-reference#maxeffortlevel](https://code.claude.com/docs/en/settings-reference#maxeffortlevel)
+
+> string, one of `"low"`, `"medium"`, `"high"`, `"xhigh"`, or `"max"`. A `"max"` value sets no cap
+
+- Experiment record: [../dashboard/experiments/2026-10-29-model-settings-max-effort.json](../dashboard/experiments/2026-10-29-model-settings-max-effort.json)
+- Confidence: Tested
+- Verified on: Claude Code 2.1.302, October 30, 2026
+
+### model-settings-max-effort-values
+
+- Key: modelSettings.maxEffortLevel
+- Scope: model
+- Combine: lowest_value
+- Layer order (highest first): managed, cli, local, project, user
+
+Reason:
+
+> {value} isn't a level a modelSettings cap accepts in {file}, so Claude Code skips it for {model} and any other cap still applies. A cap takes low, medium, high, xhigh or max.
+
+Quotes:
+
+- [https://code.claude.com/docs/en/settings-reference#maxeffortlevel](https://code.claude.com/docs/en/settings-reference#maxeffortlevel)
+
+> string, one of `"low"`, `"medium"`, `"high"`, `"xhigh"`, or `"max"`. A `"max"` value sets no cap
 
 - Experiment record: [../dashboard/experiments/2026-10-29-model-settings-max-effort.json](../dashboard/experiments/2026-10-29-model-settings-max-effort.json)
 - Confidence: Tested
