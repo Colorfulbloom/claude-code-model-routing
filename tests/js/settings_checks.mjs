@@ -611,6 +611,16 @@ test("trail: a rule marked due reads as due for a new check, and the others read
   assert.doesNotMatch(text(sub(trail.ruleItem(fine, "2.2.0"), "ru-ck")), /due/);
 });
 
+test("settings: settingLabel gives the label as written and settingWord lower-cases it", () => {
+  assert.equal(settings.settingLabel("effortLevel"), "Effort");
+  assert.equal(settings.settingLabel("promptCacheTtl"), "Cache lifetime");
+  assert.equal(settings.settingLabel("maxEffortLevel"), "Effort cap");
+  assert.equal(settings.settingLabel("mystery"), "mystery");
+  assert.equal(settings.settingWord("maxEffortLevel"), "effort cap");
+  assert.equal(settings.settingWord("effort"), "effort");
+  assert.equal(settings.settingWord("Mystery"), "Mystery");
+});
+
 test("trail: a rule with no quotes and no experiment leaves those parts out", () => {
   const { root } = mount(trailPayload([E({ rule_ids: ["a"] })], [ruleRec("a")]), "@main", "effortLevel");
   const item = byClass(cardOf(root, "Rules behind this value"), "ru")[0];

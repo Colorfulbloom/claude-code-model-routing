@@ -20,6 +20,7 @@ MAIN_AGENT = "@main"  # the agent key of the main session's rows
 REPO_BLOB = "https://github.com/Colorfulbloom/claude-code-model-routing/blob/main/"
 REFERENCE_URL = REPO_BLOB + "docs/rules-reference.md"
 EXPERIMENT_BASE = REPO_BLOB + "dashboard/"
+ATTENTION_ORDER = ("unknown", "lowered", "ignored", "overridden", "invalid")  # the groups of Needs attention
 
 
 def _display(ctx, path):
@@ -130,6 +131,35 @@ def _rules_for(ctx, rows, installed):
     return out
 
 
+def _attention(entries, rows):
+    """Return the groups of Needs attention, in the order of ATTENTION_ORDER.
+
+    A group is {"status", "rows"} and is left out when it has no rows. A row is
+    {"entry": index into entries, "route": {"agent", "setting"}}, the route the
+    page hands to the trail link. Resolver rows and their entries are walked in
+    order, so a row of several entries gives several attention rows.
+
+    An overridden entry is left out when its value equals the winner's (the
+    row's first entry), because nothing was lost. Hidden values cannot be
+    compared and a null value says nothing, so those stay.
+    """
+    groups = {status: [] for status in ATTENTION_ORDER}
+    for row in rows:
+        winner = entries[row["entries"][0]]["value"]
+        for index in row["entries"]:
+            entry = entries[index]
+            status = entry["status"]
+            if status not in groups:
+                continue
+            value = entry["value"]
+            comparable = value is not None and value != collect.HIDDEN
+            if status == "overridden" and comparable and value == winner:
+                continue
+            groups[status].append({"entry": index,
+                                   "route": {"agent": row["agent"], "setting": row["setting"]}})
+    return [{"status": status, "rows": groups[status]} for status in ATTENTION_ORDER if groups[status]]
+
+
 def _files(ctx, collected, entries):
     """Return the settings files that exist, each with its layer, display path and status.
 
@@ -166,7 +196,9 @@ def settings(ctx, query):
 
     installed is the Claude Code version on this machine, or null. Each rule
     record carries due, true when that version is newer than the one the rule
-    was checked on.
+    was checked on. attention holds the groups of the Needs attention page, each
+    with its rows (an entry index and the trail route), and is empty for a
+    folder that is missing.
 
     ?project=<key> picks the project and no value means the current one. The
     answer for a key that is not listed, or for "all", carries no settings data.
@@ -182,7 +214,8 @@ def settings(ctx, query):
         return 404, {"error": "unknown_project"}
     if project.state == projects.STATE_MISSING and not project.implicit:
         answer = {"project": project.key, "state": project.state, "entries": [],
-                  "rows": [], "rules": {}, "files": [], "installed": version.installed(ctx)}
+                  "rows": [], "rules": {}, "files": [], "installed": version.installed(ctx),
+                  "attention": []}
         answer.update(_display_fields(ctx, project))
         return 200, answer
     collected = collect.collect(
@@ -207,6 +240,7 @@ def settings(ctx, query):
               "no_user_settings": not any(
                   record["layer"] == "user" for record in collected["settings_files"]),
               "rows": rows, "rules": _rules_for(ctx, rows, installed),
-              "files": _files(ctx, collected, entries), "installed": installed}
+              "files": _files(ctx, collected, entries), "installed": installed,
+              "attention": _attention(entries, rows)}
     answer.update(_display_fields(ctx, project))
     return 200, answer

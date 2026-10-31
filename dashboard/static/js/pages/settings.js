@@ -77,19 +77,25 @@ export function layerText(entry, payload = null) {
   return file && LAYERS.includes(file.layer) ? t("layer_" + file.layer) : "";
 }
 
-// The name of a setting in lower case, for a title. An unknown key shows as written.
-export function settingWord(key) {
+// The name of a setting as the screen writes it, for a row name. An unknown key shows as written.
+export function settingLabel(key) {
   switch (key) {
-    case "model": return t("f_model").toLowerCase();
-    case "effortLevel": case "effort": return t("f_effort").toLowerCase();
-    case "promptCacheTtl": case "subagentPromptCacheTtl": return t("f_cache").toLowerCase();
-    case "autoCompactWindow": return t("f_compact").toLowerCase();
-    case "maxEffortLevel": return t("cap").toLowerCase();
-    case "agentFile": return t("f_agentfile").toLowerCase();
-    case "settingsFile": return t("f_settingsfile").toLowerCase();
-    case "rulesFile": return t("f_rulesfile").toLowerCase();
+    case "model": return t("f_model");
+    case "effortLevel": case "effort": return t("f_effort");
+    case "promptCacheTtl": case "subagentPromptCacheTtl": return t("f_cache");
+    case "autoCompactWindow": return t("f_compact");
+    case "maxEffortLevel": return t("cap");
+    case "agentFile": return t("f_agentfile");
+    case "settingsFile": return t("f_settingsfile");
+    case "rulesFile": return t("f_rulesfile");
     default: return String(key);
   }
+}
+
+// The name of a setting in lower case, for a title. An unknown key shows as written.
+export function settingWord(key) {
+  const label = settingLabel(key);
+  return label === String(key) ? label : label.toLowerCase();
 }
 
 // The first entry with this scope and key is the winner of the row.
@@ -129,6 +135,19 @@ export function tilesFor(ctx, payload, activeSetting = null) {
   return tiles;
 }
 
+// True when the project's folder is gone and no entry resolved. The implicit current project keeps the
+// missing_folder state but still resolves, so entries decide.
+export function isMissingFolder(payload) {
+  return payload.state === "missing_folder" && !(payload.entries || []).length;
+}
+
+// The "Folder not found" card, shared by Settings, the trail and Needs attention.
+export function missingFolderState(ctx, payload) {
+  return emptyState(t("es_missing_h"), t("es_missing_t", {
+    name: ctx.project.name, path: payload.path_display, config_file: payload.config_file_display,
+  }));
+}
+
 // The page head, the messages for a project or a config folder that is missing something, and the tiles.
 // Shared with the trail, which adds its panel after the tiles. The tiles come back as the last node.
 export function renderSettingsBody(root, ctx, activeSetting = null) {
@@ -140,11 +159,8 @@ export function renderSettingsBody(root, ctx, activeSetting = null) {
   const res = ctx.data.settings;
   if (!res || !res.ok || !res.data) return null;
   const payload = res.data;
-  // The implicit current project keeps this state but still resolves, so entries decide the message.
-  if (payload.state === "missing_folder" && !(payload.entries || []).length) {
-    root.appendChild(emptyState(t("es_missing_h"), t("es_missing_t", {
-      name: ctx.project.name, path: payload.path_display, config_file: payload.config_file_display,
-    })));
+  if (isMissingFolder(payload)) {
+    root.appendChild(missingFolderState(ctx, payload));
     return null;
   }
   if (payload.state === "no_claude_folder") {

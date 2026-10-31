@@ -18,6 +18,7 @@ import helpers
 sys.path.insert(0, os.path.join(helpers.REPO, "dashboard"))
 sys.path.insert(0, os.path.join(helpers.FIXTURES, "demo"))
 import api_settings  # noqa: E402
+import collect  # noqa: E402
 import build_demo  # noqa: E402
 import projects  # noqa: E402
 import resolve  # noqa: E402
@@ -30,7 +31,7 @@ FIELDS = resolve.load_agent_fields()
 ROUTE = server.ROUTES["/api/settings"]
 ANSWER_KEYS = {
     "project", "state", "entries", "no_user_settings", "shell_label", "path_display",
-    "config_dir_display", "config_file_display", "models", "rows", "rules", "files", "installed"}
+    "config_dir_display", "config_file_display", "models", "rows", "rules", "files", "installed", "attention"}
 REFERENCE_PAGE = os.path.join(helpers.REPO, "docs", "rules-reference.md")
 REFERENCE_URL = "https://github.com/Colorfulbloom/claude-code-model-routing/blob/main/docs/rules-reference.md"
 EXPERIMENT_BASE = "https://github.com/Colorfulbloom/claude-code-model-routing/blob/main/dashboard/"
@@ -460,6 +461,7 @@ class VersionAndDue(unittest.TestCase):
             context(root, config_dir=config, project_dir=os.path.join(root, "work")), claude_version="2.1.310")
         payload = call(ctx, "listed")[1]
         self.assertEqual(payload["installed"], "2.1.310")
+        self.assertEqual(payload["attention"], [])
 
     def test_version_field_counts_the_agent_field_table(self):
         ctx = context(os.path.join(FIXTURE_DIR, self.NAME))
@@ -485,6 +487,144 @@ ORDER = ["unknown", "lowered", "ignored", "overridden", "invalid"]
 def attention_entry(status, value, key="effortLevel", agent=None):
     return {"key": key, "agent": agent, "scope": "main" if agent is None else "agent",
             "status": status, "value": value}
+
+
+class AttentionUnit(unittest.TestCase):
+    def groups(self, entries):
+        return api_settings._attention(entries, api_settings._rows(entries))
+
+    def test_groups_come_in_order_and_empty_ones_are_left_out(self):
+        entries = [attention_entry("in_effect", "high"),
+                   attention_entry("invalid", "bogus", key="model"),
+                   attention_entry("unknown", None, key="promptCacheTtl"),
+                   attention_entry("ignored", "xhigh", key="autoCompactWindow")]
+        self.assertEqual([g["status"] for g in self.groups(entries)], ["unknown", "ignored", "invalid"])
+
+    def test_a_row_is_an_entry_index_and_its_route(self):
+        entries = [attention_entry("in_effect", "high", agent="builder"),
+                   attention_entry("overridden", "low", agent="builder")]
+        self.assertEqual(self.groups(entries), [
+            {"status": "overridden", "rows": [{"entry": 1, "route": {"agent": "builder", "setting": "effortLevel"}}]}])
+        main = self.groups([attention_entry("lowered", "high")])
+        self.assertEqual(main[0]["rows"][0]["route"], {"agent": "@main", "setting": "effortLevel"})
+
+    def test_a_row_of_several_entries_gives_several_attention_rows(self):
+        entries = [attention_entry("in_effect", "high"),
+                   attention_entry("overridden", "low"),
+                   attention_entry("overridden", "medium")]
+        self.assertEqual([r["entry"] for r in self.groups(entries)[0]["rows"]], [1, 2])
+
+    def test_an_overridden_value_equal_to_the_winner_is_left_out(self):
+        entries = [attention_entry("in_effect", "high"), attention_entry("overridden", "high")]
+        self.assertEqual(self.groups(entries), [])
+
+    def test_two_hidden_values_stay(self):
+        entries = [attention_entry("in_effect", collect.HIDDEN), attention_entry("overridden", collect.HIDDEN)]
+        self.assertEqual([g["status"] for g in self.groups(entries)], ["overridden"])
+
+    def test_two_null_values_stay(self):
+        entries = [attention_entry("in_effect", None, key="agentFile", agent="a"),
+                   attention_entry("overridden", None, key="agentFile", agent="a")]
+        self.assertEqual([g["status"] for g in self.groups(entries)], ["overridden"])
+
+    def test_only_overridden_entries_are_compared(self):
+        entries = [attention_entry("in_effect", "high"), attention_entry("ignored", "high")]
+        self.assertEqual([g["status"] for g in self.groups(entries)], ["ignored"])
+
+
+class AttentionEveryFixture(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.answers = {n: call(context(os.path.join(FIXTURE_DIR, n)))[1] for n in fixture_names()}
+
+    def test_there_are_groups_to_walk(self):
+        self.assertTrue(any(p["attention"] for p in self.answers.values()))
+
+    def test_groups_are_in_order_with_rows_and_matching_status(self):
+        for name, payload in self.answers.items():
+            with self.subTest(name):
+                statuses = [g["status"] for g in payload["attention"]]
+                self.assertEqual(statuses, sorted(set(statuses), key=ORDER.index))
+                for group in payload["attention"]:
+                    self.assertEqual(set(group), {"status", "rows"})
+                    self.assertTrue(group["rows"])
+                    for row in group["rows"]:
+                        self.assertEqual(set(row), {"entry", "route"})
+                        self.assertEqual(payload["entries"][row["entry"]]["status"], group["status"])
+
+    def test_every_route_is_a_real_row(self):
+        for name, payload in self.answers.items():
+            with self.subTest(name):
+                pairs = {(r["agent"], r["setting"]) for r in payload["rows"]}
+                for group in payload["attention"]:
+                    for row in group["rows"]:
+                        route = row["route"]
+                        self.assertEqual(set(route), {"agent", "setting"})
+                        self.assertIn((route["agent"], route["setting"]), pairs)
+                        match = next(r for r in payload["rows"]
+                                     if (r["agent"], r["setting"]) == (route["agent"], route["setting"]))
+                        self.assertIn(row["entry"], match["entries"])
+
+    def test_no_overridden_row_equals_its_winner(self):
+        for name, payload in self.answers.items():
+            with self.subTest(name):
+                by_entry = {i: r for r in payload["rows"] for i in r["entries"]}
+                for group in payload["attention"]:
+                    if group["status"] != "overridden":
+                        continue
+                    for row in group["rows"]:
+                        entry = payload["entries"][row["entry"]]
+                        winner = payload["entries"][by_entry[row["entry"]]["entries"][0]]
+                        if entry["value"] is not None and entry["value"] != "hidden":
+                            self.assertNotEqual(entry["value"], winner["value"], (name, row))
+
+    def test_every_attention_entry_is_listed_unless_it_equals_its_winner(self):
+        for name, payload in self.answers.items():
+            with self.subTest(name):
+                listed = {row["entry"] for g in payload["attention"] for row in g["rows"]}
+                by_entry = {i: r for r in payload["rows"] for i in r["entries"]}
+                for index, entry in enumerate(payload["entries"]):
+                    if entry["status"] not in ORDER:
+                        self.assertNotIn(index, listed)
+                        continue
+                    winner = payload["entries"][by_entry[index]["entries"][0]]
+                    dropped = (entry["status"] == "overridden" and entry["value"] is not None
+                               and entry["value"] != "hidden" and entry["value"] == winner["value"])
+                    self.assertEqual(index in listed, not dropped, (name, index))
+
+    def test_the_resolver_rows_walk_in_order(self):
+        for name, payload in self.answers.items():
+            with self.subTest(name):
+                for group in payload["attention"]:
+                    entries = [row["entry"] for row in group["rows"]]
+                    row_order = {}
+                    for position, row in enumerate(payload["rows"]):
+                        for index in row["entries"]:
+                            row_order[index] = (position, index)
+                    self.assertEqual(entries, sorted(entries, key=lambda e: row_order[e]))
+
+
+class AttentionDemo(unittest.TestCase):
+    def test_the_demo_shows_groups_for_its_planted_cases(self):
+        out = new_dir(self, "api-att-")
+        build_demo.build(out)
+        listing = projects.load(context(out))
+        by_name = {}
+        for project in listing.projects:
+            ctx = context(out, project_dir=project.path)
+            status, payload = call(ctx, project.key)
+            self.assertEqual(status, 200)
+            by_name[project.name] = payload
+        tidewater = by_name["Tidewater reporting"]
+        self.assertEqual(tidewater["installed"], "2.1.310")
+        statuses = [g["status"] for g in tidewater["attention"]]
+        self.assertIn("lowered", statuses)
+        self.assertIn("overridden", statuses)
+        agents = {row["route"]["agent"] for g in tidewater["attention"] for row in g["rows"]}
+        self.assertTrue(agents - {"@main"}, "agent rows carry a route too")
+        driftwood = by_name["Driftwood"]
+        self.assertIn("invalid", [g["status"] for g in driftwood["attention"]])
+        self.assertEqual(by_name["Lantern"]["attention"], [])
 
 
 class OverHttp(test_server.TempCase):

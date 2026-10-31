@@ -1,5 +1,3 @@
-at_empty
-attention_card_sub
 c_files_table
 c_rules_list
 f_differs
@@ -10,10 +8,6 @@ h_file
 h_next
 h_state
 no_level
-p_ignored
-p_invalid
-p_overridden
-p_unknown
 refused
 rules_all
 rules_clear_search
@@ -23,5 +17,4 @@ rules_no_match
 rules_search_label
 rules_search_placeholder
 rules_sub
-see_all_attention
 showing

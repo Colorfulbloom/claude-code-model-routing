@@ -272,6 +272,20 @@ class SettingsE2E(unittest.TestCase):
         self.assertIn("Model", terms)  # the meta block is there, so the missing cap line means something
         self.assertNotIn("Effort cap", terms)
 
+    def test_a_lowered_agent_row_on_needs_attention_opens_that_rows_trail(self):
+        self.show("#/attention", "attention")
+        row = ("[...document.querySelectorAll('[data-page=attention] section.cd')]"
+               ".find((c) => c.querySelector('.cd-h').textContent === 'Lowered')"
+               ".querySelectorAll('ul.at li a')")
+        self.page.wait_for("Boolean(%s.length)" % row)
+        names = self.page.eval("[...%s].map((a) => a.querySelector('.at-n').textContent)" % row)
+        self.assertIn("builder, Effort", names)
+        self.page.eval("[...%s].find((a) => a.querySelector('.at-n').textContent === 'builder, Effort').click()" % row)
+        self.wait_visible("trail")
+        self.page.wait_for("Boolean(document.querySelector('h2.tr-title'))")
+        self.assertEqual(self.texts_of("[data-page=trail] h2.tr-title"), ["What decides the effort for builder"])
+        self.assertEqual(self.page.eval("location.hash.split('?')[0]"), "#/settings/builder/effort")
+
     def test_a_rule_checked_before_the_installed_version_is_due_for_a_new_check(self):
         # The Rules card is closed, so its text is not in the sweep's innerText. Open it, then read it.
         self.show(EFFORT_TRAIL, "trail")
