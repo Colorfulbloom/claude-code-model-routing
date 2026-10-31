@@ -4,7 +4,6 @@
   "assumed_def": "Neither the docs nor a test backs the whole rule yet.",
   "at_empty": "Every value is In effect or Default",
   "attention_card_sub": "Values that don't apply as set, and ones the dashboard can't work out",
-  "axis_hour": "Hour",
   "c_agents_in_session": "Agents in this session",
   "c_agents_table": "Agents",
   "c_cache_agent": "Cache hit rate by agent",

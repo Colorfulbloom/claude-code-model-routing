@@ -279,7 +279,7 @@ body{background:var(--page-bg)}
   .sb-l{grid-area:l} .sb-bar{grid-area:b} .sb-v{grid-area:v}
   .hb-row{grid-template-columns:minmax(0,1fr) 64px;grid-template-areas:"l v" "b b"} .hb-l{grid-area:l} .hb-bar{grid-area:b} .hb-v{grid-area:v}
   .dbars{height:140px}
-  .dt thead{display:none}
+  .dt thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap} /* the .sr pattern: out of sight, still in the page */
   .dt,.dt tbody,.dt tr,.dt td{display:block}
   .dt tr{border-bottom:var(--border-width) solid var(--border);padding:var(--space-2) 0}
   .dt td{border:0;padding:3px 0;display:flex;justify-content:space-between;gap:var(--space-3)}
@@ -309,7 +309,7 @@ body{background:var(--page-bg)}
 .g21>.cd>.cd-bd>.dchart .dbars{height:100%;min-height:150px}
 @media (max-width: 720px){
   .dchart{grid-template-columns:36px minmax(0,1fr)} .dchart .dbars,.g21>.cd>.cd-bd>.dchart .dbars{height:130px;min-height:0}
-  .dx span:nth-child(even){display:none}
+  .dx:not(.dx-hour) span:nth-child(even){display:none}
 }
 
 /* ---- Review pass, October 30 (findings in review-r3.md) ---- */
@@ -503,7 +503,7 @@ body{background:var(--page-bg)}
 .at-m{display:flex;align-items:center;gap:var(--space-2);justify-content:flex-start}
 .at-v{font-family:var(--font-mono);font-weight:var(--weight-semibold)}
 .at-s{font:var(--text-xs)/1.4 var(--font-mono);color:var(--text-muted);text-align:right;overflow-wrap:anywhere}
-.at-more{margin-top:var(--space-3);font-size:var(--text-sm)}
+.at-more{margin-top:var(--space-3);font-size:var(--text-sm);display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-3)}
 .at-empty{color:var(--text-muted)}
 @media (max-width: 720px){
   .at li a{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"n m" "s s"}

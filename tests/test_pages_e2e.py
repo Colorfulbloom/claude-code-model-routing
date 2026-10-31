@@ -28,6 +28,7 @@ import build_demo  # noqa: E402
 
 CHECKS_DIR = os.path.join(helpers.REPO, "tests", "e2e_checks")
 WIDTHS = (1440, 375)
+FULL_PAGE_WIDTH = 375  # the sweep also saves a full-page screenshot at this width, for review
 THEMES = ("light", "dark")
 TIDEWATER = "Tidewater reporting"
 SESSION_TOKEN = "{session}"
@@ -60,6 +61,32 @@ STACK_BAD = """(() => {
     if (parseFloat(style.borderLeftWidth) === 0 || style.borderLeftStyle === 'none') bad.push('no start edge');
   });
   return bad;
+})()"""
+
+# The narrow layout clips a table's head and draws the column name before every value, as ::before content from
+# data-l (app.css .dt td::before). innerText keeps the clipped head and leaves the drawn names out, so a text check
+# can't see them. This reads the computed style, so a stacked value with no name on screen fails. Blink resolves
+# attr() in the computed value, and a browser that doesn't gets the attribute.
+LABEL_BAD = """(() => {
+  const drawnLabel = (td) => {
+    const content = getComputedStyle(td, '::before').content;
+    if (!content || content === 'none' || content === 'normal') return '';
+    if (content.startsWith('attr(')) return (td.getAttribute('data-l') || '').trim();
+    return content.replace(/^["']|["']$/g, '').trim();
+  };
+  const bad = [];
+  document.querySelectorAll('main [data-page=%s] .dt td').forEach((td) => {
+    if (getComputedStyle(td).display === 'table-cell') return;
+    if (!drawnLabel(td)) bad.push('no column name beside ' + JSON.stringify(td.innerText.trim()));
+  });
+  return bad;
+})()"""
+
+# The clipped head of the first table on Models: its height, and what it adds to the table (0 when it adds nothing).
+HEAD_HEIGHTS = """(() => {
+  const table = document.querySelector('main [data-page=models] .dt');
+  const height = (el) => el.getBoundingClientRect().height;
+  return [height(table.querySelector('thead')), height(table) - height(table.querySelector('tbody'))];
 })()"""
 
 DATA_RENDERED = "document.documentElement.getAttribute('data-rendered')"
@@ -120,10 +147,10 @@ def log_paths(log_text):
     return out
 
 
-def screenshot_name(page, hash_, width, theme):
-    """<page>-<slug of the hash>-<width>-<theme>.png"""
+def screenshot_name(page, hash_, width, theme, suffix=""):
+    """<page>-<slug of the hash>-<width>-<theme><suffix>.png"""
     slug = re.sub(r"[^A-Za-z0-9]+", "-", hash_).strip("-") or "root"
-    return "%s-%s-%d-%s.png" % (page, slug, width, theme)
+    return "%s-%s-%d-%s%s.png" % (page, slug, width, theme, suffix)
 
 
 def output_dir():
@@ -208,16 +235,26 @@ class PagesE2E(unittest.TestCase):
             bad.append("%s: status cell, %s" % (where, found))
         for found in self.page.eval(STACK_BAD):
             bad.append("%s: stacked bar, %s" % (where, found))
+        for found in self.page.eval(LABEL_BAD % page):
+            bad.append("%s: table, %s" % (where, found))
         if texts:
             shown = self.page.eval("(document.querySelector('main [data-page=%s]') || {}).innerText || ''" % page).casefold()
             for text in texts:
                 # innerText applies CSS text-transform, so .tl-l labels and .dt th come back uppercase.
                 if text.casefold() not in shown:
                     bad.append("%s: text %r is not on the page" % (where, text))
-        shot = self.page.call("Page.captureScreenshot", format="png")
-        with open(os.path.join(self.out_dir, screenshot_name(page, hash_, width, theme)), "wb") as fh:
-            fh.write(base64.b64decode(shot["data"]))
+        self.save_shot(screenshot_name(page, hash_, width, theme))
+        if width == FULL_PAGE_WIDTH:
+            height = self.page.eval("document.documentElement.scrollHeight")
+            self.save_shot(screenshot_name(page, hash_, width, theme, "-full"), captureBeyondViewport=True,
+                           clip={"x": 0, "y": 0, "width": width, "height": height, "scale": 1})
         return bad
+
+    def save_shot(self, name, **params):
+        """Saves a screenshot for review. Nothing asserts on it."""
+        shot = self.page.call("Page.captureScreenshot", format="png", **params)
+        with open(os.path.join(self.out_dir, name), "wb") as fh:
+            fh.write(base64.b64decode(shot["data"]))
 
     def test_every_page(self):
         failures = []
@@ -260,6 +297,31 @@ class PagesE2E(unittest.TestCase):
             self.page.eval("document.querySelectorAll('[data-e2e-control]').forEach(el => el.remove())")
         self.assertEqual(self.page.eval(STATUS_BAD), before_status)
         self.assertEqual(self.page.eval(STACK_BAD), before_stack)
+
+    def test_clipped_head_stays_in_the_text_and_adds_no_height(self):
+        self.page.open(self.base + "#/models", 375)
+        self.wait_rendered()
+        shown = self.page.eval("document.querySelector('main [data-page=models]').innerText").casefold()
+        self.assertIn("used by", shown)
+        head, added = self.page.eval(HEAD_HEIGHTS)
+        self.assertLessEqual(head, 1)
+        self.assertLess(abs(added), 1)
+
+    def test_label_check_catches_a_lost_column_name(self):
+        self.page.open(self.base + "#/models", 375)
+        self.wait_rendered()
+        self.assertEqual(self.page.eval(LABEL_BAD % "models"), [])
+        self.page.eval("document.querySelector('main [data-page=models] .dt td').removeAttribute('data-l')")
+        self.assertEqual(len(self.page.eval(LABEL_BAD % "models")), 1)
+
+    def test_phone_menu_screenshot(self):
+        """A screenshot for review, with the menu open at 375. It asserts only that the menu opened."""
+        self.page.open(self.base + add_query("#/overview", "theme", "light"), 375)
+        self.wait_rendered()
+        self.page.eval("document.querySelector('.btn.menu').click()")
+        self.page.wait_for("document.querySelector('.btn.menu').getAttribute('aria-expanded') === 'true'")
+        time.sleep(0.3)  # any slide-in finishes before the capture
+        self.save_shot(screenshot_name("menu", "#/overview", 375, "light"))
 
     # ------------------------------------------------------------ /api/usage held back
 

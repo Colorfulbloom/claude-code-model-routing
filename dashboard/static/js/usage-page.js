@@ -15,7 +15,7 @@
 
 import { h, frag } from "./h.js";
 import { t, renderText } from "./format.js";
-import { card, estLine, footerLine, emptyState, rangeControl } from "./components.js";
+import { card, estLine, footerLine, emptyState } from "./components.js";
 import { ALL_KEY } from "./router.js";
 
 const LONGEST_RANGE = "30d";
@@ -56,7 +56,7 @@ function configDirOf(transcriptsDir) {
   return transcriptsDir.replace(/\/projects\/?$/, "");
 }
 
-// The "No usage in this range" card, with the range switch so a longer range is one click away.
+// The "No usage in this range" card. The page head keeps the only range switch.
 function noRangeCard(ctx, text) {
   return card({
     title: t("c_per_day"),
@@ -64,8 +64,7 @@ function noRangeCard(ctx, text) {
     sub: t("q_time"),
     body: h("div", { class: "es" },
       h("p", { class: "es-h" }, renderText(t("s_no_range_h"))),
-      h("p", { class: "es-t" }, renderText(text)),
-      rangeControl(ctx.range, ctx.setRange)),
+      h("p", { class: "es-t" }, renderText(text))),
   });
 }
 

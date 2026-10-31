@@ -105,6 +105,15 @@ for (const file of checkFiles) {
       for (const text of route.texts) {
         assert.ok(shown.includes(text), "text " + JSON.stringify(text) + " is not on " + hash);
       }
+      // The narrow layout hides the table head and draws data-l beside each value, so every cell needs its column name.
+      for (const table of byClass(app.section(check.page), "dt")) {
+        const heads = table.find((n) => n.tagName === "th").map(flat);
+        assert.ok(heads.length && heads.every(Boolean), "an empty column name on " + hash);
+        for (const row of table.find((n) => n.tagName === "tr")) {
+          const cells = row.find((n) => n.tagName === "td");
+          if (cells.length) assert.deepEqual(cells.map((td) => td.getAttribute("data-l")), heads, "column names on " + hash);
+        }
+      }
     });
   }
 }
@@ -165,15 +174,15 @@ test("overview 30 days: cost legend in cost order with its shares, then the agen
   assert.equal(byClass(page, "cd").length, 5, "five cards, and no Needs attention card");
 });
 
-test("overview Today: hourly columns with the Hour line", async () => {
+test("overview Today: hourly columns with a tick every 6 hours and no caption", async () => {
   const app = await boot({ hash: "#/overview?range=today" });
   const page = app.section("overview");
   const view = viewOf(TIDEWATER, "today");
   assert.equal(view.bucket_unit, "hour");
   const card = cardOf(page, "Tokens per hour");
-  assert.deepEqual(texts(card, "ring-sum"), ["Hour"]);
-  assert.equal(byClass(card, "dx")[0].childNodes.length, Math.ceil(view.buckets.length / 7));
-  assert.equal(flat(byClass(card, "dx")[0].childNodes[0]), "12 AM");
+  assert.equal(byClass(card, "ring-sum").length, 0);
+  assert.deepEqual(byClass(card, "dx")[0].childNodes.map(flat), ["12 AM", "6 AM", "12 PM", "6 PM"]);
+  assert.ok(hasClass(byClass(card, "dx")[0], "dx-hour"), "the narrow layout keeps all four");
   assert.equal(byClass(card, "dbars")[0].getAttribute("aria-label"), "Tokens per hour");
   assert.equal(byClass(card, "col").length, view.buckets.reduce((sum, b) => sum + Object.values(b.by_model).filter((v) => v > 0).length, 0));
   assert.equal(texts(page, "tl-l").length, 4);
@@ -186,6 +195,7 @@ test("overview 7 days: seven day columns and no Hour line", async () => {
   const view = viewOf(TIDEWATER, "7d");
   assert.equal(view.buckets.length, 7);
   assert.equal(byClass(card, "dx")[0].childNodes.length, 7);
+  assert.ok(!hasClass(byClass(card, "dx")[0], "dx-hour"));
   assert.equal(byClass(card, "ring-sum").length, 0);
   const names = usageOf(TIDEWATER).model_names;
   const seen = ["claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5", "claude-fable-5-1"]
@@ -259,10 +269,11 @@ test("overview Driftwood 30 days: no earlier data on every tile, and the partly 
   const last = rows[rows.length - 1];
   assert.equal(flat(last.find((n) => n.tagName === "th")[0]), "claude-opus-6-preview", "a model the catalog lacks keeps its id, last");
   assert.equal(flat(last.find((n) => n.tagName === "td")[0]), "Not priced");
+  assert.equal(byClass(last.find((n) => n.tagName === "td")[0], "cw").length, 1, "the value holds one line");
   assert.equal(byClass(last, "share").length, 0, "a model with no cost has no share");
 });
 
-test("overview Harbor Light on Today: the no-range card, with the project sentence and a range switch", async () => {
+test("overview Harbor Light on Today: the no-range card, with the project sentence and only the page head's range switch", async () => {
   const app = await boot({ hash: "#/overview?range=today&project=" + keyOf("Harbor Light") });
   const page = app.section("overview");
   assert.equal(viewOf(keyOf("Harbor Light"), "today").totals.requests, 0);
@@ -270,15 +281,16 @@ test("overview Harbor Light on Today: the no-range card, with the project senten
   assert.deepEqual(texts(page, "es-h"), ["No usage in this range"]);
   assert.deepEqual(texts(page, "es-t"), [STRINGS.s_no_range_t]);
   assert.deepEqual(texts(page, "cd-h"), ["Tokens per day"]);
-  assert.equal(byClass(page, "segs-range").length, 2, "the page head's switch and the card's");
+  assert.equal(byClass(page, "segs-range").length, 1, "the page head's switch alone");
+  assert.equal(byClass(byClass(page, "cd")[0], "segs-range").length, 0, "none in the card");
   assert.equal(byClass(page, "foot").length, 1, "the footer follows");
 });
 
-test("overview no-range card: the longest range gets its own sentence, and a click on the card's switch changes the range", async () => {
+test("overview no-range card: the longest range gets its own sentence, and a click on the head's switch changes the range", async () => {
   const key = keyOf("Harbor Light");
   const app = await boot({ hash: "#/overview?project=" + key, respond: patchedUsage((b) => { b.views["30d"].totals.requests = 0; }) });
   assert.deepEqual(texts(app.section("overview"), "es-t"), [STRINGS.s_no_range_longest_t]);
-  const radios = byClass(byClass(app.section("overview"), "cd")[0], "seg");
+  const radios = byClass(app.section("overview"), "seg");
   assert.equal(radios.length, 3);
   radios[0].click();
   await tick(20);

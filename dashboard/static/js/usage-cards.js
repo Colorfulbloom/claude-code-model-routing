@@ -58,7 +58,6 @@ export function perBucketCard(u) {
     other ? h("li", null, h("span", { class: "swatch cat-other", "aria-hidden": "true" }), t("other_models")) : null);
   const body = [
     daybars(buckets, keys, { unit: view.bucket_unit, ticks: ticksOf(view.axis.tokens_ticks), modelName: u.model }),
-    hourly ? h("p", { class: "ring-sum" }, t("axis_hour")) : null,
     legend,
   ];
   return card({
@@ -83,7 +82,7 @@ export function costByModelCard(u) {
     swatch: modelClass(r.model),
     label: u.model(r.model),
     cells: [
-      fmtCost(r.cost, r.unpriced_requests),
+      h("span", { class: "cw" }, fmtCost(r.cost, r.unpriced_requests)),
       notPriced(r) ? "" : h("span", { class: "share" }, shareText(r.share_pct, r.share_lt1)),
     ],
   })), [t("kpi_cost"), t("lg_share")]);
