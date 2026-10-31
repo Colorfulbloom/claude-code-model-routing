@@ -445,6 +445,9 @@ class Server(http.server.ThreadingHTTPServer):
 
     daemon_threads = True
     address_family = socket.AF_INET
+    # The default of 5 resets a burst of connections. Every file opens its own connection here (HTTP/1.0),
+    # and one reset module stops the whole page before any script runs.
+    request_queue_size = 128
 
     def __init__(self, ctx, port=DEFAULT_PORT):
         self.ctx = ctx

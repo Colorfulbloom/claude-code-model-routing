@@ -334,8 +334,31 @@ class SettingsE2E(unittest.TestCase):
         self.assertEqual(sorted(words), ["Differs", "Matches", "Missing"])
         self.assertEqual({w: len(v) for w, v in words.items()}, {"Differs": 1, "Matches": 1, "Missing": 1})
         self.assertEqual(sorted(c["word"] for c in found), ["Differs", "Matches", "Matches", "Matches", "Matches", "Missing"])
-        marks = {next(iter(v))[1] for v in words.values()}
-        self.assertEqual(len(marks), 3, "each state has its own glyph, not the word alone")
+        # Stack's final rule gives Differs and Missing the same cross and invalid pair, so the word tells them apart.
+        marks = {word: next(iter(v))[1] for word, v in words.items()}
+        self.assertEqual(marks, {"Differs": '"✕"', "Matches": '"✓"', "Missing": '"✕"'})
+
+    def test_a_long_row_name_at_375_stays_clear_of_its_value_and_chip(self):
+        clash = """[...document.querySelectorAll('main [data-page=%s] .at li a')].filter((a) => {
+          const n = document.createRange();
+          n.selectNodeContents(a.querySelector('.at-n'));
+          return n.getBoundingClientRect().right > a.querySelector('.at-m').getBoundingClientRect().left + 0.5;
+        }).map((a) => a.querySelector('.at-n').textContent)"""
+        for route, section in (("#/attention", "attention"), ("#/overview", "overview")):
+            self.show(route, section, width=375)
+            self.page.wait_for("document.querySelectorAll('main [data-page=%s] .at li a').length > 0" % section)
+            self.assertEqual(self.page.eval(clash % section), [], section)
+
+    def test_the_cache_tile_shows_one_short_line_and_the_trail_keeps_the_reason(self):
+        self.show("#/settings", "settings")
+        tile = "[data-page=settings] a.tl[data-setting=promptCacheTtl]"
+        self.page.wait_for("Boolean(document.querySelector(%s))" % json.dumps(tile + " .en-note"))
+        self.assertEqual(self.texts_of(tile + " .en-note"), ["Open the trail to see why."])
+        self.page.eval("document.querySelector(%s).click()" % json.dumps(tile))
+        self.wait_visible("trail")
+        reason = "[data-page=trail] .en-rs"
+        self.page.wait_for("[...document.querySelectorAll(%s)].some((p) => p.textContent.includes('so the plan decides it'))"
+                           % json.dumps(reason))
 
     def test_external_links_carry_their_guards(self):
         self.show(EFFORT_TRAIL, "trail")

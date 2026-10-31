@@ -9,6 +9,7 @@ import unittest
 
 import helpers
 import test_pages_e2e as pages
+import test_shell_e2e as shell
 import test_settings_e2e as settings_e2e
 
 INDEX = os.path.join(helpers.REPO, "dashboard", "static", "index.html")
@@ -80,6 +81,28 @@ class ChecksFiles(unittest.TestCase):
 
 
 class Helpers(unittest.TestCase):
+    def test_load_report_names_what_failed_and_what_never_finished(self):
+        def sent(rid, url):
+            return {"method": "Network.requestWillBeSent", "params": {"requestId": rid, "request": {"url": url}}}
+
+        def got(rid, status):
+            return {"method": "Network.responseReceived", "params": {"requestId": rid, "response": {"status": status}}}
+
+        def done(rid):
+            return {"method": "Network.loadingFinished", "params": {"requestId": rid}}
+
+        events = [sent("1", "/ok"), got("1", 200), done("1"),
+                  sent("2", "/reset"), {"method": "Network.loadingFailed", "params": {"requestId": "2", "errorText": "net::ERR_CONNECTION_RESET"}},
+                  sent("3", "/stuck"), sent("4", "/broken"), got("4", 500), done("4"),
+                  {"method": "Runtime.exceptionThrown", "params": {"exceptionDetails": {"text": "boom"}}}]
+        report = shell.load_report(events)
+        self.assertIn("4 requests, 3 not clean", report)
+        self.assertIn("net::ERR_CONNECTION_RESET None /reset", report)
+        self.assertIn("NEVER FINISHED None /stuck", report)
+        self.assertIn("finished 500 /broken", report)
+        self.assertIn("console: EXCEPTION", report)
+        self.assertNotIn("/ok", report)
+
     def test_add_query(self):
         self.assertEqual(pages.add_query("#/agents", "theme", "dark"), "#/agents?theme=dark")
         self.assertEqual(pages.add_query("#/overview?project=all", "theme", "light"), "#/overview?project=all&theme=light")

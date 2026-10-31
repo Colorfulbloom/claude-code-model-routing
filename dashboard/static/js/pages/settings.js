@@ -15,7 +15,8 @@ import { pageHead, chip, emptyState, projectPickerEmpty } from "../components.js
 export const TILES = [
   { key: "model", label: () => t("f_model") },
   { key: "effortLevel", label: () => t("f_effort") },
-  { key: "promptCacheTtl", label: () => t("f_cache") },
+  // This reason runs to six sentences, so the tile shows a short line and the trail's Winner card keeps the reason.
+  { key: "promptCacheTtl", label: () => t("f_cache"), note: () => t("f_cache_note") },
   { key: "autoCompactWindow", label: () => t("f_compact") },
 ];
 
@@ -122,7 +123,8 @@ function tile(ctx, payload, spec, entry, active) {
     value === null ? null : h("span", { class: "tl-v" }, value),
     hasBecomes ? h("span", { class: "runs" }, t("runs_as_cell", { becomes: entry.becomes })) : null),
   h("div", { class: "tl-src" }, renderText(sourceText(entry, payload, true))),
-  entry.status === "unknown" && entry.reason ? h("p", { class: "en-note" }, renderText(entry.reason)) : null);
+  entry.status === "unknown" && entry.reason
+    ? h("p", { class: "en-note" }, spec.note ? spec.note() : renderText(entry.reason)) : null);
 }
 
 // The four tiles of the main session. activeSetting is the row the trail shows, if any.

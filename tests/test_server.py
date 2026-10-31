@@ -458,6 +458,20 @@ class RequestRules(unittest.TestCase):
 # --------------------------------------------------------------------------
 # Static files and path escapes, on a copy of the dashboard folder
 
+class ListenQueue(unittest.TestCase):
+    """Chrome opens several connections at once. One reset on a module fails the whole page before boot runs."""
+
+    def test_a_burst_of_connections_all_queue_while_the_server_is_busy(self):
+        srv = server.Server(None, 0)
+        self.addCleanup(srv.server_close)
+        socks = []
+        self.addCleanup(lambda: [s.close() for s in socks])
+        # Nothing accepts here, so each connection has to sit in the listen queue.
+        for _ in range(32):
+            socks.append(socket.create_connection(srv.server_address, timeout=2))
+        self.assertEqual(len(socks), 32)
+
+
 class StaticFiles(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

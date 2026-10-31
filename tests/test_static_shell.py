@@ -458,6 +458,7 @@ class AppCss(unittest.TestCase):
         self.assertEqual(final_value(r, ".g21 .ring-row", "flex-wrap"), "nowrap")                           # legend beside the ring
         self.assertEqual(final_value(r, ".g21-pin", "align-items"), "stretch")                              # pin card matches tiles
         self.assertEqual(final_value(r, ".st-match .mk::before", "content"), '"\\2713"')                    # Matches pin check mark
+        self.assertEqual(final_value(r, ".at-n", "overflow-wrap"), "anywhere")                                # raw keys wrap at 375
         self.assertEqual(final_value(r, ".cw", "white-space"), "nowrap")                                    # count and words together
         self.assertEqual(final_value(r, ".dt td>.cw", "text-align", narrow), "right")
         self.assertEqual(final_value(r, ".nw", "white-space"), "nowrap")                                    # flags do not break

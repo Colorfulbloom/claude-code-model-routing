@@ -61,6 +61,7 @@
   "f_action_missing": "Run the installer to add it",
   "f_agentfile": "Agent file",
   "f_cache": "Cache lifetime",
+  "f_cache_note": "Open the trail to see why.",
   "f_compact": "Compact window",
   "f_differs": "Differs",
   "f_effort": "Effort",
