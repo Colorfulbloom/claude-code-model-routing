@@ -183,7 +183,7 @@ class PagesE2E(unittest.TestCase):
             helpers.rmtree_force(cls.root)
 
     def wait_rendered(self):
-        """Boot is done (data-rendered) and the first /api/usage answer is drawn (data-usage), which comes second."""
+        """Boot is done (data-rendered) and the first /api/usage answer is drawn (data-usage). Either can arrive first, so it waits for both."""
         self.page.wait_for(DATA_RENDERED + " === '1'")
         self.page.wait_for(DATA_USAGE + " === '1'")
 

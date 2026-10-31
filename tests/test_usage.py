@@ -613,7 +613,7 @@ class AgentTests(unittest.TestCase):
         self.assertEqual(("s1", "Project A", 10, 1), (first["session_id"], first["project"], first["tokens"], first["requests"]))
         self.assertAlmostEqual(10 * 20 / 1e6, first["cost"], places=12)
         self.assertEqual(set(["run_id", "started", "session_id", "session_started", "project", "model",
-                              "effort", "tokens", "cost", "hit_rate", "requests"]), set(first))
+                              "effort", "tokens", "cost", "unpriced_requests", "hit_rate", "requests"]), set(first))
 
     def test_for_main_a_run_is_a_session(self):
         rows = [rec("2026-10-30T14:00:00Z", output=1, session_id="s1"),
@@ -875,18 +875,54 @@ class DeltaTests(unittest.TestCase):
 # ---------------------------------------------------------------- axis
 
 class AxisTests(unittest.TestCase):
-    def test_nice_max_rounds_up_to_1_2_2_5_or_5_times_a_power_of_ten(self):
-        want = {0: 1, 1: 1, 2: 2, 3: 5, 5: 5, 6: 10, 11: 20, 21: 25, 26: 50, 51: 100, 999: 1000,
-                1000: 1000, 1001: 2000, 2001: 2500, 2500: 2500, 2501: 5000, 5001: 10000,
-                1_200_000: 2_000_000, 104_300_000: 200_000_000}
-        for value, nice in want.items():
+    def test_token_ticks_pick_the_smallest_step_with_whole_labels(self):
+        want = {
+            0: (1, [0, 1]),
+            1: (1, [0, 1]),
+            3: (3, [0, 1, 2, 3]),
+            7: (8, [0, 2, 4, 6, 8]),
+            1000: (1000, [0, 200, 400, 600, 800, 1000]),
+            7_120: (8_000, [0, 2_000, 4_000, 6_000, 8_000]),
+            120_000: (150_000, [0, 50_000, 100_000, 150_000]),
+            999_999: (1_000_000, [0, 200_000, 400_000, 600_000, 800_000, 1_000_000]),
+            1_000_001: (2_000_000, [0, 1_000_000, 2_000_000]),
+            2_400_000: (3_000_000, [0, 1_000_000, 2_000_000, 3_000_000]),
+            4_080_000: (5_000_000, [0, 1_000_000, 2_000_000, 3_000_000, 4_000_000, 5_000_000]),
+            7_120_000: (8_000_000, [0, 2_000_000, 4_000_000, 6_000_000, 8_000_000]),
+            9_600_000: (10_000_000, [0, 2_000_000, 4_000_000, 6_000_000, 8_000_000, 10_000_000]),
+            1_200_000_000: (2_000_000_000, [0, 1_000_000_000, 2_000_000_000]),
+        }
+        for value, answer in want.items():
             with self.subTest(value=value):
-                self.assertEqual(nice, usage.nice_max(value))
+                self.assertEqual(answer, usage.token_ticks(value))
 
-    def test_token_ticks_are_four_equal_steps_from_zero(self):
-        self.assertEqual((10_000_000, [0, 2_500_000, 5_000_000, 7_500_000, 10_000_000]), usage.token_ticks(7_120_000))
-        self.assertEqual((1000, [0, 250, 500, 750, 1000]), usage.token_ticks(1000))
-        self.assertEqual((2, [0, 0.5, 1, 1.5, 2]), usage.token_ticks(2))
+    def test_token_ticks_skip_a_step_whose_labels_would_not_be_whole(self):
+        # 500K steps would label 1.5M, so 2.4M uses 1M steps and tops out at 3M.
+        top, ticks = usage.token_ticks(2_400_000)
+        self.assertEqual(1_000_000, ticks[1])
+        self.assertEqual(3_000_000, top)
+
+    def test_token_ticks_hold_for_many_values(self):
+        values = set(range(0, 3000)) | set(int(1.07 ** i) for i in range(1, 320))
+        for base in (1, 7, 12, 25, 48, 99):
+            values |= set(base * 10 ** k + d for k in range(0, 11) for d in (-1, 0, 1, 37))
+        for value in sorted(v for v in values if v >= 0):
+            top, ticks = usage.token_ticks(value)
+            with self.subTest(value=value):
+                self.assertTrue(all(isinstance(x, int) for x in [top] + ticks))
+                self.assertEqual(0, ticks[0])
+                self.assertEqual(top, ticks[-1])
+                self.assertGreaterEqual(top, value)
+                n = len(ticks) - 1
+                self.assertLessEqual(n, 5)
+                self.assertGreaterEqual(n, 1)
+                step = ticks[1]
+                self.assertEqual([step * i for i in range(n + 1)], ticks, "even steps")
+                for tick in ticks[1:]:
+                    if tick >= 1_000_000_000:
+                        self.assertEqual(0, tick % 1_000_000_000, "whole B label")
+                    elif tick >= 1_000_000:
+                        self.assertEqual(0, tick % 1_000_000, "whole M label")
 
     def test_run_ticks_are_integers(self):
         self.assertEqual([0, 1, 2, 3], usage.run_ticks(0))
@@ -903,8 +939,8 @@ class AxisTests(unittest.TestCase):
         rows = [rec("2026-10-30T14:00:00Z", input=7_120_000),     # 10:00 local
                 rec("2026-10-30T15:00:00Z", input=1_000)]
         axis = views(rows)["today"]["axis"]
-        self.assertEqual(10_000_000, axis["tokens_max_nice"])
-        self.assertEqual([0, 2_500_000, 5_000_000, 7_500_000, 10_000_000], axis["tokens_ticks"])
+        self.assertEqual(8_000_000, axis["tokens_max_nice"])
+        self.assertEqual([0, 2_000_000, 4_000_000, 6_000_000, 8_000_000], axis["tokens_ticks"])
         self.assertEqual([0, 1, 2, 3], axis["runs_ticks"])
 
     def test_run_ticks_follow_the_most_runs_in_one_bucket(self):
@@ -914,7 +950,7 @@ class AxisTests(unittest.TestCase):
     def test_an_empty_view_still_has_an_axis(self):
         axis = views([])["today"]["axis"]
         self.assertEqual(1, axis["tokens_max_nice"])
-        self.assertEqual([0, 0.25, 0.5, 0.75, 1], axis["tokens_ticks"])
+        self.assertEqual([0, 1], axis["tokens_ticks"])
         self.assertEqual([0, 1, 2, 3], axis["runs_ticks"])
 
 
@@ -987,13 +1023,13 @@ class ProjectTests(unittest.TestCase):
 
     def test_unlisted_folders_show_only_in_all_projects_named_from_the_common_cwd(self):
         today = views(self.two_folders())["today"]
-        by = {p["folder"]: p for p in today["by_project"]}
-        self.assertEqual(["-work-zz", "-work-a", "-work-yy"], [p["folder"] for p in today["by_project"]])
-        self.assertEqual(("Project A", True, "a"), (by["-work-a"]["name"], by["-work-a"]["listed"], by["-work-a"]["key"]))
-        zz = by["-work-zz"]
-        self.assertEqual(("app", False, None), (zz["name"], zz["listed"], zz["key"]))   # app twice, lib once
+        by = {p["name"]: p for p in today["by_project"]}
+        self.assertEqual(["app", "Project A", "-work-yy"], [p["name"] for p in today["by_project"]])
+        self.assertEqual((True, "a"), (by["Project A"]["listed"], by["Project A"]["key"]))
+        zz = by["app"]
+        self.assertEqual((False, None), (zz["listed"], zz["key"]))   # app twice, lib once
         yy = by["-work-yy"]
-        self.assertEqual(("-work-yy", False, None), (yy["name"], yy["listed"], yy["key"]))
+        self.assertEqual((False, None), (yy["listed"], yy["key"]))
         self.assertEqual(150_000, zz["tokens"])
         self.assertEqual(["-work-yy", "app", "Project A"], [s["project"] for s in today["sessions"]])
 
@@ -1015,7 +1051,7 @@ class ProjectTests(unittest.TestCase):
         self.assertEqual("every_folder", usage.ALL_PROJECTS_SCOPE)
         with mock.patch.object(usage, "ALL_PROJECTS_SCOPE", "listed"):
             today = views(self.two_folders())["today"]
-        self.assertEqual(["-work-a"], [p["folder"] for p in today["by_project"]])
+        self.assertEqual(["Project A"], [p["name"] for p in today["by_project"]])
         self.assertEqual(100_000, today["totals"]["tokens"])
 
     def test_an_unknown_project_or_one_without_a_folder_is_empty(self):
@@ -1028,7 +1064,7 @@ class ProjectTests(unittest.TestCase):
     def test_a_session_started_in_one_folder_stays_there(self):
         rows = [rec("2026-10-28T12:00:00Z", output=1, folder="-work-a", session_id="s1"),
                 rec("2026-10-30T13:00:00Z", output=5, folder="-work-a", session_id="s1")]
-        self.assertEqual("-work-a", views(rows)["7d"]["by_project"][0]["folder"])
+        self.assertEqual("Project A", views(rows)["7d"]["by_project"][0]["name"])
 
 
 # ---------------------------------------------------------------- shape, notes, purity
@@ -1056,7 +1092,7 @@ class ShapeTests(unittest.TestCase):
         self.assertEqual(agg | set(["model", "display_name", "cat", "share_pct", "share_lt1", "agents"]),
                          set(today["by_model"][0]))
         self.assertEqual(agg | set(["effort"]), set(today["by_effort"][0]))
-        self.assertEqual(agg | set(["key", "name", "listed", "folder"]), set(today["by_project"][0]))
+        self.assertEqual(agg | set(["key", "name", "listed"]), set(today["by_project"][0]))
         self.assertEqual(agg | set(["session_id", "project", "branch", "started", "agents", "by_agent"]),
                          set(today["sessions"][0]))
         self.assertEqual(agg | set(["agent"]), set(today["sessions"][0]["by_agent"][0]))

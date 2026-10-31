@@ -5,9 +5,14 @@ page would ask it for (/api/projects, /api/usage and /api/settings for every lis
 /api/rules and /api/files) into one JSON file keyed by path plus query. Node boots the real app.js on a small
 fake DOM and answers every fetch from that file, so no browser starts. The test skips when node is not
 installed. It reads the same text files in tests/e2e_checks that the browser sweep uses.
+
+A second server runs on a copy of the demo set whose config/settings.json sets neither model nor effortLevel.
+Its answers for Harbor Light (/api/projects, /api/usage and /api/settings) go into the same file under keys
+that start with "nomodel ", so a check can draw the Agents pages of a project with no pin it can name.
 """
 import json
 import os
+import shutil
 import subprocess
 import sys
 import unittest
@@ -23,6 +28,8 @@ import build_demo  # noqa: E402
 
 PAGES = Path(__file__).resolve().parent / "js" / "pages.mjs"
 ALL = "all"
+NOMODEL = "nomodel "
+NOMODEL_PROJECT = "harbor-light"
 
 
 def project_query(key):
@@ -41,6 +48,7 @@ class PageScripts(unittest.TestCase):
             build_demo.build(folder)
             cls.srv = ts.start(cls.root, ["--fixture", folder])
             cls.responses = cls.collect()
+            cls.responses.update(cls.collect_nomodel(folder))
             cls.data_path = os.path.join(cls.root, "responses.json")
             with open(cls.data_path, "w", encoding="utf-8") as fh:
                 json.dump(cls.responses, fh)
@@ -79,6 +87,33 @@ class PageScripts(unittest.TestCase):
             out[path] = cls.ask(path)
         return out
 
+    @classmethod
+    def collect_nomodel(cls, folder):
+        """The answers for Harbor Light on a copy of the demo set with model and effortLevel taken out of settings."""
+        copy = os.path.join(cls.root, "set-nomodel")
+        shutil.copytree(folder, copy, symlinks=True)
+        path = os.path.join(copy, "config", "settings.json")
+        with open(path, encoding="utf-8") as fh:
+            settings = json.load(fh)
+        settings.pop("model", None)
+        settings.pop("effortLevel", None)
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(settings, fh, indent=2)
+        srv = ts.start(cls.root, ["--fixture", copy], name="nomodel")
+        try:
+            out = {}
+            for route in ("/api/projects", "/api/usage" + project_query(NOMODEL_PROJECT),
+                          "/api/settings" + project_query(NOMODEL_PROJECT)):
+                status, _heads, body = srv.request("GET", route)
+                try:
+                    parsed = json.loads(body)
+                except ValueError:
+                    parsed = None
+                out[NOMODEL + route] = {"status": status, "body": parsed}
+            return out
+        finally:
+            srv.stop()
+
     def test_the_saved_answers_hold_the_demo_set(self):
         self.assertEqual(self.responses["/api/usage" + project_query(ALL)]["status"], 200)
         self.assertEqual(self.responses["/api/settings" + project_query(ALL)]["status"], 400)
@@ -86,6 +121,13 @@ class PageScripts(unittest.TestCase):
         self.assertIn("Tidewater reporting", names)
         for name in ("Driftwood", "Harbor Light"):
             self.assertIn(name, names)
+
+    def test_the_copy_without_model_or_effort_has_an_unknown_main_pin(self):
+        usage = self.responses[NOMODEL + "/api/usage" + project_query(NOMODEL_PROJECT)]
+        self.assertEqual(200, usage["status"])
+        main = [a for a in usage["body"]["views"]["30d"]["by_agent"] if a["route_key"] == "@main"][0]
+        self.assertIsNone(main["pin"]["model"]["pinned"]["id"])
+        self.assertIsNone(main["pin"]["effort"]["pinned"]["value"])
 
     def test_checks_pass(self):
         run = subprocess.run([shell_js.NODE] + shell_js.node_flags() + [str(PAGES), self.data_path],

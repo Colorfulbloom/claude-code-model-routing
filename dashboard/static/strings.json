@@ -46,6 +46,7 @@
   "effort_not_recorded_inline": "effort not recorded",
   "es_missing_h": "Folder not found",
   "es_missing_t": "The project list points {name} at {path}, and there's no folder there. Fix the path in {config_file}, or take {name} off the list.",
+  "es_missing_usage_t": "{path} no longer exists, so this usage comes from saved transcripts and pin checks may not match what {name} had. Fix the path in {config_file}, or take {name} off the list.",
   "es_noclaude_h": "No .claude folder",
   "es_noclaude_t": "{path} has no .claude folder, so no project settings, local settings, agents or rules apply here. Values come from managed settings, your user files in {config_dir}, the shell and Claude Code's defaults.",
   "es_nouser_h": "No user settings file",

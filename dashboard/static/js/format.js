@@ -58,6 +58,11 @@ export function fmtTokens(n) {
   return Math.trunc(n).toLocaleString("en-US");
 }
 
+// An axis label: fmtTokens without the ".0" before the unit, so 5000000 reads "5M" and not "5.0M".
+export function fmtTick(n) {
+  return fmtTokens(n).replace(/\.0(?=[MB]$)/, "");
+}
+
 // "$289.40", or "Not priced" when there is no cost, or the cost is zero because nothing was priced.
 export function fmtCost(cost, unpriced) {
   if (cost === null || cost === undefined || (cost === 0 && unpriced)) return t("not_priced");

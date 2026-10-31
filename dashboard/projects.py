@@ -17,9 +17,10 @@ FOLDER/dashboard.json for the plan when routing-dashboard.json gives none.
 
 A route is a function (ctx, query) -> (status, payload). A project's path goes
 into a response only as path_display: relative to the fixture root, as "~/..."
-inside the home folder, and in full when it lies outside both. Nothing here puts
-the path of routing-dashboard.json or any file content into a response, and
-every stderr line is fixed text.
+inside the home folder, and in full when it lies outside both. No route in this
+module puts the path of routing-dashboard.json or any file content into a
+response. api_usage.api_projects adds that path to its answer as
+config_file_display, in the same display form. Every stderr line is fixed text.
 
 Standard library only, Python 3.9.
 """

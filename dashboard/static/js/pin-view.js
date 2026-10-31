@@ -15,6 +15,9 @@ const STATES = ["differs", "mixed", "overridden", "cannot_check", "matches_lower
 
 const endsWith = (text, tail) => typeof text === "string" && text.endsWith(tail);
 
+// A value that may be missing: the word "Unknown" in place of null or undefined, so no slot prints "null".
+const orUnknown = (value) => (value === null || value === undefined ? t("status_unknown") : value);
+
 // What the winning entry says the value is. Lowered entries carry the value they become.
 function expectedOf(e) {
   return e.status === "lowered" ? e.becomes : e.value;
@@ -41,7 +44,8 @@ function capSource(cap) {
 // The sentences for one setting. kind is "model" or "effort".
 function settingSentences(u, kind, setting, pin) {
   const e = setting.expected;
-  const name = (value) => (kind === "model" ? u.model(value) : value);
+  const modelWord = (value) => (value === null || value === undefined ? t("status_unknown") : u.model(value));
+  const name = (value) => (kind === "model" ? modelWord(value) : orUnknown(value));
   const expected = name(expectedOf(e));
   const label = settingName(e);
   const source = sourceOf(e);
@@ -70,7 +74,7 @@ function settingSentences(u, kind, setting, pin) {
     const cap = setting.cap;
     if (lowered && endsWith(e.rule_id, "lowered-by-cap") && source) {
       out.push(t("pin_runs_match_cap_sentence", {
-        setting: label, source, model: u.model(cap ? cap.model : e.model), expected,
+        setting: label, source, model: modelWord(cap ? cap.model : e.model), expected,
       }));
     } else if (source) {
       out.push(t("pin_runs_match_sentence", { setting: label, source, expected }));
@@ -79,10 +83,10 @@ function settingSentences(u, kind, setting, pin) {
     }
   } else if (setting.state === "matches" && setting.runs_match_pin) {
     const cap = setting.cap;
-    const model = u.model(cap ? cap.model : e.model);
+    const model = modelWord(cap ? cap.model : e.model);
     const from = capSource(cap);
     if (endsWith(e.rule_id, "unsupported-level")) {
-      out.push(t("pin_runs_match_unsupported_sentence", { model, value: setting.pinned.value, expected }));
+      out.push(t("pin_runs_match_unsupported_sentence", { model, value: orUnknown(setting.pinned.value), expected }));
     } else if (cap && cap.file) {
       out.push(t("pin_runs_match_lowered_sentence", { model, expected, source: from }));
     } else {
@@ -94,8 +98,9 @@ function settingSentences(u, kind, setting, pin) {
     // Only the model of an agent file gets a sentence. The Main session's words say "agent file".
     if (kind === "model" && pin.source === "agent_file") {
       const ran = (setting.ran || []).find((value) => value !== setting.pinned.id);
-      if (ran !== undefined && ran !== null) {
-        out.push(t("pin_model_differs_sentence", { ran_model: u.model(ran), pin_model: u.model(setting.pinned.id) }));
+      const pinId = setting.pinned.id;
+      if (ran !== undefined && ran !== null && pinId !== null && pinId !== undefined) {
+        out.push(t("pin_model_differs_sentence", { ran_model: u.model(ran), pin_model: u.model(pinId) }));
       }
     }
   }
@@ -152,22 +157,29 @@ export function pinView(u, agent) {
   }
 
   const settings = [["model", pin.model], ["effort", pin.effort]].filter(([, s]) => s);
-  const modelName = pin.model ? u.model(pin.model.pinned.id) : null;
-  const effort = pin.effort ? pin.effort.pinned.value : null;
+  // A pin the dashboard cannot name gives no model word, and an effort pin with no value reads "Unknown".
+  const modelId = pin.model ? pin.model.pinned.id : null;
+  const modelKnown = modelId !== null && modelId !== undefined;
+  const modelName = modelKnown ? u.model(modelId) : null;
+  const effort = pin.effort ? orUnknown(pin.effort.pinned.value) : null;
   const out = { ...none, ...pillOf(pin) };
   out.pinnedNote = pin.source === "settings" ? t("pin_main_note") : null;
   out.note = noteOf(pin, settings);
   out.trailKey = trailKeyOf(pin);
 
-  if (pin.pinned === "both") {
+  if ((pin.pinned === "both" || pin.pinned === "model_only") && !modelKnown) {
+    out.pinnedText = out.detailPinned = t("pin_unknown");
+  } else if (pin.pinned === "both") {
     out.pinnedText = modelName + ", " + effort;
     out.detailPinned = t("pinned_to", { model: modelName, effort });
   } else if (pin.pinned === "model_only") {
     out.pinnedText = out.detailPinned = t("pinned_model_only", { model: modelName });
   } else if (pin.pinned === "effort_only") {
     out.pinnedText = out.detailPinned = t("pinned_effort_only", { effort });
+  } else if (pin.source === "settings") {
+    out.pinnedText = out.detailPinned = t("pin_unknown");
   } else {
-    out.pinnedText = pin.source === "settings" ? t("pin_unknown") : t("no_pin");
+    out.pinnedText = t("no_pin");
   }
 
   let cannot = false;

@@ -3,7 +3,7 @@
 // Tick steps for daybars come from the server (usage.py); nice_ticks was not ported.
 
 import { h, s } from "./h.js";
-import { t, fmtTokens, fmtDay, fmtHour, pct } from "./format.js";
+import { t, fmtTokens, fmtTick, fmtDay, fmtHour, pct } from "./format.js";
 
 // The first four models get the categorical colors. Any other model draws hatched ("cat-other").
 export const MODEL_CLASS = {
@@ -147,7 +147,7 @@ export function daybars(perDay, keys, options = {}) {
   const bucketWidth = W / Math.max(n, 1);
   const gap = Math.min(3, bucketWidth * 0.25);
   const label = (key) => (unit === "hour" ? fmtHour(typeof key === "number" ? key : new Date(key).getHours()) : fmtDay(key));
-  const fmt = runs ? (v) => String(Math.round(v)) : fmtTokens;
+  const fmt = runs ? (v) => String(Math.round(v)) : fmtTick; // axis labels only; bars and titles keep fmtTokens
   const id = patternId("oth-day");
 
   const yLabels = [];

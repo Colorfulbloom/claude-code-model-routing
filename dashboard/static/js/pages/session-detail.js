@@ -53,17 +53,22 @@ export function render(root, ctx) {
   if (ctx.route.name !== "session-detail") return; // the route carries the parameters this page needs
   const id = ctx.route.params.id;
   const crumbs = [{ label: t("nav_sessions"), href: ctx.hashFor("sessions") }];
-  root.appendChild(pageHead({ title: id, crumbs }));
+  // The id head stands in until the payload arrives. The real head takes its place, so a note that
+  // fillUsage put under the head stays under it.
+  const head = pageHead({ title: id, crumbs });
+  root.appendChild(head);
   fillUsage(root, ctx, (u) => {
-    clear(root);
     const s = findSession(u.payload, id);
-    if (!s) return [pageHead({ title: id, crumbs }), emptyState(t("s_no_range_h"), t("s_no_range_longest_t"))];
+    if (!s) {
+      head.replaceWith(pageHead({ title: id, crumbs }));
+      return [emptyState(t("s_no_range_h"), t("s_no_range_longest_t"))];
+    }
     const agents = s.by_agent.map(agentOf);
     const intro = s.branch
       ? t("intro_session", { branch: s.branch, project: s.project })
       : t("intro_session_no_branch", { project: s.project });
+    head.replaceWith(pageHead({ title: t("session_from", { time: fmtTime(s.started) }), intro, crumbs }));
     return [
-      pageHead({ title: t("session_from", { time: fmtTime(s.started) }), intro, crumbs }),
       tiles(u, s),
       h("div", { class: "g2" }, agentsCard(u, s, agents), tokensCard(s, agents)),
     ];

@@ -6,7 +6,7 @@ import { h, clear } from "../h.js";
 import { t, renderText, fmtTokens, fmtCost, pct, fmtTime } from "../format.js";
 import { ALL_KEY, MAIN_KEY } from "../router.js";
 import { pageHead, rangeControl, card, kpi, table3, emptyState, pinPill } from "../components.js";
-import { fillUsage, ticksOf } from "../usage-page.js";
+import { fillUsage, ticksOf, noRangeText } from "../usage-page.js";
 import { kindsTable } from "../usage-cards.js";
 import { stackedTokens, daybars } from "../charts.js";
 import { pinView } from "../pin-view.js";
@@ -89,7 +89,7 @@ function recentRunsCard(u, a, all) {
       u.model(r.model),
       r.effort === null || r.effort === undefined ? t("effort_not_recorded") : r.effort,
       fmtTokens(r.tokens),
-      fmtCost(r.cost));
+      fmtCost(r.cost, r.unpriced_requests));
     return row;
   });
   return card({ title: t("c_recent_runs"), body: [table3(cols, rows), u.est()], icon: "list" });
@@ -106,7 +106,7 @@ export function render(root, ctx) {
   }));
   fillUsage(root, ctx, (u) => {
     const a = u.view.by_agent.find((row) => row.route_key === key);
-    if (!a) return [emptyState(t("s_no_range_h"), t("s_no_range_t"))];
+    if (!a) return [emptyState(t("s_no_range_h"), noRangeText(ctx))];
     const all = u.project.key === ALL_KEY;
     return [
       all ? tiles(u, a) : h("div", { class: "g21 g21-pin" }, tiles(u, a), pinCard(u, a)),

@@ -70,20 +70,31 @@ function noRangeCard(ctx, text) {
 }
 
 // The text under "No usage in this range": All projects, a project on the longest range, or any other range.
-function noRangeText(ctx) {
+export function noRangeText(ctx) {
   if (ctx.project.key === ALL_KEY) return t("s_no_range_all_t");
   return ctx.range === LONGEST_RANGE ? t("s_no_range_longest_t") : t("s_no_range_t");
 }
 
 // The "Folder not found" state of a listed project whose folder is gone. Ported from the Lantern block of
 // screen 12. The path comes from the project list, the file from /api/projects.
-function missingFolder(ctx) {
+function missingSlots(ctx) {
   const listed = (ctx.projects || []).find((p) => p.key === ctx.project.key);
-  const text = t("es_missing_t", { name: ctx.project.name, path: listed ? listed.path_display : "", config_file: ctx.configFile || "" });
+  return { name: ctx.project.name, path: listed ? listed.path_display : "", config_file: ctx.configFile || "" };
+}
+
+function missingFolder(ctx) {
+  const text = t("es_missing_t", missingSlots(ctx));
   return h("section", { class: "cd cd-row" },
     h("section", { class: "nt nt-empty", "aria-label": t("es_missing_h") },
       h("h2", { class: "nt-h" }, renderText(t("es_missing_h"))),
       h("p", { class: "nt-t" }, renderText(text))));
+}
+
+// The note above the body of a project whose folder is gone but whose saved transcripts still give usage.
+// The pin check reads the folder, so it shows no pin or an unknown one, and the note says so.
+function missingUsageNote(ctx) {
+  return h("section", { class: "nt", "aria-label": t("es_missing_h") },
+    h("p", { class: "nt-t" }, renderText(t("es_missing_usage_t", missingSlots(ctx)))));
 }
 
 function transcriptsState(ctx) {
@@ -91,7 +102,9 @@ function transcriptsState(ctx) {
 }
 
 // Draws the usage page body, or the state that stands in for it. The first match wins, in this order:
-//   1. a listed project whose folder is missing
+//   1. a listed project whose folder is missing: the Folder not found state, and nothing else. The one
+//      exception is a project whose payload answered with a view and some usage, on a transcripts folder
+//      the dashboard can read. That draws a note above the body and goes on with the steps below.
 //   2. a transcripts folder the dashboard cannot read
 //   3. the payload has not arrived: one waiting line
 //   4. the payload failed or has no view for this range: the transcripts state (nothing until the folder is known)
@@ -99,27 +112,35 @@ function transcriptsState(ctx) {
 //   6. the view holds no requests (skipped when opts.anyRange is set, for a page that ignores the range)
 //   7. draw(u)
 export function fillUsage(root, ctx, draw, opts = {}) {
+  const res = ctx.data.usage;
+  const payload = res && res.ok && res.data && typeof res.data === "object" ? res.data : null;
+  const view = payload && payload.views ? payload.views[ctx.range] : null;
+  const unreadable = Boolean(ctx.reader) && ctx.reader.readable === false;
+  let note = null;
   if (ctx.project.state === "missing_folder") {
-    root.appendChild(missingFolder(ctx));
-    return;
+    // Usage kept from saved transcripts needs a payload with a view and some usage. A payload still pending
+    // or failed, a project with no usage and an unreadable transcripts folder all stay Folder not found.
+    if (!view || payload.no_usage || unreadable) {
+      root.appendChild(missingFolder(ctx));
+      return;
+    }
+    note = missingUsageNote(ctx);
   }
-  if (ctx.reader && ctx.reader.readable === false) {
+  if (unreadable) {
     root.appendChild(transcriptsState(ctx));
     return;
   }
-  const res = ctx.data.usage;
   if (!res) {
     const files = ctx.reader ? ctx.reader.files : null;
     const line = typeof files === "number" ? t("usage_wait", { n: files.toLocaleString("en-US") }) : t("usage_wait_no_count");
     root.appendChild(h("p", { class: "es-t", role: "status" }, renderText(line)));
     return;
   }
-  const payload = res.ok && res.data && typeof res.data === "object" ? res.data : null;
-  const view = payload && payload.views ? payload.views[ctx.range] : null;
   if (!view) {
     if (ctx.transcriptsDir) root.appendChild(transcriptsState(ctx));
     return;
   }
+  if (note) root.appendChild(note);
 
   const footer = () => {
     if (ctx.transcriptsDir) root.appendChild(footerLine(configDirOf(ctx.transcriptsDir), payload.generated_at));

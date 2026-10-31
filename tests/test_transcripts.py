@@ -212,6 +212,48 @@ class MarkerTests(TmpCase):
             self.assertNotIn("PLANTED", repr(rec))
         self.assertEqual("explorer", result.records[-1].agent_type)
 
+    def test_the_cache_keeps_only_the_allowed_fields(self):
+        cfg = self.config()
+        text_row = row_line("msg_1", "req_1", "2026-11-02T10:00:00.000Z",
+                            content=[{"type": "text", "text": "reply " + MARKER}])
+        tool_row = row_line("msg_2", "req_2", "2026-11-02T10:00:01.000Z", content=[
+            {"type": "tool_use", "id": "t1", "name": "Task",
+             "input": {"command": "echo " + MARKER, "description": MARKER, "prompt": MARKER}}])
+        think_row = row_line("msg_3", "req_3", "2026-11-02T10:00:02.000Z", content=[
+            {"type": "thinking", "thinking": MARKER, "signature": MARKER}])
+        result_row = json.dumps({"type": "user", "timestamp": "2026-11-02T10:00:03.000Z", "message": {
+            "role": "user", "content": [{"type": "tool_result", "tool_use_id": "t1", "content": MARKER}]}})
+        write_lines(self.main_path(cfg), [text_row, tool_row, think_row, result_row])
+        agent = os.path.join(cfg, "projects", FOLDER, S1, "subagents", "agent-zz9.jsonl")
+        write_lines(agent, [row_line("msg_4", "req_4", "2026-11-02T10:00:04.000Z",
+                                     content=[{"type": "text", "text": MARKER}])])
+        with open(agent[:-len(".jsonl")] + ".meta.json", "w", encoding="utf-8") as fh:
+            json.dump({"agentType": "explorer", "description": "find " + MARKER}, fh)
+        reader = transcripts.Reader(cfg)
+        self.assertEqual(4, len(reader.read(NOW).records))
+        self.assertEqual({self.main_path(cfg), agent}, set(reader._cache))
+        for path, entry in reader._cache.items():
+            with self.subTest(path=os.path.basename(path)):
+                # The entry's own bookkeeping, and nothing else.
+                self.assertEqual(
+                    ("dev", "ino", "size", "mtime_ns", "offset", "records", "stats", "meta_sig", "agent_type"),
+                    entry._fields)
+                for name in ("dev", "ino", "size", "mtime_ns", "offset"):
+                    self.assertIsInstance(getattr(entry, name), int, name)
+                self.assertEqual({"malformed", "synthetic", "no_id"}, set(entry.stats))
+                self.assertTrue(all(isinstance(v, int) for v in entry.stats.values()))
+                self.assertTrue(entry.meta_sig is None or all(isinstance(v, int) for v in entry.meta_sig))
+                self.assertTrue(entry.agent_type is None or entry.agent_type == "explorer")
+                # Records carry Record's fields and no more.
+                self.assertTrue(entry.records)
+                for rec in entry.records:
+                    self.assertIsInstance(rec, transcripts.Record)
+                    self.assertEqual(tuple(RECORD_FIELDS), rec._fields)
+        # The planted strings sit in message text, a tool_use input, a thinking block, a tool_result and a meta
+        # description. None of it reached the cache, keys and values alike.
+        self.assertNotIn(MARKER, repr(reader._cache))
+        self.assertNotIn("PLANTED", repr(reader._cache))
+
     def test_marker_cases_in_fixtures(self):
         for name in ("subagent-meta-marker", "non-assistant-rows"):
             with self.subTest(case=name):

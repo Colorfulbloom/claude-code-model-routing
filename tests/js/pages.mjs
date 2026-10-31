@@ -42,7 +42,7 @@ let runs = 0;
 
 // Starts the app on a fresh page. respond(pathname, search, n) may return a promise of [status, body], or of
 // null to use the demo data. Unanswered routes give a 404, as the server does for a route it does not have.
-// With usage set, boot also waits for data-usage, which comes after data-rendered.
+// With usage set, boot also waits for data-usage. It can arrive before or after data-rendered, so both are awaited.
 async function boot({ hash = "", respond = () => null, usage = true } = {}) {
   const page = createPage({ narrow: false });
   page.win.location._hash = hash;
@@ -101,9 +101,9 @@ for (const file of checkFiles) {
     test("route " + hash + " shows the " + check.page + " page with its texts", async () => {
       const app = await boot({ hash });
       assert.deepEqual(visible(app), [check.page]);
-      const shown = flat(app.section(check.page)).toLowerCase();
+      const shown = flat(app.section(check.page));
       for (const text of route.texts) {
-        assert.ok(shown.includes(text.toLowerCase()), "text " + JSON.stringify(text) + " is not on " + hash);
+        assert.ok(shown.includes(text), "text " + JSON.stringify(text) + " is not on " + hash);
       }
     });
   }
@@ -727,7 +727,7 @@ test("pinView: model-only, effort-only and no pin", async () => {
   assert.equal(fileNone.pill, null);
   const mainNone = pinView(U, agentOf("none", null, null, null, { source: "settings" }));
   assert.equal(mainNone.pinnedText, "The dashboard can't tell what this agent is pinned to.");
-  assert.equal(mainNone.detailPinned, null);
+  assert.equal(mainNone.detailPinned, "The dashboard can't tell what this agent is pinned to.");
   assert.equal(mainNone.pinnedNote, "From your settings files, not an agent file.");
 
   const cannot = pinView(U, agentOf("both", "cannot_check", setting("matches", { pv: FABLE }), setting("cannot_check")));
@@ -1297,6 +1297,232 @@ test("all projects: a range switch keeps one /api/usage request and redraws the 
   assert.deepEqual(bars(), byTokens(allView("30d")).map((r) => r.name));
   assert.equal(app.count("/api/usage"), 1);
   assert.equal(app.calls.length, before, "a range switch fetches nothing");
+});
+
+// ---------------------------------------------------------------- unknown pins never print null
+
+const NULLISH = /\bnull\b|\bundefined\b/;
+const withPin = (s, pinned) => ({ ...s, pinned: { ...s.pinned, ...pinned } });
+// The words a pinView holds. A field that is null on purpose is not a word, so only strings are read.
+const noNull = (view, what) => {
+  const words = Object.values(view).flat().filter((v) => typeof v === "string");
+  assert.ok(words.every((w) => !NULLISH.test(w)), what + " " + JSON.stringify(words));
+};
+
+test("pinView: a pin the dashboard can't name says so and never prints null", async () => {
+  createPage();
+  const format = await import(JS + "format.js");
+  format.setStrings(STRINGS);
+  const { pinView } = await import(JS + "pin-view.js");
+  const UNKNOWN = "The dashboard can't tell what this agent is pinned to.";
+  const noModel = (state = "matches", extra = {}) => withPin(setting(state, { pv: FABLE, ...extra }), { value: null, id: null });
+  const noEffort = (state = "matches", extra = {}) => withPin(setting(state, extra), { value: null, id: null });
+
+  const both = pinView(U, agentOf("both", "matches", noModel(), noEffort(), { source: "settings" }));
+  assert.equal(both.pinnedText, UNKNOWN);
+  assert.equal(both.detailPinned, UNKNOWN);
+  noNull(both, "both unset");
+
+  const modelUnset = pinView(U, agentOf("both", "matches", noModel(), setting("matches", { pv: "high" }), { source: "settings" }));
+  assert.equal(modelUnset.pinnedText, UNKNOWN, "model unset alone");
+  assert.equal(modelUnset.detailPinned, UNKNOWN);
+  noNull(modelUnset, "model unset alone");
+
+  const effortUnset = pinView(U, agentOf("both", "matches", setting("matches", { pv: FABLE, e: { key: "model", value: FABLE } }), noEffort()));
+  assert.equal(effortUnset.pinnedText, "Fable 5.1, Unknown");
+  assert.equal(effortUnset.detailPinned, "Pinned to Fable 5.1 at Unknown.");
+  noNull(effortUnset, "effort unset");
+
+  const modelOnly = pinView(U, agentOf("model_only", "matches", noModel(), null));
+  assert.equal(modelOnly.pinnedText, UNKNOWN);
+  assert.equal(modelOnly.detailPinned, UNKNOWN);
+  noNull(modelOnly, "model_only unset");
+
+  const effortOnly = pinView(U, agentOf("effort_only", "matches", null, noEffort()));
+  assert.equal(effortOnly.pinnedText, "Unknown, model not pinned");
+  assert.equal(effortOnly.detailPinned, "Unknown, model not pinned");
+  noNull(effortOnly, "effort_only unset");
+
+  const mainNone = pinView(U, agentOf("none", null, null, null, { source: "settings" }));
+  assert.equal(mainNone.pinnedText, UNKNOWN);
+  assert.equal(mainNone.detailPinned, UNKNOWN);
+  const fileNone = pinView(U, agentOf("none", null, null, null));
+  assert.equal(fileNone.detailPinned, null, "an agent file with no pin keeps its own words");
+
+  // The differs sentence is never filled with a null pin_model.
+  const unknownPin = withPin(setting("differs", { pv: FABLE, ran: [SONNET], e: { key: "model", value: FABLE } }), { value: null, id: null });
+  const differs = pinView(U, agentOf("model_only", "differs", unknownPin, null));
+  assert.deepEqual(differs.sentences, []);
+  noNull(differs, "differs with an unknown pin");
+  const known = pinView(U, agentOf("model_only", "differs", setting("differs", { pv: FABLE, ran: [SONNET], e: { key: "model", value: FABLE } }), null));
+  assert.equal(known.sentences.length, 1, "a known pin still gets its sentence");
+
+  // A cap or a pin with no model or value falls back to the word Unknown, not null.
+  const lowered = { value: "max", status: "lowered", becomes: "high", key: "effortLevel", layer: "user", file: "~/.claude/settings.json", line: 2, rule_id: "x-lowered-by-cap" };
+  const cap = { key: "maxEffortLevel", value: "high", model: null, file: null, line: null };
+  const capped = pinView(U, agentOf("effort_only", "matches", null, setting("matches", { rmp: true, e: lowered, cap })));
+  noNull(capped, "a cap with no model");
+  const unsupportedEntry = { ...lowered, rule_id: "x-unsupported-level", model: null };
+  const unsupported = pinView(U, agentOf("effort_only", "matches", null, withPin(setting("matches", { rmp: true, e: unsupportedEntry }), { value: null })));
+  noNull(unsupported, "an unsupported level with no pin value");
+});
+
+// The demo copy without model or effortLevel in its settings (tests/test_pages_js.py saves its answers under
+// "nomodel " plus the path).
+const NOMODEL = (path) => DATA["nomodel " + path];
+const nomodelRespond = (pathname, params) => {
+  const query = params.toString();
+  const saved = NOMODEL(pathname + (query ? "?" + query : ""));
+  return saved ? [saved.status, saved.body] : null;
+};
+
+test("agents pages on a project that sets neither model nor effortLevel: the word null appears nowhere", async () => {
+  const usage = NOMODEL("/api/usage?project=harbor-light");
+  assert.ok(usage, "the saved answers hold the copy");
+  const main = usage.body.views["30d"].by_agent.find((a) => a.route_key === "@main");
+  assert.equal(main.pin.model.pinned.id, null, "the copy really has an unknown model pin");
+  assert.equal(main.pin.effort.pinned.value, null, "and an unknown effort pin");
+  for (const [hash, section] of [["#/agents?project=harbor-light", "agents"], ["#/agents/@main?project=harbor-light", "agent-detail"]]) {
+    const app = await boot({ hash, respond: nomodelRespond });
+    const page = app.section(section);
+    assert.ok(byClass(page, "dt").length + byClass(page, "pin").length > 0, hash + " drew its body");
+    assert.ok(!NULLISH.test(flat(page)), hash + " shows " + flat(page).match(/.{0,40}\b(null|undefined)\b.{0,40}/));
+    assert.ok(flat(page).includes("The dashboard can't tell what this agent is pinned to."), hash);
+  }
+});
+
+// ---------------------------------------------------------------- a project whose folder is gone, usage kept
+
+const GONE = () => DATA["/api/projects"].body.projects.find((p) => p.name === "Lantern");
+const fillSlots = (key, slots) => STRINGS[key].replace(/\{(\w+)\}/g, (whole, name) => (name in slots ? slots[name] : whole));
+const keptNote = () => fillSlots("es_missing_usage_t", {
+  path: GONE().path_display, name: "Lantern", config_file: DATA["/api/projects"].body.config_file_display,
+});
+// Lantern's /api/usage answered with another project's views, as a server does for a missing folder that
+// still has saved transcripts. fix(body) may change the copy.
+const keptUsage = (fix = () => {}) => (pathname, params) => {
+  if (pathname !== "/api/usage" || params.get("project") !== GONE().key) return null;
+  const body = structuredClone(usageOf(TIDEWATER));
+  body.no_usage = false;
+  fix(body);
+  return [200, body];
+};
+const notes = (page) => byClass(page, "nt").filter((n) => !hasClass(n, "nt-empty"));
+const kids = (page) => page.childNodes.filter((n) => n.tagName);
+const indexOfNode = (page, node) => kids(page).findIndex((k) => k === node || k.contains(node));
+const folderNotFound = (page) => byClass(page, "nt-empty").length === 1 && texts(page, "nt-h").join() === "Folder not found";
+
+function assertNote(page, where) {
+  const found = notes(page);
+  assert.equal(found.length, 1, where + ": one note");
+  assert.equal(found[0].tagName, "section");
+  assert.equal(found[0].getAttribute("aria-label"), "Folder not found");
+  assert.deepEqual(texts(found[0], "nt-t"), [keptNote()], where);
+  assert.equal(byClass(page, "nt-empty").length, 0, where + ": not the Folder not found state");
+  return found[0];
+}
+
+test("folder gone, usage kept: Overview shows the note above the tiles", async () => {
+  const app = await boot({ hash: "#/overview?project=" + GONE().key, respond: keptUsage() });
+  const page = app.section("overview");
+  const note = assertNote(page, "overview");
+  assert.equal(byClass(page, "kpi").length, 4);
+  assert.ok(indexOfNode(page, note) < indexOfNode(page, byClass(page, "kpis")[0]), "the note sits above the tiles");
+  assert.ok(indexOfNode(page, byClass(page, "ph")[0]) < indexOfNode(page, note), "and below the head");
+  assert.equal(byClass(page, "foot").length, 1);
+});
+
+test("folder gone, usage kept: Agents shows the note, the table and the pin cells", async () => {
+  const app = await boot({ hash: "#/agents?project=" + GONE().key, respond: keptUsage() });
+  const page = app.section("agents");
+  const note = assertNote(page, "agents");
+  assert.equal(byClass(page, "dt").length > 0, true);
+  assert.ok(indexOfNode(page, note) < indexOfNode(page, byClass(page, "g2")[0]));
+  assert.ok(!NULLISH.test(flat(page)), "no null on screen");
+});
+
+test("folder gone, usage kept: session detail keeps the note under the real head", async () => {
+  const app = await boot({ hash: "#/sessions/" + encodeURIComponent(SESSION) + "?project=" + GONE().key, respond: keptUsage() });
+  const page = app.section("session-detail");
+  const note = assertNote(page, "session detail");
+  const s = viewOf(TIDEWATER, "30d").sessions.find((x) => x.session_id === SESSION);
+  const fmtTime = await fmtTimeOf();
+  assert.equal(page.find((n) => n.tagName === "h1").length, 1);
+  assert.equal(flat(page.find((n) => n.tagName === "h1")[0]), "Session from " + fmtTime(s.started));
+  const order = kids(page);
+  assert.ok(hasClass(order[0], "ph"), "the head comes first");
+  assert.equal(order[1], note, "the note is right under the head");
+  assert.equal(byClass(page, "kpi").length, 4);
+  assert.ok(indexOfNode(page, note) < indexOfNode(page, byClass(page, "kpis")[0]));
+});
+
+test("folder gone, usage kept: the note also sits above the no-range card", async () => {
+  const fix = (body) => { body.views["30d"].totals.requests = 0; };
+  const app = await boot({ hash: "#/overview?project=" + GONE().key, respond: keptUsage(fix) });
+  const page = app.section("overview");
+  const note = assertNote(page, "no-range");
+  assert.deepEqual(texts(page, "es-h"), ["No usage in this range"]);
+  assert.ok(indexOfNode(page, note) < indexOfNode(page, byClass(page, "es-h")[0]));
+});
+
+test("folder gone: a pending payload shows Folder not found, then the answer swaps it for the note and the tiles", async () => {
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  const kept = keptUsage();
+  const app = await boot({
+    hash: "#/overview?project=" + GONE().key,
+    usage: false,
+    respond: async (pathname, params, n) => {
+      if (pathname === "/api/usage") await gate;
+      return kept(pathname, params, n);
+    },
+  });
+  assert.ok(folderNotFound(app.section("overview")), "while the payload is pending");
+  assert.equal(byClass(app.section("overview"), "kpi").length, 0);
+  release();
+  await until(() => app.root.getAttribute("data-usage") === "1", "data-usage");
+  assertNote(app.section("overview"), "after the answer");
+  assert.equal(byClass(app.section("overview"), "kpi").length, 4);
+});
+
+test("folder gone: a failed payload, no_usage and an unreadable transcripts folder all stay Folder not found", async () => {
+  const failed = await boot({
+    hash: "#/overview?project=" + GONE().key,
+    respond: (pathname, params) => (pathname === "/api/usage" && params.get("project") === GONE().key ? [500, { error: "boom" }] : null),
+  });
+  assert.ok(folderNotFound(failed.section("overview")), "failed payload");
+  assert.equal(notes(failed.section("overview")).length, 0);
+
+  const noUsage = await boot({ hash: "#/overview?project=" + GONE().key, respond: keptUsage((body) => { body.no_usage = true; }) });
+  assert.ok(folderNotFound(noUsage.section("overview")), "no_usage true");
+  assert.equal(byClass(noUsage.section("overview"), "kpi").length, 0);
+  assert.equal(notes(noUsage.section("overview")).length, 0);
+
+  const kept = keptUsage();
+  const unreadable = await boot({
+    hash: "#/overview?project=" + GONE().key,
+    respond: (pathname, params, n) => projectsWith((b) => { b.reader.readable = false; })(pathname, params, n) || kept(pathname, params, n),
+  });
+  assert.ok(folderNotFound(unreadable.section("overview")), "unreadable folder");
+  assert.deepEqual(texts(unreadable.section("overview"), "cd-h"), []);
+});
+
+// ---------------------------------------------------------------- the token axis reads whole
+
+test("overview Today on Tidewater: the token axis labels hold no decimal point", async () => {
+  const app = await boot({ hash: "#/overview?project=" + TIDEWATER + "&range=today" });
+  const page = app.section("overview");
+  const axis = byClass(page, "dy")[0];
+  const labels = axis.childNodes.filter((n) => n.tagName === "span").map(flat);
+  assert.ok(labels.length >= 3, "an axis with labels: " + labels.join());
+  assert.equal(labels[labels.length - 1], "0");
+  for (const label of labels) assert.ok(!label.includes("."), "axis label " + label);
+  const format = await import(JS + "format.js");
+  assert.equal(format.fmtTick(5e6), "5M");
+  assert.equal(format.fmtTick(2e9), "2B");
+  assert.equal(format.fmtTick(150000), "150K");
+  assert.equal(format.fmtTick(1500000), "1.5M", "only a trailing .0 goes");
+  assert.equal(format.fmtTokens(5e6), "5.0M", "bars, titles and totals keep fmtTokens");
 });
 
 // ---------------------------------------------------------------- run
