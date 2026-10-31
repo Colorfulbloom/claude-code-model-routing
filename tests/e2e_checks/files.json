@@ -1,0 +1,8 @@
+{"page": "files", "routes": [
+  {"hash": "#/files", "texts": [
+    "Installed files", "config/agents/builder.md", "config/agents/reviewer.md", "config/agents/scribe.md", "config/agents/tech-writer.md",
+    "config/rules/writing.md", "config/model-routing-choices.json", "Matches", "Differs", "Missing",
+    "Nothing to do", "Run the installer again to update it", "Run the installer to add it",
+    "Compared when the page loaded."]},
+  {"hash": "#/files?project=all", "texts": ["Installed files", "Matches", "Compared when the page loaded."]}
+]}

@@ -1,0 +1,31 @@
+{
+  "fixture": "agent-same-name-one-tree",
+  "rule_ids": [
+    "agent-file-same-name-one-tree"
+  ],
+  "confidence": "tested",
+  "source": "dashboard/experiments/2026-10-29-agent-files.json#n2",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "agentFile",
+      "value": null,
+      "status": "unknown",
+      "layer": "user",
+      "file": "config/agents/a/probe.md",
+      "scope": "agent",
+      "agent": "probe",
+      "other_file": "config/agents/z/probe.md"
+    },
+    {
+      "key": "agentFile",
+      "value": null,
+      "status": "unknown",
+      "layer": "user",
+      "file": "config/agents/z/probe.md",
+      "scope": "agent",
+      "agent": "probe",
+      "other_file": "config/agents/a/probe.md"
+    }
+  ]
+}

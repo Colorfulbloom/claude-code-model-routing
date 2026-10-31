@@ -1,0 +1,8 @@
+{"page": "settings", "routes": [
+  {"hash": "#/settings", "texts": ["Opus 5.5", "xhigh", "runs as high", "projects/tidewater-reporting/.claude/settings.local.json, line 3"]},
+  {"hash": "#/settings?project=saltmarsh", "texts": ["medium", "Claude Code's default"]},
+  {"hash": "#/settings?project=driftwood", "texts": ["Unknown"]},
+  {"hash": "#/settings?project=harbor-light", "texts": ["No .claude folder"]},
+  {"hash": "#/settings?project=lantern", "texts": ["Folder not found"]},
+  {"hash": "#/settings?project=all", "texts": ["Pick a project"]}
+]}

@@ -1,0 +1,8 @@
+{
+  "shell_env": {},
+  "flags": [
+    "--effort",
+    "high"
+  ],
+  "cli_settings": null
+}

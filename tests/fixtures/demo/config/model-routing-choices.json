@@ -1,0 +1,21 @@
+{
+  "format": 1,
+  "agents": {
+    "builder": {
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    },
+    "reviewer": {
+      "model": "claude-sonnet-5-5",
+      "effort": "high"
+    },
+    "scribe": {
+      "model": "claude-haiku-4-5",
+      "effort": "medium"
+    },
+    "tech-writer": {
+      "model": "opus",
+      "effort": "high"
+    }
+  }
+}

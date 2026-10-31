@@ -1,0 +1,19 @@
+{
+ "records": [
+  {
+   "message_id": "msg_c1",
+   "ts_utc": "2026-11-02T08:10:00+00:00",
+   "cache_write_5m": 700,
+   "cache_write_1h": 0,
+   "cache_read": 40
+  }
+ ],
+ "notes": {
+  "malformed_lines": 0,
+  "synthetic_rows": 0,
+  "no_id_rows": 0,
+  "ignored_files": 0,
+  "skipped_old_files": 0
+ },
+ "oldest_seen": "2026-11-02T08:10:00+00:00"
+}

@@ -1,0 +1,7 @@
+{
+  "shell_env": {
+    "CLAUDE_CODE_SUBAGENT_MODEL": "claude-madeup-9-9"
+  },
+  "flags": [],
+  "cli_settings": null
+}

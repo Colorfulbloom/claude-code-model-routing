@@ -1,0 +1,32 @@
+{
+  "fixture": "agent-effort-frontmatter-over-flag",
+  "rule_ids": [
+    "agent-effort-order"
+  ],
+  "confidence": "tested",
+  "source": "dashboard/experiments/2026-10-29-agent-effort.json#ag-high-over-flag-low",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "effort",
+      "value": "high",
+      "status": "in_effect",
+      "layer": "agent",
+      "file": "config/agents/probe.md",
+      "scope": "agent",
+      "agent": "probe",
+      "model": "claude-haiku-5-5"
+    },
+    {
+      "key": "effort",
+      "value": "low",
+      "status": "overridden",
+      "layer": "flag",
+      "file": "session.json:flags",
+      "scope": "agent",
+      "agent": "probe",
+      "rule_id": "agent-effort-order",
+      "reason": "config/agents/probe.md sets the effort for probe. CLAUDE_CODE_EFFORT_LEVEL beats the agent's effort frontmatter, which beats --effort and the settings that count for its own model."
+    }
+  ]
+}

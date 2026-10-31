@@ -1,0 +1,29 @@
+{
+  "fixture": "auto-compact-agent-frontmatter",
+  "rule_ids": [
+    "agent-auto-compact-window"
+  ],
+  "confidence": "assumed",
+  "source": "assumed: https://code.claude.com/docs/en/sub-agents#subagent-auto-compact-window",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "autoCompactWindow",
+      "value": 200000,
+      "status": "in_effect",
+      "layer": "agent",
+      "file": "config/agents/probe.md",
+      "scope": "agent",
+      "agent": "probe"
+    },
+    {
+      "key": "autoCompactWindow",
+      "value": 500000,
+      "status": "overridden",
+      "layer": "user",
+      "file": "config/settings.json",
+      "scope": "agent",
+      "agent": "probe"
+    }
+  ]
+}

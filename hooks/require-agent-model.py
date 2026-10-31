@@ -55,7 +55,7 @@ def block(msg):
 def check_effort(agent, path, fm):
     model = (fm.get("model") or "").strip()
     if not (fm.get("effort") or "").strip():
-        block(f"Model routing: agent '{agent}' ({path}) has no pinned effort. Without one it runs at the session's effort, which is observed behaviour the docs do not state. Add `effort:` to its frontmatter.")
+        block(f"Model routing: agent '{agent}' ({path}) has no pinned effort. Without one it resolves effort for its own model, so a level set only for the main model doesn't reach it. Add `effort:` to its frontmatter.")
 
 
 def main():

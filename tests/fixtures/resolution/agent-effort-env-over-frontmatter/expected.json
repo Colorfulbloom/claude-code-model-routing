@@ -1,0 +1,32 @@
+{
+  "fixture": "agent-effort-env-over-frontmatter",
+  "rule_ids": [
+    "agent-effort-order"
+  ],
+  "confidence": "tested",
+  "source": "dashboard/experiments/2026-10-29-agent-effort.json#ag-high-vs-env-low",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "effort",
+      "value": "low",
+      "status": "in_effect",
+      "layer": "env",
+      "file": "session.json:shell_env",
+      "scope": "agent",
+      "agent": "probe",
+      "rule_id": "agent-effort-order",
+      "reason": "CLAUDE_CODE_EFFORT_LEVEL sets the effort for probe. CLAUDE_CODE_EFFORT_LEVEL beats the agent's effort frontmatter, which beats --effort and the settings that count for its own model."
+    },
+    {
+      "key": "effort",
+      "value": "high",
+      "status": "overridden",
+      "layer": "agent",
+      "file": "config/agents/probe.md",
+      "scope": "agent",
+      "agent": "probe",
+      "model": "claude-haiku-5-5"
+    }
+  ]
+}

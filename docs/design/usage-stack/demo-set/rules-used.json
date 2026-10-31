@@ -1,0 +1,216 @@
+{
+ "effort-default-by-model": {
+  "rule_id": "effort-default-by-model",
+  "confidence": "tested",
+  "verified_on": {
+   "claude_version": "2.1.302",
+   "date": "2026-10-29"
+  },
+  "reason": "Nothing sets an effort level that counts for {model}, so it runs at its default, {value}. /effort status shows this as auto (currently {value}).",
+  "quotes": [
+   {
+    "doc_url": "https://code.claude.com/docs/en/model-config#adjust-effort-level",
+    "quote": "The model's default effort: `high` on every model that supports effort, except that Opus 5.5, Sonnet 5.5, and Haiku 5.5 default to `medium` and Opus 4.7 defaults to `xhigh`"
+   }
+  ],
+  "experiment": "experiments/2026-10-29-effort-status-session.json"
+ },
+ "effort-env-empty-ignored": {
+  "rule_id": "effort-env-empty-ignored",
+  "confidence": "tested",
+  "verified_on": {
+   "claude_version": "2.1.302",
+   "date": "2026-10-29"
+  },
+  "reason": "CLAUDE_CODE_EFFORT_LEVEL is set but empty. Claude Code treats an empty value as not set, so the next source decides the effort. To send no level at all, set it to auto or unset.",
+  "quotes": [],
+  "experiment": "experiments/2026-10-29-effort-env-empty.json"
+ },
+ "effort-level-layer-order": {
+  "rule_id": "effort-level-layer-order",
+  "confidence": "tested",
+  "verified_on": {
+   "claude_version": "2.1.302",
+   "date": "2026-10-29"
+  },
+  "reason": "{winner} decides the effort. CLAUDE_CODE_EFFORT_LEVEL beats --effort, which beats every settings file. A level picked in a running session with /effort sits between the two, and the dashboard can't see it. Among the files, the highest one with a level that counts for the model wins. In one file, the model's modelSettings level beats the top-level effortLevel, and a canonical-name entry beats an alias entry.",
+  "quotes": [
+   {
+    "doc_url": "https://code.claude.com/docs/en/settings-reference#effortlevel",
+    "quote": "`--effort` takes precedence over this key for one session, and `CLAUDE_CODE_EFFORT_LEVEL` takes precedence over both"
+   },
+   {
+    "doc_url": "https://code.claude.com/docs/en/model-config#set-the-effort-level",
+    "quote": "If you set `effortLevel` in managed settings, Claude Code applies it at the settings step of the effort resolution order, and users can still change the level with `/effort` or `--effort`."
+   },
+   {
+    "doc_url": "https://code.claude.com/docs/en/settings-reference#effortlevel",
+    "quote": "Within the same settings file, Claude Code uses a model's saved level rather than this key."
+   }
+  ],
+  "experiment": "experiments/2026-10-29-effort-level-order.json"
+ },
+ "effort-level-settings-values": {
+  "rule_id": "effort-level-settings-values",
+  "confidence": "tested",
+  "verified_on": {
+   "claude_version": "2.1.302",
+   "date": "2026-10-29"
+  },
+  "reason": "{value} isn't a level effortLevel accepts in {file}, so Claude Code skips it and the next source decides. Settings files take low, medium, high or xhigh.",
+  "quotes": [
+   {
+    "doc_url": "https://code.claude.com/docs/en/model-config#set-the-effort-level",
+    "quote": "`max` isn't accepted as a level in either key"
+   }
+  ],
+  "experiment": "experiments/2026-10-29-effort-invalid-values.json"
+ },
+ "effort-level-user-settings-model-unknown": {
+  "rule_id": "effort-level-user-settings-model-unknown",
+  "confidence": "documented",
+  "verified_on": {
+   "claude_version": "2.1.302",
+   "date": "2026-10-29"
+  },
+  "reason": "{file} sets a top-level effortLevel of {value}, but the dashboard doesn't know the session's model. Opus 5.5 and models released after it ignore this key in the user file, and earlier models use it. So the dashboard can't say whether it counts. To check, run /effort status in a new session started in this project.",
+  "quotes": [
+   {
+    "doc_url": "https://code.claude.com/docs/en/settings-reference#effortlevel",
+    "quote": "Opus 5.5 and models released after it ignore it and start at their own default until you save a level for them, which `/effort` writes under `modelSettings`. In project, local, and managed settings, and with `--settings`, this key applies to every model."
+   },
+   {
+    "doc_url": "https://code.claude.com/docs/en/model-config#set-the-effort-level",
+    "quote": "If you set `effortLevel` in managed settings, Claude Code applies it at the settings step of the effort resolution order, and users can still change the level with `/effort` or `--effort`."
+   }
+  ],
+  "experiment": "experiments/2026-10-29-effort-user-key-by-model.json"
+ },
+ "effort-level-user-settings-opus-5-5": {
+  "rule_id": "effort-level-user-settings-opus-5-5",
+  "confidence": "tested",
+  "verified_on": {
+   "claude_version": "2.1.302",
+   "date": "2026-10-29"
+  },
+  "reason": "{model} ignores the top-level effortLevel in {file}. Opus 5.5 and later models take a user settings level only from modelSettings.",
+  "quotes": [
+   {
+    "doc_url": "https://code.claude.com/docs/en/settings-reference#effortlevel",
+    "quote": "Opus 5.5 and models released after it ignore it and start at their own default until you save a level for them, which `/effort` writes under `modelSettings`. In project, local, and managed settings, and with `--settings`, this key applies to every model."
+   },
+   {
+    "doc_url": "https://code.claude.com/docs/en/model-config#set-the-effort-level",
+    "quote": "If you set `effortLevel` in managed settings, Claude Code applies it at the settings step of the effort resolution order, and users can still change the level with `/effort` or `--effort`."
+   }
+  ],
+  "experiment": "experiments/2026-10-29-effort-user-key-by-model.json"
+ },
+ "effort-lowered-by-cap": {
+  "rule_id": "effort-lowered-by-cap",
+  "confidence": "tested",
+  "verified_on": {
+   "claude_version": "2.1.302",
+   "date": "2026-10-29"
+  },
+  "reason": "{value} from {file} runs as {becomes}, because maxEffortLevel caps {model} at {becomes}.",
+  "quotes": [
+   {
+    "doc_url": "https://code.claude.com/docs/en/settings-reference#maxeffortlevel",
+    "quote": "Any higher level runs at the cap instead, including one from `/effort`, the `/model` picker, `--effort`, `CLAUDE_CODE_EFFORT_LEVEL`, a skill's or subagent's `effort` frontmatter, or the model's own default."
+   }
+  ],
+  "experiment": "experiments/2026-10-29-effort-cap-transcript.json"
+ },
+ "env-block-order": {
+  "rule_id": "env-block-order",
+  "confidence": "tested",
+  "verified_on": {
+   "claude_version": "2.1.302",
+   "date": "2026-10-29"
+  },
+  "reason": "{key} comes from {file}. A settings env block overwrites the shell, and the higher file wins.",
+  "quotes": [
+   {
+    "doc_url": "https://code.claude.com/docs/en/settings-reference#env",
+    "quote": "A value here overwrites the same variable exported in your shell, and when more than one settings file sets a variable, the highest-precedence one applies."
+   }
+  ],
+  "experiment": "experiments/2026-10-29-env-block-order.json"
+ },
+ "max-effort-level-default": {
+  "rule_id": "max-effort-level-default",
+  "confidence": "assumed",
+  "verified_on": {
+   "claude_version": "2.1.302",
+   "date": "2026-10-29"
+  },
+  "reason": "No settings file sets maxEffortLevel, so the dashboard sees no cap on the effort level. On a Claude Enterprise plan, an admin can also cap effort per role, and the dashboard can't see that.",
+  "quotes": [
+   {
+    "doc_url": "https://code.claude.com/docs/en/model-config#organization-effort-limits",
+    "quote": "On a Claude Enterprise plan, organization admins set per-role effort limits, described below."
+   }
+  ],
+  "experiment": null
+ },
+ "max-effort-level-lowest-cap": {
+  "rule_id": "max-effort-level-lowest-cap",
+  "confidence": "tested",
+  "verified_on": {
+   "claude_version": "2.1.302",
+   "date": "2026-10-29"
+  },
+  "reason": "The lowest cap applies. {value} in {file} can't be raised from another file.",
+  "quotes": [
+   {
+    "doc_url": "https://code.claude.com/docs/en/settings-reference#maxeffortlevel",
+    "quote": "When several scopes set a cap, the lowest applies, so a cap set in one scope can't be raised from another"
+   }
+  ],
+  "experiment": "experiments/2026-10-29-max-effort-level-cap.json"
+ },
+ "model-main-session-order": {
+  "rule_id": "model-main-session-order",
+  "confidence": "tested",
+  "verified_on": {
+   "claude_version": "2.1.302",
+   "date": "2026-10-29"
+  },
+  "reason": "{winner} sets the model. --model beats ANTHROPIC_MODEL, which beats the model key in any file, managed included.",
+  "quotes": [
+   {
+    "doc_url": "https://code.claude.com/docs/en/settings-reference#model",
+    "quote": "`--model` takes precedence over `ANTHROPIC_MODEL`, and both take precedence over this key for one session, including over a managed `model`"
+   }
+  ],
+  "experiment": "experiments/2026-10-29-model-main-session-order.json"
+ },
+ "model-settings-max-effort-per-model": {
+  "rule_id": "model-settings-max-effort-per-model",
+  "confidence": "tested",
+  "verified_on": {
+   "claude_version": "2.1.302",
+   "date": "2026-10-29"
+  },
+  "reason": "{file} caps {model} at {value}, replacing that file's top-level maxEffortLevel for this model only. Across files, the lowest cap still applies.",
+  "quotes": [
+   {
+    "doc_url": "https://code.claude.com/docs/en/settings-reference#maxeffortlevel",
+    "quote": "That entry replaces this key for the model only within the settings source that sets both, such as your user settings or one managed source."
+   }
+  ],
+  "experiment": "experiments/2026-10-29-model-settings-max-effort.json"
+ },
+ "settings-file-unparsed-skipped": {
+  "rule_id": "settings-file-unparsed-skipped",
+  "confidence": "tested",
+  "verified_on": {
+   "claude_version": "2.1.302",
+   "date": "2026-10-29"
+  },
+  "reason": "{file} isn't valid JSON, or its top level isn't an object. Claude Code skips the whole file, so nothing in it applies. The next file or Claude Code's default decides each value instead. To see what's wrong, run claude doctor in a terminal.",
+  "quotes": [],
+  "experiment": "experiments/2026-10-29-settings-invalid-json.json"
+ }
+}

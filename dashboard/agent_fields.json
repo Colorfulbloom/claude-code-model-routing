@@ -1,0 +1,180 @@
+{
+  "schema_version": 1,
+  "verified_on": {
+    "claude_version": "2.1.302",
+    "date": "2026-10-29"
+  },
+  "doc_url": "https://code.claude.com/docs/en/sub-agents#supported-frontmatter-fields",
+  "fields": [
+    {
+      "field": "name",
+      "type": "string",
+      "required": true,
+      "display": "column",
+      "quote": "Unique identifier of at most 256 characters, such as `code-reviewer` or `reviewer-v2`. Hooks receive this value as `agent_type`. The filename doesn't have to match. Names can't contain `:`, which is reserved for plugin-scoped identifiers such as `my-plugin:reviewer`"
+    },
+    {
+      "field": "description",
+      "type": "string",
+      "required": true,
+      "display": "disclosure",
+      "quote": "When Claude should delegate to this subagent"
+    },
+    {
+      "field": "tools",
+      "type": "string_or_list",
+      "required": false,
+      "display": "disclosure",
+      "quote": "Tools the subagent can use, as a comma-separated string such as `Read, Grep, Bash` or a YAML list. Inherits every tool available to subagents if omitted. If no entry in the list resolves to a tool, the subagent usually fails to launch with an error naming the entries. To preload Skills into context, use the `skills` field rather than listing `Skill` here"
+    },
+    {
+      "field": "disallowedTools",
+      "type": "string_or_list",
+      "required": false,
+      "display": "disclosure",
+      "quote": "Tools to deny, removed from inherited or specified list. Same format as `tools`. An entry with a specifier, such as `Bash(git push *)`, still removes the whole tool"
+    },
+    {
+      "field": "model",
+      "type": "string",
+      "required": false,
+      "display": "column",
+      "quote": "Model to use: `sonnet`, `opus`, `haiku`, `fable`, a full model ID such as `claude-opus-5-5`, or `inherit`. When you omit it, Claude Code picks the model in the subagent model order"
+    },
+    {
+      "field": "permissionMode",
+      "type": "enum",
+      "required": false,
+      "display": "disclosure",
+      "values": [
+        "default",
+        "acceptEdits",
+        "auto",
+        "dontAsk",
+        "bypassPermissions",
+        "plan",
+        "manual"
+      ],
+      "quote": "Permission mode: `default`, `acceptEdits`, `auto`, `dontAsk`, `bypassPermissions`, `plan`, or `manual` as an alias for `default`. Ignored for plugin subagents"
+    },
+    {
+      "field": "maxTurns",
+      "type": "integer",
+      "required": false,
+      "display": "disclosure",
+      "quote": "Maximum number of agentic turns before the subagent stops. When the subagent reaches the limit, Claude Code returns its output marked as partial, and Claude can resume it to continue. The partial marking requires Claude Code v2.1.246 or later"
+    },
+    {
+      "field": "autoCompactWindow",
+      "type": "integer",
+      "required": false,
+      "display": "column",
+      "quote": "Lower the auto-compact window for this subagent to a token count from `100000` to `1000000`. Requires Claude Code v2.1.296 or later"
+    },
+    {
+      "field": "skills",
+      "type": "list",
+      "required": false,
+      "display": "disclosure",
+      "quote": "Skills to preload into the subagent's context at startup. The full skill content is injected, not only the description. Subagents can still invoke unlisted project, user, and plugin skills through the Skill tool"
+    },
+    {
+      "field": "mcpServers",
+      "type": "list",
+      "required": false,
+      "display": "disclosure",
+      "quote": "MCP servers available to this subagent. Each entry is either a server name referencing an already-configured server (e.g., `\"slack\"`) or an inline definition with the server name as key and a full MCP server config as value. Ignored for plugin subagents"
+    },
+    {
+      "field": "hooks",
+      "type": "map",
+      "required": false,
+      "display": "disclosure",
+      "quote": "Lifecycle hooks scoped to this subagent. Ignored for plugin subagents"
+    },
+    {
+      "field": "memory",
+      "type": "enum",
+      "required": false,
+      "display": "disclosure",
+      "values": [
+        "user",
+        "project",
+        "local"
+      ],
+      "quote": "Persistent memory scope: `user`, `project`, or `local`. Enables cross-session learning"
+    },
+    {
+      "field": "background",
+      "type": "boolean",
+      "required": false,
+      "display": "disclosure",
+      "quote": "Set to `true` to keep this subagent in the background even when Claude asks to wait for it. By default, subagents Claude spawns from the main conversation already start in the background"
+    },
+    {
+      "field": "omitClaudeMd",
+      "type": "boolean",
+      "required": false,
+      "display": "disclosure",
+      "quote": "Set to `true` to start this subagent without the user, project, and local CLAUDE.md files in its initial context; managed policy files still load, except for managed subagents. Use it for subagents that take everything they need from the delegation prompt. Ignored when the agent runs as the main session agent via `--agent` or the `agent` setting. Requires Claude Code v2.1.271 or later"
+    },
+    {
+      "field": "effort",
+      "type": "enum",
+      "required": false,
+      "display": "column",
+      "values": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ],
+      "quote": "Effort level when this subagent is active. Overrides the session effort level, but not the `CLAUDE_CODE_EFFORT_LEVEL` environment variable. Options: `low`, `medium`, `high`, `xhigh`, `max`; available levels depend on the model. See Choose an effort level"
+    },
+    {
+      "field": "isolation",
+      "type": "enum",
+      "required": false,
+      "display": "disclosure",
+      "values": [
+        "worktree"
+      ],
+      "quote": "Set to `worktree` to run the subagent in a temporary git worktree, giving it an isolated copy of the repository branched by default from your default branch rather than the parent session's `HEAD`. The worktree is automatically cleaned up if the subagent makes no changes"
+    },
+    {
+      "field": "color",
+      "type": "enum",
+      "required": false,
+      "display": "disclosure",
+      "values": [
+        "red",
+        "blue",
+        "green",
+        "yellow",
+        "purple",
+        "orange",
+        "pink",
+        "cyan"
+      ],
+      "quote": "Display color for the subagent in the task list and transcript. Accepts `red`, `blue`, `green`, `yellow`, `purple`, `orange`, `pink`, or `cyan`"
+    },
+    {
+      "field": "initialPrompt",
+      "type": "string",
+      "required": false,
+      "display": "disclosure",
+      "quote": "Auto-submitted as the first user turn when this agent runs as the main session agent (via `--agent` or the `agent` setting). Commands and skills are processed. Prepended to any user-provided prompt. Ignored for plugin subagents"
+    },
+    {
+      "field": "experimental",
+      "type": "map",
+      "required": false,
+      "display": "column",
+      "known_keys": [
+        "cacheTtl"
+      ],
+      "quote": "Map of experimental options. Set its `cacheTtl` key to `5m` or `1h` to choose the prompt cache lifetime for this subagent's requests, at the frontmatter's place in the cache lifetime precedence. Claude Code ignores any other value, ignores `1h` while your Claude subscription is using usage credits, and reads the field only from subagent files. Requires Claude Code v2.1.248 or later"
+    }
+  ]
+}

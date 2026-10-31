@@ -1,0 +1,35 @@
+{
+  "fixture": "auto-compact-env-over-flag-over-project",
+  "rule_ids": [
+    "auto-compact-window-order"
+  ],
+  "confidence": "documented",
+  "source": "https://code.claude.com/docs/en/settings-reference#autocompactwindow",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "autoCompactWindow",
+      "value": 300000,
+      "status": "in_effect",
+      "layer": "env",
+      "file": "session.json:shell_env",
+      "scope": "main"
+    },
+    {
+      "key": "autoCompactWindow",
+      "value": 400000,
+      "status": "overridden",
+      "layer": "flag",
+      "file": "session.json:flags",
+      "scope": "main"
+    },
+    {
+      "key": "autoCompactWindow",
+      "value": 500000,
+      "status": "overridden",
+      "layer": "project",
+      "file": "project/.claude/settings.json",
+      "scope": "main"
+    }
+  ]
+}

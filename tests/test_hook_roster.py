@@ -1,9 +1,11 @@
 """The startup hook keeps its old output and then prints one roster line."""
 import os
+import json
 import re
+import subprocess
 import unittest
 
-from helpers import Sandbox
+from helpers import REPO, Sandbox
 
 ROSTER_PREFIX = "Model routing agents (model/effort): "
 
@@ -146,6 +148,30 @@ class HookRosterTests(unittest.TestCase):
         os.makedirs(os.path.join(sb.p("proj"), ".claude", "agents"))
         old, new = self.check(sb, sb.cfg, sb.p("proj"))
         self.assertNotIn("Model routing agents", new)
+
+
+class RequireAgentModelMessageTests(unittest.TestCase):
+    def test_no_effort_with_model_blocks_with_new_text(self):
+        sb = Sandbox("new")
+        self.addCleanup(sb.cleanup)
+        agents = os.path.join(sb.cfg, "agents")
+        os.makedirs(agents)
+        with open(os.path.join(agents, "noeffort.md"), "w") as fh:
+            fh.write(agent("noeffort", "sonnet"))
+        env = sb.base_env(True)
+        env["CLAUDE_CONFIG_DIR"] = sb.cfg
+        env["CLAUDE_PROJECT_DIR"] = sb.p("proj")
+        os.makedirs(sb.p("proj"))
+        payload = json.dumps({"tool_name": "Agent",
+                              "tool_input": {"subagent_type": "noeffort", "model": "sonnet"}})
+        proc = subprocess.run(["/usr/bin/python3", os.path.join(REPO, "hooks", "require-agent-model.py")],
+                              input=payload.encode(), env=env, cwd=sb.p("proj"),
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60)
+        err = proc.stderr.decode("utf-8", "replace")
+        self.assertEqual(proc.returncode, 2, err)
+        self.assertIn("resolves effort for its own model", err)
+        self.assertIn("doesn't reach it", err)
+        self.assertNotIn("the session's effort", err)
 
 
 if __name__ == "__main__":

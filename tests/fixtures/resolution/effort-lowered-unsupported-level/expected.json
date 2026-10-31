@@ -1,0 +1,21 @@
+{
+  "fixture": "effort-lowered-unsupported-level",
+  "rule_ids": [
+    "effort-lowered-unsupported-level"
+  ],
+  "confidence": "tested",
+  "source": "dashboard/experiments/2026-10-29-effort-fallback-levels.json#fb-opus46-flag-xhigh",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "effortLevel",
+      "value": "xhigh",
+      "status": "lowered",
+      "layer": "flag",
+      "file": "session.json:flags",
+      "scope": "main",
+      "model": "claude-opus-4-6",
+      "becomes": "high"
+    }
+  ]
+}

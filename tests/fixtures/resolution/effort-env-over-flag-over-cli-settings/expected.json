@@ -1,0 +1,41 @@
+{
+  "fixture": "effort-env-over-flag-over-cli-settings",
+  "rule_ids": [
+    "effort-level-layer-order"
+  ],
+  "confidence": "tested",
+  "source": "dashboard/experiments/2026-10-29-effort-level-order.json#e4",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "effortLevel",
+      "value": "high",
+      "status": "in_effect",
+      "layer": "env",
+      "file": "session.json:shell_env",
+      "scope": "main",
+      "model": "claude-sonnet-5-5"
+    },
+    {
+      "key": "effortLevel",
+      "value": "low",
+      "status": "overridden",
+      "layer": "flag",
+      "file": "session.json:flags",
+      "scope": "main",
+      "model": "claude-sonnet-5-5",
+      "rule_id": "effort-level-layer-order",
+      "reason": "CLAUDE_CODE_EFFORT_LEVEL decides the effort. CLAUDE_CODE_EFFORT_LEVEL beats --effort, which beats every settings file. A level picked in a running session with /effort sits between the two, and the dashboard can't see it. Among the files, the highest one with a level that counts for the model wins. In one file, the model's modelSettings level beats the top-level effortLevel, and a canonical-name entry beats an alias entry."
+    },
+    {
+      "key": "effortLevel",
+      "value": "xhigh",
+      "status": "overridden",
+      "layer": "cli",
+      "file": "session.json:cli_settings",
+      "scope": "main",
+      "model": "claude-sonnet-5-5",
+      "rule_id": "effort-level-layer-order"
+    }
+  ]
+}

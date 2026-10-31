@@ -1,0 +1,19 @@
+{
+  "fixture": "prompt-cache-plan-api-key-five-minutes",
+  "rule_ids": [
+    "prompt-cache-default-by-plan"
+  ],
+  "confidence": "tested",
+  "source": "dashboard/experiments/2026-10-29-prompt-cache-sources.json#k12",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "promptCacheTtl",
+      "value": "5m",
+      "status": "default",
+      "layer": "default",
+      "file": null,
+      "scope": "main"
+    }
+  ]
+}

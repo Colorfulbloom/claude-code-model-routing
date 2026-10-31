@@ -1,0 +1,6 @@
+{
+  "claude_version": "2.1.310",
+  "shell_env": {
+    "CLAUDE_CODE_EFFORT_LEVEL": ""
+  }
+}

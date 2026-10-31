@@ -1,0 +1,34 @@
+{
+ "date": "2026-10-29",
+ "claude_version": "2.1.302",
+ "ran": "effortLevel xhigh via --settings with caps: project maxEffortLevel low vs local high (mx1), user medium vs project xhigh (mx2).",
+ "result": "mx1 sent low and mx2 sent medium. The lowest cap applied, even from the user file.",
+ "method": "dashboard/experiments/harness: claude -p in a throwaway HOME, CLAUDE_CONFIG_DIR and project under $TMPDIR, a fake key and ANTHROPIC_BASE_URL on 127.0.0.1. fakeapi.py logs the model, output_config.effort and cache_control ttl of each request and answers 400; for agent cases it first streams one Agent tool call. The harness only allows requests to fakeapi.py on 127.0.0.1. Managed settings were not tested, because writing them needs admin rights.",
+ "results_file": "harness/results-2026-10-29.jsonl",
+ "cases": {
+  "mx1-lowest-cap-wins-local-cannot-raise": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "low",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "mx2-user-cap-binds-over-higher-files": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ]
+  ]
+ },
+ "case_files": {
+  "mx1-lowest-cap-wins-local-cannot-raise": "harness/cases-cache-effort-caps-default.json",
+  "mx2-user-cap-binds-over-higher-files": "harness/cases-cache-effort-caps-default.json"
+ }
+}

@@ -1,0 +1,35 @@
+{
+  "fixture": "model-flag-over-env-over-cli-settings",
+  "rule_ids": [
+    "model-main-session-order"
+  ],
+  "confidence": "tested",
+  "source": "dashboard/experiments/2026-10-29-model-main-session-order.json#m5",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "model",
+      "value": "claude-haiku-5-5",
+      "status": "in_effect",
+      "layer": "flag",
+      "file": "session.json:flags",
+      "scope": "main"
+    },
+    {
+      "key": "model",
+      "value": "claude-sonnet-5-5",
+      "status": "overridden",
+      "layer": "env",
+      "file": "session.json:shell_env",
+      "scope": "main"
+    },
+    {
+      "key": "model",
+      "value": "claude-fable-5-1",
+      "status": "overridden",
+      "layer": "cli",
+      "file": "session.json:cli_settings",
+      "scope": "main"
+    }
+  ]
+}

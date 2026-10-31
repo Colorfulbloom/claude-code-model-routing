@@ -1,0 +1,78 @@
+{
+ "date": "2026-10-29",
+ "claude_version": "2.1.302",
+ "ran": "ANTHROPIC_MODEL or CLAUDE_CODE_EFFORT_LEVEL set in settings env blocks and the shell: User block vs project model key (m6), User block vs shell (m7), project vs User block (m8), local vs project block (m9), --settings block vs shell (m10), User block CLAUDE_CODE_EFFORT_LEVEL vs project effortLevel (e5).",
+ "result": "Every settings env block beat the shell, and between files the higher file won. A User env block's ANTHROPIC_MODEL beat a project model key, and a User env block's CLAUDE_CODE_EFFORT_LEVEL beat a project effortLevel.",
+ "method": "dashboard/experiments/harness: claude -p in a throwaway HOME, CLAUDE_CONFIG_DIR and project under $TMPDIR, a fake key and ANTHROPIC_BASE_URL on 127.0.0.1. fakeapi.py logs the model, output_config.effort and cache_control ttl of each request and answers 400; for agent cases it first streams one Agent tool call. The harness only allows requests to fakeapi.py on 127.0.0.1. Managed settings were not tested, because writing them needs admin rights.",
+ "results_file": "harness/results-2026-10-29.jsonl",
+ "cases": {
+  "m6-user-env-block-vs-project-model-key": [
+   [
+    "main",
+    "claude-haiku-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "m7-shell-env-vs-user-env-block": [
+   [
+    "main",
+    "claude-haiku-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "m8-project-env-block-vs-user-env-block": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "m9-local-env-block-vs-project-env-block": [
+   [
+    "main",
+    "claude-fable-5-1",
+    "high",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "m10-shell-env-vs-cli-settings-env-block": [
+   [
+    "main",
+    "claude-haiku-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "e5-user-env-block-effort-vs-project-key": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "low",
+    [
+     "5m(default)"
+    ]
+   ]
+  ]
+ },
+ "case_files": {
+  "m6-user-env-block-vs-project-model-key": "harness/cases-model-effort-env.json",
+  "m7-shell-env-vs-user-env-block": "harness/cases-model-effort-env.json",
+  "m8-project-env-block-vs-user-env-block": "harness/cases-model-effort-env.json",
+  "m9-local-env-block-vs-project-env-block": "harness/cases-model-effort-env.json",
+  "m10-shell-env-vs-cli-settings-env-block": "harness/cases-env-block-subagent.json",
+  "e5-user-env-block-effort-vs-project-key": "harness/cases-model-effort-env.json"
+ }
+}

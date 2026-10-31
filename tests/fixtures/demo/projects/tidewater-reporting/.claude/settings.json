@@ -1,0 +1,11 @@
+{
+  "modelSettings": {
+    "claude-opus-5-5": { "maxEffortLevel": "high" },
+    "claude-fable-5-1": { "maxEffortLevel": "medium" },
+    "claude-haiku-4-5": { "maxEffortLevel": "high" }
+  },
+  "effortLevel": "medium",
+  "permissions": {
+    "allow": ["Read", "Grep"]
+  }
+}

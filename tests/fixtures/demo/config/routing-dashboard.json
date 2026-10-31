@@ -1,0 +1,10 @@
+{
+  "projects": [
+    {"name": "Tidewater reporting", "path": "projects/tidewater-reporting"},
+    {"name": "Driftwood", "path": "projects/driftwood"},
+    {"name": "Harbor Light", "path": "projects/harbor-light"},
+    {"name": "Saltmarsh", "path": "projects/saltmarsh"},
+    {"name": "Lantern", "path": "projects/lantern"}
+  ],
+  "plan": "subscription"
+}

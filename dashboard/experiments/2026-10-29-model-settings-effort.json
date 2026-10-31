@@ -1,0 +1,45 @@
+{
+ "date": "2026-10-29",
+ "claude_version": "2.1.302",
+ "ran": "claude-sonnet-5-5: project modelSettings low vs local top-level effortLevel high (ms1), project top-level high vs local modelSettings low (ms2), project top-level high and modelSettings low in one file (ms3).",
+ "result": "ms1 sent high, ms2 sent low, ms3 sent low. The higher file decided across files, and modelSettings beat the top-level key within one file.",
+ "method": "dashboard/experiments/harness: claude -p in a throwaway HOME, CLAUDE_CONFIG_DIR and project under $TMPDIR, a fake key and ANTHROPIC_BASE_URL on 127.0.0.1. fakeapi.py logs the model, output_config.effort and cache_control ttl of each request and answers 400; for agent cases it first streams one Agent tool call. The harness only allows requests to fakeapi.py on 127.0.0.1. Managed settings were not tested, because writing them needs admin rights.",
+ "results_file": "harness/results-2026-10-29.jsonl",
+ "cases": {
+  "ms1-local-top-level-over-project-model-settings": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "high",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "ms2-local-model-settings-over-project-top-level": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "low",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "ms3-same-file-model-settings-over-top-level": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "low",
+    [
+     "5m(default)"
+    ]
+   ]
+  ]
+ },
+ "case_files": {
+  "ms1-local-top-level-over-project-model-settings": "harness/cases-cache-effort-caps-default.json",
+  "ms2-local-model-settings-over-project-top-level": "harness/cases-cache-effort-caps-default.json",
+  "ms3-same-file-model-settings-over-top-level": "harness/cases-cache-effort-caps-default.json"
+ }
+}

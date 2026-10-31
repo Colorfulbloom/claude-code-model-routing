@@ -1,0 +1,609 @@
+{
+ "date": "2026-10-29",
+ "claude_version": "2.1.302",
+ "ran": "--effort xhigh and --effort max, and no level, on claude-fable-5-1, claude-haiku-4-5, claude-opus-4-6, claude-opus-4-7, claude-opus-5, claude-sonnet-5 and claude-haiku-5-5; a probe agent pinned at xhigh on claude-opus-4-6 (fb-agent-opus46-xhigh); --effort xhigh on claude-opus-4-6 with text replies (fb-opus46-flag-xhigh).",
+ "result": "xhigh ran as high on Opus 4.6, in the main session and in the agent, and the transcript's effort field showed high. Every other model sent xhigh and max as set. Haiku 4.5 sent no effort at all. With no level, Fable 5.1, Opus 4.6, Opus 5 and Sonnet 5 sent high, Opus 4.7 sent xhigh and Haiku 5.5 sent medium. This shows what Claude Code sends; low and medium were not probed and come from the docs.",
+ "method": "dashboard/experiments/harness: claude -p in a throwaway HOME, CLAUDE_CONFIG_DIR and project under $TMPDIR, a fake key and ANTHROPIC_BASE_URL on 127.0.0.1. fakeapi.py logs the model, output_config.effort and cache_control ttl of each request. It answers 400, or a short text reply when the case sets text_reply; for agent cases it first streams one Agent tool call. Cases with prompt \"/effort status\" record the command's output, and runcase.py reads the effort fields from the throwaway transcripts before deleting them. The harness only allows requests to fakeapi.py on 127.0.0.1. Managed settings were not tested, because writing them needs admin rights.",
+ "results_file": "harness/results-2026-10-29-effort.jsonl",
+ "cases": {
+  "lv-claude-fable-5-1-max": [
+   [
+    "main",
+    "claude-fable-5-1",
+    "max",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "lv-claude-fable-5-1-xhigh": [
+   [
+    "main",
+    "claude-fable-5-1",
+    "xhigh",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "lv-claude-haiku-4-5-max": [
+   [
+    "main",
+    "claude-haiku-4-5",
+    null,
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "lv-claude-haiku-4-5-xhigh": [
+   [
+    "main",
+    "claude-haiku-4-5",
+    null,
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "lv-claude-haiku-5-5-max": [
+   [
+    "main",
+    "claude-haiku-5-5",
+    "max",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "lv-claude-haiku-5-5-xhigh": [
+   [
+    "main",
+    "claude-haiku-5-5",
+    "xhigh",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "lv-claude-opus-4-6-max": [
+   [
+    "main",
+    "claude-opus-4-6",
+    "max",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "lv-claude-opus-4-6-xhigh": [
+   [
+    "main",
+    "claude-opus-4-6",
+    "high",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "lv-claude-opus-4-7-max": [
+   [
+    "main",
+    "claude-opus-4-7",
+    "max",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "lv-claude-opus-4-7-xhigh": [
+   [
+    "main",
+    "claude-opus-4-7",
+    "xhigh",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "lv-claude-opus-5-max": [
+   [
+    "main",
+    "claude-opus-5",
+    "max",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "lv-claude-opus-5-xhigh": [
+   [
+    "main",
+    "claude-opus-5",
+    "xhigh",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "lv-claude-sonnet-5-max": [
+   [
+    "main",
+    "claude-sonnet-5",
+    "max",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "lv-claude-sonnet-5-xhigh": [
+   [
+    "main",
+    "claude-sonnet-5",
+    "xhigh",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "default-claude-fable-5-1": [
+   [
+    "main",
+    "claude-fable-5-1",
+    "high",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "default-claude-haiku-4-5": [
+   [
+    "main",
+    "claude-haiku-4-5",
+    null,
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "default-claude-haiku-5-5": [
+   [
+    "main",
+    "claude-haiku-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "default-claude-opus-4-6": [
+   [
+    "main",
+    "claude-opus-4-6",
+    "high",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "default-claude-opus-4-7": [
+   [
+    "main",
+    "claude-opus-4-7",
+    "xhigh",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "default-claude-opus-5": [
+   [
+    "main",
+    "claude-opus-5",
+    "high",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "default-claude-sonnet-5": [
+   [
+    "main",
+    "claude-sonnet-5",
+    "high",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "fb-agent-opus46-xhigh": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ],
+   [
+    "subagent",
+    "claude-opus-4-6",
+    "high",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "fb-opus46-flag-xhigh": [
+   [
+    "main",
+    "claude-opus-4-6",
+    "high",
+    [
+     "5m(default)"
+    ]
+   ]
+  ]
+ },
+ "transcripts": {
+  "lv-claude-fable-5-1-max": [
+   [
+    "main",
+    "api-request",
+    "max",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "max"
+   ]
+  ],
+  "lv-claude-fable-5-1-xhigh": [
+   [
+    "main",
+    "api-request",
+    "xhigh",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "xhigh"
+   ]
+  ],
+  "lv-claude-haiku-4-5-max": [
+   [
+    "main",
+    "api-request",
+    null,
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    null
+   ]
+  ],
+  "lv-claude-haiku-4-5-xhigh": [
+   [
+    "main",
+    "api-request",
+    null,
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    null
+   ]
+  ],
+  "lv-claude-haiku-5-5-max": [
+   [
+    "main",
+    "api-request",
+    "max",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "max"
+   ]
+  ],
+  "lv-claude-haiku-5-5-xhigh": [
+   [
+    "main",
+    "api-request",
+    "xhigh",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "xhigh"
+   ]
+  ],
+  "lv-claude-opus-4-6-max": [
+   [
+    "main",
+    "api-request",
+    "max",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    null
+   ]
+  ],
+  "lv-claude-opus-4-6-xhigh": [
+   [
+    "main",
+    "api-request",
+    "high",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    null
+   ]
+  ],
+  "lv-claude-opus-4-7-max": [
+   [
+    "main",
+    "api-request",
+    "max",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    null
+   ]
+  ],
+  "lv-claude-opus-4-7-xhigh": [
+   [
+    "main",
+    "api-request",
+    "xhigh",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    null
+   ]
+  ],
+  "lv-claude-opus-5-max": [
+   [
+    "main",
+    "api-request",
+    "max",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    null
+   ]
+  ],
+  "lv-claude-opus-5-xhigh": [
+   [
+    "main",
+    "api-request",
+    "xhigh",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    null
+   ]
+  ],
+  "lv-claude-sonnet-5-max": [
+   [
+    "main",
+    "api-request",
+    "max",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    null
+   ]
+  ],
+  "lv-claude-sonnet-5-xhigh": [
+   [
+    "main",
+    "api-request",
+    "xhigh",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    null
+   ]
+  ],
+  "default-claude-fable-5-1": [
+   [
+    "main",
+    "api-request",
+    "high",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "high"
+   ]
+  ],
+  "default-claude-haiku-4-5": [
+   [
+    "main",
+    "api-request",
+    null,
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    null
+   ]
+  ],
+  "default-claude-haiku-5-5": [
+   [
+    "main",
+    "api-request",
+    "medium",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "medium"
+   ]
+  ],
+  "default-claude-opus-4-6": [
+   [
+    "main",
+    "api-request",
+    "high",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    null
+   ]
+  ],
+  "default-claude-opus-4-7": [
+   [
+    "main",
+    "api-request",
+    "xhigh",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    null
+   ]
+  ],
+  "default-claude-opus-5": [
+   [
+    "main",
+    "api-request",
+    "high",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    null
+   ]
+  ],
+  "default-claude-sonnet-5": [
+   [
+    "main",
+    "api-request",
+    "high",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    null
+   ]
+  ],
+  "fb-agent-opus46-xhigh": [
+   [
+    "main",
+    "api-request",
+    "medium",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    "medium",
+    "medium"
+   ],
+   [
+    "subagent",
+    "api-request",
+    "high",
+    null
+   ],
+   [
+    "subagent",
+    "assistant",
+    "high",
+    null
+   ]
+  ],
+  "fb-opus46-flag-xhigh": [
+   [
+    "main",
+    "api-request",
+    "high",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    "high",
+    null
+   ]
+  ]
+ },
+ "case_files": {
+  "lv-claude-fable-5-1-max": "harness/cases-effort-lowered-invalid.json",
+  "lv-claude-fable-5-1-xhigh": "harness/cases-effort-lowered-invalid.json",
+  "lv-claude-haiku-4-5-max": "harness/cases-effort-lowered-invalid.json",
+  "lv-claude-haiku-4-5-xhigh": "harness/cases-effort-lowered-invalid.json",
+  "lv-claude-haiku-5-5-max": "harness/cases-effort-lowered-invalid.json",
+  "lv-claude-haiku-5-5-xhigh": "harness/cases-effort-lowered-invalid.json",
+  "lv-claude-opus-4-6-max": "harness/cases-effort-lowered-invalid.json",
+  "lv-claude-opus-4-6-xhigh": "harness/cases-effort-lowered-invalid.json",
+  "lv-claude-opus-4-7-max": "harness/cases-effort-lowered-invalid.json",
+  "lv-claude-opus-4-7-xhigh": "harness/cases-effort-lowered-invalid.json",
+  "lv-claude-opus-5-max": "harness/cases-effort-lowered-invalid.json",
+  "lv-claude-opus-5-xhigh": "harness/cases-effort-lowered-invalid.json",
+  "lv-claude-sonnet-5-max": "harness/cases-effort-lowered-invalid.json",
+  "lv-claude-sonnet-5-xhigh": "harness/cases-effort-lowered-invalid.json",
+  "default-claude-fable-5-1": "harness/cases-effort-lowered-invalid.json",
+  "default-claude-haiku-4-5": "harness/cases-effort-lowered-invalid.json",
+  "default-claude-haiku-5-5": "harness/cases-effort-lowered-invalid.json",
+  "default-claude-opus-4-6": "harness/cases-effort-lowered-invalid.json",
+  "default-claude-opus-4-7": "harness/cases-effort-lowered-invalid.json",
+  "default-claude-opus-5": "harness/cases-effort-lowered-invalid.json",
+  "default-claude-sonnet-5": "harness/cases-effort-lowered-invalid.json",
+  "fb-agent-opus46-xhigh": "harness/cases-effort-lowered-invalid.json",
+  "fb-opus46-flag-xhigh": "harness/cases-effort-lowered-invalid.json"
+ }
+}

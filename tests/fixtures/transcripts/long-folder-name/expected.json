@@ -1,0 +1,18 @@
+{
+ "records": [
+  {
+   "message_id": "msg_l1",
+   "ts_utc": "2026-11-02T04:00:00+00:00",
+   "folder": "-segment01-segment02-segment03-segment04-segment05-segment06-segment07-segment08-segment09-segment10-segment11-segment12-segment13-segment14-segment15-segment16-segment17-segment18-segment19-segment20-k3j9x2",
+   "cwd": "/segment01/segment02/segment03/segment04/segment05/segment06/segment07/segment08/segment09/segment10/segment11/segment12/segment13/segment14/segment15/segment16/segment17/segment18/segment19/segment20/segment21/segment22/segment23/segment24"
+  }
+ ],
+ "notes": {
+  "malformed_lines": 0,
+  "synthetic_rows": 0,
+  "no_id_rows": 0,
+  "ignored_files": 0,
+  "skipped_old_files": 0
+ },
+ "oldest_seen": "2026-11-02T04:00:00+00:00"
+}

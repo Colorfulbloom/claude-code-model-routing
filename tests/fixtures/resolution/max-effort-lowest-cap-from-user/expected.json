@@ -1,0 +1,37 @@
+{
+  "fixture": "max-effort-lowest-cap-from-user",
+  "rule_ids": [
+    "max-effort-level-lowest-cap"
+  ],
+  "confidence": "tested",
+  "source": "dashboard/experiments/2026-10-29-max-effort-level-cap.json#mx2",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "maxEffortLevel",
+      "value": "medium",
+      "status": "in_effect",
+      "layer": "user",
+      "file": "config/settings.json",
+      "scope": "main"
+    },
+    {
+      "key": "maxEffortLevel",
+      "value": "xhigh",
+      "status": "overridden",
+      "layer": "project",
+      "file": "project/.claude/settings.json",
+      "scope": "main"
+    },
+    {
+      "key": "effortLevel",
+      "value": "xhigh",
+      "status": "lowered",
+      "layer": "cli",
+      "file": "session.json:cli_settings",
+      "scope": "main",
+      "model": "claude-sonnet-5-5",
+      "becomes": "medium"
+    }
+  ]
+}

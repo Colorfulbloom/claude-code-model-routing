@@ -1,0 +1,8 @@
+{
+  "projects": [
+    {"name": "Storefront", "path": "~/work/storefront"},
+    {"name": "Docs site", "path": "~/work/docs-site"},
+    {"name": "Sandbox", "path": "~/work/sandbox"}
+  ],
+  "plan": "subscription"
+}

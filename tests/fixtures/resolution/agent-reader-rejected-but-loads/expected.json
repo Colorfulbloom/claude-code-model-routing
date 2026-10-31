@@ -1,0 +1,66 @@
+{
+  "fixture": "agent-reader-rejected-but-loads",
+  "rule_ids": [
+    "agent-file-reader-rejected"
+  ],
+  "confidence": "tested",
+  "source": "dashboard/experiments/2026-10-29-agent-files.json#f2",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "agentFile",
+      "value": null,
+      "status": "unknown",
+      "layer": "user",
+      "file": "config/agents/probe.md",
+      "scope": "agent",
+      "agent": "probe"
+    },
+    {
+      "key": "model",
+      "value": "claude-sonnet-5-5",
+      "status": "unknown",
+      "layer": "default",
+      "file": null,
+      "scope": "agent",
+      "agent": "probe",
+      "rule_id": "agent-file-reader-rejected",
+      "reason": "config/agents/probe.md loads in Claude Code, but the dashboard can't read its frontmatter safely, so it can't say which values apply. Claude Code accepts some frontmatter that the dashboard's reader rejects, such as an unclosed bracket, a second colon in a value or a repeated key."
+    },
+    {
+      "key": "effort",
+      "value": "medium",
+      "model": "claude-sonnet-5-5",
+      "status": "unknown",
+      "layer": "default",
+      "file": null,
+      "scope": "agent",
+      "agent": "probe",
+      "rule_id": "agent-file-reader-rejected",
+      "reason": "config/agents/probe.md loads in Claude Code, but the dashboard can't read its frontmatter safely, so it can't say which values apply. Claude Code accepts some frontmatter that the dashboard's reader rejects, such as an unclosed bracket, a second colon in a value or a repeated key."
+    },
+    {
+      "key": "autoCompactWindow",
+      "value": null,
+      "model": "claude-sonnet-5-5",
+      "status": "unknown",
+      "layer": "default",
+      "file": null,
+      "scope": "agent",
+      "agent": "probe",
+      "rule_id": "agent-file-reader-rejected",
+      "reason": "config/agents/probe.md loads in Claude Code, but the dashboard can't read its frontmatter safely, so it can't say which values apply. Claude Code accepts some frontmatter that the dashboard's reader rejects, such as an unclosed bracket, a second colon in a value or a repeated key."
+    },
+    {
+      "key": "subagentPromptCacheTtl",
+      "value": "5m",
+      "status": "unknown",
+      "layer": "default",
+      "file": null,
+      "scope": "agent",
+      "agent": "probe",
+      "rule_id": "agent-file-reader-rejected",
+      "reason": "config/agents/probe.md loads in Claude Code, but the dashboard can't read its frontmatter safely, so it can't say which values apply. Claude Code accepts some frontmatter that the dashboard's reader rejects, such as an unclosed bracket, a second colon in a value or a repeated key."
+    }
+  ]
+}

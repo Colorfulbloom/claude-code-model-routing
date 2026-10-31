@@ -1,0 +1,276 @@
+{
+ "date": "2026-10-29",
+ "claude_version": "2.1.302",
+ "ran": "effortLevel max, auto and turbo in local settings over a project effortLevel low; max in project settings alone; max in a user modelSettings entry; max in a local modelSettings entry over project low; max in a project modelSettings entry beside a top-level low in the same file; a local maxEffortLevel max over a project cap of low; --effort max; CLAUDE_CODE_EFFORT_LEVEL max.",
+ "result": "Each invalid value was skipped and the next source decided: project low, or the default medium when nothing else set a level. Same-file modelSettings max fell back to the top-level low. /effort status showed the project low. No warning reached stderr in -p mode. A local maxEffortLevel max didn't raise the project cap. --effort max and CLAUDE_CODE_EFFORT_LEVEL max were accepted and sent max.",
+ "method": "dashboard/experiments/harness: claude -p in a throwaway HOME, CLAUDE_CONFIG_DIR and project under $TMPDIR, a fake key and ANTHROPIC_BASE_URL on 127.0.0.1. fakeapi.py logs the model, output_config.effort and cache_control ttl of each request. It answers 400, or a short text reply when the case sets text_reply; for agent cases it first streams one Agent tool call. Cases with prompt \"/effort status\" record the command's output, and runcase.py reads the effort fields from the throwaway transcripts before deleting them. The harness only allows requests to fakeapi.py on 127.0.0.1. Managed settings were not tested, because writing them needs admin rights.",
+ "results_file": "harness/results-2026-10-29-effort.jsonl",
+ "cases": {
+  "inv-local-max-over-project-low": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "low",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "inv-local-max-over-project-low-status": [],
+  "inv-local-turbo-over-project-low": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "low",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "max-proj-effortLevel": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "max-proj-effortLevel-status": [],
+  "bogus-proj-effortLevel": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "max-user-ms": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "inv-local-ms-max-over-project-low": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "low",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "inv-same-file-ms-max-with-top-low": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "low",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "inv-local-cap-max-over-project-cap-low": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "low",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "max-flag": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "max",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "max-env": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "max",
+    [
+     "5m(default)"
+    ]
+   ]
+  ]
+ },
+ "transcripts": {
+  "inv-local-max-over-project-low": [
+   [
+    "main",
+    "api-request",
+    "low",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "low"
+   ]
+  ],
+  "inv-local-turbo-over-project-low": [
+   [
+    "main",
+    "api-request",
+    "low",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "low"
+   ]
+  ],
+  "max-proj-effortLevel": [
+   [
+    "main",
+    "api-request",
+    "medium",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "medium"
+   ]
+  ],
+  "bogus-proj-effortLevel": [
+   [
+    "main",
+    "api-request",
+    "medium",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "medium"
+   ]
+  ],
+  "max-user-ms": [
+   [
+    "main",
+    "api-request",
+    "medium",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "medium"
+   ]
+  ],
+  "inv-local-ms-max-over-project-low": [
+   [
+    "main",
+    "api-request",
+    "low",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "low"
+   ]
+  ],
+  "inv-same-file-ms-max-with-top-low": [
+   [
+    "main",
+    "api-request",
+    "low",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "low"
+   ]
+  ],
+  "inv-local-cap-max-over-project-cap-low": [
+   [
+    "main",
+    "api-request",
+    "low",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "low"
+   ]
+  ],
+  "max-flag": [
+   [
+    "main",
+    "api-request",
+    "max",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "max"
+   ]
+  ],
+  "max-env": [
+   [
+    "main",
+    "api-request",
+    "max",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "max"
+   ]
+  ]
+ },
+ "output": {
+  "inv-local-max-over-project-low-status": [
+   "Current effort level: low (Quick, straightforward implementation with minimal overhead)"
+  ],
+  "max-proj-effortLevel-status": [
+   "Effort level: auto (currently medium)"
+  ]
+ },
+ "case_files": {
+  "inv-local-max-over-project-low": "harness/cases-effort-lowered-invalid.json",
+  "inv-local-max-over-project-low-status": "harness/cases-effort-lowered-invalid.json",
+  "inv-local-turbo-over-project-low": "harness/cases-effort-lowered-invalid.json",
+  "max-proj-effortLevel": "harness/cases-effort-lowered-invalid.json",
+  "max-proj-effortLevel-status": "harness/cases-effort-lowered-invalid.json",
+  "bogus-proj-effortLevel": "harness/cases-effort-lowered-invalid.json",
+  "max-user-ms": "harness/cases-effort-lowered-invalid.json",
+  "inv-local-ms-max-over-project-low": "harness/cases-effort-lowered-invalid.json",
+  "inv-same-file-ms-max-with-top-low": "harness/cases-effort-lowered-invalid.json",
+  "inv-local-cap-max-over-project-cap-low": "harness/cases-effort-lowered-invalid.json",
+  "max-flag": "harness/cases-effort-lowered-invalid.json",
+  "max-env": "harness/cases-effort-lowered-invalid.json"
+ }
+}

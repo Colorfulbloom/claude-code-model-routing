@@ -1,0 +1,35 @@
+{
+  "fixture": "auto-compact-env-empty",
+  "rule_ids": [
+    "auto-compact-window-empty",
+    "auto-compact-window-order"
+  ],
+  "note": "An empty CLAUDE_CODE_AUTO_COMPACT_WINDOW is ignored, so the settings file sets the window. The reason names no value, because the value is empty.",
+  "confidence": "tested",
+  "source": "dashboard/experiments/2026-10-29-auto-compact-window.json#a19",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "autoCompactWindow",
+      "value": 200000,
+      "status": "in_effect",
+      "layer": "user",
+      "file": "config/settings.json",
+      "scope": "main",
+      "model": "claude-opus-5-5",
+      "rule_id": "auto-compact-window-order"
+    },
+    {
+      "key": "autoCompactWindow",
+      "value": "",
+      "status": "ignored",
+      "layer": "env",
+      "file": "session.json:shell_env",
+      "scope": "main",
+      "model": "claude-opus-5-5",
+      "via": "CLAUDE_CODE_AUTO_COMPACT_WINDOW",
+      "rule_id": "auto-compact-window-empty",
+      "reason": "CLAUDE_CODE_AUTO_COMPACT_WINDOW is set but empty. Claude Code ignores an empty value, so the next source sets the auto-compact window."
+    }
+  ]
+}

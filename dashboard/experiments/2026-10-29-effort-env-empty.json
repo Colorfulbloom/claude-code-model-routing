@@ -1,0 +1,114 @@
+{
+ "date": "2026-10-29",
+ "claude_version": "2.1.302",
+ "ran": "CLAUDE_CODE_EFFORT_LEVEL set to the empty string on Opus 5.5: in the shell alone (z1), in the shell with a project effortLevel high (z2), in a User settings env block with a project effortLevel high (z3), /effort status for z2's layout (z4), the same layout with no variable as the control (z5), and in the shell with an agent whose frontmatter sets effort high (z6).",
+ "result": "An empty CLAUDE_CODE_EFFORT_LEVEL counted as not set, from the shell or an env block. Alone, Opus 5.5 sent its default, medium. With a project effortLevel high, high was sent, the same as the control, and /effort status printed high. The agent with effort high in its frontmatter sent high. This differs from the value unset, which sends no effort level (experiments/2026-10-29-effort-auto.json).",
+ "method": "dashboard/experiments/harness: claude -p in a throwaway HOME, CLAUDE_CONFIG_DIR and project under $TMPDIR, a fake key and ANTHROPIC_BASE_URL on 127.0.0.1. fakeapi.py logs the model, output_config.effort and cache_control ttl of each request and answers 400; for the agent case it first streams one Agent tool call. Each case ran alone through runcase.py.",
+ "results_file": "harness/results-effort-env-empty.jsonl",
+ "cases": {
+  "z1-shell-empty-alone": {
+   "init_model": "claude-opus-5-5",
+   "sent": [
+    [
+     "main",
+     "claude-opus-5-5",
+     "medium",
+     [
+      "5m(default)"
+     ]
+    ]
+   ],
+   "result": [
+    "API Error: 400 fake api"
+   ]
+  },
+  "z2-shell-empty-project-high": {
+   "init_model": "claude-opus-5-5",
+   "sent": [
+    [
+     "main",
+     "claude-opus-5-5",
+     "high",
+     [
+      "5m(default)"
+     ]
+    ]
+   ],
+   "result": [
+    "API Error: 400 fake api"
+   ]
+  },
+  "z3-user-block-empty-project-high": {
+   "init_model": "claude-opus-5-5",
+   "sent": [
+    [
+     "main",
+     "claude-opus-5-5",
+     "high",
+     [
+      "5m(default)"
+     ]
+    ]
+   ],
+   "result": [
+    "API Error: 400 fake api"
+   ]
+  },
+  "z4-shell-empty-status": {
+   "init_model": "claude-opus-5-5",
+   "sent": [],
+   "result": [
+    "Current effort level: high (Comprehensive implementation with extensive testing and documentation)"
+   ]
+  },
+  "z5-control-project-high": {
+   "init_model": "claude-opus-5-5",
+   "sent": [
+    [
+     "main",
+     "claude-opus-5-5",
+     "high",
+     [
+      "5m(default)"
+     ]
+    ]
+   ],
+   "result": [
+    "API Error: 400 fake api"
+   ]
+  },
+  "z6-shell-empty-agent-frontmatter-high": {
+   "init_model": "claude-sonnet-5-5",
+   "sent": [
+    [
+     "main",
+     "claude-sonnet-5-5",
+     "medium",
+     [
+      "5m(default)"
+     ]
+    ],
+    [
+     "subagent",
+     "claude-haiku-5-5",
+     "high",
+     [
+      "5m(default)"
+     ]
+    ]
+   ],
+   "result": [
+    "API Error: 400 fake api",
+    "API Error: 400 fake api"
+   ]
+  }
+ },
+ "case_files": {
+  "z1-shell-empty-alone": "harness/cases-effort-env-empty.json",
+  "z2-shell-empty-project-high": "harness/cases-effort-env-empty.json",
+  "z3-user-block-empty-project-high": "harness/cases-effort-env-empty.json",
+  "z4-shell-empty-status": "harness/cases-effort-env-empty.json",
+  "z5-control-project-high": "harness/cases-effort-env-empty.json",
+  "z6-shell-empty-agent-frontmatter-high": "harness/cases-effort-env-empty.json"
+ }
+}

@@ -1,0 +1,12 @@
+{
+  "shell_env": {
+    "ANTHROPIC_MODEL": "claude-sonnet-5-5"
+  },
+  "flags": [
+    "--model",
+    "claude-haiku-5-5"
+  ],
+  "cli_settings": {
+    "model": "claude-fable-5-1"
+  }
+}

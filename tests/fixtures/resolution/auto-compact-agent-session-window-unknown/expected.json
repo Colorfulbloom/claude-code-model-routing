@@ -1,0 +1,23 @@
+{
+  "fixture": "auto-compact-agent-session-window-unknown",
+  "rule_ids": [
+    "agent-auto-compact-window-default"
+  ],
+  "note": "Only the Opus 5.5 default window was checked, so the dashboard can't say whether 300000 lowers the Sonnet 5.5 session window.",
+  "confidence": "assumed",
+  "source": "assumed: https://code.claude.com/docs/en/sub-agents#subagent-auto-compact-window",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "autoCompactWindow",
+      "value": 300000,
+      "status": "unknown",
+      "layer": "agent",
+      "file": "config/agents/probe.md",
+      "scope": "agent",
+      "agent": "probe",
+      "model": "claude-sonnet-5-5",
+      "rule_id": "agent-auto-compact-window-default"
+    }
+  ]
+}

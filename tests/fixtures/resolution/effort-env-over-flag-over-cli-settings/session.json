@@ -1,0 +1,12 @@
+{
+  "shell_env": {
+    "CLAUDE_CODE_EFFORT_LEVEL": "high"
+  },
+  "flags": [
+    "--effort",
+    "low"
+  ],
+  "cli_settings": {
+    "effortLevel": "xhigh"
+  }
+}

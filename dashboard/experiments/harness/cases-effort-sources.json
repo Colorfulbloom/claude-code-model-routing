@@ -1,0 +1,327 @@
+[
+ {
+  "user": {
+   "model": "claude-opus-5-5",
+   "effortLevel": "low"
+  },
+  "name": "u-top-low-claude-opus-5-5"
+ },
+ {
+  "user": {
+   "model": "claude-fable-5-1",
+   "effortLevel": "low"
+  },
+  "name": "u-top-low-claude-fable-5-1"
+ },
+ {
+  "user": {
+   "model": "claude-sonnet-5-5",
+   "effortLevel": "low"
+  },
+  "name": "u-top-low-claude-sonnet-5-5"
+ },
+ {
+  "user": {
+   "model": "claude-haiku-5-5",
+   "effortLevel": "low"
+  },
+  "name": "u-top-low-claude-haiku-5-5"
+ },
+ {
+  "user": {
+   "model": "claude-opus-5",
+   "effortLevel": "low"
+  },
+  "name": "u-top-low-claude-opus-5"
+ },
+ {
+  "user": {
+   "model": "claude-sonnet-5",
+   "effortLevel": "low"
+  },
+  "name": "u-top-low-claude-sonnet-5"
+ },
+ {
+  "user": {
+   "model": "claude-opus-4-8",
+   "effortLevel": "low"
+  },
+  "name": "u-top-low-claude-opus-4-8"
+ },
+ {
+  "prompt": "/effort status",
+  "user": {
+   "model": "claude-opus-5-5",
+   "effortLevel": "low"
+  },
+  "name": "u-top-low-opus55-status"
+ },
+ {
+  "user": {
+   "model": "claude-opus-5-5"
+  },
+  "project": {
+   "effortLevel": "low"
+  },
+  "name": "p-top-low-opus55"
+ },
+ {
+  "user": {
+   "model": "claude-opus-5-5",
+   "modelSettings": {
+    "claude-opus-5-5": {
+     "effortLevel": "low"
+    }
+   }
+  },
+  "name": "u-ms-low-opus55"
+ },
+ {
+  "user": {
+   "model": "claude-sonnet-5-5"
+  },
+  "project": {
+   "effortLevel": "high"
+  },
+  "env": {
+   "CLAUDE_CODE_EFFORT_LEVEL": "auto"
+  },
+  "name": "env-auto"
+ },
+ {
+  "user": {
+   "model": "claude-sonnet-5-5"
+  },
+  "project": {
+   "effortLevel": "high"
+  },
+  "env": {
+   "CLAUDE_CODE_EFFORT_LEVEL": "unset"
+  },
+  "name": "env-unset"
+ },
+ {
+  "prompt": "/effort status",
+  "user": {
+   "model": "claude-sonnet-5-5"
+  },
+  "project": {
+   "effortLevel": "high"
+  },
+  "env": {
+   "CLAUDE_CODE_EFFORT_LEVEL": "auto"
+  },
+  "name": "env-auto-status"
+ },
+ {
+  "user": {
+   "model": "claude-sonnet-5-5"
+  },
+  "project": {
+   "effortLevel": "auto"
+  },
+  "name": "p-top-auto"
+ },
+ {
+  "user": {
+   "model": "claude-sonnet-5-5"
+  },
+  "project": {
+   "effortLevel": "high"
+  },
+  "args": [
+   "--effort",
+   "auto"
+  ],
+  "name": "flag-auto"
+ },
+ {
+  "prompt": "/effort status",
+  "user": {
+   "model": "claude-sonnet-5-5"
+  },
+  "project": {
+   "maxEffortLevel": "low"
+  },
+  "name": "p-cap-low-status"
+ },
+ {
+  "user": {
+   "model": "claude-sonnet-5-5"
+  },
+  "project": {
+   "maxEffortLevel": "low"
+  },
+  "name": "p-cap-low-sent"
+ },
+ {
+  "user": {
+   "model": "claude-sonnet-5-5"
+  },
+  "args": [
+   "--effort",
+   "low"
+  ],
+  "agents": {
+   "probe": "---\nname: probe\ndescription: probe agent\nmodel: claude-haiku-5-5\n---\nMARKER-SUBAGENT you are a probe.\n"
+  },
+  "agent_input": {
+   "description": "probe",
+   "prompt": "go",
+   "subagent_type": "probe"
+  },
+  "name": "ag-noeffort-flag-low"
+ },
+ {
+  "user": {
+   "model": "claude-sonnet-5-5"
+  },
+  "project": {
+   "effortLevel": "low"
+  },
+  "agents": {
+   "probe": "---\nname: probe\ndescription: probe agent\nmodel: claude-haiku-5-5\n---\nMARKER-SUBAGENT you are a probe.\n"
+  },
+  "agent_input": {
+   "description": "probe",
+   "prompt": "go",
+   "subagent_type": "probe"
+  },
+  "name": "ag-noeffort-proj-low"
+ },
+ {
+  "user": {
+   "model": "claude-sonnet-5-5"
+  },
+  "args": [
+   "--effort",
+   "low"
+  ],
+  "agents": {
+   "probe": "---\nname: probe\ndescription: probe agent\nmodel: claude-fable-5-1\n---\nMARKER-SUBAGENT you are a probe.\n"
+  },
+  "agent_input": {
+   "description": "probe",
+   "prompt": "go",
+   "subagent_type": "probe"
+  },
+  "name": "ag-noeffort-fable-flag-low"
+ },
+ {
+  "user": {
+   "model": "claude-sonnet-5-5"
+  },
+  "agents": {
+   "probe": "---\nname: probe\ndescription: probe agent\nmodel: claude-fable-5-1\n---\nMARKER-SUBAGENT you are a probe.\n"
+  },
+  "agent_input": {
+   "description": "probe",
+   "prompt": "go",
+   "subagent_type": "probe"
+  },
+  "name": "ag-noeffort-fable-nothing"
+ },
+ {
+  "user": {
+   "model": "claude-sonnet-5-5"
+  },
+  "args": [
+   "--effort",
+   "low"
+  ],
+  "agents": {
+   "probe": "---\nname: probe\ndescription: probe agent\nmodel: claude-haiku-5-5\neffort: high\n---\nMARKER-SUBAGENT you are a probe.\n"
+  },
+  "agent_input": {
+   "description": "probe",
+   "prompt": "go",
+   "subagent_type": "probe"
+  },
+  "name": "ag-high-over-flag-low"
+ },
+ {
+  "user": {
+   "model": "claude-sonnet-5-5"
+  },
+  "project": {
+   "effortLevel": "low"
+  },
+  "agents": {
+   "probe": "---\nname: probe\ndescription: probe agent\nmodel: claude-haiku-5-5\neffort: high\n---\nMARKER-SUBAGENT you are a probe.\n"
+  },
+  "agent_input": {
+   "description": "probe",
+   "prompt": "go",
+   "subagent_type": "probe"
+  },
+  "name": "ag-high-vs-proj-low"
+ },
+ {
+  "user": {
+   "model": "claude-sonnet-5-5"
+  },
+  "env": {
+   "CLAUDE_CODE_EFFORT_LEVEL": "low"
+  },
+  "agents": {
+   "probe": "---\nname: probe\ndescription: probe agent\nmodel: claude-haiku-5-5\neffort: high\n---\nMARKER-SUBAGENT you are a probe.\n"
+  },
+  "agent_input": {
+   "description": "probe",
+   "prompt": "go",
+   "subagent_type": "probe"
+  },
+  "name": "ag-high-vs-env-low"
+ },
+ {
+  "user": {
+   "model": "claude-fable-5-1",
+   "effortLevel": "low"
+  },
+  "agents": {
+   "probe": "---\nname: probe\ndescription: probe agent\nmodel: claude-haiku-5-5\n---\nMARKER-SUBAGENT you are a probe.\n"
+  },
+  "agent_input": {
+   "description": "probe",
+   "prompt": "go",
+   "subagent_type": "probe"
+  },
+  "name": "ag-noeffort-user-top-fable-main"
+ },
+ {
+  "user": {
+   "model": "claude-sonnet-5-5",
+   "modelSettings": {
+    "claude-sonnet-5-5": {
+     "effortLevel": "low"
+    }
+   }
+  },
+  "agents": {
+   "probe": "---\nname: probe\ndescription: probe agent\nmodel: claude-haiku-5-5\n---\nMARKER-SUBAGENT you are a probe.\n"
+  },
+  "agent_input": {
+   "description": "probe",
+   "prompt": "go",
+   "subagent_type": "probe"
+  },
+  "name": "ag-noeffort-user-ms-main"
+ },
+ {
+  "user": {
+   "model": "claude-sonnet-5-5"
+  },
+  "env": {
+   "CLAUDE_CODE_EFFORT_LEVEL": "low"
+  },
+  "agents": {
+   "probe": "---\nname: probe\ndescription: probe agent\nmodel: claude-fable-5-1\n---\nMARKER-SUBAGENT you are a probe.\n"
+  },
+  "agent_input": {
+   "description": "probe",
+   "prompt": "go",
+   "subagent_type": "probe"
+  },
+  "name": "ag-noeffort-env-low"
+ }
+]

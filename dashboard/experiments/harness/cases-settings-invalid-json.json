@@ -1,0 +1,62 @@
+[
+ {
+  "name": "i1-user-invalid-alone",
+  "raw_settings": {
+   "user": "{\"model\": \"claude-haiku-4-5\""
+  }
+ },
+ {
+  "name": "i2-project-invalid-user-valid",
+  "user": {
+   "model": "claude-sonnet-5-5"
+  },
+  "raw_settings": {
+   "project": "{\"model\": \"claude-haiku-4-5\""
+  }
+ },
+ {
+  "name": "i3-local-invalid-project-valid",
+  "project": {
+   "model": "claude-sonnet-5-5"
+  },
+  "raw_settings": {
+   "local": "{\"model\": \"claude-haiku-4-5\""
+  }
+ },
+ {
+  "name": "i4-user-trailing-comma",
+  "raw_settings": {
+   "user": "{\"model\": \"claude-haiku-4-5\",}"
+  }
+ },
+ {
+  "name": "i5-user-list-project-valid",
+  "project": {
+   "model": "claude-sonnet-5-5"
+  },
+  "raw_settings": {
+   "user": "[\"x\"]"
+  }
+ },
+ {
+  "name": "i6-user-invalid-project-valid",
+  "project": {
+   "model": "claude-sonnet-5-5"
+  },
+  "raw_settings": {
+   "user": "{\"model\": \"claude-haiku-4-5\""
+  }
+ },
+ {
+  "name": "i7-control-user-valid",
+  "user": {
+   "model": "claude-haiku-4-5"
+  }
+ },
+ {
+  "name": "i8-user-line-comment",
+  "raw_settings": {
+   "user": "// a note\n{\"model\": \"claude-haiku-4-5\"}\n"
+  }
+ }
+]

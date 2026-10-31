@@ -60,7 +60,7 @@ Every subagent's output lands in the context of whoever dispatched it. If the ma
 
 `designer` (owner decision, October 17, 2026) owns design judgment. It studies the project's design system, renders two or three directions at desktop and phone width, critiques them with the preloaded `design:*` skills and recommends one. It leads like deep-reasoner, so its own tokens go to judgment and the rest goes to scout, judge, fast-worker and the project's writer.
 
-- Who dispatches it: the main session. Subagents can't ask the owner questions (`AskUserQuestion` is removed from every subagent), so the owner picks a direction after the designer reports and before anything is built. Resume the same designer for the build to keep its study. A lead may dispatch it for a review-only pass against the picked direction only when the build departs from the designer's spec. When the designer handed over exact values, `judge` compares screenshots against the designer's clips instead.
+- Who dispatches it: the main session. Subagents can't ask the owner questions (`AskUserQuestion` is removed from every subagent), so the owner picks a direction after the designer reports and before anything is built. Resume the same designer for the build to keep its study. A lead may dispatch it for a review-only pass against the picked direction only when the build departs from the designer's spec. For new or changed UI, it also reviews deep-reasoner's plan before the build starts, dispatched with `effort: medium`. When the designer handed over exact values, `judge` compares screenshots against the designer's clips instead.
 - Nesting: main session, then designer (layer 1), then its workers (layer 2). Dispatched by a lead, the designer sits at layer 2 and its workers at layer 3, the default limit, where Claude Code withholds `Agent`. None of its workers delegates, so that still works.
 - Project settings come from the project CLAUDE.md "Design" section. Subagents load the full CLAUDE.md hierarchy (user rules included) but not the main session's auto memory, so design rules that live only in memory don't reach it. Defaults without a Design section: Chrome only, Figma off, no writes to the project, widths 1440 and 375. Fallbacks for each missing setting are in the agent file and in the README's "Designer settings" section, and `examples/CLAUDE-design-section.md` is a template for the section.
 - Figma stays reachable but off. The design plugin's Figma MCP tools reach every subagent; a prompt rule keeps them off unless the Design section says "Figma: on". A `disallowedTools` entry would block Figma in every project.
@@ -89,7 +89,11 @@ On Claude Code 2.1.302 (native install) the `haiku` alias resolved to Haiku 5.5 
 - targets an agent not found in the project's `.claude/agents/` or the user agents folder (`$CLAUDE_CONFIG_DIR/agents/` when that variable is set, else `~/.claude/agents/`), or
 - targets an agent whose `model` is missing or `inherit`.
 
-It blocks `general-purpose` always, and any found agent without a pinned `effort`, even when a model is passed, because an agent without `effort` runs at the session's effort (observed; the docs do not say).
+It blocks `general-purpose` always, and any found agent without a pinned `effort`, even when a model is passed.
+
+An agent without `effort` resolves effort for its own model, not the main session's. `CLAUDE_CODE_EFFORT_LEVEL`, `--effort` and any settings level that counts for its model still reach it. A level that counts only for the main model doesn't, so the agent can run at its own model's default instead. One example is a `modelSettings` entry for the main model.
+
+With nothing set, a Sonnet 5.5 session ran at medium and its agent on Fable 5.1 ran at high. The harness tested this on Claude Code 2.1.302 on October 29 (`dashboard/experiments/2026-10-29-agent-effort.json`), and the docs do not say.
 
 It lets through: plugin agents (names containing `:`), a dispatch with no agent name, any input it cannot parse, and any other dispatch that passes a `model` or targets an agent with a pinned model, provided the agent file, when one is found, also pins an `effort`.
 

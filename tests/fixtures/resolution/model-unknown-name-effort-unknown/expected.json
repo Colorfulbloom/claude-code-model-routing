@@ -1,0 +1,48 @@
+{
+  "fixture": "model-unknown-name-effort-unknown",
+  "rule_ids": [
+    "effort-default-model-unknown",
+    "agent-effort-default-model-unknown"
+  ],
+  "confidence": "assumed",
+  "source": "assumed: a model name outside the catalog has no known default effort",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "model",
+      "value": "claude-future-9",
+      "status": "in_effect",
+      "layer": "user",
+      "file": "config/settings.json",
+      "scope": "main"
+    },
+    {
+      "key": "effortLevel",
+      "value": null,
+      "status": "unknown",
+      "layer": "default",
+      "file": null,
+      "scope": "main",
+      "rule_id": "effort-default-model-unknown"
+    },
+    {
+      "key": "model",
+      "value": "claude-future-10",
+      "status": "in_effect",
+      "layer": "agent",
+      "file": "config/agents/probe.md",
+      "scope": "agent",
+      "agent": "probe"
+    },
+    {
+      "key": "effort",
+      "value": null,
+      "status": "unknown",
+      "layer": "default",
+      "file": null,
+      "scope": "agent",
+      "agent": "probe",
+      "rule_id": "agent-effort-default-model-unknown"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+ "records": [
+  {
+   "message_id": "msg_m1",
+   "ts_utc": "2026-11-02T07:10:00+00:00",
+   "model_raw": "claude-sonnet-4-5-20250929"
+  },
+  {
+   "message_id": "msg_m2",
+   "ts_utc": "2026-11-02T07:10:01+00:00",
+   "model_raw": "claude-opus-4-1[1m]"
+  }
+ ],
+ "notes": {
+  "malformed_lines": 0,
+  "synthetic_rows": 0,
+  "no_id_rows": 0,
+  "ignored_files": 0,
+  "skipped_old_files": 0
+ },
+ "oldest_seen": "2026-11-02T07:10:00+00:00"
+}

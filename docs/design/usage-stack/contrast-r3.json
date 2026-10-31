@@ -1,0 +1,398 @@
+[
+[
+"light",
+"text",
+"KPI values, table cells, ring centre, mini ring number",
+"#1b1f24",
+"#ffffff",
+16.56,
+"pass"
+],
+[
+"light",
+"text",
+"KPI labels, table headers, est. line, axis labels 10px, deltas",
+"#555d67",
+"#ffffff",
+6.67,
+"pass"
+],
+[
+"light",
+"text",
+"footer",
+"#555d67",
+"#f5f6f8",
+6.17,
+"pass"
+],
+[
+"light",
+"text",
+"delta chip number on surface-2",
+"#1b1f24",
+"#eceef1",
+14.25,
+"pass"
+],
+[
+"light",
+"text",
+"Open the trail, See all, at-go links",
+"#1d5bb8",
+"#ffffff",
+6.48,
+"pass"
+],
+[
+"light",
+"text",
+"Matches pin, Matches pill",
+"#1f6a3a",
+"#e4f1e8",
+5.67,
+"pass"
+],
+[
+"light",
+"text",
+"Pin overridden pill",
+"#8a4b00",
+"#f8ecd9",
+5.83,
+"pass"
+],
+[
+"light",
+"text",
+"Differs from pin, Differs pill, Missing pill",
+"#a3262a",
+"#f9e5e5",
+6.06,
+"pass"
+],
+[
+"light",
+"text",
+"search placeholder, 13px",
+"#555d67",
+"#ffffff",
+6.67,
+"pass"
+],
+[
+"light",
+"text",
+"search typed text",
+"#1b1f24",
+"#ffffff",
+16.56,
+"pass"
+],
+[
+"light",
+"graphic",
+"Opus 5.5 segment",
+"#2a78d6",
+"#ffffff",
+4.42,
+"pass"
+],
+[
+"light",
+"graphic",
+"Sonnet 5.5 segment",
+"#04a873",
+"#ffffff",
+3.06,
+"pass"
+],
+[
+"light",
+"graphic",
+"Haiku 5.5 segment",
+"#c78600",
+"#ffffff",
+3.07,
+"pass"
+],
+[
+"light",
+"graphic",
+"Fable 5.1 segment",
+"#dc7099",
+"#ffffff",
+3.08,
+"pass"
+],
+[
+"light",
+"graphic",
+"cache read segment",
+"#b7d3f6",
+"#ffffff",
+1.54,
+"below 3:1"
+],
+[
+"light",
+"graphic",
+"input segment",
+"#6da7ec",
+"#ffffff",
+2.5,
+"below 3:1"
+],
+[
+"light",
+"graphic",
+"cache write segment",
+"#2a78d6",
+"#ffffff",
+4.42,
+"pass"
+],
+[
+"light",
+"graphic",
+"output segment",
+"#104281",
+"#ffffff",
+9.91,
+"pass"
+],
+[
+"light",
+"graphic",
+"single-series bar, mini arc",
+"#1d5bb8",
+"#ffffff",
+6.48,
+"pass"
+],
+[
+"light",
+"graphic",
+"bar on track",
+"#1d5bb8",
+"#eceef1",
+5.57,
+"pass"
+],
+[
+"light",
+"graphic",
+"table header rule, search field border",
+"#80888f",
+"#ffffff",
+3.6,
+"pass"
+],
+[
+"light",
+"graphic",
+"gridline",
+"#d3d7dc",
+"#ffffff",
+1.45,
+"below 3:1"
+],
+[
+"dark",
+"text",
+"KPI values, table cells, ring centre, mini ring number",
+"#e8eaed",
+"#111417",
+15.33,
+"pass"
+],
+[
+"dark",
+"text",
+"KPI labels, table headers, est. line, axis labels 10px, deltas",
+"#a4abb4",
+"#111417",
+7.98,
+"pass"
+],
+[
+"dark",
+"text",
+"footer",
+"#a4abb4",
+"#1a1e23",
+7.23,
+"pass"
+],
+[
+"dark",
+"text",
+"delta chip number on surface-2",
+"#e8eaed",
+"#242930",
+12.14,
+"pass"
+],
+[
+"dark",
+"text",
+"Open the trail, See all, at-go links",
+"#86b4ff",
+"#111417",
+8.79,
+"pass"
+],
+[
+"dark",
+"text",
+"Matches pin, Matches pill",
+"#8fd3a4",
+"#15301f",
+8.15,
+"pass"
+],
+[
+"dark",
+"text",
+"Pin overridden pill",
+"#f0b56b",
+"#3a2a12",
+7.58,
+"pass"
+],
+[
+"dark",
+"text",
+"Differs from pin, Differs pill, Missing pill",
+"#f09a9c",
+"#3d1c1d",
+7.1,
+"pass"
+],
+[
+"dark",
+"text",
+"search placeholder, 13px",
+"#a4abb4",
+"#111417",
+7.98,
+"pass"
+],
+[
+"dark",
+"text",
+"search typed text",
+"#e8eaed",
+"#111417",
+15.33,
+"pass"
+],
+[
+"dark",
+"graphic",
+"Opus 5.5 segment",
+"#3987e5",
+"#111417",
+5.08,
+"pass"
+],
+[
+"dark",
+"graphic",
+"Sonnet 5.5 segment",
+"#199e70",
+"#111417",
+5.43,
+"pass"
+],
+[
+"dark",
+"graphic",
+"Haiku 5.5 segment",
+"#c98500",
+"#111417",
+6.02,
+"pass"
+],
+[
+"dark",
+"graphic",
+"Fable 5.1 segment",
+"#d55181",
+"#111417",
+4.68,
+"pass"
+],
+[
+"dark",
+"graphic",
+"cache read segment",
+"#256abf",
+"#111417",
+3.43,
+"pass"
+],
+[
+"dark",
+"graphic",
+"input segment",
+"#3987e5",
+"#111417",
+5.08,
+"pass"
+],
+[
+"dark",
+"graphic",
+"cache write segment",
+"#86b6ef",
+"#111417",
+8.76,
+"pass"
+],
+[
+"dark",
+"graphic",
+"output segment",
+"#cde2fb",
+"#111417",
+13.96,
+"pass"
+],
+[
+"dark",
+"graphic",
+"single-series bar, mini arc",
+"#86b4ff",
+"#111417",
+8.79,
+"pass"
+],
+[
+"dark",
+"graphic",
+"bar on track",
+"#86b4ff",
+"#242930",
+6.96,
+"pass"
+],
+[
+"dark",
+"graphic",
+"table header rule, search field border",
+"#6a737d",
+"#111417",
+3.84,
+"pass"
+],
+[
+"dark",
+"graphic",
+"gridline",
+"#2f353d",
+"#111417",
+1.49,
+"below 3:1"
+]
+]

@@ -1,2 +1,10 @@
 __pycache__/
 .DS_Store
+
+# Test fixtures need their local settings layer, which a global ignore may drop
+!tests/fixtures/**/.claude/settings.local.json
+!docs/design/usage-stack/demo-set/**/.claude/settings.local.json
+# Captures regenerate from the design tools
+docs/design/usage-stack/**/shots/
+# Worktrees for agents and tracks
+.claude/worktrees/

@@ -1,0 +1,20 @@
+{
+  "fixture": "effort-user-top-level-fable-5-1",
+  "rule_ids": [
+    "effort-level-layer-order"
+  ],
+  "confidence": "tested",
+  "source": "dashboard/experiments/2026-10-29-effort-user-key-by-model.json#u-top-low-claude-fable-5-1",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "effortLevel",
+      "value": "low",
+      "status": "in_effect",
+      "layer": "user",
+      "file": "config/settings.json",
+      "scope": "main",
+      "model": "claude-fable-5-1"
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{"page": "models", "routes": [
+  {"hash": "#/models", "texts": [
+    "Models", "Estimated cost by model", "Tokens by model", "Requests", "Used by", "claude-fable-5-1", "Fable 5.1"
+  ]},
+  {"hash": "#/models?project=driftwood", "texts": [
+    "Not priced",
+    "The dashboard has no list price for claude-opus-6-preview, so totals leave it out."
+  ]}
+]}

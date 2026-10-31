@@ -29,12 +29,14 @@
     "testing",
     "failed-briefs",
     "dead-ends",
-    "token-tallies"
+    "token-tallies",
+    "dashboard"
   ],
   "id_prefix": {
     "testing": "T",
     "failed-briefs": "B",
-    "dead-ends": "D"
+    "dead-ends": "D",
+    "dashboard": "W"
   },
   "slices": {
     "deep-reasoner": [
@@ -42,23 +44,28 @@
     ],
     "scout": [
       "testing*",
-      "dead-ends"
+      "dead-ends",
+      "dashboard"
     ],
     "fast-worker": [
       "testing*",
-      "dead-ends"
+      "dead-ends",
+      "dashboard"
     ],
     "verifier": [
       "testing*",
       "failed-briefs",
-      "dead-ends"
+      "dead-ends",
+      "dashboard"
     ],
     "judge": [
-      "dead-ends"
+      "dead-ends",
+      "dashboard"
     ],
     "designer": [
       "failed-briefs",
-      "token-tallies"
+      "token-tallies",
+      "dashboard"
     ],
     "*": []
   }

@@ -1,0 +1,16 @@
+[
+ {"name": "m1-project-over-user", "user": {"model": "claude-opus-5-5"}, "project": {"model": "claude-sonnet-5-5"}},
+ {"name": "m2-local-over-project", "user": {"model": "claude-opus-5-5"}, "project": {"model": "claude-sonnet-5-5"}, "local": {"model": "claude-haiku-5-5"}},
+ {"name": "m3-cli-settings-over-local", "user": {"model": "claude-opus-5-5"}, "project": {"model": "claude-sonnet-5-5"}, "local": {"model": "claude-haiku-5-5"}, "cli_settings": {"model": "claude-fable-5-1"}},
+ {"name": "m4-shell-env-over-cli-settings", "local": {"model": "claude-haiku-5-5"}, "cli_settings": {"model": "claude-fable-5-1"}, "env": {"ANTHROPIC_MODEL": "claude-sonnet-5-5"}},
+ {"name": "m5-model-flag-over-shell-env", "cli_settings": {"model": "claude-fable-5-1"}, "env": {"ANTHROPIC_MODEL": "claude-sonnet-5-5"}, "args": ["--model", "claude-haiku-5-5"]},
+ {"name": "m6-user-env-block-vs-project-model-key", "user": {"env": {"ANTHROPIC_MODEL": "claude-haiku-5-5"}}, "project": {"model": "claude-sonnet-5-5"}},
+ {"name": "m7-shell-env-vs-user-env-block", "user": {"env": {"ANTHROPIC_MODEL": "claude-haiku-5-5"}}, "env": {"ANTHROPIC_MODEL": "claude-sonnet-5-5"}},
+ {"name": "m8-project-env-block-vs-user-env-block", "user": {"env": {"ANTHROPIC_MODEL": "claude-haiku-5-5"}}, "project": {"env": {"ANTHROPIC_MODEL": "claude-sonnet-5-5"}}},
+ {"name": "m9-local-env-block-vs-project-env-block", "project": {"env": {"ANTHROPIC_MODEL": "claude-sonnet-5-5"}}, "local": {"env": {"ANTHROPIC_MODEL": "claude-fable-5-1"}}},
+ {"name": "e1-local-over-project", "user": {"model": "claude-sonnet-5-5"}, "project": {"effortLevel": "high"}, "local": {"effortLevel": "low"}},
+ {"name": "e2-cli-settings-over-local", "user": {"model": "claude-sonnet-5-5"}, "project": {"effortLevel": "high"}, "local": {"effortLevel": "low"}, "cli_settings": {"effortLevel": "xhigh"}},
+ {"name": "e3-effort-flag-over-cli-settings", "user": {"model": "claude-sonnet-5-5"}, "cli_settings": {"effortLevel": "xhigh"}, "args": ["--effort", "low"]},
+ {"name": "e4-env-over-effort-flag", "user": {"model": "claude-sonnet-5-5"}, "cli_settings": {"effortLevel": "xhigh"}, "args": ["--effort", "low"], "env": {"CLAUDE_CODE_EFFORT_LEVEL": "high"}},
+ {"name": "e5-user-env-block-effort-vs-project-key", "user": {"model": "claude-sonnet-5-5", "env": {"CLAUDE_CODE_EFFORT_LEVEL": "low"}}, "project": {"effortLevel": "xhigh"}}
+]

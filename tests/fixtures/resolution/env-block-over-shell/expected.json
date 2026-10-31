@@ -1,0 +1,36 @@
+{
+  "fixture": "env-block-over-shell",
+  "rule_ids": [
+    "env-block-order",
+    "model-main-session-order"
+  ],
+  "confidence": "tested",
+  "source": "dashboard/experiments/2026-10-29-env-block-order.json#m7",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "env.ANTHROPIC_MODEL",
+      "value": "claude-haiku-5-5",
+      "status": "in_effect",
+      "layer": "user",
+      "file": "config/settings.json",
+      "scope": "main"
+    },
+    {
+      "key": "env.ANTHROPIC_MODEL",
+      "value": "claude-sonnet-5-5",
+      "status": "overridden",
+      "layer": "env",
+      "file": "session.json:shell_env",
+      "scope": "main"
+    },
+    {
+      "key": "model",
+      "value": "claude-haiku-5-5",
+      "status": "in_effect",
+      "layer": "env",
+      "file": "config/settings.json",
+      "scope": "main"
+    }
+  ]
+}

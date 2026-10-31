@@ -1,0 +1,147 @@
+{
+ "date": "2026-10-29",
+ "claude_version": "2.1.302",
+ "ran": "CLAUDE_CODE_EFFORT_LEVEL auto and unset with a project effortLevel high (env-auto, env-unset, env-auto-status); effortLevel auto in project settings (p-top-auto) and in local settings over project low (inv-local-auto-over-project-low); --effort auto over project high (flag-auto).",
+ "result": "auto and unset in the variable sent no effort level, and the project high didn't apply. /effort status still printed \"Effort level: auto (currently high)\", the guessed level that v2.1.304 fixed. auto in a settings file was skipped: the next file decided, or the default when none did. --effort auto printed \"Warning: Unknown --effort value 'auto' \u2014 ignoring it and using the default effort.\" and the project high applied.",
+ "method": "dashboard/experiments/harness: claude -p in a throwaway HOME, CLAUDE_CONFIG_DIR and project under $TMPDIR, a fake key and ANTHROPIC_BASE_URL on 127.0.0.1. fakeapi.py logs the model, output_config.effort and cache_control ttl of each request. It answers 400, or a short text reply when the case sets text_reply; for agent cases it first streams one Agent tool call. Cases with prompt \"/effort status\" record the command's output, and runcase.py reads the effort fields from the throwaway transcripts before deleting them. The harness only allows requests to fakeapi.py on 127.0.0.1. Managed settings were not tested, because writing them needs admin rights.",
+ "results_file": "harness/results-2026-10-29-effort.jsonl",
+ "cases": {
+  "env-auto": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    null,
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "env-unset": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    null,
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "env-auto-status": [],
+  "p-top-auto": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "inv-local-auto-over-project-low": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "low",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "flag-auto": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "high",
+    [
+     "5m(default)"
+    ]
+   ]
+  ]
+ },
+ "transcripts": {
+  "env-auto": [
+   [
+    "main",
+    "api-request",
+    null,
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    null
+   ]
+  ],
+  "env-unset": [
+   [
+    "main",
+    "api-request",
+    null,
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    null
+   ]
+  ],
+  "p-top-auto": [
+   [
+    "main",
+    "api-request",
+    "medium",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "medium"
+   ]
+  ],
+  "inv-local-auto-over-project-low": [
+   [
+    "main",
+    "api-request",
+    "low",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "low"
+   ]
+  ],
+  "flag-auto": [
+   [
+    "main",
+    "api-request",
+    "high",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "high"
+   ]
+  ]
+ },
+ "output": {
+  "env-auto-status": [
+   "Effort level: auto (currently high)"
+  ],
+  "flag-auto (stderr)": "Warning: Unknown --effort value 'auto' \u2014 ignoring it and using the default effort. Valid values: low, medium, high, xhigh, max."
+ },
+ "case_files": {
+  "env-auto": "harness/cases-effort-sources.json",
+  "env-unset": "harness/cases-effort-sources.json",
+  "env-auto-status": "harness/cases-effort-sources.json",
+  "p-top-auto": "harness/cases-effort-sources.json",
+  "inv-local-auto-over-project-low": "harness/cases-effort-lowered-invalid.json",
+  "flag-auto": "harness/cases-effort-sources.json"
+ }
+}

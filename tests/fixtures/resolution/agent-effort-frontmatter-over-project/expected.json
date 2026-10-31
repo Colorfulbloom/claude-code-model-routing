@@ -1,0 +1,33 @@
+{
+  "fixture": "agent-effort-frontmatter-over-project",
+  "rule_ids": [
+    "agent-effort-order"
+  ],
+  "confidence": "tested",
+  "source": "dashboard/experiments/2026-10-29-agent-effort.json#ag-high-vs-proj-low",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "effort",
+      "value": "high",
+      "status": "in_effect",
+      "layer": "agent",
+      "file": "config/agents/probe.md",
+      "scope": "agent",
+      "agent": "probe",
+      "model": "claude-haiku-5-5",
+      "rule_id": "agent-effort-order"
+    },
+    {
+      "key": "effort",
+      "value": "low",
+      "status": "overridden",
+      "layer": "project",
+      "file": "project/.claude/settings.json",
+      "scope": "agent",
+      "agent": "probe",
+      "model": "claude-haiku-5-5",
+      "rule_id": "agent-effort-order"
+    }
+  ]
+}
