@@ -8,8 +8,11 @@
 // because 404 is the normal answer for a route the server does not have yet.
 //
 // <html> gets data-rendered="1" when boot finishes, "error" if /api/projects failed ("0" if boot itself failed)
-// and data-ox="1" when the page scrolls sideways, for the end-to-end checks. A retry that recovers
-// /api/projects sets data-rendered back to "1".
+// and data-ox="1" when the page scrolls sideways, for the end-to-end checks. Boot waits for /api/projects,
+// /api/settings, rules and files, and never for /api/usage, so a held-back usage payload leaves the
+// Settings pages working. A retry that recovers /api/projects sets data-rendered back to "1".
+// data-usage="1" follows the first /api/usage answer for the current project, once it is stored and drawn,
+// whatever its status. It never resets, and a page that needs usage numbers waits for it.
 
 import { createApi } from "./api.js";
 import { setStrings, t, DEFAULT_RANGE } from "./format.js";
@@ -52,6 +55,9 @@ const state = {
   settings: new Map(),
   rules: null,
   files: null,
+  transcriptsDir: null,
+  configFile: null,
+  reader: null,
 };
 const loading = new Map();
 let sections = {};
@@ -70,6 +76,8 @@ function go(name, params, patch) {
 }
 
 // What a page module receives. data.* is null until that payload arrives, then { ok, status, data }.
+// transcriptsDir and configFile are the display forms of the transcripts folder and routing-dashboard.json
+// (a string, or null), and reader is the reader's state ({ readable, warm, files, skipped }, or null), both from /api/projects.
 function context() {
   return {
     route: { name: state.route.name, params: state.route.params },
@@ -77,13 +85,17 @@ function context() {
     projects: state.projects,
     range: state.range,
     version: state.version,
+    transcriptsDir: state.transcriptsDir,
+    configFile: state.configFile,
+    reader: state.reader,
     data: {
       usage: state.usage.get(state.project) || null,
       settings: state.settings.get(state.project) || null,
       rules: state.rules,
       files: state.files,
     },
-    hashFor: (name, params) => hashFor(name, params, state.route.query),
+    // patch is optional and wins over the current query, as in a link from All projects to one project.
+    hashFor: (name, params, patch) => hashFor(name, params, Object.assign({}, state.route.query, patch)),
     setRange: (range) => go(state.route.name, state.route.params, { range }),
   };
 }
@@ -130,7 +142,10 @@ function loadProject(key) {
   const done = Promise.all([
     api.usage(key).then((res) => {
       state.usage.set(key, res);
-      if (key === state.project) renderPages(USAGE_PAGES);
+      if (key === state.project) {
+        renderPages(USAGE_PAGES);
+        root.setAttribute("data-usage", "1");
+      }
     }),
     api.settings(key).then((res) => {
       state.settings.set(key, res);
@@ -162,7 +177,11 @@ function readProjects(res) {
   const list = Array.isArray(body.projects) ? body.projects : [];
   state.projects = list.filter((p) => p && typeof p.key === "string" && typeof p.name === "string");
   state.current = typeof body.current === "string" ? body.current : null;
-  // Version, time zone and reader arrive in later tickets, so all three are optional.
+  // The transcripts folder and the reader state come with the usage routes. The version and the time zone
+  // arrive in later tickets, so every one of these is optional.
+  state.transcriptsDir = typeof body.transcripts_dir_display === "string" ? body.transcripts_dir_display : null;
+  state.configFile = typeof body.config_file_display === "string" ? body.config_file_display : null;
+  state.reader = body.reader && typeof body.reader === "object" ? body.reader : null;
   const version = body.version;
   state.version = typeof version === "string" ? version : (version && version.installed) || null;
 }
@@ -259,9 +278,12 @@ async function boot() {
   handle(parseHash(window.location.hash));
   started = true;
 
-  await Promise.all([loadProject(state.project), loadShared()]);
+  // handle() has already asked for the project's payloads. api.settings returns the same kept promise, so
+  // this waits on settings, rules and files only. It must never wait on /api/usage: a held-back usage
+  // payload leaves the Settings pages working, and data-usage tells a check when the usage pages are drawn.
+  await Promise.all([api.settings(state.project), loadShared()]);
   measure();
-  // Only /api/projects decides this. The other routes 404 today, and a held-back one must not block it.
+  // Only /api/projects decides this. A held-back /api/usage must not block it.
   root.setAttribute("data-rendered", projectsOk ? "1" : "error");
 }
 

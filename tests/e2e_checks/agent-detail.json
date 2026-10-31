@@ -1,4 +1,8 @@
 {"page": "agent-detail", "routes": [
-  {"hash": "#/agents/builder", "texts": ["builder"]},
-  {"hash": "#/agents/@main", "texts": ["Main session"]}
+  {"hash": "#/agents/builder", "texts": [
+    "builder", "Did it run as pinned?", "Pin overridden", "Pinned to Fable 5.1 at xhigh.", "Open the trail",
+    "Runs over time", "Tokens and estimated cost", "Recent runs"
+  ]},
+  {"hash": "#/agents/@main", "texts": ["Main session", "Matches pin", "Runs at a lower level than it's set to"]},
+  {"hash": "#/agents/@main?project=driftwood", "texts": ["Main session", "Recent runs", "Not priced"]}
 ]}

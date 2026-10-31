@@ -58,6 +58,11 @@ export function fmtTokens(n) {
   return Math.trunc(n).toLocaleString("en-US");
 }
 
+// An axis label: fmtTokens without the ".0" before the unit, so 5000000 reads "5M" and not "5.0M".
+export function fmtTick(n) {
+  return fmtTokens(n).replace(/\.0(?=[MB]$)/, "");
+}
+
 // "$289.40", or "Not priced" when there is no cost, or the cost is zero because nothing was priced.
 export function fmtCost(cost, unpriced) {
   if (cost === null || cost === undefined || (cost === 0 && unpriced)) return t("not_priced");
@@ -68,6 +73,11 @@ export function pct(x) {
   if (x === null || x === undefined) return "0%";
   const whole = Math.round(100 * x);
   return whole === 0 && x > 0 ? "<1%" : whole + "%";
+}
+
+// A share from the server (usage.py _shares): its whole percent, or "<1%" when lt1 is set.
+export function shareText(share, lt1) {
+  return lt1 ? "<1%" : (share || 0) + "%";
 }
 
 // Largest-remainder rounding so the shares add to 100. A share under half a percent that is not zero

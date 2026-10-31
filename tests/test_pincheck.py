@@ -119,10 +119,40 @@ class TestStatesOneSetting(unittest.TestCase):
         rows = [agent_file(), entry("effort", "high", "default")]
         self.assertEqual("differs", check(rows, runs_of(efforts=["low", "low"]))["state"])
 
-    def test_a_lost_pin_with_runs_that_equal_the_pin_differs(self):
+    def test_a_lost_pin_with_runs_that_equal_the_pin_is_overridden(self):
         rows = [agent_file(), entry("effort", "high", "ignored"),
                 entry("effort", "xhigh", layer="env", file="s.json")]
-        self.assertEqual("differs", check(rows, runs_of(efforts=["high"]))["state"])
+        got = check(rows, runs_of(efforts=["high"]))
+        self.assertEqual("overridden", got["state"])
+        self.assertTrue(got["effort"]["runs_match_pin"])
+
+    def test_a_won_and_lowered_pin_with_every_run_at_the_pin_matches(self):
+        rows = [agent_file(), entry("effort", "xhigh", "lowered", becomes="high")]
+        got = check(rows, runs_of(efforts=["xhigh", "xhigh"]))
+        self.assertEqual("matches", got["state"])
+        self.assertTrue(got["effort"]["runs_match_pin"])
+
+    def test_a_won_and_lowered_pin_with_runs_at_what_it_becomes_stays_matches_lowered(self):
+        rows = [agent_file(), entry("effort", "xhigh", "lowered", becomes="high")]
+        got = check(rows, runs_of(efforts=["high", "high"]))
+        self.assertEqual("matches_lowered", got["state"])
+        self.assertFalse(got["effort"]["runs_match_pin"])
+
+    def test_runs_match_pin_is_false_in_every_other_case(self):
+        for kind in ("model", "effort"):
+            for state in (pincheck.MATCHES, pincheck.MATCHES_LOWERED, pincheck.CANNOT_CHECK,
+                          pincheck.DIFFERS, pincheck.MIXED):
+                rows, values = setting_case(kind, state)
+                runs = runs_of(values if kind == "model" else (), values if kind == "effort" else ())
+                got = check([agent_file()] + rows, runs)
+                self.assertFalse(got[kind]["runs_match_pin"], (kind, state))
+        rows, values = setting_case("effort", pincheck.OVERRIDDEN)
+        self.assertFalse(check([agent_file()] + rows, runs_of(efforts=values))["effort"]["runs_match_pin"])
+
+    def test_pinned_id_is_the_catalog_id_of_an_alias(self):
+        got = check([agent_file(), entry("model", "opus"), entry("effort", "high")], runs_of())
+        self.assertEqual(OPUS, got["model"]["pinned"]["id"])
+        self.assertEqual("high", got["effort"]["pinned"]["id"])
 
     def test_lost_pin_statuses_all_give_overridden(self):
         for status in ("overridden", "ignored", "invalid"):
@@ -333,6 +363,14 @@ class TestMismatchedRuns(unittest.TestCase):
         self.assertEqual("mixed", got["state"])
         self.assertEqual((1, 2), (got["mismatched_runs"], got["total_runs"]))
 
+    def test_runs_at_a_lost_pin_do_not_count_against_it(self):
+        rows = [agent_file(), entry("effort", "high", "overridden"),
+                entry("effort", "xhigh", layer="env", file="s.json")]
+        runs = [run(OPUS, "high", "r%d" % i) for i in range(3)] + [run(OPUS, "xhigh", "w1"), run(OPUS, "xhigh", "w2")]
+        got = check(rows, runs)
+        self.assertEqual("mixed", got["state"])
+        self.assertEqual((2, 5), (got["mismatched_runs"], got["total_runs"]))
+
     def test_n_and_m_are_filled_for_every_state(self):
         for state in pincheck.STATES:
             rows, runs = pair_case(state, state)
@@ -361,7 +399,7 @@ class TestSettingData(unittest.TestCase):
                 entry("effort", "xhigh", "in_effect", layer="env", file="s.json", line=3,
                       via="CLAUDE_CODE_EFFORT_LEVEL", reason="why", rule_id="r-1")]
         got = check(rows, runs_of(efforts=["xhigh"]))["effort"]
-        self.assertEqual({"value": "high", "file": "agents/a.md", "line": 5, "status": "overridden"}, got["pinned"])
+        self.assertEqual({"value": "high", "file": "agents/a.md", "line": 5, "status": "overridden", "id": "high"}, got["pinned"])
         self.assertEqual({"value": "xhigh", "status": "in_effect", "becomes": None, "key": "effort",
                           "file": "s.json", "line": 3, "layer": "env", "via": "CLAUDE_CODE_EFFORT_LEVEL",
                           "reason": "why", "rule_id": "r-1"}, got["expected"])

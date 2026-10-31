@@ -42,7 +42,7 @@ UTC = datetime.timezone.utc
 NAMES = ["Tidewater reporting", "Driftwood", "Harbor Light", "Saltmarsh", "Lantern"]
 TIDEWATER = "Tidewater reporting"
 RANGES = {"today", "7d", "30d"}
-PAYLOAD_KEYS = {"project", "generated_at", "no_usage", "views", "prices"}
+PAYLOAD_KEYS = {"project", "generated_at", "no_usage", "views", "model_names", "prices"}
 TOTALS = ("input", "output", "cache_read", "cache_write_5m", "cache_write_1h", "thinking",
           "requests", "runs", "sessions", "unpriced_requests")
 WAIT = 30
@@ -321,12 +321,15 @@ class Routes(unittest.TestCase):
         self.assertEqual(shown, demo_now)
         self.assertEqual(self.listing["now"], "2026-10-30T18:00:00-04:00")
         self.assertEqual(self.listing["transcripts_dir_display"], "config/projects")
+        self.assertEqual(self.listing["config_file_display"], "config/routing-dashboard.json")
+        self.assertFalse(os.path.isabs(self.listing["config_file_display"]))
         self.assertFalse(os.path.isabs(self.listing["transcripts_dir_display"]))
         self.assertNotIn(self.root, json.dumps(self.listing))
 
     def test_projects_reports_the_reader(self):
         reader = self.listing["reader"]
-        self.assertEqual(set(reader), {"warm", "files", "skipped"})
+        self.assertEqual(set(reader), {"readable", "warm", "files", "skipped"})
+        self.assertIs(reader["readable"], True)
         self.assertIsInstance(reader["warm"], bool)
         # The usage calls in setUpClass have ended, so the reader has read.
         _s, after = self.get(self.srv, "/api/projects")
@@ -349,6 +352,17 @@ class Routes(unittest.TestCase):
         self.assertEqual(self.single["generated_at"], self.listing["now"])
         self.assertIsNone(self.single["views"]["30d"]["by_project"])
 
+    def test_model_names_map_every_catalog_id_to_its_display_name(self):
+        want = {m["id"]: m.get("display_name") or m["id"] for m in RULES["models"]}
+        for payload in (self.single, self.everything):
+            self.assertEqual(payload["model_names"], want)
+        self.assertEqual(self.single["model_names"]["claude-opus-5-5"], "Opus 5.5")
+        # every model an agent ran with can be named from the map
+        for view in self.single["views"].values():
+            for agent in view["by_agent"]:
+                for row in agent["ran_with"]:
+                    self.assertIn(row["model"], self.single["model_names"])
+
     def test_all_projects_has_the_whole_shape(self):
         self.assertEqual(set(self.everything), PAYLOAD_KEYS)
         self.assertEqual(self.everything["project"], "all")
@@ -357,6 +371,20 @@ class Routes(unittest.TestCase):
         self.assertTrue(by_project)
         self.assertGreater(self.everything["views"]["30d"]["totals"]["requests"],
                            self.single["views"]["30d"]["totals"]["requests"])
+
+    def test_no_usage_body_holds_the_fixture_path_or_a_transcript_folder_name(self):
+        folders = sorted(os.listdir(os.path.join(self.out, "config", "projects")))
+        self.assertTrue(folders)
+        for scope in (self.keys[TIDEWATER], "all"):
+            _status, _heads, body = self.srv.request("GET", "/api/usage?project=" + scope)
+            text = body.decode("utf-8")
+            self.assertGreater(len(text), 1000, scope)
+            self.assertNotIn(self.out, text, scope)
+            self.assertNotIn(os.path.realpath(self.out), text, scope)
+            self.assertNotIn(self.root, text, scope)
+            for name in folders:
+                self.assertTrue(name.startswith("-"), name)
+                self.assertNotIn(name, text, scope + " " + name)
 
     def test_prices_carry_the_date_and_source(self):
         want = prices_mod.load_prices()
@@ -469,6 +497,33 @@ class InProcess(unittest.TestCase):
         self.assertEqual(status, 200)
         return payload["views"][rng]["totals"]
 
+    # reader.readable
+
+    def test_a_missing_transcripts_folder_is_not_readable(self):
+        ctx = dataclasses.replace(make_ctx(self.out), config_dir=os.path.join(self.root, "no-such-config"))
+        _status, payload = api_usage.api_projects(ctx, {})
+        self.assertIs(payload["reader"]["readable"], False)
+
+    def test_a_file_in_place_of_the_transcripts_folder_is_not_readable(self):
+        config = os.path.join(self.root, "file-config")
+        os.makedirs(config)
+        with open(os.path.join(config, "projects"), "w") as handle:
+            handle.write("not a folder")
+        ctx = dataclasses.replace(make_ctx(self.out), config_dir=config)
+        self.assertIs(api_usage.api_projects(ctx, {})[1]["reader"]["readable"], False)
+
+    @unittest.skipIf(hasattr(os, "geteuid") and os.geteuid() == 0, "root can enter a folder with mode 000")
+    def test_a_folder_without_access_is_not_readable(self):
+        config = os.path.join(self.root, "locked-config")
+        folder = os.path.join(config, "projects")
+        os.makedirs(folder)
+        os.chmod(folder, 0)
+        self.addCleanup(os.chmod, folder, 0o755)
+        if os.access(folder, os.R_OK):
+            self.skipTest("this filesystem ignores folder modes")
+        ctx = dataclasses.replace(make_ctx(self.out), config_dir=config)
+        self.assertIs(api_usage.api_projects(ctx, {})[1]["reader"]["readable"], False)
+
     # lock and warm
 
     def test_a_warm_and_a_usage_call_parse_each_file_once(self):
@@ -542,7 +597,7 @@ class InProcess(unittest.TestCase):
             self.assertFalse(any(t.is_alive() for t in threads), "a route waited on the lock")
             self.assertEqual(done["projects"][0], 200)
             self.assertEqual(done["projects"][1]["reader"],
-                             {"warm": False, "files": None, "skipped": None})
+                             {"readable": True, "warm": False, "files": None, "skipped": None})
             self.assertEqual(done["settings"][0], 200)
             waiting = threading.Thread(target=run, args=("usage", api_usage.usage),
                                        kwargs={"project": self.keys[TIDEWATER]})
@@ -678,6 +733,84 @@ class InProcess(unittest.TestCase):
             call(ctx, api_usage.usage, project="all")
             self.assertEqual(built.call_count, 2)
 
+    def test_a_deleted_transcript_file_rebuilds(self):
+        copy = copy_set(self.root, self.out, "rebuild-delete")
+        ctx = make_ctx(copy)
+        with mock.patch.object(usage, "build_views", wraps=usage.build_views) as built:
+            before = self.totals(ctx)
+            self.assertEqual(self.totals(ctx), before)
+            self.assertEqual(built.call_count, 1, "kept while nothing changed")
+            os.remove(main_transcripts(copy, self.out)[-1])
+            after = self.totals(ctx)
+            self.assertEqual(built.call_count, 2)
+        self.assertLess(after["requests"], before["requests"])
+
+    def test_a_meta_file_change_rebuilds(self):
+        copy = copy_set(self.root, self.out, "rebuild-meta")
+        ctx = make_ctx(copy)
+        metas = [os.path.join(base, name) for base, _dirs, files in os.walk(os.path.join(copy, "config", "projects"))
+                 for name in sorted(files) if name.endswith(".meta.json")]
+        self.assertTrue(metas)
+        # The meta file of the newest agent transcript, so the file is well inside the horizon.
+        metas = [m for m in metas if os.path.isfile(m[:-len(".meta.json")] + ".jsonl")]
+        metas.sort(key=lambda m: (os.path.getmtime(m[:-len(".meta.json")] + ".jsonl"), m), reverse=True)
+
+        def agents():
+            _s, payload = call(ctx, api_usage.usage, project="all")
+            return set(a["route_key"] for a in payload["views"]["30d"]["by_agent"])
+
+        with mock.patch.object(usage, "build_views", wraps=usage.build_views) as built:
+            before = agents()
+            self.assertEqual(agents(), before)
+            self.assertEqual(built.call_count, 1, "kept while nothing changed")
+            self.assertNotIn("renamed-by-meta-edit", before)
+            with open(metas[0], encoding="utf-8") as fh:
+                meta = json.load(fh)
+            old_type = meta["agentType"]
+            meta["agentType"] = "renamed-by-meta-edit"
+            ts.write_json(metas[0], meta)
+            after = agents()
+            self.assertEqual(built.call_count, 2)
+        self.assertIn("renamed-by-meta-edit", after)
+        self.assertIn(old_type, before)
+
+    def test_a_file_ageing_past_the_horizon_rebuilds_inside_the_age_limit(self):
+        copy = copy_set(self.root, self.out, "rebuild-horizon")
+        ctx = make_ctx(copy)
+        step = datetime.timedelta
+        target = main_transcripts(copy, self.out)[-1]
+        # Thirty seconds inside the horizon at the first call, and thirty seconds past it ten seconds later.
+        edge = (ctx.fixed_now - step(days=transcripts.Reader(copy).horizon_days)).timestamp() + 30
+        os.utime(target, (edge, edge))
+        later = dataclasses.replace(ctx, fixed_now=ctx.fixed_now + step(seconds=40))
+        self.assertEqual(ctx.fixed_now.date(), later.fixed_now.date(), "no new local day to blame")
+        self.assertEqual(ctx.fixed_now.utcoffset(), later.fixed_now.utcoffset())
+        with mock.patch.object(usage, "build_views", wraps=usage.build_views) as built:
+            _s, first = call(ctx, api_usage.usage, project="all")
+            skipped = first["views"]["30d"]["notes"]["skipped_old_files"]
+            call(dataclasses.replace(ctx, fixed_now=ctx.fixed_now + step(seconds=10)), api_usage.usage, project="all")
+            self.assertEqual(built.call_count, 1, "kept while the file is still inside the horizon")
+            _s, second = call(later, api_usage.usage, project="all")
+            self.assertEqual(built.call_count, 2)
+        self.assertEqual(second["views"]["30d"]["notes"]["skipped_old_files"], skipped + 1)
+        self.assertLess(second["views"]["30d"]["totals"]["requests"], first["views"]["30d"]["totals"]["requests"])
+
+    def test_a_change_of_utc_offset_rebuilds_inside_the_age_limit(self):
+        # New York falls back at 2:00 a.m. on November 1, 2026: 05:59:40Z is 1:59:40 EDT and 06:00:10Z is 1:00:10 EST.
+        ctx = dataclasses.replace(make_ctx(self.out), tz_name="America/New_York")
+        before = dataclasses.replace(ctx, fixed_now=datetime.datetime(2026, 11, 1, 5, 59, 40, tzinfo=UTC))
+        after = dataclasses.replace(ctx, fixed_now=datetime.datetime(2026, 11, 1, 6, 0, 10, tzinfo=UTC))
+        zone = zoneinfo.ZoneInfo("America/New_York")
+        self.assertNotEqual(before.fixed_now.astimezone(zone).utcoffset(), after.fixed_now.astimezone(zone).utcoffset())
+        self.assertEqual(before.fixed_now.astimezone(zone).date(), after.fixed_now.astimezone(zone).date())
+        with mock.patch.object(usage, "build_views", wraps=usage.build_views) as built:
+            call(before, api_usage.usage, project=self.keys[TIDEWATER])
+            call(dataclasses.replace(before, fixed_now=before.fixed_now + datetime.timedelta(seconds=5)),
+                 api_usage.usage, project=self.keys[TIDEWATER])
+            self.assertEqual(built.call_count, 1, "kept while the offset is the same")
+            call(after, api_usage.usage, project=self.keys[TIDEWATER])
+            self.assertEqual(built.call_count, 2)
+
     def test_time_moving_past_the_age_limit_rebuilds(self):
         ctx = make_ctx(self.out)
         step = datetime.timedelta
@@ -787,6 +920,21 @@ def count_marker(folder):
                 if MARKER.encode() in fh.read():
                     found["meta" if name.endswith(".meta.json") else "jsonl"] += 1
     return found
+
+
+class FolderGone(ts.TempCase):
+    def test_the_list_says_missing_folder_while_usage_is_kept(self):
+        _root, out, _truth = make_set(self)
+        shutil.rmtree(os.path.join(out, "projects", "tidewater-reporting"))
+        proc = self.start(["--fixture", out])
+        _s, _h, body = proc.request("GET", "/api/projects")
+        row = [p for p in json.loads(body)["projects"] if p["name"] == TIDEWATER][0]
+        self.assertEqual(row["state"], "missing_folder")
+        status, _h, body = proc.request("GET", "/api/usage?project=" + row["key"])
+        self.assertEqual(status, 200)
+        payload = json.loads(body)
+        self.assertIs(payload["no_usage"], False)
+        self.assertGreater(payload["views"]["30d"]["totals"]["requests"], 0)
 
 
 class Marker(ts.TempCase):

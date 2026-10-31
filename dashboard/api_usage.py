@@ -144,11 +144,15 @@ def start_warm(ctx):
 # /api/projects
 
 def api_projects(ctx, query):
-    """Return projects.api_projects plus tz, now, transcripts_dir_display and reader.
+    """Return projects.api_projects plus tz, now, transcripts_dir_display,
+    config_file_display and reader.
 
     It never takes the cache lock and never calls Reader.read, so it answers
     while the reader is busy. files is None until the first scan has counted
-    them, and skipped is None until the first read ends.
+    them, and skipped is None until the first read ends. config_file_display
+    is the display form of routing-dashboard.json in the config dir. readable
+    is a stat at request time: True when <config_dir>/projects is a directory
+    the process can read and enter, else False.
     """
     status, payload = projects.api_projects(ctx, query)
     tz, label, _fixed = _zone(ctx)
@@ -159,7 +163,11 @@ def api_projects(ctx, query):
     payload["now"] = _now(ctx, tz).isoformat()
     payload["transcripts_dir_display"] = resolve.display_path(
         os.path.join(ctx.config_dir, "projects"), home=ctx.home, root=ctx.root)
+    folder = os.path.join(ctx.config_dir, "projects")
+    payload["config_file_display"] = resolve.display_path(
+        os.path.join(ctx.config_dir, projects.CONFIG_FILE), home=ctx.home, root=ctx.root)
     payload["reader"] = {
+        "readable": os.path.isdir(folder) and os.access(folder, os.R_OK | os.X_OK),
         "warm": cache.warm,
         "files": reader.files_found if reader is not None else None,
         "skipped": cache.skipped,
@@ -193,7 +201,11 @@ def _entries(ctx, listing, project):
 
 
 def usage(ctx, query):
-    """Return (200, {"project", "generated_at", "no_usage", "views", "prices"}).
+    """Return (200, {"project", "generated_at", "no_usage", "views", "model_names", "prices"}).
+
+    model_names maps every catalog model id to its display name (the id itself
+    when the catalog has no name), so the page can name a model that a view
+    does not list, such as the most common model of an agent.
 
     ?project=<key> picks a listed project, "all" picks every transcript folder,
     and no value means the current project. A key that is not listed gets 404
@@ -247,6 +259,7 @@ def usage(ctx, query):
             "generated_at": now.isoformat(),
             "no_usage": no_usage,
             "views": views,
+            "model_names": {m["id"]: m.get("display_name") or m["id"] for m in catalog},
             "prices": {"verified_on": cache.prices.get("verified_on"),
                        "source": cache.prices.get("source")},
         }

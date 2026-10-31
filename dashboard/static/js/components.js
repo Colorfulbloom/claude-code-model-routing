@@ -4,7 +4,7 @@
 
 import { h, frag } from "./h.js";
 import { icon } from "./icons.js";
-import { t, renderText, rangeWord, RANGES } from "./format.js";
+import { t, renderText, rangeWord, RANGES, fmtClock, fmtDate, fmtTime } from "./format.js";
 
 // ---------------------------------------------------------------- status
 
@@ -91,8 +91,11 @@ export function delta(current, previous, range, points = false) {
   return h("span", { class: ["delta", change < 0 && "delta-down"] }, h("span", { class: "delta-n" }, number), " ", rest);
 }
 
-export function estLine() {
-  return h("p", { class: "est" }, renderText(t("est_short")));
+// verifiedOn is the price list's date (payload.prices.verified_on). The tooltip says what "estimated" means
+// and when the prices were checked. It says only the first part when the payload has no date.
+export function estLine(verifiedOn = null) {
+  const tip = verifiedOn ? t("est_tip") + " " + t("prices_checked", { date: fmtTime(verifiedOn) }) : t("est_tip");
+  return h("p", { class: "est", title: tip }, renderText(t("est_short")));
 }
 
 // "12 sessions" kept together on one line. count and words are text or nodes.
@@ -140,9 +143,13 @@ export function rangeControl(active, onChange) {
   return group;
 }
 
-// configDir is the display form of the Claude config folder, such as "~/.claude".
-export function footerLine(configDir) {
-  return h("p", { class: "foot" }, renderText(t("footer", { config_dir: configDir })));
+// configDir is the display form of the Claude config folder, such as "~/.claude". generatedAt is the
+// payload's ISO time. A plain reload is the refresh, so there is no button.
+export function footerLine(configDir, generatedAt = null) {
+  const text = renderText(t("footer", { config_dir: configDir }));
+  const at = generatedAt ? new Date(generatedAt) : null;
+  if (!at || Number.isNaN(at.getTime())) return h("p", { class: "foot" }, text);
+  return h("p", { class: "foot" }, text, " ", t("read_at", { time: fmtClock(at), date: fmtDate(at) }));
 }
 
 // ---------------------------------------------------------------- empty states

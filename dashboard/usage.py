@@ -61,8 +61,10 @@ Shapes (the ticket's View shape, plus the additions named here):
            unpriced_tokens, hit_rate, requests, runs, sessions}
     ModelAgg = Agg + {model, display_name, cat, share_pct, share_lt1, agents}
     AgentAgg = Agg + {agent, route_key, display, ran_with, pin, recent_runs,
-                      runs_per_day}
-    ProjectAgg = Agg + {key, name, listed, folder}
+                      runs_per_day, runs_ticks}
+      runs_ticks are integer ticks from 0 for this agent's runs_per_day alone
+      (axis.runs_ticks is scaled for the whole view)
+    ProjectAgg = Agg + {key, name, listed}
     SessionAgg = Agg + {session_id, project, branch, started, agents, by_agent}
 """
 import bisect
@@ -71,7 +73,6 @@ import datetime
 import os
 import re
 import sys
-from fractions import Fraction
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -173,28 +174,39 @@ def _window(tz, now_local, days):
 
 # ---------------------------------------------------------------- axis
 
-def nice_max(value):
-    """Round value up to 1, 2, 2.5 or 5 times a power of 10 (at least 1)."""
-    value = int(-(-value // 1)) if value > 0 else 0
-    if value <= 1:
-        return 1
-    base = 10 ** (len(str(value)) - 1)
-    for mult in (Fraction(1), Fraction(2), Fraction(5, 2), Fraction(5), Fraction(10)):
-        top = mult * base
-        if top >= value:
-            return int(top) if top.denominator == 1 else float(top)
-    return 10 * base
+_MILLION = 1000000
+_BILLION = 1000000000
+_MAX_TOKEN_STEPS = 5
+
+
+def _whole_label(value):
+    """True when the page writes value as a whole number: 750K, 3M or 2B, never 1.5M."""
+    if value < _MILLION:
+        return True
+    if value < _BILLION:
+        return value % _MILLION == 0
+    return value % _BILLION == 0
 
 
 def token_ticks(max_tokens):
-    """(nice maximum, ticks): 4 steps from 0 to the nice maximum."""
-    top = nice_max(max_tokens)
-    frac = Fraction(top)
-    ticks = []
-    for i in range(5):
-        step = frac * i / 4
-        ticks.append(int(step) if step.denominator == 1 else float(step))
-    return top, ticks
+    """(top, ticks): even ticks from 0 to top, top at or above max_tokens.
+
+    The step is the smallest 1, 2 or 5 times a power of 10 that needs at most 5 steps
+    and gives every tick a whole label (see _whole_label), so 2.4M steps by 1M to 3M
+    and never labels 1.5M. No tokens gives [0, 1]. Ticks are ints.
+    """
+    if max_tokens <= 0:
+        return 1, [0, 1]
+    power = 1
+    while True:
+        for mult in (1, 2, 5):
+            step = mult * power
+            n = int(-(-max_tokens // step))
+            if n > _MAX_TOKEN_STEPS:
+                continue
+            if all(_whole_label(step * i) for i in range(1, n + 1)):
+                return step * n, [step * i for i in range(n + 1)]
+        power *= 10
 
 
 def run_ticks(max_runs):
@@ -802,6 +814,8 @@ def _agent_rows(ctx, agents, bucket_runs):
             "recent_runs": _recent_runs(ctx, runs),
             "runs_per_day": [len(b.get(key, ())) for b in bucket_runs],
         })
+        # axis.runs_ticks is scaled for the whole view, so one agent's chart gets its own.
+        agg["runs_ticks"] = run_ticks(max(agg["runs_per_day"], default=0))
         if ctx.single and ctx.pin_fn is not None:
             run_list = [{"run_id": run.run_id if run.run_id is not None else run.session_id,
                          "model": pair[0], "effort": pair[1], "requests": run.acc.requests}
@@ -829,6 +843,7 @@ def _recent_runs(ctx, runs):
             "effort": effort,
             "tokens": agg["tokens"],
             "cost": agg["cost"],
+            "unpriced_requests": agg["unpriced_requests"],
             "hit_rate": agg["hit_rate"],
             "requests": agg["requests"],
         })
@@ -868,7 +883,6 @@ def _project_rows(ctx, projects):
             "key": listed["key"] if listed is not None else None,
             "name": ctx.project_name(folder),
             "listed": listed is not None,
-            "folder": folder,
         })
         rows.append(agg)
     rows.sort(key=lambda a: _order_key(a, a["name"]))

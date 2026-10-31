@@ -51,9 +51,11 @@ class ChecksFiles(unittest.TestCase):
         checks = pages.load_checks()
         self.assertEqual([c["page"] for c in checks], sorted(data_pages()))
         routes = pages.routes_of(checks, "abc-123")
-        self.assertIn(("session-detail", "#/sessions/abc-123", []), routes)
-        self.assertEqual(sum(1 for r in routes if r[0] in ("agent-detail", "trail")), 4)
-        self.assertEqual(len(routes) * len(pages.THEMES) * len(pages.WIDTHS), 56)
+        detail = [r for r in routes if r[0] == "session-detail"]
+        self.assertEqual([r[1] for r in detail], ["#/sessions/abc-123"])
+        self.assertIn("Tidewater reporting", detail[0][2])
+        self.assertEqual(sum(1 for r in routes if r[0] in ("agent-detail", "trail")), 5)
+        self.assertEqual(len(routes) * len(pages.THEMES) * len(pages.WIDTHS), 84)
         self.assertFalse([r for r in routes if pages.SESSION_TOKEN in r[1]])
 
 
@@ -89,8 +91,15 @@ class Helpers(unittest.TestCase):
         self.assertEqual(pages.screenshot_name("agent-detail", "#/agents/@main", 375, "dark"), "agent-detail-agents-main-375-dark.png")
 
     def test_check_scripts_are_expressions(self):
-        for script in (pages.STATUS_BAD, pages.STACK_BAD):
+        for script in (pages.STATUS_BAD, pages.STACK_BAD, pages.LABEL_BAD, pages.HEAD_HEIGHTS):
             self.assertTrue(script.startswith("(() =>") and script.endswith("})()"))
+
+    def test_label_script_fills_one_page_name(self):
+        self.assertEqual(pages.LABEL_BAD.count("%"), 1)
+        self.assertIn("main [data-page=models] .dt td", pages.LABEL_BAD % "models")
+
+    def test_screenshot_name_takes_a_suffix(self):
+        self.assertEqual(pages.screenshot_name("models", "#/models", 375, "dark", "-full"), "models-models-375-dark-full.png")
 
 
 class Gating(unittest.TestCase):

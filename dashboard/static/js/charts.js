@@ -3,7 +3,7 @@
 // Tick steps for daybars come from the server (usage.py); nice_ticks was not ported.
 
 import { h, s } from "./h.js";
-import { t, fmtTokens, fmtDay, fmtHour, pct } from "./format.js";
+import { t, fmtTokens, fmtTick, fmtDay, fmtHour, pct } from "./format.js";
 
 // The first four models get the categorical colors. Any other model draws hatched ("cat-other").
 export const MODEL_CLASS = {
@@ -146,8 +146,10 @@ export function daybars(perDay, keys, options = {}) {
   const top = step * steps;
   const bucketWidth = W / Math.max(n, 1);
   const gap = Math.min(3, bucketWidth * 0.25);
-  const label = (key) => (unit === "hour" ? fmtHour(typeof key === "number" ? key : new Date(key).getHours()) : fmtDay(key));
-  const fmt = runs ? (v) => String(Math.round(v)) : fmtTokens;
+  const hourly = unit === "hour";
+  const hourOf = (key) => (typeof key === "number" ? key : new Date(key).getHours());
+  const label = (key) => (hourly ? fmtHour(hourOf(key)) : fmtDay(key));
+  const fmt = runs ? (v) => String(Math.round(v)) : fmtTick; // axis labels only; bars and titles keep fmtTokens
   const id = patternId("oth-day");
 
   const yLabels = [];
@@ -188,13 +190,15 @@ export function daybars(perDay, keys, options = {}) {
     }
   });
 
+  // Hours label every 6 by the clock, so a day with a clock change keeps 12 AM, 6 AM, 12 PM and 6 PM.
   const labelEvery = n > 10 ? 7 : 1;
+  const labelled = (i) => (hourly ? hourOf(keys[i]) % 6 === 0 : i % labelEvery === 0);
   const xLabels = [];
-  for (let i = 0; i < n; i += labelEvery) {
-    xLabels.push(h("span", { style: { left: ((100 * (i + 0.5)) / n).toFixed(2) + "%" } }, label(keys[i])));
+  for (let i = 0; i < n; i += 1) {
+    if (labelled(i)) xLabels.push(h("span", { style: { left: ((100 * (i + 0.5)) / n).toFixed(2) + "%" } }, label(keys[i])));
   }
   return h("div", { class: "dchart" },
     h("div", { class: "dy", "aria-hidden": "true" }, yLabels),
     svg,
-    h("div", { class: "dx", "aria-hidden": "true" }, xLabels));
+    h("div", { class: hourly ? "dx dx-hour" : "dx", "aria-hidden": "true" }, xLabels));
 }

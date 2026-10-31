@@ -361,6 +361,8 @@ class ShellE2E(unittest.TestCase):
     def test_range_fetches_nothing_and_project_fetches_once(self):
         self.open()
         self.page.wait_for("document.documentElement.getAttribute('data-rendered') === '1'")
+        # data-rendered no longer waits on /api/usage, so wait for it here: before must hold that request.
+        self.page.wait_for("document.documentElement.getAttribute('data-usage') === '1'")
         before = self.api_requests()
         for label in ("Today", "7 days", "30 days"):
             self.page.eval("[...document.querySelectorAll('[data-page=overview] .seg')].find(b => b.textContent === %s).click()" % json.dumps(label))

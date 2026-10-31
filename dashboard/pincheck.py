@@ -17,12 +17,17 @@ PinCheck = {state, pinned, source, mismatched_runs, total_runs, model, effort}
   state            one of STATES, or None when there is nothing to check
   pinned           "both", "model_only", "effort_only" or "none"
   source           "agent_file" or "settings" (the Main session)
-  mismatched_runs  n, runs that miss the expected value on a checked setting
+  mismatched_runs  n, runs that differ from the pin on a setting whose state is
+                   differs or mixed. A run that equals the pin never counts.
   total_runs       m, all runs
   model, effort    a Setting, or None when the file does not pin that setting
 
-Setting = {state, pinned, expected, cap, ran}
-  pinned    {value, file, line, status}
+Setting = {state, pinned, expected, cap, ran, runs_match_pin}
+  pinned    {value, file, line, status, id}; id is the pin's catalog id for a
+            model alias or dated name, else the value as written
+  runs_match_pin  True when the pin lost (state overridden) or won and is
+            Lowered (state matches) and every run still equals the pin;
+            False otherwise
   expected  {value, status, becomes, key, file, line, layer, via, reason,
             rule_id}
   cap       {key, value, model, file, line} when expected is Lowered, else None.
@@ -179,14 +184,17 @@ def _setting(entries, row, kind, runs, catalog):
     values = [norm(v) for v in raw_values if v is not None]
     expected = _expected_value(win)
     expected_key = norm(expected) if expected is not None else None
+    pin_key = norm(pin.get("value"))
+    at_pin = all(v == pin_key for v in values)
     setting = {
         "state": None,
         "pinned": {"value": pin.get("value"), "file": pin.get("file"),
-                   "line": pin.get("line"), "status": pin.get("status")},
+                   "line": pin.get("line"), "status": pin.get("status"), "id": pin_key},
         "expected": ({f: win.get(f) for f in _ENTRY_FIELDS} if win is not None
                      else {f: None for f in _ENTRY_FIELDS}),
         "cap": _cap(entries, win) if win is not None and win.get("status") == "lowered" else None,
         "ran": _ranked([v for v in raw_values if v is not None]),
+        "runs_match_pin": False,
     }
     if not runs:
         return setting, values, expected_key
@@ -194,6 +202,12 @@ def _setting(entries, row, kind, runs, catalog):
         setting["state"] = CANNOT_CHECK
     elif not values:
         pass  # a known expected value and no recorded run value: nothing to check
+    elif pin is not win and at_pin:
+        setting["state"] = OVERRIDDEN
+        setting["runs_match_pin"] = True
+    elif pin is win and win.get("status") == "lowered" and at_pin:
+        setting["state"] = MATCHES
+        setting["runs_match_pin"] = True
     elif all(v == expected_key for v in values):
         if pin is win:
             setting["state"] = MATCHES_LOWERED if win.get("status") == "lowered" else MATCHES
@@ -216,14 +230,15 @@ def _build(entries, rows, runs, catalog, source, is_main):
            "mismatched_runs": 0, "total_runs": len(runs), "model": None, "effort": None}
     mismatched = [False] * len(runs)
     for kind in present:
-        setting, _values, expected_key = _setting(entries, rows[kind], kind, runs, catalog)
+        setting, _values, _expected_key = _setting(entries, rows[kind], kind, runs, catalog)
         out[kind] = setting
-        if setting["state"] in (None, CANNOT_CHECK):
+        if setting["state"] not in (DIFFERS, MIXED):
             continue
         norm = (lambda v: _model_key(v, catalog)) if kind == "model" else (lambda v: v)
+        pin_key = setting["pinned"]["id"]
         for i, run in enumerate(runs):
             value = run.get(kind)
-            if value is not None and norm(value) != expected_key:
+            if value is not None and norm(value) != pin_key:
                 mismatched[i] = True
     out["mismatched_runs"] = sum(mismatched)
     out["state"] = worst(out[k]["state"] for k in present)
