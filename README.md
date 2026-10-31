@@ -331,6 +331,39 @@ It removes the files listed in the manifest (the choices file included) and the 
 
 To use it, copy it into a project's `.claude/agents/`, fill in the bracketed placeholders, and run `/route-project` there. The routing rule it supports is simple. Any agent that needs prose for a reader hands the drafting to the writer and keeps the technical substance for itself.
 
+## Dashboard
+
+The Routing Dashboard is a local, read-only page that shows where your tokens went and which of your settings apply. The Project dropdown picks one project, or All projects, the view across every project folder. Usage covers today, 7 days or 30 days.
+
+- Overview. Usage in the project over the range you pick, read from its transcripts.
+- Agents. Each agent's runs, tokens, estimated cost and cache, with the model and effort it ran with against its pin.
+- Models. Usage by model, with the agents that ran on each.
+- Sessions. Recent main sessions and the agents they spawned.
+- Settings. What each value is set to and where it comes from.
+- Needs attention. Values that don't apply as set, and ones the dashboard can't work out.
+- Installed files. Files this repo installs into your Claude Code config, and whether each copy still matches.
+- Rules reference. Every rule the dashboard applies, what backs it and the Claude Code version it was checked on.
+
+The installer doesn't install the dashboard, so run it from a clone of this repo. It runs on Python 3.9 with the standard library alone. Start it from the folder of the project you want to see.
+
+```bash
+python3 /path/to/claude-code-model-routing/dashboard/server.py
+```
+
+It prints `http://127.0.0.1:8377/`, the address to open in your browser. Ctrl-C stops it. `--port N` changes the port, `--project DIR` picks another project, and `--config-dir DIR` picks another config folder. The default config folder is `CLAUDE_CONFIG_DIR`, else `~/.claude`.
+
+The server binds 127.0.0.1 only, answers GET and HEAD only, and writes no file. There's no login, because the page is local.
+
+To list more projects, add `routing-dashboard.json` to your config folder. `plan` is optional, and it takes `subscription`, `api_key` or `cloud_provider`. The file is read again on every request, so an edit needs no restart. Without it, the list holds the current project only.
+
+```json
+{"projects": [{"name": "my-app", "path": "/path/to/my-app"}], "plan": "subscription"}
+```
+
+Usage comes from your transcripts, through the dashboard's transcript reader. The reader parses each assistant line, keeps only the usage fields, and retains and writes nothing else. A test proves it. Cost is an estimate at API list price, and what you pay depends on your plan.
+
+The [rules reference](docs/rules-reference.md) lists those fields, the files the reader takes, what a recorded effort level can't prove and every rule the dashboard applies.
+
 ## Known limits
 
 - **No copies in subfolders.** Claude Code scans `agents/` recursively, and two files with the same `name` are picked by filesystem read order, not by a documented precedence. Keep backups out of `~/.claude/agents/`. The installer writes its backups to `backups/` for this reason, and `find ~/.claude/agents -mindepth 2 -name '*.md'` should print nothing.
