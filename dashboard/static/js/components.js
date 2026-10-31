@@ -4,7 +4,7 @@
 
 import { h, frag } from "./h.js";
 import { icon } from "./icons.js";
-import { t, renderText, rangeWord, RANGES, fmtClock, fmtDate } from "./format.js";
+import { t, renderText, rangeWord, RANGES, fmtClock, fmtDate, fmtTime } from "./format.js";
 
 // ---------------------------------------------------------------- status
 
@@ -91,10 +91,11 @@ export function delta(current, previous, range, points = false) {
   return h("span", { class: ["delta", change < 0 && "delta-down"] }, h("span", { class: "delta-n" }, number), " ", rest);
 }
 
-// verifiedOn is the price list's date (payload.prices.verified_on). It is taken now and drawn later: the
-// tooltip that shows it arrives in #59.
+// verifiedOn is the price list's date (payload.prices.verified_on). The tooltip says what "estimated" means
+// and when the prices were checked. It says only the first part when the payload has no date.
 export function estLine(verifiedOn = null) {
-  return h("p", { class: "est" }, renderText(t("est_short")));
+  const tip = verifiedOn ? t("est_tip") + " " + t("prices_checked", { date: fmtTime(verifiedOn) }) : t("est_tip");
+  return h("p", { class: "est", title: tip }, renderText(t("est_short")));
 }
 
 // "12 sessions" kept together on one line. count and words are text or nodes.

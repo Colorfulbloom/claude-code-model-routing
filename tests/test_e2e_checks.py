@@ -51,9 +51,11 @@ class ChecksFiles(unittest.TestCase):
         checks = pages.load_checks()
         self.assertEqual([c["page"] for c in checks], sorted(data_pages()))
         routes = pages.routes_of(checks, "abc-123")
-        self.assertIn(("session-detail", "#/sessions/abc-123", []), routes)
+        detail = [r for r in routes if r[0] == "session-detail"]
+        self.assertEqual([r[1] for r in detail], ["#/sessions/abc-123"])
+        self.assertIn("Tidewater reporting", detail[0][2])
         self.assertEqual(sum(1 for r in routes if r[0] in ("agent-detail", "trail")), 4)
-        self.assertEqual(len(routes) * len(pages.THEMES) * len(pages.WIDTHS), 56)
+        self.assertEqual(len(routes) * len(pages.THEMES) * len(pages.WIDTHS), 60)
         self.assertFalse([r for r in routes if pages.SESSION_TOKEN in r[1]])
 
 

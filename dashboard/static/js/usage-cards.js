@@ -5,9 +5,9 @@
 
 import { h } from "./h.js";
 import { t, renderText, fmtTokens, fmtCost, pct, shareText } from "./format.js";
-import { card, kpi, delta } from "./components.js";
+import { card, kpi, delta, table3 } from "./components.js";
 import {
-  MODEL_CLASS, modelClass, ring, legendRows, stackedTokens, kindsLegend, hbars, miniRing, daybars,
+  MODEL_CLASS, modelClass, ring, legendRows, stackedTokens, kindsLegend, hbars, miniRing, daybars, kinds,
 } from "./charts.js";
 import { ticksOf, ranWithLine } from "./usage-page.js";
 
@@ -66,15 +66,17 @@ export function perBucketCard(u) {
   });
 }
 
-// Highest cost first, a model with no cost last. Array sort is stable, so equal costs keep the server's order.
-function byCostDesc(a, b) {
-  return (a.cost === null ? 1 : 0) - (b.cost === null ? 1 : 0) || (b.cost || 0) - (a.cost || 0);
+// The view's models, highest cost first and a model with no cost last. Array sort is stable, so equal costs
+// keep the server's order. Overview and Models both use it, so one order holds on every page.
+export function modelsByCost(view) {
+  const byCostDesc = (a, b) => (a.cost === null ? 1 : 0) - (b.cost === null ? 1 : 0) || (b.cost || 0) - (a.cost || 0);
+  return view.by_model.slice().sort(byCostDesc);
 }
 
 export function costByModelCard(u) {
   const { view } = u;
   const tot = view.totals;
-  const rows = view.by_model.slice().sort(byCostDesc);
+  const rows = modelsByCost(view);
   const segments = rows.map((r) => ({ label: u.model(r.model), value: r.cost || 0, cls: modelClass(r.model) }));
   const notPriced = (r) => r.cost === null || (r.cost === 0 && r.unpriced_requests > 0);
   const legend = legendRows(rows.map((r) => ({
@@ -123,4 +125,16 @@ export function effortCard(u) {
     text: fmtTokens(r.tokens),
   }));
   return card({ title: t("c_effort"), body: hbars(rows), icon: "sliders", sub: t("q_effort") });
+}
+
+// Tokens and estimated cost per token kind for one Agg, in price order. The stacked bar above it keeps the
+// colors, so each row repeats its swatch. A kind with no cost shows Not priced.
+export function kindsTable(a) {
+  const costs = a.cost_by_kind || {};
+  const rows = kinds().map((k) => [
+    h("span", { class: "cw" }, h("span", { class: "swatch " + k.cls, "aria-hidden": "true" }), k.name),
+    fmtTokens(a[k.key]),
+    fmtCost(costs[k.key], a.unpriced_requests),
+  ]);
+  return table3([t("k_kind"), t("kpi_tokens"), t("kpi_cost")], rows, "dt-kinds");
 }

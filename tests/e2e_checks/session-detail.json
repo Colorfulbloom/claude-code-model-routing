@@ -1,1 +1,5 @@
-{"page": "session-detail", "routes": [{"hash": "#/sessions/{session}", "texts": []}]}
+{"page": "session-detail", "routes": [
+  {"hash": "#/sessions/{session}", "texts": [
+    "Session from", "Agents in this session", "Tokens by agent", "Tidewater reporting", "Cache hit rate"
+  ]}
+]}

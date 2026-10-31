@@ -474,6 +474,10 @@ class BucketTests(unittest.TestCase):
         self.assertEqual(2, builder["runs_per_day"][10])
         self.assertEqual(1, builder["runs_per_day"][11])
         self.assertEqual(3, sum(by_key(today["by_agent"], "builder")["runs_per_day"]))
+        # runs_ticks fits this agent's own busiest bucket (2), not the whole view's.
+        self.assertEqual(usage.run_ticks(2), builder["runs_ticks"])
+        self.assertEqual(usage.run_ticks(1), by_key(today["by_agent"], "scribe")["runs_ticks"])
+        self.assertTrue(all(isinstance(v, int) for v in builder["runs_ticks"]))
         week = views(rows)["7d"]
         self.assertEqual(7, len(by_key(week["by_agent"], "builder")["runs_per_day"]))
         self.assertEqual(2, by_key(week["by_agent"], "builder")["runs_per_day"][-1])
@@ -1047,7 +1051,7 @@ class ShapeTests(unittest.TestCase):
         rows = [sub("2026-10-30T15:00:00Z", "builder", "r1", output=1)]
         today = views(rows)["today"]
         agg = set(today["totals"])
-        self.assertEqual(agg | set(["agent", "route_key", "display", "ran_with", "pin", "recent_runs", "runs_per_day"]),
+        self.assertEqual(agg | set(["agent", "route_key", "display", "ran_with", "pin", "recent_runs", "runs_per_day", "runs_ticks"]),
                          set(today["by_agent"][0]))
         self.assertEqual(agg | set(["model", "display_name", "cat", "share_pct", "share_lt1", "agents"]),
                          set(today["by_model"][0]))

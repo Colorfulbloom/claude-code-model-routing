@@ -1,1 +1,8 @@
-{"page": "agents", "routes": [{"hash": "#/agents", "texts": ["Agents"]}]}
+{"page": "agents", "routes": [
+  {"hash": "#/agents", "texts": [
+    "Agents", "builder", "reviewer", "scribe", "Main session",
+    "Pin overridden", "Differs from pin", "Matches pin",
+    "From your settings files, not an agent file.",
+    "This check reads today's files, so a run from before a file change can show Differs or Pin overridden."
+  ]}
+]}

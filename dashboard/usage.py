@@ -61,7 +61,9 @@ Shapes (the ticket's View shape, plus the additions named here):
            unpriced_tokens, hit_rate, requests, runs, sessions}
     ModelAgg = Agg + {model, display_name, cat, share_pct, share_lt1, agents}
     AgentAgg = Agg + {agent, route_key, display, ran_with, pin, recent_runs,
-                      runs_per_day}
+                      runs_per_day, runs_ticks}
+      runs_ticks are integer ticks from 0 for this agent's runs_per_day alone
+      (axis.runs_ticks is scaled for the whole view)
     ProjectAgg = Agg + {key, name, listed, folder}
     SessionAgg = Agg + {session_id, project, branch, started, agents, by_agent}
 """
@@ -802,6 +804,8 @@ def _agent_rows(ctx, agents, bucket_runs):
             "recent_runs": _recent_runs(ctx, runs),
             "runs_per_day": [len(b.get(key, ())) for b in bucket_runs],
         })
+        # axis.runs_ticks is scaled for the whole view, so one agent's chart gets its own.
+        agg["runs_ticks"] = run_ticks(max(agg["runs_per_day"], default=0))
         if ctx.single and ctx.pin_fn is not None:
             run_list = [{"run_id": run.run_id if run.run_id is not None else run.session_id,
                          "model": pair[0], "effort": pair[1], "requests": run.acc.requests}

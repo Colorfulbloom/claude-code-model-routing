@@ -259,6 +259,7 @@
   "slot_same_name": "the same name",
   "slot_value": "X",
   "slot_winner": "the winning source",
+  "source_shell": "the shell",
   "status_default": "Default",
   "status_ignored": "Ignored",
   "status_in_effect": "In effect",

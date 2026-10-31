@@ -34,6 +34,14 @@ export function ranWithLine(u, agent) {
   return rows.length > 1 ? line + " " + t("ran_with_more", { n: rows.length - 1 }) : line;
 }
 
+// The session with this id, from the 30 day view. That is the widest view, so a session page opened from a
+// link in a shorter range still finds its session. Returns null when the view does not hold it.
+export function findSession(payload, id) {
+  const view = payload && payload.views ? payload.views["30d"] : null;
+  const list = view && Array.isArray(view.sessions) ? view.sessions : [];
+  return list.find((s) => s.session_id === id) || null;
+}
+
 function modelNamer(payload) {
   const names = payload.model_names && typeof payload.model_names === "object" ? payload.model_names : {};
   return (id) => (Object.prototype.hasOwnProperty.call(names, id) && typeof names[id] === "string" ? names[id] : id);

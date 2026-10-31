@@ -294,6 +294,669 @@ test("usage-page: ticksOf, ranWithLine and shareText", async () => {
   assert.equal(format.shareText(0, true), "<1%");
 });
 
+// ---------------------------------------------------------------- agents and agent detail
+
+const tagged = (root, tag) => root.find((n) => n.tagName === tag);
+const headers = (table) => tagged(tagged(table, "thead")[0], "th").map(flat);
+const bodyRows = (table) => tagged(tagged(table, "tbody")[0], "tr");
+const cellsOf = (row) => tagged(row, "td");
+const agentsTable = (page) => byClass(cardOf(page, "Agents"), "dt")[0];
+const rowFor = (table, name) => {
+  const row = bodyRows(table).find((r) => flat(cellsOf(r)[0]) === name);
+  assert.ok(row, "a row for " + name);
+  return row;
+};
+const hrefOf = (node) => tagged(node, "a")[0].getAttribute("href");
+
+test("agents: eight columns, the server's order, and the note once under the table", async () => {
+  const app = await boot({ hash: "#/agents" });
+  const page = app.section("agents");
+  const view = viewOf(TIDEWATER, "30d");
+  const table = agentsTable(page);
+  assert.deepEqual(headers(table), ["Agent", "Runs", "Tokens", "Estimated cost", "Cache hit rate", "Ran with", "Pinned to", "Pin check"]);
+  assert.deepEqual(bodyRows(table).map((r) => flat(cellsOf(r)[0])), view.by_agent.map((a) => a.display), "Agents follow by_agent order");
+  assert.equal(byClass(table, "lnk").length, view.by_agent.length);
+  const notes = texts(cardOf(page, "Agents"), "est");
+  assert.equal(notes.filter((n) => n.startsWith("This check reads today's files")).length, 1, "the pin note shows once");
+  assert.equal(byClass(page, "foot").length, 1);
+  const main = rowFor(table, "Main session");
+  assert.match(flat(cellsOf(main)[1]), /^\d+ sessions?$/);
+  assert.equal(texts(cellsOf(main)[1], "muted").length, 1);
+  assert.ok(flat(cellsOf(main)[6]).includes("From your settings files, not an agent file."));
+});
+
+test("agents: builder and reviewer show Pin overridden, scribe shows Differs from pin, each with its mark", async () => {
+  const app = await boot({ hash: "#/agents" });
+  const table = agentsTable(app.section("agents"));
+  for (const name of ["builder", "reviewer"]) {
+    const pill = byClass(cellsOf(rowFor(table, name))[7], "st")[0];
+    assert.ok(flat(pill).startsWith("Pin overridden"), name + ": " + flat(pill));
+    assert.ok(hasClass(pill, "st-overridden"), name);
+    assert.equal(byClass(pill, "mk").length, 1, name + " has its mark");
+  }
+  const scribe = byClass(cellsOf(rowFor(table, "scribe"))[7], "st")[0];
+  assert.ok(flat(scribe).startsWith("Differs"), flat(scribe));
+  assert.ok(hasClass(scribe, "st-differs"));
+  assert.equal(byClass(scribe, "mk").length, 1);
+  assert.ok(flat(cellsOf(rowFor(table, "scribe"))[7]).includes("Differs from pin") || /Differs in \d+ of \d+ runs/.test(flat(scribe)));
+});
+
+test("agents: Ran with shows the first pair and the count of others, and Pinned to shows a model and effort", async () => {
+  const app = await boot({ hash: "#/agents" });
+  const table = agentsTable(app.section("agents"));
+  const usage = usageOf(TIDEWATER);
+  for (const a of usage.views["30d"].by_agent) {
+    const cell = cellsOf(rowFor(table, a.display))[5];
+    const first = a.ran_with[0];
+    assert.ok(flat(cell).startsWith(usage.model_names[first.model] + ", " + (first.effort === null ? "effort not recorded" : first.effort)), a.display + ": " + flat(cell));
+    assert.equal(byClass(cell, "cell-note").length, a.ran_with.length > 1 ? 1 : 0, a.display);
+  }
+});
+
+test("agents All projects: no Pinned to or Pin check column and no note", async () => {
+  const app = await boot({ hash: "#/agents?project=all" });
+  const page = app.section("agents");
+  const table = agentsTable(page);
+  assert.deepEqual(headers(table), ["Agent", "Runs", "Tokens", "Estimated cost", "Cache hit rate", "Ran with"]);
+  assert.ok(bodyRows(table).every((r) => cellsOf(r).length === 6));
+  assert.equal(byClass(page, "st").length, 0, "no pills");
+  assert.ok(!flat(page).includes("This check reads today's files"));
+  assert.ok(!flat(page).includes("Pinned to"));
+});
+
+test("agents Driftwood: a Main session that can't be checked shows Can't check pin with the Unknown mark", async () => {
+  const app = await boot({ hash: "#/agents?project=" + keyOf("Driftwood") });
+  const table = agentsTable(app.section("agents"));
+  const pill = byClass(cellsOf(rowFor(table, "Main session"))[7], "st")[0];
+  assert.equal(flat(pill), "Can't check pin");
+  assert.ok(hasClass(pill, "st-unknown"));
+  assert.equal(byClass(pill, "mk").length, 1);
+});
+
+test("agent detail builder: the tiles, the pin card, both charts and the recent runs", async () => {
+  const app = await boot({ hash: "#/agents/builder" });
+  const page = app.section("agent-detail");
+  const a = viewOf(TIDEWATER, "30d").by_agent.find((row) => row.route_key === "builder");
+  assert.deepEqual(texts(page, "tl-l"), ["Agent runs", "Tokens", "Estimated cost", "Cache hit rate"]);
+  assert.equal(flat(byClass(byClass(page, "kpi")[0], "kpi-v")[0]), String(a.runs));
+  assert.equal(byClass(page, "g21-pin").length, 1);
+  const pin = cardOf(page, "Did it run as pinned?");
+  assert.ok(hasClass(byClass(pin, "st")[0], "st-overridden"));
+  assert.equal(flat(byClass(pin, "pin-top")[0]).includes("Pinned to Fable 5.1 at xhigh. Ran with"), true, flat(byClass(pin, "pin-top")[0]));
+  assert.ok(byClass(pin, "en-rs").length >= 1, "a sentence follows the pill");
+  const link = tagged(byClass(pin, "pin-link")[0], "a")[0];
+  assert.equal(flat(link), "Open the trail");
+  assert.ok(link.getAttribute("href").startsWith("#/settings/builder/"), link.getAttribute("href"));
+
+  const runs = cardOf(page, "Runs over time");
+  assert.deepEqual(texts(runs, "ring-sum"), ["Runs per day"]);
+  const labels = byClass(runs, "dy")[0].childNodes.map(flat);
+  assert.deepEqual(labels, [...a.runs_ticks.slice(1)].reverse().map(String).concat("0"), "the y axis uses the agent's own ticks");
+  assert.ok(labels.every((l) => /^\d+$/.test(l)), "integer ticks");
+
+  const tokens = cardOf(page, "Tokens and estimated cost");
+  assert.equal(byClass(tokens, "sb-row").length, 1);
+  assert.deepEqual(headers(byClass(tokens, "dt-kinds")[0]), ["Kind", "Tokens", "Estimated cost"]);
+  assert.equal(bodyRows(byClass(tokens, "dt-kinds")[0]).length, 4);
+  assert.equal(flat(tokens).includes("thinking tokens"), Boolean(a.thinking));
+  assert.equal(byClass(tokens, "est").length, 1);
+});
+
+test("agent detail: Recent runs shows at most eight runs, each linking its session", async () => {
+  const app = await boot({ hash: "#/agents/builder" });
+  const a = viewOf(TIDEWATER, "30d").by_agent.find((row) => row.route_key === "builder");
+  assert.ok(a.recent_runs.length <= 8);
+  const recent = cardOf(app.section("agent-detail"), "Recent runs");
+  const table = byClass(recent, "dt")[0];
+  assert.deepEqual(headers(table), ["Started", "Session", "Model", "Effort", "Tokens", "Estimated cost"]);
+  const rows = bodyRows(table);
+  assert.equal(rows.length, a.recent_runs.length);
+  rows.forEach((row, i) => {
+    assert.ok(hrefOf(cellsOf(row)[1]).startsWith("#/sessions/" + encodeURIComponent(a.recent_runs[i].session_id)), hrefOf(cellsOf(row)[1]));
+    assert.ok(flat(cellsOf(row)[1]).startsWith("Session from "));
+  });
+  const busiest = viewOf(TIDEWATER, "30d").by_agent.map((x) => x.recent_runs.length);
+  assert.ok(Math.max(...busiest) <= 8);
+});
+
+test("agent detail Main session: its sessions tile, Matches pin and the Lowered note", async () => {
+  const app = await boot({ hash: "#/agents/@main" });
+  const page = app.section("agent-detail");
+  assert.deepEqual(texts(page, "tl-l")[0], "Sessions");
+  const a = viewOf(TIDEWATER, "30d").by_agent.find((row) => row.route_key === "@main");
+  assert.equal(flat(byClass(byClass(page, "kpi")[0], "kpi-v")[0]), String(a.sessions));
+  const pin = cardOf(page, "Did it run as pinned?");
+  assert.ok(hasClass(byClass(pin, "st")[0], "st-match"));
+  assert.ok(flat(pin).includes("Runs at a lower level than it's set to"));
+  assert.ok(byClass(pin, "pin-link").length === 1);
+});
+
+test("agent detail All projects: tiles alone, no pin card, and Recent runs gains Project", async () => {
+  const app = await boot({ hash: "#/agents/builder?project=all" });
+  const page = app.section("agent-detail");
+  assert.equal(byClass(page, "g21-pin").length, 0);
+  assert.equal(byClass(page, "pin").length, 0);
+  assert.equal(byClass(page, "kpi").length, 4);
+  const table = byClass(cardOf(page, "Recent runs"), "dt")[0];
+  assert.deepEqual(headers(table), ["Started", "Session", "Project", "Model", "Effort", "Tokens", "Estimated cost"]);
+  const a = viewOf("all", "30d").by_agent.find((row) => row.route_key === "builder");
+  assert.deepEqual(bodyRows(table).map((r) => flat(cellsOf(r)[2])), a.recent_runs.map((r) => r.project));
+});
+
+test("agent detail: an agent not in this view gets the empty state, and the name is plain text", async () => {
+  const app = await boot({ hash: "#/agents/no-such-agent" });
+  const page = app.section("agent-detail");
+  assert.equal(flat(byClass(page, "ph")[0]).includes("no-such-agent"), true);
+  assert.equal(byClass(page, "kpi").length, 0);
+  assert.deepEqual(texts(page, "cd-h"), ["No usage in this range"]);
+  const unnamed = await boot({ hash: "#/agents/@unnamed" });
+  assert.ok(flat(byClass(unnamed.section("agent-detail"), "h1")[0] || byClass(unnamed.section("agent-detail"), "ph")[0]).includes("Unnamed agent"));
+});
+
+test("agent detail Today: the runs chart is hourly with its Runs per hour line", async () => {
+  const app = await boot({ hash: "#/agents/builder?range=today" });
+  const page = app.section("agent-detail");
+  const card = cardOf(page, "Runs over time");
+  assert.deepEqual(texts(card, "ring-sum"), ["Runs per hour"]);
+});
+
+// ---------------------------------------------------------------- pinView on hand-built agents
+
+const NAMES = { "claude-fable-5-1": "Fable 5.1", "claude-opus-5-5": "Opus 5.5", "claude-sonnet-5-5": "Sonnet 5.5" };
+const U = { model: (id) => NAMES[id] || id };
+const FABLE = "claude-fable-5-1";
+const SONNET = "claude-sonnet-5-5";
+
+function setting(state, o = {}) {
+  return {
+    state,
+    pinned: { value: o.pv ?? "xhigh", file: "agents/a.md", line: 3, status: "in_effect", id: o.id ?? o.pv ?? "xhigh" },
+    expected: {
+      value: "xhigh", status: "in_effect", becomes: null, key: "effort", file: null, line: null, layer: "agent",
+      via: null, reason: null, rule_id: null, ...(o.e || {}),
+    },
+    cap: o.cap ?? null,
+    ran: o.ran ?? [],
+    runs_match_pin: o.rmp ?? false,
+  };
+}
+function agentOf(pinned, state, model, effort, extra = {}) {
+  return { pin: { state, pinned, source: "agent_file", mismatched_runs: 0, total_runs: 2, model, effort, ...extra } };
+}
+
+test("pinView: model-only, effort-only and no pin", async () => {
+  createPage();
+  const format = await import(JS + "format.js");
+  format.setStrings(STRINGS);
+  const { pinView } = await import(JS + "pin-view.js");
+
+  const modelOnly = pinView(U, agentOf("model_only", "matches", setting("matches", { pv: FABLE, e: { key: "model", value: FABLE } }), null));
+  assert.equal(modelOnly.pinnedText, "Fable 5.1, effort not pinned");
+  assert.equal(modelOnly.detailPinned, "Fable 5.1, effort not pinned");
+  assert.equal(modelOnly.pill, "match");
+  assert.equal(modelOnly.pillLabel, null);
+  assert.equal(modelOnly.note, null);
+  assert.deepEqual(modelOnly.sentences, []);
+  assert.equal(modelOnly.trailKey, "model");
+  assert.equal(modelOnly.pinnedNote, null);
+
+  const effortOnly = pinView(U, agentOf("effort_only", "matches", null, setting("matches", { pv: "high", e: { value: "high" } })));
+  assert.equal(effortOnly.pinnedText, "high, model not pinned");
+  assert.equal(effortOnly.detailPinned, "high, model not pinned");
+  assert.equal(effortOnly.trailKey, "effort");
+
+  const both = pinView(U, agentOf("both", "matches", setting("matches", { pv: FABLE, e: { key: "model", value: FABLE } }), setting("matches")));
+  assert.equal(both.pinnedText, "Fable 5.1, xhigh");
+  assert.equal(both.detailPinned, "Pinned to Fable 5.1 at xhigh.");
+  assert.equal(both.trailKey, "effort", "effort when the states tie");
+
+  const plugin = pinView(U, { pin: null });
+  assert.equal(plugin.pill, null);
+  assert.equal(plugin.pinnedText, "No pin found");
+  assert.equal(plugin.pinnedNote, "No agent file in the folders the dashboard reads.");
+  assert.equal(plugin.sentences.length, 1);
+  assert.ok(plugin.sentences[0].startsWith("The dashboard found no agent file"));
+  assert.equal(plugin.trailKey, null);
+  assert.equal(plugin.note, null);
+
+  const fileNone = pinView(U, agentOf("none", null, null, null));
+  assert.equal(fileNone.pinnedText, "No pin found");
+  assert.equal(fileNone.pinnedNote, null);
+  assert.deepEqual(fileNone.sentences, []);
+  assert.equal(fileNone.pill, null);
+  const mainNone = pinView(U, agentOf("none", null, null, null, { source: "settings" }));
+  assert.equal(mainNone.pinnedText, "The dashboard can't tell what this agent is pinned to.");
+  assert.equal(mainNone.detailPinned, null);
+  assert.equal(mainNone.pinnedNote, "From your settings files, not an agent file.");
+
+  const cannot = pinView(U, agentOf("both", "cannot_check", setting("matches", { pv: FABLE }), setting("cannot_check")));
+  assert.equal(cannot.pill, "unknown");
+  assert.equal(cannot.sentences.length, 1);
+  assert.ok(cannot.sentences[0].startsWith("The dashboard can't tell what this agent should run with"));
+});
+
+test("pinView: a Lowered pin with every run at the pin", async () => {
+  createPage();
+  const format = await import(JS + "format.js");
+  format.setStrings(STRINGS);
+  const { pinView } = await import(JS + "pin-view.js");
+  const lowered = { status: "lowered", value: "xhigh", becomes: "high", rule_id: "effort-lowered-by-cap", model: FABLE };
+  const withFile = { key: "maxEffortLevel", value: "high", model: FABLE, file: "~/.claude/settings.json", line: 4 };
+  const one = pinView(U, agentOf("effort_only", "matches", null, setting("matches", { rmp: true, e: lowered, cap: withFile })));
+  assert.equal(one.pill, "match");
+  assert.equal(one.note, null, "no Lowered note when every run still equals the pin");
+  assert.deepEqual(one.sentences, ["These runs match the pin. Right now maxEffortLevel caps Fable 5.1 at high from ~/.claude/settings.json, line 4, so new runs should use high."]);
+
+  const noFile = pinView(U, agentOf("effort_only", "matches", null, setting("matches", { rmp: true, e: lowered, cap: { ...withFile, file: null, line: null } })));
+  assert.deepEqual(noFile.sentences, ["These runs match the pin. Right now maxEffortLevel caps Fable 5.1 at high, so new runs should use high."]);
+
+  const unsupported = { status: "lowered", value: "max", becomes: "xhigh", rule_id: "effort-unsupported-level", model: SONNET };
+  const un = pinView(U, agentOf("effort_only", "matches", null, setting("matches", {
+    pv: "max", rmp: true, e: unsupported, cap: { key: "maxEffortLevel", value: "xhigh", model: SONNET, file: null, line: null },
+  })));
+  assert.deepEqual(un.sentences, ["These runs match the pin. Right now Sonnet 5.5 has no max level, so new runs should use xhigh."]);
+
+  const ml = pinView(U, agentOf("effort_only", "matches_lowered", null, setting("matches_lowered", { e: { ...lowered, reason: "Capped by maxEffortLevel." } })));
+  assert.equal(ml.pill, "match");
+  assert.equal(ml.note, "Runs at a lower level than it's set to");
+  assert.deepEqual(ml.sentences, ["Capped by maxEffortLevel."]);
+});
+
+test("pinView: a lost pin with every run at the pin, and without", async () => {
+  createPage();
+  const format = await import(JS + "format.js");
+  format.setStrings(STRINGS);
+  const { pinView } = await import(JS + "pin-view.js");
+  const cap = { key: "maxEffortLevel", value: "high", model: FABLE, file: "~/.claude/settings.json", line: 9 };
+  const capped = { status: "lowered", value: "xhigh", becomes: "high", key: "effortLevel", layer: "user", file: "~/.claude/settings.json", line: 7, rule_id: "effort-lowered-by-cap", model: FABLE, reason: "maxEffortLevel caps it." };
+  const viaCap = pinView(U, agentOf("effort_only", "overridden", null, setting("overridden", { rmp: true, e: capped, cap })));
+  assert.equal(viaCap.pill, "overridden");
+  assert.equal(viaCap.note, "Ran as pinned, but another setting wins right now");
+  assert.deepEqual(viaCap.sentences, ["These runs match the pin. Right now effortLevel overrides it from ~/.claude/settings.json, line 7. maxEffortLevel caps Fable 5.1 at high, so new runs should use high."]);
+
+  const winner = { value: "max", key: "effortLevel", layer: "user", file: "~/.claude/settings.json", line: 7 };
+  const viaSource = pinView(U, agentOf("effort_only", "overridden", null, setting("overridden", { rmp: true, e: winner })));
+  assert.deepEqual(viaSource.sentences, ["These runs match the pin. Right now effortLevel overrides it from ~/.claude/settings.json, line 7, so new runs should use max."]);
+
+  const none = pinView(U, agentOf("effort_only", "overridden", null, setting("overridden", { rmp: true, e: { value: "max", key: "effortLevel", layer: "managed" } })));
+  assert.deepEqual(none.sentences, ["These runs match the pin. Right now another setting wins, so new runs should use max."]);
+
+  const shell = { value: "max", key: "effort", layer: "env", file: "Shell", line: null };
+  const shellRuns = pinView(U, agentOf("effort_only", "overridden", null, setting("overridden", { rmp: true, e: shell })));
+  assert.deepEqual(shellRuns.sentences, ["These runs match the pin. Right now effortLevel overrides it from the shell, so new runs should use max."]);
+
+  // The runs did not match the pin: the override sentences, and the cap's reason after them.
+  const plain = pinView(U, agentOf("effort_only", "overridden", null, setting("overridden", { ran: ["max"], e: winner })));
+  assert.equal(plain.note, null);
+  assert.deepEqual(plain.sentences, ["effortLevel in ~/.claude/settings.json, line 7, overrides this pin, so the agent runs at max."]);
+  const shellLost = pinView(U, agentOf("effort_only", "overridden", null, setting("overridden", { ran: ["max"], e: shell })));
+  assert.deepEqual(shellLost.sentences, ["effortLevel in the shell overrides this pin, so the agent runs at max."]);
+  const lostCap = pinView(U, agentOf("effort_only", "overridden", null, setting("overridden", { ran: ["high"], e: capped, cap })));
+  assert.deepEqual(lostCap.sentences, [
+    "effortLevel in ~/.claude/settings.json, line 7, overrides this pin, so the agent runs at high.",
+    "maxEffortLevel caps it.",
+  ]);
+  const modelLost = pinView(U, agentOf("model_only", "overridden", setting("overridden", { pv: FABLE, ran: [SONNET], e: { key: "model", value: SONNET, file: "~/.claude/settings.json", line: 2, layer: "user" } }), null));
+  assert.deepEqual(modelLost.sentences, ["model in ~/.claude/settings.json, line 2, overrides this pin, so the agent runs on Sonnet 5.5."]);
+
+  // One lost setting that did not run at the pin keeps the note off.
+  const mixedNote = pinView(U, agentOf("both", "overridden",
+    setting("overridden", { pv: FABLE, rmp: true, e: { key: "model", value: SONNET, file: "m.json", line: 1 } }),
+    setting("overridden", { ran: ["max"], e: winner })));
+  assert.equal(mixedNote.note, null);
+});
+
+test("pinView: mixed runs name how many differ, and only an agent file's model gets a sentence", async () => {
+  createPage();
+  const format = await import(JS + "format.js");
+  format.setStrings(STRINGS);
+  const { pinView } = await import(JS + "pin-view.js");
+  const mixed = pinView(U, agentOf("effort_only", "mixed", null, setting("mixed", { ran: ["xhigh", "low"] }), { mismatched_runs: 2, total_runs: 5 }));
+  assert.equal(mixed.pill, "differs");
+  assert.equal(mixed.pillLabel, "Differs in 2 of 5 runs");
+  assert.deepEqual(mixed.sentences, [], "effort gets no sentence");
+  const every = pinView(U, agentOf("effort_only", "differs", null, setting("differs", { ran: ["low"] }), { mismatched_runs: 2, total_runs: 2 }));
+  assert.equal(every.pillLabel, null);
+  const fewer = pinView(U, agentOf("effort_only", "differs", null, setting("differs", { ran: ["low"] }), { mismatched_runs: 1, total_runs: 2 }));
+  assert.equal(fewer.pillLabel, "Differs in 1 of 2 runs");
+
+  const model = setting("differs", { pv: FABLE, ran: [SONNET], e: { key: "model", value: FABLE } });
+  const file = pinView(U, agentOf("model_only", "differs", model, null));
+  assert.deepEqual(file.sentences, ["Ran on Sonnet 5.5, but its agent file pins Fable 5.1."]);
+  const main = pinView(U, agentOf("model_only", "differs", model, null, { source: "settings" }));
+  assert.deepEqual(main.sentences, []);
+  assert.equal(main.pinnedNote, "From your settings files, not an agent file.");
+});
+
+// ---------------------------------------------------------------- models and the prices tooltip
+
+const modelsTable = (page) => byClass(cardOf(page, "Models"), "dt")[0];
+const byCostOrder = (view) => [...view.by_model].sort((a, b) => (a.cost === null ? 1 : 0) - (b.cost === null ? 1 : 0) || (b.cost || 0) - (a.cost || 0));
+
+test("models: six columns, rows in cost order, the id beside the display name, and Used by from the row's agents", async () => {
+  const app = await boot({ hash: "#/models" });
+  const page = app.section("models");
+  const view = viewOf(TIDEWATER, "30d");
+  const table = modelsTable(page);
+  assert.deepEqual(headers(table), ["Model", "Requests", "Tokens", "Estimated cost", "Cache hit rate", "Used by"]);
+  const want = byCostOrder(view);
+  assert.deepEqual(bodyRows(table).map((r) => flat(cellsOf(r)[0])), want.map((r) => r.display_name + " " + r.model));
+  bodyRows(table).forEach((row, i) => {
+    assert.equal(flat(cellsOf(row)[5]), want[i].agents.join(", "), "Used by for " + want[i].model);
+    assert.equal(texts(row, "mono")[0], want[i].model);
+    assert.equal(hasClass(byClass(row, "swatch")[0], "cat-other"), want[i].cat === "other", "swatch for " + want[i].model);
+  });
+  assert.equal(texts(cardOf(page, "Models"), "est")[0], "Estimated at API list price");
+  assert.equal(texts(cardOf(page, "Models"), "est").length, 1, "no unpriced note when every model has a price");
+  const tokens = cardOf(page, "Tokens by model");
+  assert.deepEqual(texts(tokens, "sb-n"), want.map((r) => r.display_name), "Tokens by model follows the same order");
+  assert.equal(byClass(tokens, "klg").length, 1);
+  assert.equal(byClass(page, "foot").length, 1);
+});
+
+test("models Driftwood: the unpriced model draws hatched, shows Not priced with no share, and carries its note", async () => {
+  const app = await boot({ hash: "#/models?project=" + keyOf("Driftwood") });
+  const page = app.section("models");
+  const table = modelsTable(page);
+  const rows = bodyRows(table);
+  const last = rows[rows.length - 1];
+  assert.equal(texts(last, "mono")[0], "claude-opus-6-preview", "a model with no cost comes last");
+  assert.ok(hasClass(byClass(last, "swatch")[0], "cat-other"));
+  assert.equal(flat(cellsOf(last)[3]), "Not priced");
+  assert.equal(byClass(last, "share").length, 0);
+  assert.deepEqual(texts(cardOf(page, "Models"), "est"), [
+    "Estimated at API list price",
+    "The dashboard has no list price for claude-opus-6-preview, so totals leave it out.",
+  ]);
+});
+
+test("models: a range switch keeps one /api/usage request and redraws the view", async () => {
+  const app = await boot({ hash: "#/models" });
+  assert.equal(app.count("/api/usage"), 1);
+  const before = app.calls.length;
+  await app.go("#/models?range=today");
+  assert.ok(visible(app).includes("models"));
+  assert.equal(modelsTable(app.section("models")).find((n) => n.tagName === "tbody").length, 1);
+  await app.go("#/models?range=7d");
+  await app.go("#/models?range=30d");
+  assert.equal(app.count("/api/usage"), 1);
+  assert.equal(app.calls.length, before, "a range switch fetches nothing");
+});
+
+test("est line: the title says what estimated means and when the prices were checked, on Overview and Models", async () => {
+  for (const name of ["overview", "models"]) {
+    const app = await boot({ hash: "#/" + name });
+    const lines = byClass(app.section(name), "est").filter((n) => flat(n) === "Estimated at API list price");
+    assert.ok(lines.length > 0, name + " has an est line");
+    for (const line of lines) {
+      const title = line.getAttribute("title");
+      assert.ok(title.startsWith(STRINGS.est_tip + " "), name + " title starts with the tip");
+      assert.ok(title.endsWith(" Prices checked on October 30"), name + " title: " + title);
+    }
+  }
+});
+
+test("estLine: the title is the tip alone when the price list has no date", async () => {
+  createPage();
+  const format = await import(JS + "format.js");
+  format.setStrings(STRINGS);
+  const { estLine } = await import(JS + "components.js");
+  assert.equal(estLine(null).getAttribute("title"), STRINGS.est_tip);
+  assert.equal(estLine().getAttribute("title"), STRINGS.est_tip);
+  assert.equal(estLine("2026-10-30").getAttribute("title"), STRINGS.est_tip + " Prices checked on October 30");
+});
+
+// ---------------------------------------------------------------- sessions and session detail
+
+const tagOf = (root, name) => root.find((n) => n.tagName === name);
+const sessionsTable = (page) => byClass(cardOf(page, "Sessions"), "dt")[0];
+const sessionHref = (id) => "#/sessions/" + encodeURIComponent(id);
+const PLANT = "<script>alert(1)</script>";
+
+// Answers /api/usage with a copy of the demo payload that fix(body, key) has changed. Every other path
+// uses the demo data.
+const patchedUsage = (fix) => (pathname, params) => {
+  if (pathname !== "/api/usage") return null;
+  const key = params.get("project");
+  const body = structuredClone(usageOf(key));
+  fix(body, key);
+  return [200, body];
+};
+
+async function fmtTimeOf() {
+  const format = await import(JS + "format.js");
+  return format.fmtTime;
+}
+
+test("sessions: six columns, the newest ten in the server's order, and the cells of each row", async () => {
+  const app = await boot({ hash: "#/sessions" });
+  const page = app.section("sessions");
+  const fmtTime = await fmtTimeOf();
+  const list = viewOf(TIDEWATER, "30d").sessions;
+  assert.ok(list.length > 10);
+  assert.deepEqual(headers(sessionsTable(page)), ["Started", "Session", "Branch", "Agent runs", "Tokens", "Estimated cost"]);
+  const rows = bodyRows(sessionsTable(page));
+  assert.equal(rows.length, 10);
+  const starts = list.map((s) => Date.parse(s.started));
+  assert.deepEqual(starts, [...starts].sort((a, b) => b - a), "newest first");
+  rows.forEach((row, i) => {
+    const s = list[i];
+    const cells = cellsOf(row);
+    assert.equal(flat(cells[0]), fmtTime(s.started));
+    assert.equal(flat(cells[1]), "Session from " + fmtTime(s.started));
+    assert.ok(hrefOf(cells[1]).startsWith(sessionHref(s.session_id)), hrefOf(cells[1]));
+    assert.equal(flat(cells[2]), s.branch);
+    assert.ok(hasClass(byClass(cells[2], "mono")[0], "mono"));
+    assert.equal(flat(cells[3]), s.agents.length ? s.runs + " " + s.agents.join(", ") : "none");
+    assert.equal(byClass(cells[3], "muted").length, 1);
+  });
+  assert.equal(texts(page, "at-more").length, 1);
+  assert.equal(texts(cardOf(page, "Sessions"), "est").length, 1);
+  assert.equal(byClass(page, "foot").length, 1);
+});
+
+test("sessions Driftwood: a session with no agent runs shows none, and nine rows have no more line", async () => {
+  const app = await boot({ hash: "#/sessions?project=" + keyOf("Driftwood") });
+  const page = app.section("sessions");
+  const list = viewOf(keyOf("Driftwood"), "30d").sessions;
+  const rows = bodyRows(sessionsTable(page));
+  assert.equal(rows.length, list.length);
+  const quiet = list.findIndex((s) => s.agents.length === 0);
+  assert.ok(quiet >= 0, "the demo has a session with no agent runs");
+  assert.equal(flat(cellsOf(rows[quiet])[3]), "none");
+  assert.ok(hasClass(byClass(cellsOf(rows[quiet])[3], "muted")[0], "muted"));
+  assert.equal(byClass(page, "at-more").length, 0);
+});
+
+test("sessions All projects: Project follows Session and shows each session's project", async () => {
+  const app = await boot({ hash: "#/sessions?project=all" });
+  const page = app.section("sessions");
+  assert.deepEqual(headers(sessionsTable(page)), ["Started", "Session", "Project", "Branch", "Agent runs", "Tokens", "Estimated cost"]);
+  const list = viewOf("all", "30d").sessions;
+  assert.deepEqual(bodyRows(sessionsTable(page)).map((r) => flat(cellsOf(r)[2])), list.slice(0, 10).map((s) => s.project));
+});
+
+test("sessions: the more line counts the hidden sessions and Show all names the total", async () => {
+  const app = await boot({ hash: "#/sessions" });
+  const total = viewOf(TIDEWATER, "30d").sessions.length;
+  const more = byClass(app.section("sessions"), "at-more")[0];
+  assert.equal(flat(more), (total - 10) + " more sessions in this range Show all " + total + " sessions");
+  assert.equal(tagOf(more, "button").length, 1);
+  assert.ok(hasClass(tagOf(more, "button")[0], "btn"));
+  const one = await boot({
+    hash: "#/sessions",
+    respond: patchedUsage((body) => { body.views["30d"].sessions = body.views["30d"].sessions.slice(0, 11); }),
+  });
+  assert.equal(flat(byClass(one.section("sessions"), "at-more")[0]), "1 more session in this range Show all 11 sessions");
+});
+
+test("sessions: a start across local midnight keeps its first main row, and a missing branch reads no branch", async () => {
+  const early = "2026-10-29T23:50:00-04:00";
+  const app = await boot({
+    hash: "#/sessions",
+    respond: patchedUsage((body) => {
+      const s = body.views["30d"].sessions[0];
+      s.started = early;
+      s.branch = null;
+    }),
+  });
+  const fmtTime = await fmtTimeOf();
+  const first = cellsOf(bodyRows(sessionsTable(app.section("sessions")))[0]);
+  assert.equal(flat(first[0]), fmtTime(early));
+  assert.equal(flat(first[1]), "Session from " + fmtTime(early));
+  assert.equal(flat(first[2]), "no branch");
+  assert.ok(hasClass(byClass(first[2], "muted")[0], "muted"));
+  assert.equal(byClass(first[2], "mono").length, 0);
+});
+
+test("sessions: the demo's started and branch come from the session, and Tidewater carries one branch", async () => {
+  const list = viewOf(TIDEWATER, "30d").sessions;
+  assert.ok(list.every((s) => s.branch === "feature/quarter-close"));
+  assert.ok(list.every((s) => typeof s.started === "string" && !Number.isNaN(Date.parse(s.started))));
+});
+
+test("sessions: a branch and an agent name that look like a script render as text and plant no script", async () => {
+  const fix = patchedUsage((body) => {
+    const s = body.views["30d"].sessions[0];
+    s.branch = PLANT;
+    s.agents = [PLANT];
+    s.by_agent[0].agent = PLANT;
+  });
+  const app = await boot({ hash: "#/sessions", respond: fix });
+  const page = app.section("sessions");
+  const first = cellsOf(bodyRows(sessionsTable(page))[0]);
+  assert.ok(flat(first[2]).includes(PLANT));
+  assert.ok(flat(first[3]).includes(PLANT));
+  const planted = Object.values(app.sections).flatMap((el) => tagOf(el, "script"));
+  assert.equal(planted.length, 0, "no script element on any page");
+
+  const sid = viewOf(TIDEWATER, "30d").sessions[0].session_id;
+  const detail = await boot({ hash: "#/sessions/" + encodeURIComponent(sid), respond: fix });
+  const dpage = detail.section("session-detail");
+  assert.ok(flat(byClass(dpage, "intro")[0]).includes(PLANT));
+  assert.ok(flat(cardOf(dpage, "Agents in this session")).includes(PLANT));
+  assert.ok(flat(cardOf(dpage, "Tokens by agent")).includes(PLANT));
+  assert.equal(Object.values(detail.sections).flatMap((el) => tagOf(el, "script")).length, 0);
+});
+
+test("session detail: the real head, four tiles with no deltas, and both cards", async () => {
+  const s = viewOf(TIDEWATER, "30d").sessions[0];
+  const app = await boot({ hash: "#/sessions/" + encodeURIComponent(s.session_id) });
+  const page = app.section("session-detail");
+  const fmtTime = await fmtTimeOf();
+  assert.equal(flat(tagOf(page, "h1")[0]), "Session from " + fmtTime(s.started));
+  assert.equal(tagOf(page, "h1").length, 1, "the id head is replaced, not kept beside it");
+  assert.equal(flat(byClass(page, "intro")[0]), "On " + s.branch + " in Tidewater reporting.");
+  assert.equal(byClass(page, "segs-range").length, 0, "no range control");
+  assert.equal(hrefOf(byClass(page, "crumbs")[0]).startsWith("#/sessions"), true);
+  assert.deepEqual(texts(page, "tl-l"), ["Tokens", "Estimated cost", "Cache hit rate", "Agent runs"]);
+  assert.equal(byClass(page, "delta").length, 0);
+  const tiles = byClass(page, "kpi");
+  assert.equal(flat(byClass(tiles[3], "kpi-v")[0]), String(s.runs));
+  assert.deepEqual(texts(tiles[1], "est"), ["Estimated at API list price"]);
+  assert.deepEqual(texts(tiles[2], "kpi-def"), ["Share of prompt tokens read from cache"]);
+  assert.equal(byClass(page, "g2").length, 1);
+  const agents = cardOf(page, "Agents in this session");
+  assert.deepEqual(headers(byClass(agents, "dt")[0]), ["Agent", "Runs", "Tokens", "Estimated cost", "Cache hit rate"]);
+  assert.equal(texts(agents, "est").length, 1);
+  const tokens = cardOf(page, "Tokens by agent");
+  assert.equal(byClass(tokens, "sb-row").length, s.by_agent.length);
+  assert.equal(byClass(tokens, "klg").length, 1);
+  assert.equal(byClass(page, "foot").length, 1);
+});
+
+test("session detail: every agent row links to its route in the server's order, Main to @main with one run", async () => {
+  const s = viewOf(TIDEWATER, "30d").sessions[0];
+  const app = await boot({
+    hash: "#/sessions/" + encodeURIComponent(s.session_id),
+    respond: patchedUsage((body) => {
+      const row = body.views["30d"].sessions[0];
+      row.by_agent.push({ ...row.by_agent[0], agent: "@unnamed", runs: 3 });
+    }),
+  });
+  const table = byClass(cardOf(app.section("session-detail"), "Agents in this session"), "dt")[0];
+  const rows = bodyRows(table);
+  const want = [...s.by_agent.map((r) => r.agent), "@unnamed"];
+  assert.equal(rows.length, want.length);
+  rows.forEach((row, i) => {
+    const key = want[i] === null ? "@main" : want[i];
+    assert.equal(hrefOf(cellsOf(row)[0]).split("?")[0], "#/agents/" + (key === "@main" ? key : encodeURIComponent(key)));
+    const shown = want[i] === null ? "Main session" : want[i] === "@unnamed" ? "Unnamed agent" : want[i];
+    assert.equal(flat(cellsOf(row)[0]), shown);
+    if (want[i] === null) assert.equal(flat(cellsOf(row)[1]), "1");
+    if (want[i] === "@unnamed") assert.equal(flat(cellsOf(row)[1]), "3");
+  });
+});
+
+test("session detail: no branch gives the no-branch intro, and an unknown id gives the empty state", async () => {
+  const s = viewOf(TIDEWATER, "30d").sessions[0];
+  const app = await boot({
+    hash: "#/sessions/" + encodeURIComponent(s.session_id),
+    respond: patchedUsage((body) => { body.views["30d"].sessions[0].branch = null; }),
+  });
+  assert.equal(flat(byClass(app.section("session-detail"), "intro")[0]), "In Tidewater reporting.");
+
+  const gone = await boot({ hash: "#/sessions/no-such-session" });
+  const page = gone.section("session-detail");
+  assert.equal(flat(tagOf(page, "h1")[0]), "no-such-session");
+  assert.deepEqual(texts(page, "cd-h"), ["No usage in this range"]);
+  assert.ok(flat(page).includes("No session ran during the last 30 days."));
+  assert.equal(byClass(page, "kpi").length, 0);
+  assert.equal(byClass(page, "foot").length, 1);
+});
+
+test("session detail: it finds the session from the 30 day view whatever range the address holds", async () => {
+  const s = viewOf(TIDEWATER, "30d").sessions[viewOf(TIDEWATER, "7d").sessions.length + 2];
+  assert.ok(!viewOf(TIDEWATER, "7d").sessions.some((x) => x.session_id === s.session_id));
+  const app = await boot({ hash: "#/sessions/" + encodeURIComponent(s.session_id) + "?range=7d" });
+  assert.equal(byClass(app.section("session-detail"), "kpi").length, 4);
+  assert.equal(app.count("/api/usage"), 1);
+});
+
+test("agent detail: a Recent runs link opens the session detail for that same session", async () => {
+  const app = await boot({ hash: "#/agents/builder" });
+  const fmtTime = await fmtTimeOf();
+  const row = bodyRows(byClass(cardOf(app.section("agent-detail"), "Recent runs"), "dt")[0])[0];
+  const run = viewOf(TIDEWATER, "30d").by_agent.find((a) => a.route_key === "builder").recent_runs[0];
+  await app.go(hrefOf(cellsOf(row)[1]));
+  assert.deepEqual(visible(app), ["session-detail"]);
+  const page = app.section("session-detail");
+  const s = viewOf(TIDEWATER, "30d").sessions.find((x) => x.session_id === run.session_id);
+  assert.equal(flat(tagOf(page, "h1")[0]), "Session from " + fmtTime(s.started));
+  assert.equal(fmtTime(run.session_started), fmtTime(s.started));
+  assert.equal(app.count("/api/usage"), 1);
+});
+
+// This one goes last of the sessions checks: the expanded state lives in the module, as it does in a tab.
+test("sessions: Show all expands from the payload, keeps focus, and holds only for the same project and range", async () => {
+  const app = await boot({ hash: "#/sessions" });
+  const total = viewOf(TIDEWATER, "30d").sessions.length;
+  const page = () => app.section("sessions");
+  assert.equal(bodyRows(sessionsTable(page())).length, 10);
+  const before = app.calls.length;
+  tagOf(byClass(page(), "at-more")[0], "button")[0].click();
+  assert.equal(bodyRows(sessionsTable(page())).length, total);
+  assert.equal(byClass(page(), "at-more").length, 0, "the more line goes with the button");
+  assert.equal(app.calls.length, before, "no new request");
+  assert.equal(app.count("/api/usage"), 1);
+  const eleventh = tagOf(bodyRows(sessionsTable(page()))[10], "a")[0];
+  assert.equal(app.doc.activeElement, eleventh, "focus lands on the link in row 11");
+
+  await app.go("#/overview");
+  await app.go("#/sessions");
+  assert.equal(bodyRows(sessionsTable(page())).length, total, "a redraw of the same view stays expanded");
+
+  await app.go("#/sessions?range=7d");
+  const week = viewOf(TIDEWATER, "7d").sessions.length;
+  assert.ok(week > 10);
+  assert.equal(bodyRows(sessionsTable(page())).length, 10, "another range starts short");
+  assert.equal(byClass(page(), "at-more").length, 1);
+
+  await app.go("#/sessions?range=30d&project=all");
+  assert.equal(bodyRows(sessionsTable(page())).length, 10, "another project starts short");
+  assert.equal(app.count("/api/usage"), 2, "one request per project");
+});
+
 // ---------------------------------------------------------------- run
 
 let failed = 0;
@@ -310,5 +973,4 @@ for (const [name, fn] of tests) {
     for (const line of logged.slice(0, 3)) console.log("     console.error: " + line.split("\n")[0]);
   }
 }
-console.log((tests.length - failed) + " of " + tests.length + " checks passed");
-process.exit(failed ? 1 : 0);
+console.log((tests.length - failed) + " of " + tests.length + " checks passed");process.exit(failed ? 1 : 0);
