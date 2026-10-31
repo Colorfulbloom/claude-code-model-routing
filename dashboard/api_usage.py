@@ -36,6 +36,7 @@ import sys
 import threading
 import zoneinfo
 
+import api_settings
 import collect
 import pincheck
 import prices as price_list
@@ -145,7 +146,7 @@ def start_warm(ctx):
 
 def api_projects(ctx, query):
     """Return projects.api_projects plus tz, now, transcripts_dir_display,
-    config_file_display and reader.
+    config_file_display, reader and version.
 
     It never takes the cache lock and never calls Reader.read, so it answers
     while the reader is busy. files is None until the first scan has counted
@@ -159,6 +160,7 @@ def api_projects(ctx, query):
     cache = ctx.usage_cache
     reader = cache.reader
     payload = dict(payload)
+    payload["version"] = api_settings.version_field(ctx)
     payload["tz"] = label
     payload["now"] = _now(ctx, tz).isoformat()
     payload["transcripts_dir_display"] = resolve.display_path(

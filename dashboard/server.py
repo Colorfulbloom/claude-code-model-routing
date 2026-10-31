@@ -137,6 +137,8 @@ class Context:
     tz_name: object = None  # the TZ value, or None
     localtime_link: object = None  # the /etc/localtime link to read, or None
     fixed_now: object = None  # an aware datetime that replaces the clock, or None
+    claude_version: object = None  # a fixture's fixed installed version, or None
+    path_env: object = None  # the PATH text to search for claude, or None (read nothing)
     usage_cache: object = dataclasses.field(default_factory=api_usage.Cache, compare=False,
                                             repr=False)
 
@@ -189,7 +191,8 @@ def live_context(config_dir, project_dir, env, platform, rules, agent_fields,
         agent_fields=agent_fields,
         project_explicit=project_explicit,
         tz_name=env.get("TZ") or None,
-        localtime_link=LOCALTIME_LINK)
+        localtime_link=LOCALTIME_LINK,
+        path_env=env.get("PATH"))
 
 
 def mask_flags(flags):
@@ -228,7 +231,8 @@ def fixture_context(folder, config_dir, project_dir, rules, agent_fields,
         agent_fields=agent_fields,
         project_explicit=project_explicit,
         tz_name=tz_name,
-        fixed_now=_fixture_now(session.get("now")))
+        fixed_now=_fixture_now(session.get("now")),
+        claude_version=session.get("claude_version") if isinstance(session.get("claude_version"), str) else None)
 
 
 def _fixture_now(value):

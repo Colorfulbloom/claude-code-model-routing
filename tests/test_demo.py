@@ -180,7 +180,9 @@ class Built(unittest.TestCase):
                         "agents/scribe.md", "rules/writing.md", "routing-dashboard.json"):
                 self.assertTrue(os.path.isfile(os.path.join(cfg, rel)), (base, rel))
         self.assertEqual(os.listdir(os.path.join(self.out, "managed")), [])
-        self.assertEqual(self.read_json(DEMO, "session.json"), {"shell_env": {"CLAUDE_CODE_EFFORT_LEVEL": ""}})
+        self.assertEqual(self.read_json(DEMO, "session.json"), {"claude_version": "2.1.310", "shell_env": {"CLAUDE_CODE_EFFORT_LEVEL": ""}})
+        # The build keeps the installed version and adds the clock and the zone.
+        self.assertEqual(self.read_json(self.out, "session.json")["claude_version"], "2.1.310")
 
     def test_project_list(self):
         listing = self.read_json(self.out, "config", "routing-dashboard.json")

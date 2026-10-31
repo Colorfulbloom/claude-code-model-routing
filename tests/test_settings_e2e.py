@@ -272,6 +272,18 @@ class SettingsE2E(unittest.TestCase):
         self.assertIn("Model", terms)  # the meta block is there, so the missing cap line means something
         self.assertNotIn("Effort cap", terms)
 
+    def test_a_rule_checked_before_the_installed_version_is_due_for_a_new_check(self):
+        # The Rules card is closed, so its text is not in the sweep's innerText. Open it, then read it.
+        self.show(EFFORT_TRAIL, "trail")
+        self.page.wait_for("Boolean(document.getElementById('trail'))")
+        self.page.eval("[...document.querySelectorAll('#trail details.cd')]"
+                       ".filter((d) => d.querySelector('h3').textContent === 'Rules behind this value')"
+                       ".forEach((d) => { d.open = true; })")
+        lines = self.texts_of("#trail .ru-ck")
+        self.assertGreater(len(lines), 0, "the trail shows no checked line")
+        for line in lines:
+            self.assertIn("You have 2.1.310, so this rule is due for a new check.", line)
+
     def test_external_links_carry_their_guards(self):
         self.show(EFFORT_TRAIL, "trail")
         self.page.wait_for("Boolean(document.getElementById('trail'))")

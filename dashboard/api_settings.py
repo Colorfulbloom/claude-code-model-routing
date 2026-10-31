@@ -7,11 +7,14 @@ JSON. Nothing here caches, so each request reads the files again.
 Standard library only, Python 3.9. It reads only the folders the Context names
 and never looks at os.environ or the home folder.
 """
+import json
 import os
 
+import agent_frontmatter
 import collect
 import projects
 import resolve
+import version
 
 MAIN_AGENT = "@main"  # the agent key of the main session's rows
 REPO_BLOB = "https://github.com/Colorfulbloom/claude-code-model-routing/blob/main/"
@@ -67,14 +70,47 @@ def _rows(entries):
     return list(rows.values())
 
 
-def _rule_record(rule):
-    """Return the part of one rule the trail shows, with its two page links."""
+def _agent_fields_version():
+    """Return the claude_version agent_fields.json was checked on, or None.
+
+    resolve.load_agent_fields keeps only the field names, so the JSON is read
+    again here.
+    """
+    try:
+        with open(agent_frontmatter.FIELDS_PATH, encoding="utf-8") as fh:
+            data = json.load(fh)
+        text = data["verified_on"]["claude_version"]
+    except (OSError, ValueError, RecursionError, KeyError, TypeError):
+        return None
+    return text if isinstance(text, str) else None
+
+
+def version_field(ctx):
+    """Return {"installed", "rules_oldest"} for the version chip and the due marks.
+
+    installed is the Claude Code version on this machine, or None. rules_oldest
+    is the oldest version any rule, or the agent field table, was checked on.
+    The field table counts because it decides Ignored for frontmatter and no
+    rule reports its age.
+    """
+    checked = [rule.get("verified_on", {}).get("claude_version") for rule in ctx.rules.get("rules", [])]
+    checked.append(_agent_fields_version())
+    return {"installed": version.installed(ctx), "rules_oldest": version.oldest(checked)}
+
+
+def _rule_record(rule, installed):
+    """Return the part of one rule the trail shows, with its two page links.
+
+    due is true when the installed version is newer than the one the rule was
+    checked on.
+    """
     experiment = rule.get("experiment")
     return {
         "rule_id": rule["rule_id"],
         "confidence": rule["confidence"],
         "verified_on": {"claude_version": rule["verified_on"]["claude_version"],
                         "date": rule["verified_on"]["date"]},
+        "due": version.older(rule["verified_on"]["claude_version"], installed),
         "quotes": [{"doc_url": quote["doc_url"], "quote": quote["quote"]}
                    for quote in rule.get("quotes", [])],
         "experiment": experiment or None,
@@ -83,14 +119,14 @@ def _rule_record(rule):
     }
 
 
-def _rules_for(ctx, rows):
+def _rules_for(ctx, rows, installed):
     """Return {rule_id: record} for every rule the rows name."""
     known = {rule["rule_id"]: rule for rule in ctx.rules.get("rules", [])}
     out = {}
     for row in rows:
         for rule_id in row["rule_ids"]:
             if rule_id in known and rule_id not in out:
-                out[rule_id] = _rule_record(known[rule_id])
+                out[rule_id] = _rule_record(known[rule_id], installed)
     return out
 
 
@@ -128,6 +164,10 @@ def settings(ctx, query):
     rules reference page. files lists the settings files that exist, with their
     status.
 
+    installed is the Claude Code version on this machine, or null. Each rule
+    record carries due, true when that version is newer than the one the rule
+    was checked on.
+
     ?project=<key> picks the project and no value means the current one. The
     answer for a key that is not listed, or for "all", carries no settings data.
     """
@@ -142,7 +182,7 @@ def settings(ctx, query):
         return 404, {"error": "unknown_project"}
     if project.state == projects.STATE_MISSING and not project.implicit:
         answer = {"project": project.key, "state": project.state, "entries": [],
-                  "rows": [], "rules": {}, "files": []}
+                  "rows": [], "rules": {}, "files": [], "installed": version.installed(ctx)}
         answer.update(_display_fields(ctx, project))
         return 200, answer
     collected = collect.collect(
@@ -162,10 +202,11 @@ def settings(ctx, query):
         **extra)
     entries = resolve.resolve(inputs, ctx.rules, ctx.agent_fields)
     rows = _rows(entries)
+    installed = version.installed(ctx)
     answer = {"project": project.key, "state": project.state, "entries": entries,
               "no_user_settings": not any(
                   record["layer"] == "user" for record in collected["settings_files"]),
-              "rows": rows, "rules": _rules_for(ctx, rows),
-              "files": _files(ctx, collected, entries)}
+              "rows": rows, "rules": _rules_for(ctx, rows, installed),
+              "files": _files(ctx, collected, entries), "installed": installed}
     answer.update(_display_fields(ctx, project))
     return 200, answer

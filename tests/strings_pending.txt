@@ -2,7 +2,6 @@ at_empty
 attention_card_sub
 c_files_table
 c_rules_list
-checked_old
 f_differs
 f_matches
 f_missing

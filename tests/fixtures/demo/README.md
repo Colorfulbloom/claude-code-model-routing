@@ -47,6 +47,7 @@ Each row is a case planted on purpose, with where it lives and the screen it dri
 | Rows that repeat a message id while the output grows | generated transcripts | Sessions, Session detail |
 | Every row has `inference_geo` `global` | generated transcripts | Cost on every screen |
 | Files older than 61 days | generated transcripts | Reader |
+| Installed Claude Code is newer than the rules | `session.json` | Top bar, Settings, Rules reference |
 
 Across the listed projects with a folder, all seven status words and all three confidence words appear. A settings ticket that adds a case adds a row here.
 

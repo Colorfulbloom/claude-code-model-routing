@@ -134,19 +134,21 @@ function quotesBlock(rule) {
       h("q", null, renderText(String(q.quote).replace(/`/g, "")))))));
 }
 
-function ruleItem(rule) {
+// One rule. installed is the Claude Code version on this machine, or null. A rule marked due reads as
+// due for a new check.
+export function ruleItem(rule, installed) {
   const confidence = rule.confidence;
   const verified = rule.verified_on || {};
+  const date = verified.date ? fmtTime(verified.date) + ", " + verified.date.slice(0, 4) : "";
   return h("li", { class: ["ru", "ru-" + confidence] },
     h("div", { class: "ru-top" },
       externalLink({ class: "ru-id", "aria-label": t("rule_link_sr", { rule_id: rule.rule_id }) }, rule.reference_url, rule.rule_id),
       h("span", { class: ["cf", "cf-" + confidence] }, t("conf_" + confidence))),
     confidence === "assumed" ? h("p", { class: "ru-def" }, t("assumed_def")) : null,
-    h("p", { class: "ru-ck" }, t("checked", {
-      // Screen 07 writes the year, and the day here comes from rules.json as YYYY-MM-DD.
-      version: verified.claude_version,
-      date: verified.date ? fmtTime(verified.date) + ", " + verified.date.slice(0, 4) : "",
-    })),
+    // Screen 07 writes the year, and the day here comes from rules.json as YYYY-MM-DD.
+    h("p", { class: "ru-ck" }, rule.due
+      ? t("checked_old", { version: verified.claude_version, date, installed })
+      : t("checked", { version: verified.claude_version, date })),
     quotesBlock(rule),
     rule.experiment ? h("p", { class: "ru-x" },
       h("span", { class: "ru-l" }, t("experiment")),
@@ -164,7 +166,7 @@ function rulesCard(payload, row) {
   const summary = rules.length === 1 ? t("sum_rules_1", { parts }) : t("sum_rules", { n: rules.length, parts });
   return card({
     title: t("rules_h"), icon: "rules", summary, open: false, heading: "h3",
-    body: h("ul", { class: "rules" }, rules.map(ruleItem)),
+    body: h("ul", { class: "rules" }, rules.map((rule) => ruleItem(rule, payload.installed))),
   });
 }
 

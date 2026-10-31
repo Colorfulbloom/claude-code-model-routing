@@ -594,6 +594,23 @@ test("trail: each rule links to the reference page and shows its check, quotes a
   assert.equal(text(expLink), "dashboard/experiments/2026-10-29-effort-level-order.json");
 });
 
+test("trail: a rule marked due reads as due for a new check, and the others read as checked", () => {
+  const due = ruleRec("old", { due: true });
+  const fine = ruleRec("fine", { due: false });
+  const plain = ruleRec("plain");
+  const { root } = mount(trailPayload([E({ rule_ids: ["old", "fine", "plain"] })], [due, fine, plain],
+    { installed: "2.1.310" }), "@main", "effortLevel");
+  const [first, second, third] = byClass(cardOf(root, "Rules behind this value"), "ru");
+  assert.equal(text(sub(first, "ru-ck")),
+    "Checked on Claude Code 2.1.302, October 29, 2026. You have 2.1.310, so this rule is due for a new check.");
+  assert.equal(text(sub(second, "ru-ck")), "Checked on Claude Code 2.1.302, October 29, 2026");
+  assert.equal(text(sub(third, "ru-ck")), "Checked on Claude Code 2.1.302, October 29, 2026");
+  // ruleItem is exported and takes the installed version as its second argument.
+  const node = trail.ruleItem(due, "2.2.0");
+  assert.match(text(sub(node, "ru-ck")), /You have 2\.2\.0, so this rule is due for a new check\.$/);
+  assert.doesNotMatch(text(sub(trail.ruleItem(fine, "2.2.0"), "ru-ck")), /due/);
+});
+
 test("trail: a rule with no quotes and no experiment leaves those parts out", () => {
   const { root } = mount(trailPayload([E({ rule_ids: ["a"] })], [ruleRec("a")]), "@main", "effortLevel");
   const item = byClass(cardOf(root, "Rules behind this value"), "ru")[0];

@@ -11,6 +11,7 @@ import re
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 import helpers
 
@@ -29,7 +30,7 @@ FIELDS = resolve.load_agent_fields()
 ROUTE = server.ROUTES["/api/settings"]
 ANSWER_KEYS = {
     "project", "state", "entries", "no_user_settings", "shell_label", "path_display",
-    "config_dir_display", "config_file_display", "models", "rows", "rules", "files"}
+    "config_dir_display", "config_file_display", "models", "rows", "rules", "files", "installed"}
 REFERENCE_PAGE = os.path.join(helpers.REPO, "docs", "rules-reference.md")
 REFERENCE_URL = "https://github.com/Colorfulbloom/claude-code-model-routing/blob/main/docs/rules-reference.md"
 EXPERIMENT_BASE = "https://github.com/Colorfulbloom/claude-code-model-routing/blob/main/dashboard/"
@@ -353,7 +354,7 @@ class EveryRow(unittest.TestCase):
     def test_a_rule_record_has_exactly_the_trail_fields(self):
         for payload in self.answers.values():
             for rule in payload["rules"].values():
-                self.assertEqual(set(rule), {"rule_id", "confidence", "verified_on", "quotes", "experiment",
+                self.assertEqual(set(rule), {"rule_id", "confidence", "verified_on", "due", "quotes", "experiment",
                                              "experiment_url", "reference_url"})
                 self.assertEqual(set(rule["verified_on"]), {"claude_version", "date"})
 
@@ -410,6 +411,80 @@ class TrailData(unittest.TestCase):
     def test_constants(self):
         self.assertEqual(api_settings.REFERENCE_URL, REFERENCE_URL)
         self.assertEqual(api_settings.EXPERIMENT_BASE, EXPERIMENT_BASE)
+
+
+class VersionAndDue(unittest.TestCase):
+    NAME = "effort-lowered-by-cap"
+
+    def payload(self, **replace):
+        ctx = context(os.path.join(FIXTURE_DIR, self.NAME))
+        if replace:
+            ctx = dataclasses.replace(ctx, **replace)
+        return call(ctx)[1]
+
+    def test_a_fixture_has_no_installed_version_and_no_rule_is_due(self):
+        payload = self.payload()
+        self.assertIsNone(payload["installed"])
+        self.assertTrue(payload["rules"])
+        for rule in payload["rules"].values():
+            self.assertIs(rule["due"], False)
+
+    def test_a_newer_install_makes_the_older_rules_due(self):
+        payload = self.payload(claude_version="2.1.1000")
+        self.assertEqual(payload["installed"], "2.1.1000")
+        for rule in payload["rules"].values():
+            self.assertIs(rule["due"], True, rule["rule_id"])
+
+    def test_an_install_at_or_below_the_check_is_not_due(self):
+        for installed in ("2.1.302", "2.1.5", "2.0"):
+            payload = self.payload(claude_version=installed)
+            self.assertEqual(payload["installed"], installed)
+            for rule in payload["rules"].values():
+                self.assertIs(rule["due"], False, (installed, rule["rule_id"]))
+
+    def test_due_follows_each_rules_own_version(self):
+        rule = dict(RULES["rules"][0])
+        rule["verified_on"] = {"claude_version": "2.1.400", "date": "2026-10-29"}
+        self.assertIs(api_settings._rule_record(rule, "2.1.500")["due"], True)
+        self.assertIs(api_settings._rule_record(rule, "2.1.400")["due"], False)
+        self.assertIs(api_settings._rule_record(rule, "2.1.399")["due"], False)
+        self.assertIs(api_settings._rule_record(rule, None)["due"], False)
+
+    def test_a_missing_folder_carries_installed_too(self):
+        root = new_dir(self)
+        config = os.path.join(root, "config")
+        write_json(os.path.join(config, projects.CONFIG_FILE),
+                   {"projects": [{"name": "Listed", "path": os.path.join(root, "gone")}]})
+        os.makedirs(os.path.join(root, "work"))
+        ctx = dataclasses.replace(
+            context(root, config_dir=config, project_dir=os.path.join(root, "work")), claude_version="2.1.310")
+        payload = call(ctx, "listed")[1]
+        self.assertEqual(payload["installed"], "2.1.310")
+
+    def test_version_field_counts_the_agent_field_table(self):
+        ctx = context(os.path.join(FIXTURE_DIR, self.NAME))
+        field = api_settings.version_field(ctx)
+        self.assertEqual(field, {"installed": None, "rules_oldest": "2.1.302"})
+        older_rules = {"rules": [dict(r, verified_on={"claude_version": "2.2.0", "date": "2026-10-29"})
+                                 for r in RULES["rules"]]}
+        field = api_settings.version_field(dataclasses.replace(ctx, rules=older_rules))
+        # The table in agent_fields.json is the oldest here.
+        self.assertEqual(field["rules_oldest"], "2.1.302")
+        with mock.patch.object(api_settings, "_agent_fields_version", return_value=None):
+            self.assertEqual(api_settings.version_field(
+                dataclasses.replace(ctx, rules=older_rules))["rules_oldest"], "2.2.0")
+
+    def test_an_unreadable_field_table_gives_none(self):
+        with mock.patch.object(api_settings.agent_frontmatter, "FIELDS_PATH", "/nonexistent/agent_fields.json"):
+            self.assertIsNone(api_settings._agent_fields_version())
+
+
+ORDER = ["unknown", "lowered", "ignored", "overridden", "invalid"]
+
+
+def attention_entry(status, value, key="effortLevel", agent=None):
+    return {"key": key, "agent": agent, "scope": "main" if agent is None else "agent",
+            "status": status, "value": value}
 
 
 class OverHttp(test_server.TempCase):
