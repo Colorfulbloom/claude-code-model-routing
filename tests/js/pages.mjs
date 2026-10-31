@@ -230,13 +230,15 @@ test("usage held back: data-rendered reaches 1 and data-usage stays unset, then 
   assert.equal(byClass(app.section("overview"), "kpi").length, 4);
 });
 
-test("usage failing: data-usage is set whatever the status, and the page keeps its head only", async () => {
+test("usage failing: data-usage is set whatever the status, and the page keeps its head and the transcripts state", async () => {
   const app = await boot({ hash: "#/overview", respond: async (pathname) => (pathname === "/api/usage" ? [503, { error: "down" }] : null) });
   assert.equal(app.root.getAttribute("data-usage"), "1");
   const page = app.section("overview");
   assert.equal(byClass(page, "kpi").length, 0);
   assert.equal(byClass(page, "foot").length, 0);
   assert.equal(byClass(page, "ph").length, 1);
+  assert.deepEqual(texts(page, "cd-h"), ["Can't read the transcripts"]);
+  assert.ok(flat(page).includes(DATA["/api/projects"].body.transcripts_dir_display), "the state names the folder");
 });
 
 // ---------------------------------------------------------------- other projects
@@ -260,19 +262,218 @@ test("overview Driftwood 30 days: no earlier data on every tile, and the partly 
   assert.equal(byClass(last, "share").length, 0, "a model with no cost has no share");
 });
 
-test("overview Harbor Light on Today draws without throwing", async () => {
+test("overview Harbor Light on Today: the no-range card, with the project sentence and a range switch", async () => {
   const app = await boot({ hash: "#/overview?range=today&project=" + keyOf("Harbor Light") });
   const page = app.section("overview");
-  assert.equal(byClass(page, "kpi").length, 4);
-  assert.equal(viewOf(keyOf("Harbor Light"), "today").totals.tokens, 0);
-  assert.equal(logged.filter((m) => m.includes("failed to render")).length, 0);
+  assert.equal(viewOf(keyOf("Harbor Light"), "today").totals.requests, 0);
+  assert.equal(byClass(page, "kpi").length, 0);
+  assert.deepEqual(texts(page, "es-h"), ["No usage in this range"]);
+  assert.deepEqual(texts(page, "es-t"), [STRINGS.s_no_range_t]);
+  assert.deepEqual(texts(page, "cd-h"), ["Tokens per day"]);
+  assert.equal(byClass(page, "segs-range").length, 2, "the page head's switch and the card's");
+  assert.equal(byClass(page, "foot").length, 1, "the footer follows");
 });
 
-test("overview for a project with no usage draws without throwing", async () => {
-  for (const name of ["Saltmarsh", "Lantern"]) {
-    const app = await boot({ hash: "#/overview?project=" + keyOf(name) });
-    assert.equal(byClass(app.section("overview"), "kpi").length, 4, name);
+test("overview no-range card: the longest range gets its own sentence, and a click on the card's switch changes the range", async () => {
+  const key = keyOf("Harbor Light");
+  const app = await boot({ hash: "#/overview?project=" + key, respond: patchedUsage((b) => { b.views["30d"].totals.requests = 0; }) });
+  assert.deepEqual(texts(app.section("overview"), "es-t"), [STRINGS.s_no_range_longest_t]);
+  const radios = byClass(byClass(app.section("overview"), "cd")[0], "seg");
+  assert.equal(radios.length, 3);
+  radios[0].click();
+  await tick(20);
+  assert.ok(app.win.location.hash.includes("range=today"), app.win.location.hash);
+});
+
+test("overview Saltmarsh: No usage yet, and the sentence, with the footer", async () => {
+  const app = await boot({ hash: "#/overview?project=" + keyOf("Saltmarsh") });
+  const page = app.section("overview");
+  assert.equal(usageOf(keyOf("Saltmarsh")).no_usage, true);
+  assert.equal(byClass(page, "kpi").length, 0);
+  assert.deepEqual(texts(page, "cd-h"), ["No usage yet"]);
+  assert.deepEqual(texts(page, "es-t"), [STRINGS.s_no_usage_t]);
+  assert.equal(byClass(page, "foot").length, 1);
+});
+
+test("overview Lantern: Folder not found with the project's path and the config file, at once and with usage held back", async () => {
+  const lantern = DATA["/api/projects"].body.projects.find((p) => p.name === "Lantern");
+  assert.equal(lantern.state, "missing_folder");
+  const check = (app) => {
+    const page = app.section("overview");
+    const note = byClass(page, "nt-empty");
+    assert.equal(note.length, 1);
+    assert.equal(note[0].getAttribute("aria-label"), "Folder not found");
+    assert.deepEqual(texts(page, "nt-h"), ["Folder not found"]);
+    assert.deepEqual(texts(page, "nt-t"), [
+      "The project list points Lantern at " + lantern.path_display + ", and there's no folder there. Fix the path in "
+      + DATA["/api/projects"].body.config_file_display + ", or take Lantern off the list.",
+    ]);
+    assert.equal(byClass(page, "kpi").length, 0);
+    assert.equal(byClass(page, "foot").length, 0);
+  };
+  check(await boot({ hash: "#/overview?project=" + lantern.key }));
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  const held = await boot({
+    hash: "#/overview?project=" + lantern.key,
+    usage: false,
+    respond: async (pathname) => { if (pathname === "/api/usage") await gate; return null; },
+  });
+  check(held);
+  release();
+  await until(() => held.root.getAttribute("data-usage") === "1", "data-usage");
+  check(held);
+});
+
+test("overview All projects with no requests in the range: the all-projects sentence", async () => {
+  const app = await boot({
+    hash: "#/overview?project=all&range=today",
+    respond: patchedUsage((b) => { b.views.today.totals.requests = 0; }),
+  });
+  const page = app.section("all-projects");
+  assert.equal(byClass(page, "kpi").length, 0);
+  assert.deepEqual(texts(page, "es-t"), [STRINGS.s_no_range_all_t]);
+  assert.deepEqual(texts(page, "es-h"), ["No usage in this range"]);
+});
+
+test("overview All projects with no usage at all: the all-projects sentence, not the this-project one", async () => {
+  const app = await boot({
+    hash: "#/overview?project=all",
+    respond: patchedUsage((b) => { b.no_usage = true; }),
+  });
+  const page = app.section("all-projects");
+  assert.deepEqual(texts(page, "es-t"), [STRINGS.s_no_range_all_t]);
+  assert.ok(!flat(page).includes("this project"), flat(page));
+});
+
+test("every usage page: no-range and no-usage states come from fillUsage, so Agents, Models and Sessions show them too", async () => {
+  const quiet = keyOf("Harbor Light");
+  for (const [hash, section] of [["#/agents", "agents"], ["#/models", "models"], ["#/sessions", "sessions"], ["#/agents/builder", "agent-detail"]]) {
+    const app = await boot({ hash: hash + "?range=today&project=" + quiet });
+    const page = app.section(section);
+    assert.deepEqual(texts(page, "es-h"), ["No usage in this range"], hash);
+    assert.equal(byClass(page, "kpi").length, 0, hash);
+    const none = await boot({ hash: hash + "?project=" + keyOf("Saltmarsh") });
+    assert.deepEqual(texts(none.section(section), "cd-h"), ["No usage yet"], hash);
   }
+});
+
+test("session detail on Today: a session outside today's view still draws", async () => {
+  const quiet = keyOf("Harbor Light");
+  const list = viewOf(quiet, "30d").sessions;
+  assert.ok(list.length > 0, "Harbor Light has sessions in 30 days");
+  assert.equal(viewOf(quiet, "today").totals.requests, 0);
+  const app = await boot({ hash: "#/sessions/" + encodeURIComponent(list[0].session_id) + "?range=today&project=" + quiet });
+  const page = app.section("session-detail");
+  assert.equal(byClass(page, "kpi").length, 4);
+  assert.deepEqual(texts(page, "es-h"), []);
+});
+
+test("session detail: a project with no usage still gets No usage yet", async () => {
+  const app = await boot({ hash: "#/sessions/anything?project=" + keyOf("Saltmarsh") });
+  assert.deepEqual(texts(app.section("session-detail"), "cd-h"), ["No usage yet"]);
+});
+
+// ---------------------------------------------------------------- the transcripts folder
+
+const projectsWith = (fix) => (pathname) => {
+  if (pathname !== "/api/projects") return null;
+  const body = structuredClone(DATA["/api/projects"].body);
+  fix(body);
+  return [200, body];
+};
+
+test("reader.readable false: every usage page says it can't read the transcripts, and Settings keeps working", async () => {
+  const respond = projectsWith((b) => { b.reader.readable = false; });
+  const path = DATA["/api/projects"].body.transcripts_dir_display;
+  for (const [hash, section] of [["#/overview", "overview"], ["#/overview?project=all", "all-projects"], ["#/agents", "agents"],
+    ["#/agents/builder", "agent-detail"], ["#/models", "models"], ["#/sessions", "sessions"], ["#/sessions/x", "session-detail"]]) {
+    const app = await boot({ hash, respond });
+    const page = app.section(section);
+    assert.deepEqual(texts(page, "cd-h"), ["Can't read the transcripts"], hash);
+    assert.ok(flat(page).includes("The dashboard can't find or read " + path), hash);
+    assert.equal(byClass(page, "kpi").length, 0, hash);
+  }
+  const app = await boot({ hash: "#/settings", respond });
+  assert.ok(flat(byClass(app.section("settings"), "ph")[0]).includes("Settings"));
+  assert.ok(!flat(app.section("settings")).includes("Can't read the transcripts"));
+});
+
+test("reader.readable false shows at once, with usage held back", async () => {
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  const app = await boot({
+    hash: "#/overview",
+    usage: false,
+    respond: async (pathname, params, n) => {
+      if (pathname === "/api/usage") await gate;
+      return projectsWith((b) => { b.reader.readable = false; })(pathname, params, n);
+    },
+  });
+  assert.deepEqual(texts(app.section("overview"), "cd-h"), ["Can't read the transcripts"]);
+  assert.equal(byClass(app.section("overview"), "es-t").filter((n) => n.getAttribute("role") === "status").length, 0);
+  release();
+  await until(() => app.root.getAttribute("data-usage") === "1", "data-usage");
+});
+
+// ---------------------------------------------------------------- the waiting line
+
+const WAITING = ["settings", "attention", "files", "rules"];
+
+test("usage held back: one waiting line with the file count, then it clears on the answer", async () => {
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  const app = await boot({
+    hash: "#/overview",
+    usage: false,
+    respond: async (pathname, params, n) => {
+      if (pathname === "/api/usage") await gate;
+      return projectsWith((b) => { b.reader.files = 538; })(pathname, params, n);
+    },
+  });
+  const status = () => byClass(app.section("overview"), "es-t").filter((n) => n.getAttribute("role") === "status");
+  assert.equal(status().length, 1);
+  assert.equal(flat(status()[0]), "Reading 538 transcript files. Only the first load takes this long.");
+  assert.equal(byClass(app.section("overview"), "foot").length, 0);
+  release();
+  await until(() => app.root.getAttribute("data-usage") === "1", "data-usage");
+  assert.equal(status().length, 0, "the line is gone once the page redraws");
+  assert.equal(byClass(app.section("overview"), "kpi").length, 4);
+});
+
+test("usage held back: no file count gives the line without a number", async () => {
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  const app = await boot({
+    hash: "#/models",
+    usage: false,
+    respond: async (pathname, params, n) => {
+      if (pathname === "/api/usage") await gate;
+      return projectsWith((b) => { b.reader.files = null; b.reader.warm = true; })(pathname, params, n);
+    },
+  });
+  const lines = byClass(app.section("models"), "es-t").map(flat);
+  assert.deepEqual(lines, ["Reading your transcripts. Only the first load takes this long."]);
+  release();
+  await until(() => app.root.getAttribute("data-usage") === "1", "data-usage");
+});
+
+test("usage held back: Settings, Needs attention, Installed files and Rules reference never show the waiting line", async () => {
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  const app = await boot({
+    hash: "#/settings",
+    usage: false,
+    respond: async (pathname) => { if (pathname === "/api/usage") await gate; return null; },
+  });
+  for (const name of WAITING) {
+    await app.go("#/" + name);
+    assert.deepEqual(visible(app), [name]);
+    assert.ok(!flat(app.section(name)).includes("Only the first load takes this long"), name);
+    assert.equal(byClass(app.section(name), "es-t").filter((n) => n.getAttribute("role") === "status").length, 0, name);
+  }
+  release();
+  await until(() => app.root.getAttribute("data-usage") === "1", "data-usage");
 });
 
 // ---------------------------------------------------------------- the helpers pages share
@@ -955,6 +1156,147 @@ test("sessions: Show all expands from the payload, keeps focus, and holds only f
   await app.go("#/sessions?range=30d&project=all");
   assert.equal(bodyRows(sessionsTable(page())).length, 10, "another project starts short");
   assert.equal(app.count("/api/usage"), 2, "one request per project");
+});
+
+// ---------------------------------------------------------------- all projects
+
+const allView = (range = "30d") => viewOf("all", range);
+const byTokens = (view) => [...view.by_project].sort((a, b) => b.tokens - a.tokens);
+const selectOf = (app) => app.topbar.find((n) => n.tagName === "select")[0];
+const projectsTable = (page) => byClass(cardOf(page, "Projects"), "dt")[0];
+const rowNamed = (page, name) => bodyRows(projectsTable(page)).find((r) => flat(cellsOf(r)[0]).startsWith(name));
+const starNotes = (page) => byClass(cardOf(page, "Projects"), "est").filter((n) => flat(n).startsWith("*")).map(flat);
+
+test("all projects: Tokens by project and the Projects table show every folder in token order", async () => {
+  const app = await boot({ hash: "#/overview?project=all" });
+  const page = app.section("all-projects");
+  assert.deepEqual(visible(app), ["all-projects"]);
+  const want = byTokens(allView());
+  assert.ok(want.length >= 4 && want.some((r) => !r.listed), "the demo has an unlisted folder");
+  const stacked = cardOf(page, "Tokens by project");
+  assert.deepEqual(texts(stacked, "sb-n"), want.map((r) => r.name));
+  assert.equal(byClass(stacked, "klg").length, 1, "the kinds legend sits under the bars");
+  const table = projectsTable(page);
+  assert.deepEqual(headers(table), ["Project", "Sessions", "Agent runs", "Tokens", "Estimated cost", "Cache hit rate"]);
+  assert.deepEqual(bodyRows(table).map((r) => flat(cellsOf(r)[0]).replace(/Not on the list$/, "")), want.map((r) => r.name));
+  bodyRows(table).forEach((row, i) => {
+    assert.equal(flat(cellsOf(row)[1]), want[i].sessions.toLocaleString("en-US"));
+    assert.equal(flat(cellsOf(row)[2]), want[i].runs.toLocaleString("en-US"));
+  });
+  assert.equal(texts(page, "intro")[0], "Usage across every project folder, listed or not, over the last 30 days.");
+  assert.equal(byClass(page, "foot").length, 1);
+  assert.equal(texts(cardOf(page, "Projects"), "est").pop(), "Estimated at API list price", "the est line closes the card");
+});
+
+test("all projects: a listed row links to that project and keeps the range, never project=all", async () => {
+  const app = await boot({ hash: "#/overview?project=all&range=7d" });
+  const page = app.section("all-projects");
+  const listed = allView("7d").by_project.filter((r) => r.listed);
+  assert.ok(listed.length >= 3);
+  for (const row of listed) {
+    const cell = cellsOf(rowNamed(page, row.name))[0];
+    const href = hrefOf(cell);
+    assert.ok(href.startsWith("#/overview?"), href);
+    const query = new URLSearchParams(href.slice(href.indexOf("?") + 1));
+    assert.equal(query.get("project"), row.key, "the link opens " + row.name);
+    assert.equal(query.get("range"), "7d", "the range stays");
+    assert.ok(!href.includes("project=all"), href);
+    assert.ok(hasClass(tagged(cell, "a")[0], "lnk"));
+  }
+  await app.go(hrefOf(cellsOf(rowNamed(page, "Driftwood"))[0]));
+  assert.deepEqual(visible(app), ["overview"], "the link opens that project's overview");
+  assert.equal(selectOf(app).value, keyOf("Driftwood"));
+});
+
+test("all projects: an unlisted folder is plain text with the Not on the list note and stays out of the switcher", async () => {
+  const app = await boot({ hash: "#/overview?project=all" });
+  const page = app.section("all-projects");
+  const view = allView();
+  const unlisted = view.by_project.filter((r) => !r.listed);
+  assert.ok(unlisted.length >= 1);
+  const options = selectOf(app).find((n) => n.tagName === "option").map(flat);
+  for (const row of unlisted) {
+    const first = cellsOf(rowNamed(page, row.name))[0];
+    assert.equal(tagged(first, "a").length, 0, "no link");
+    assert.deepEqual(texts(first, "cell-note"), ["Not on the list"]);
+    assert.equal(flat(first), row.name + "Not on the list");
+    assert.ok(!options.some((o) => o.includes(row.name)), "no option names " + row.name);
+  }
+  const listed = DATA["/api/projects"].body.projects.map((p) => p.name);
+  assert.equal(options.length, listed.length + 1, "the listed projects, then All projects");
+  listed.forEach((name, i) => assert.ok(options[i].startsWith(name), options[i] + " is " + name));
+  assert.equal(options[options.length - 1], "All projects");
+  const noted = bodyRows(projectsTable(page)).filter((r) => byClass(r, "cell-note").length > 0);
+  assert.equal(noted.length, unlisted.length, "only unlisted rows carry the note");
+});
+
+test("all projects: Driftwood's row has the star, one note names its 150 requests, and the cost tile says one model is left out", async () => {
+  const app = await boot({ hash: "#/overview?project=all" });
+  const page = app.section("all-projects");
+  const drift = allView().by_project.find((r) => r.name === "Driftwood");
+  assert.equal(drift.unpriced_requests, 150);
+  for (const row of bodyRows(projectsTable(page))) {
+    const marks = byClass(cellsOf(row)[4], "fn");
+    assert.equal(marks.length, flat(cellsOf(row)[0]) === "Driftwood" ? 1 : 0, "the star on " + flat(cellsOf(row)[0]));
+  }
+  const cost = cellsOf(rowNamed(page, "Driftwood"))[4];
+  const mark = byClass(cost, "fn")[0];
+  assert.equal(mark.tagName, "sup");
+  assert.equal(mark.getAttribute("aria-hidden"), "true");
+  assert.equal(flat(mark), "*");
+  assert.equal(byClass(cost, "cw").length, 1);
+  assert.deepEqual(starNotes(page), ["* The cost for Driftwood leaves out 150 requests with no list price."]);
+  const note = byClass(cardOf(page, "Projects"), "est").find((n) => flat(n).startsWith("*"));
+  assert.equal(tagged(note, "span")[0].getAttribute("aria-hidden"), "true");
+  assert.deepEqual(texts(byClass(page, "kpi")[1], "est"), [
+    "Estimated at API list price",
+    "The dashboard has no list price for one model here, so the total leaves it out.",
+  ]);
+});
+
+test("all projects: a row with one unpriced request uses the one-request sentence", async () => {
+  const respond = patchedUsage((body, key) => {
+    if (key !== "all") return;
+    const rows = body.views["30d"].by_project;
+    rows.find((r) => r.name === "Tidewater reporting").unpriced_requests = 1;
+    rows.find((r) => r.name === "Driftwood").unpriced_requests = 0;
+  });
+  const app = await boot({ hash: "#/overview?project=all", respond });
+  const page = app.section("all-projects");
+  assert.deepEqual(starNotes(page), ["* The cost for Tidewater reporting leaves out 1 request with no list price."]);
+  assert.equal(byClass(cellsOf(rowNamed(page, "Tidewater reporting"))[4], "fn").length, 1);
+  assert.equal(byClass(cellsOf(rowNamed(page, "Driftwood"))[4], "fn").length, 0);
+});
+
+test("all projects: the sidebar says All projects with Overview active, and a project says This project", async () => {
+  const app = await boot({ hash: "#/overview?project=all" });
+  assert.deepEqual(texts(app.sidebar, "sb-g"), ["All projects", "Reference"]);
+  const active = byClass(app.sidebar, "is-active");
+  assert.equal(active.length, 1);
+  assert.equal(flat(active[0]), "Overview");
+  assert.equal(active[0].getAttribute("aria-current"), "page");
+  assert.equal(selectOf(app).value, "all");
+
+  await app.go("#/overview?project=" + TIDEWATER);
+  assert.equal(texts(app.sidebar, "sb-g")[0], "This project");
+  assert.equal(flat(byClass(app.sidebar, "is-active")[0]), "Overview");
+});
+
+test("all projects: a range switch keeps one /api/usage request and redraws the view", async () => {
+  const app = await boot({ hash: "#/overview?project=all" });
+  assert.equal(app.count("/api/usage"), 1);
+  const before = app.calls.length;
+  const bars = () => texts(cardOf(app.section("all-projects"), "Tokens by project"), "sb-n");
+  await app.go("#/overview?project=all&range=today");
+  assert.deepEqual(visible(app), ["all-projects"]);
+  assert.equal(texts(app.section("all-projects"), "intro")[0], "Usage across every project folder, listed or not, today.");
+  assert.deepEqual(bars(), byTokens(allView("today")).map((r) => r.name));
+  await app.go("#/overview?project=all&range=7d");
+  assert.deepEqual(bars(), byTokens(allView("7d")).map((r) => r.name));
+  await app.go("#/overview?project=all&range=30d");
+  assert.deepEqual(bars(), byTokens(allView("30d")).map((r) => r.name));
+  assert.equal(app.count("/api/usage"), 1);
+  assert.equal(app.calls.length, before, "a range switch fetches nothing");
 });
 
 // ---------------------------------------------------------------- run

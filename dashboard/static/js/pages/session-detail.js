@@ -67,5 +67,5 @@ export function render(root, ctx) {
       tiles(u, s),
       h("div", { class: "g2" }, agentsCard(u, s, agents), tokensCard(s, agents)),
     ];
-  });
+  }, { anyRange: true }); // the page ignores the range, so an empty view does not hide a session
 }

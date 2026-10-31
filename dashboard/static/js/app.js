@@ -56,6 +56,7 @@ const state = {
   rules: null,
   files: null,
   transcriptsDir: null,
+  configFile: null,
   reader: null,
 };
 const loading = new Map();
@@ -75,8 +76,8 @@ function go(name, params, patch) {
 }
 
 // What a page module receives. data.* is null until that payload arrives, then { ok, status, data }.
-// transcriptsDir is the display form of the transcripts folder (a string, or null), and reader is the
-// reader's state ({ warm, files, skipped }, or null), both from /api/projects.
+// transcriptsDir and configFile are the display forms of the transcripts folder and routing-dashboard.json
+// (a string, or null), and reader is the reader's state ({ readable, warm, files, skipped }, or null), both from /api/projects.
 function context() {
   return {
     route: { name: state.route.name, params: state.route.params },
@@ -85,6 +86,7 @@ function context() {
     range: state.range,
     version: state.version,
     transcriptsDir: state.transcriptsDir,
+    configFile: state.configFile,
     reader: state.reader,
     data: {
       usage: state.usage.get(state.project) || null,
@@ -92,7 +94,8 @@ function context() {
       rules: state.rules,
       files: state.files,
     },
-    hashFor: (name, params) => hashFor(name, params, state.route.query),
+    // patch is optional and wins over the current query, as in a link from All projects to one project.
+    hashFor: (name, params, patch) => hashFor(name, params, Object.assign({}, state.route.query, patch)),
     setRange: (range) => go(state.route.name, state.route.params, { range }),
   };
 }
@@ -177,6 +180,7 @@ function readProjects(res) {
   // The transcripts folder and the reader state come with the usage routes. The version and the time zone
   // arrive in later tickets, so every one of these is optional.
   state.transcriptsDir = typeof body.transcripts_dir_display === "string" ? body.transcripts_dir_display : null;
+  state.configFile = typeof body.config_file_display === "string" ? body.config_file_display : null;
   state.reader = body.reader && typeof body.reader === "object" ? body.reader : null;
   const version = body.version;
   state.version = typeof version === "string" ? version : (version && version.installed) || null;

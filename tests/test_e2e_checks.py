@@ -55,7 +55,7 @@ class ChecksFiles(unittest.TestCase):
         self.assertEqual([r[1] for r in detail], ["#/sessions/abc-123"])
         self.assertIn("Tidewater reporting", detail[0][2])
         self.assertEqual(sum(1 for r in routes if r[0] in ("agent-detail", "trail")), 4)
-        self.assertEqual(len(routes) * len(pages.THEMES) * len(pages.WIDTHS), 60)
+        self.assertEqual(len(routes) * len(pages.THEMES) * len(pages.WIDTHS), 80)
         self.assertFalse([r for r in routes if pages.SESSION_TOKEN in r[1]])
 
 

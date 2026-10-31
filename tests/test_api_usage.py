@@ -321,12 +321,15 @@ class Routes(unittest.TestCase):
         self.assertEqual(shown, demo_now)
         self.assertEqual(self.listing["now"], "2026-10-30T18:00:00-04:00")
         self.assertEqual(self.listing["transcripts_dir_display"], "config/projects")
+        self.assertEqual(self.listing["config_file_display"], "config/routing-dashboard.json")
+        self.assertFalse(os.path.isabs(self.listing["config_file_display"]))
         self.assertFalse(os.path.isabs(self.listing["transcripts_dir_display"]))
         self.assertNotIn(self.root, json.dumps(self.listing))
 
     def test_projects_reports_the_reader(self):
         reader = self.listing["reader"]
-        self.assertEqual(set(reader), {"warm", "files", "skipped"})
+        self.assertEqual(set(reader), {"readable", "warm", "files", "skipped"})
+        self.assertIs(reader["readable"], True)
         self.assertIsInstance(reader["warm"], bool)
         # The usage calls in setUpClass have ended, so the reader has read.
         _s, after = self.get(self.srv, "/api/projects")
@@ -480,6 +483,33 @@ class InProcess(unittest.TestCase):
         self.assertEqual(status, 200)
         return payload["views"][rng]["totals"]
 
+    # reader.readable
+
+    def test_a_missing_transcripts_folder_is_not_readable(self):
+        ctx = dataclasses.replace(make_ctx(self.out), config_dir=os.path.join(self.root, "no-such-config"))
+        _status, payload = api_usage.api_projects(ctx, {})
+        self.assertIs(payload["reader"]["readable"], False)
+
+    def test_a_file_in_place_of_the_transcripts_folder_is_not_readable(self):
+        config = os.path.join(self.root, "file-config")
+        os.makedirs(config)
+        with open(os.path.join(config, "projects"), "w") as handle:
+            handle.write("not a folder")
+        ctx = dataclasses.replace(make_ctx(self.out), config_dir=config)
+        self.assertIs(api_usage.api_projects(ctx, {})[1]["reader"]["readable"], False)
+
+    @unittest.skipIf(hasattr(os, "geteuid") and os.geteuid() == 0, "root can enter a folder with mode 000")
+    def test_a_folder_without_access_is_not_readable(self):
+        config = os.path.join(self.root, "locked-config")
+        folder = os.path.join(config, "projects")
+        os.makedirs(folder)
+        os.chmod(folder, 0)
+        self.addCleanup(os.chmod, folder, 0o755)
+        if os.access(folder, os.R_OK):
+            self.skipTest("this filesystem ignores folder modes")
+        ctx = dataclasses.replace(make_ctx(self.out), config_dir=config)
+        self.assertIs(api_usage.api_projects(ctx, {})[1]["reader"]["readable"], False)
+
     # lock and warm
 
     def test_a_warm_and_a_usage_call_parse_each_file_once(self):
@@ -553,7 +583,7 @@ class InProcess(unittest.TestCase):
             self.assertFalse(any(t.is_alive() for t in threads), "a route waited on the lock")
             self.assertEqual(done["projects"][0], 200)
             self.assertEqual(done["projects"][1]["reader"],
-                             {"warm": False, "files": None, "skipped": None})
+                             {"readable": True, "warm": False, "files": None, "skipped": None})
             self.assertEqual(done["settings"][0], 200)
             waiting = threading.Thread(target=run, args=("usage", api_usage.usage),
                                        kwargs={"project": self.keys[TIDEWATER]})

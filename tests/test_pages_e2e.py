@@ -289,6 +289,21 @@ class PagesE2E(unittest.TestCase):
             while len(self.paused()) == seen and time.time() < deadline:
                 page.drain(0.2)
             self.assertGreater(len(self.paused()), seen, "no /api/usage request was held back")
+            # The four pages that never go through fillUsage show no waiting line while the answer is held.
+            wait_tail = "Only the first load takes this long"
+            for section in ("settings", "attention", "files", "rules"):
+                text = page.eval("(document.querySelector('main [data-page=%s]') || {textContent: ''}).textContent" % section)
+                self.assertNotIn(wait_tail, text, "the waiting line shows on " + section)
+            # A usage page does show it. The demo's reader has counted its files by now, so the line has a
+            # number, whatever that number is.
+            page.eval("location.hash = '#/overview'")
+            page.wait_for("""(() => {
+              const s = document.querySelector('main [data-page=overview]');
+              const w = s && s.querySelector('[role=status]');
+              return Boolean(s && !s.hidden && w && w.textContent.trim().indexOf('Reading') === 0);
+            })()""")
+            waiting = page.eval("document.querySelector('main [data-page=overview] [role=status]').textContent")
+            self.assertRegex(waiting, r"^Reading [\d,]+ transcript files\. " + wait_tail)
             # Boot does not wait on /api/usage: data-rendered is set while the request is still held, and
             # data-usage stays unset until the answer is drawn.
             page.wait_for(DATA_RENDERED + " === '1'")
