@@ -10,13 +10,15 @@ Run the build from the repo root.
 
 The defaults are `--now 2026-10-30T18:00` and `--tz America/New_York`.
 
-The build copies `config/`, `projects/` and `session.json` into `out_dir`, adds an empty `managed/` folder, and writes transcripts into `out_dir/config/projects/`. Transcripts are never committed, and the same arguments give the same bytes. A run on the set never reads the real managed folder, shell or `~/.claude`.
+The build copies `config/`, `projects/`, `repo/` and `session.json` into `out_dir`, adds an empty `managed/` folder, and writes transcripts into `out_dir/config/projects/`. Transcripts are never committed, and the same arguments give the same bytes. A run on the set never reads the real managed folder, shell or `~/.claude`.
 
 The built `session.json` is the committed one plus `now` (the demo clock, UTC with an offset) and `tz` (the zone name). A server started with `--fixture <out_dir>` reads both, so the set stays inside the usage windows instead of aging out on the real clock.
 
 `build_demo.py` also writes `out_dir/truth.json`, an independent count of what it generated for the 30 days up to `--now`.
 
 The paths committed in `config/routing-dashboard.json` are relative to the set. The build makes them absolute under `out_dir`.
+
+`repo/` stands in for the repo the Installed files page compares `config/` with, so a run on the set reads no real file. Builder and reviewer in `repo/agents/` have other model and effort lines than the copies in `config/`. The saved choices in `config/model-routing-choices.json` give them back, so both still show Matches.
 
 Serve a built set with `/usr/bin/python3 dashboard/server.py --fixture <out_dir>`. On the committed folder, `--fixture tests/fixtures/demo` shows every project as Folder not found, because a relative path resolves against `config/`, the folder that holds `routing-dashboard.json`, not against the set.
 
@@ -48,6 +50,7 @@ Each row is a case planted on purpose, with where it lives and the screen it dri
 | Every row has `inference_geo` `global` | generated transcripts | Cost on every screen |
 | Files older than 61 days | generated transcripts | Reader |
 | Installed Claude Code is newer than the rules | `session.json` | Top bar, Settings, Rules reference |
+| One installed agent differs and one is missing | `repo/`, `config/` | Installed files |
 
 Across the listed projects with a folder, all seven status words and all three confidence words appear. A settings ticket that adds a case adds a row here.
 

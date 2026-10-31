@@ -1,21 +1,31 @@
-"""The settings routes, as JSON: /api/settings (the resolved value of every setting)
-and /api/rules (the rules reference).
+"""The settings routes: /api/settings (the resolved value of every setting),
+/api/rules (the rules reference) and /api/files (the installed files), as JSON.
 
 A route is a function (ctx, query) -> (status, payload). ctx is the server's
 Context and query is the parsed query string. The server turns the payload into
 JSON. Nothing here caches, so each request reads the files again.
 
 Standard library only, Python 3.9. It reads only the folders the Context names
-and never looks at os.environ or the home folder.
+(the config folder, the project, the managed folder and, for /api/files, the
+repo folder) and never looks at os.environ or the home folder. It writes
+nothing.
 """
 import json
 import os
+import sys
 
 import agent_frontmatter
 import collect
 import projects
 import resolve
 import version
+
+# #65, /api/files: the installer's own plan. The repo root goes on the path at the end, so nothing already
+# there is shadowed. install.py puts its own folder on the path for agent_md.
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if REPO not in sys.path:
+    sys.path.append(REPO)
+import install  # noqa: E402
 
 MAIN_AGENT = "@main"  # the agent key of the main session's rows
 REPO_BLOB = "https://github.com/Colorfulbloom/claude-code-model-routing/blob/main/"
@@ -264,3 +274,58 @@ def rules(ctx, query):
         record["reason"] = rule["reason"]
         out.append(record)
     return 200, {"installed": installed, "rules": out}
+
+
+# ---------------------------------------------------------------- #65 /api/files
+
+FILE_MATCH = "match"
+FILE_DIFFERS = "differs"
+FILE_MISSING = "missing"
+
+
+def _file_state(path, data):
+    """Return how the file at path compares with data: match, differs or missing.
+
+    The file is opened for reading in binary and read up to len(data) + 1 bytes,
+    so a longer file differs without being read whole. A file or a folder that
+    is not there, including a link that points nowhere, is missing. Any other
+    failure to read, or other bytes, is differs.
+    """
+    try:
+        with open(path, "rb") as fh:
+            found = fh.read(len(data) + 1)
+    except (FileNotFoundError, NotADirectoryError):
+        return FILE_MISSING
+    except OSError:
+        return FILE_DIFFERS
+    return FILE_MATCH if found == data else FILE_DIFFERS
+
+
+def files(ctx, query):
+    """Return (200, {"files": [...]}) for the Installed files page.
+
+    The installer's plan is built in memory from the repo folder (ctx.repo_dir)
+    and the choices saved in the config folder, the way install.py builds it. For
+    each entry, in plan order, the file is {"path", "state"}. path is the config
+    folder's file in the display form of an entry. state is "match" when the
+    installed file holds exactly the bytes the plan would write, "differs" when
+    it holds other bytes or cannot be read, and "missing" when it is not there.
+    File modes are not compared.
+
+    model-routing-manifest.txt and the hook entries in settings.json are not in
+    the plan, so they do not show. A repo the installer cannot plan gives
+    (500, {"error": "installer"}). Nothing is written.
+    """
+    try:
+        agents = install.list_agents(ctx.repo_dir)
+        defaults = install.load_agent_defaults(ctx.repo_dir, agents)
+        choices, _status, _bad = install.load_choices(
+            os.path.join(ctx.config_dir, install.CHOICES_NAME), agents, defaults)
+        plan = install.build_plan(ctx.repo_dir, choices)
+    except (install.InstallError, install.MissingFieldsError):
+        return 500, {"error": "installer"}
+    out = []
+    for entry in plan:
+        path = os.path.join(ctx.config_dir, *entry.rel.split("/"))
+        out.append({"path": _display(ctx, path), "state": _file_state(path, entry.data)})
+    return 200, {"files": out}

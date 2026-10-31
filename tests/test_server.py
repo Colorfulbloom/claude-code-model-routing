@@ -59,11 +59,13 @@ def write_json(path, data):
 def copy_tree(dest):
     """Copy the modules the server loads into dest, with no __pycache__.
 
-    dest/agent_md.py and dest/dashboard/*.py, *.json and static/. Returns the
-    path of the copied server.py.
+    dest/agent_md.py, dest/install.py (api_settings.files plans with it) and
+    dest/dashboard/*.py, *.json and static/. Returns the path of the copied
+    server.py.
     """
     os.makedirs(os.path.join(dest, "dashboard"))
     shutil.copy2(os.path.join(helpers.REPO, "agent_md.py"), dest)
+    shutil.copy2(os.path.join(helpers.REPO, "install.py"), dest)
     for name in os.listdir(DASHBOARD):
         full = os.path.join(DASHBOARD, name)
         if os.path.isfile(full) and name.endswith((".py", ".json")):

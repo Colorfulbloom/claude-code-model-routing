@@ -59,14 +59,14 @@ class ChecksFiles(unittest.TestCase):
         self.assertEqual([r[1] for r in detail], ["#/sessions/abc-123"])
         self.assertIn("Tidewater reporting", detail[0][2])
         self.assertEqual(sum(1 for r in routes if r[0] in ("agent-detail", "trail")), 6)
-        self.assertEqual(len(routes) * len(pages.THEMES) * len(pages.WIDTHS), 96)
+        self.assertEqual(len(routes) * len(pages.THEMES) * len(pages.WIDTHS), 100)
         self.assertFalse([r for r in routes if pages.SESSION_TOKEN in r[1]])
 
     def test_settings_and_trail_texts_avoid_the_forms_innertext_changes(self):
         """The sweep reads innerText, which keeps line breaks and applies text-transform. Check what needs no browser."""
         uppercased = {t.lower() for t in (STRINGS[k] for k in (
-            "f_model", "f_effort", "f_cache", "f_compact", "cap", "experiment"))}
-        for name in ("settings", "trail", "attention", "rules"):
+            "f_model", "f_effort", "f_cache", "f_compact", "cap", "experiment", "h_file", "h_state", "h_next"))}
+        for name in ("settings", "trail", "attention", "rules", "files"):
             with open(os.path.join(pages.CHECKS_DIR, name + ".json"), encoding="utf-8") as fh:
                 data = json.load(fh)
             for route in data["routes"]:

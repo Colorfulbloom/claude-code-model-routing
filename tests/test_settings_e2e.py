@@ -317,6 +317,24 @@ class SettingsE2E(unittest.TestCase):
         for reason in self.texts_of("[data-page=rules] ul.rules > li .ru-rs"):
             self.assertIn("winning source", reason.lower())
 
+    def test_each_file_state_on_installed_files_shows_a_mark_and_a_word(self):
+        self.show("#/files", "files")
+        cells = ("[...document.querySelectorAll('[data-page=files] tbody .st')].map((el) => ({"
+                 "cls: el.className, word: el.textContent.trim(), "
+                 "mark: getComputedStyle(el.querySelector(':scope > .mk'), '::before').content}))")
+        self.page.wait_for("(%s).length === 6" % cells)
+        found = self.page.eval(cells)
+        words = {}
+        for cell in found:
+            self.assertNotIn(cell["mark"], ("none", "normal", '""', "''", ""), cell)
+            self.assertTrue(cell["word"], cell)
+            words.setdefault(cell["word"], set()).add((cell["cls"], cell["mark"]))
+        self.assertEqual(sorted(words), ["Differs", "Matches", "Missing"])
+        self.assertEqual({w: len(v) for w, v in words.items()}, {"Differs": 1, "Matches": 1, "Missing": 1})
+        self.assertEqual(sorted(c["word"] for c in found), ["Differs", "Matches", "Matches", "Matches", "Matches", "Missing"])
+        marks = {next(iter(v))[1] for v in words.values()}
+        self.assertEqual(len(marks), 3, "each state has its own glyph, not the word alone")
+
     def test_external_links_carry_their_guards(self):
         self.show(EFFORT_TRAIL, "trail")
         self.page.wait_for("Boolean(document.getElementById('trail'))")

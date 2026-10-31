@@ -3,7 +3,7 @@
 
     build_demo.py <out_dir> [--now ISO] [--tz NAME]
 
-The committed files next to this script (config/, projects/, session.json) are
+The committed files next to this script (config/, projects/, repo/, session.json) are
 copied into out_dir, then transcripts are written under
 out_dir/config/projects/<sanitize(out_dir/projects/<name>)>/. Transcripts are
 never committed. out_dir/managed/ is an empty stand-in for the managed folder,
@@ -291,7 +291,7 @@ def _truth(requests, win_start, now_utc):
 
 
 def _copy_committed(real_out):
-    for name in ("config", "projects"):
+    for name in ("config", "projects", "repo"):
         shutil.copytree(os.path.join(HERE, name), os.path.join(real_out, name))
     shutil.copyfile(os.path.join(HERE, "session.json"), os.path.join(real_out, "session.json"))
     os.makedirs(os.path.join(real_out, "managed"))
@@ -307,7 +307,7 @@ def _copy_committed(real_out):
 def build(out_dir, now=None, tz_name=DEFAULT_TZ):
     """Build the set into out_dir and return the truth dict (also truth.json).
 
-    The five paths the set owns inside out_dir are replaced, so a second build
+    The six paths the set owns inside out_dir are replaced, so a second build
     into the same folder leaves no stale transcripts. A folder that holds
     anything but no truth.json is not ours, so it is refused before any delete.
     """
@@ -316,7 +316,7 @@ def build(out_dir, now=None, tz_name=DEFAULT_TZ):
             and not os.path.isfile(os.path.join(real_out, "truth.json"))):
         raise ValueError("%s is not empty and is not a demo set (no truth.json), so nothing was deleted" % real_out)
     os.makedirs(real_out, exist_ok=True)
-    for name in ("config", "projects", "managed"):
+    for name in ("config", "projects", "managed", "repo"):
         shutil.rmtree(os.path.join(real_out, name), ignore_errors=True)
     for name in ("session.json", "truth.json"):
         if os.path.lexists(os.path.join(real_out, name)):

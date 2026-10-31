@@ -14,8 +14,9 @@ install.py uses (see default_config_dir). The project is --project, else the
 folder the server started in.
 
 Fixture run. --fixture FOLDER reads a folder laid out like
-tests/fixtures/resolution/<case>: config/, project/, managed/ and session.json.
-Every one of those may be missing. The shell is session.json's shell_env, never
+tests/fixtures/resolution/<case>: config/, project/, managed/ and session.json,
+and a repo/ folder that stands in for the repo /api/files compares config/
+with (without it, the real repo). Every one of those may be missing. The shell is session.json's shell_env, never
 the real environment, and the managed folder is FOLDER/managed, never the real
 one. CLAUDE_CONFIG_DIR and HOME are not consulted. The zone is session.json's
 "tz", else shell_env's TZ, and the clock is its "now" (an ISO time with an
@@ -61,6 +62,7 @@ import resolve  # noqa: E402
 HOST = "127.0.0.1"
 DEFAULT_PORT = 8377
 STATIC_DIR = os.path.join(HERE, "static")
+REPO_DIR = os.path.dirname(HERE)  # the repo /api/files compares the config folder with
 STATIC_PREFIX = "/static/"
 INDEX = "index.html"
 LOCALTIME_LINK = "/etc/localtime"
@@ -105,6 +107,7 @@ DRAIN_CAP = 65536
 
 # One line per route. Each is a function (ctx, query) -> (status, payload).
 ROUTES = {
+    "/api/files": api_settings.files,
     "/api/projects": api_usage.api_projects,
     "/api/rules": api_settings.rules,
     "/api/settings": api_settings.settings,
@@ -134,6 +137,7 @@ class Context:
     rules: dict
     agent_fields: list
     static_dir: str = STATIC_DIR
+    repo_dir: str = REPO_DIR  # the repo whose files /api/files expects in the config folder
     project_explicit: bool = False  # --project was given
     tz_name: object = None  # the TZ value, or None
     localtime_link: object = None  # the /etc/localtime link to read, or None
@@ -218,10 +222,12 @@ def fixture_context(folder, config_dir, project_dir, rules, agent_fields,
     shell_zone = shell_env.get("TZ") if isinstance(shell_env, dict) else None
     tz_name = session.get("tz") if isinstance(session.get("tz"), str) else (
         shell_zone if isinstance(shell_zone, str) else None)
+    repo = os.path.join(folder, "repo")
     return Context(
         config_dir=config_dir or os.path.join(folder, "config"),
         project_dir=project_dir or os.path.join(folder, "project"),
         managed_dir=os.path.join(folder, "managed"),
+        repo_dir=repo if os.path.isdir(repo) else REPO_DIR,
         shell_env=dict(shell_env) if isinstance(shell_env, dict) else {},
         home=None,
         root=folder,
