@@ -37,7 +37,6 @@ import threading
 import zoneinfo
 
 import api_settings
-import collect
 import pincheck
 import prices as price_list
 import projects
@@ -184,22 +183,7 @@ def _entries(ctx, listing, project):
     """The resolver entries for one listed project, as api_settings.settings builds them."""
     if project.state == projects.STATE_MISSING and not project.implicit:
         return []
-    collected = collect.collect(
-        config_dir=ctx.config_dir,
-        project_dir=project.path,
-        managed_dir=ctx.managed_dir,
-        shell_env=ctx.shell_env,
-        rules=ctx.rules)
-    extra = {} if ctx.shell_label is None else {"shell_label": ctx.shell_label}
-    inputs = resolve.Inputs(
-        collected=collected,
-        flags=list(ctx.flags),
-        cli_settings=ctx.cli_settings,
-        plan=listing.plan,
-        home=ctx.home,
-        root=ctx.root,
-        **extra)
-    return resolve.resolve(inputs, ctx.rules, ctx.agent_fields)
+    return api_settings.resolved(ctx, project, listing=listing)[0]
 
 
 def _unreadable(ctx, result, project):

@@ -247,18 +247,26 @@ def settings(ctx, query):
     project = listing.find(asked[0] if asked else listing.current)
     if project is None:
         return 404, {"error": "unknown_project"}
-    if project.state == projects.STATE_MISSING and not project.implicit:
-        answer = {"project": project.key, "state": project.state, "entries": [],
-                  "rows": [], "rules": {}, "files": [], "installed": version.installed(ctx),
-                  "attention": [], "attention_equal": 0}
-        answer.update(_display_fields(ctx, project))
-        return 200, answer
+    return 200, answer(ctx, listing, project)
+
+
+def resolved(ctx, project, overlay=None, listing=None, reuse=None):
+    """Return (entries, collected): collect, then resolve, for one listed project.
+
+    overlay and reuse go to collect.collect (see there), so a preview can
+    resolve edited bytes in memory. listing is the projects listing, loaded
+    here when None. It writes nothing.
+    """
+    if listing is None:
+        listing = projects.load(ctx)
     collected = collect.collect(
         config_dir=ctx.config_dir,
         project_dir=project.path,
         managed_dir=ctx.managed_dir,
         shell_env=ctx.shell_env,
-        rules=ctx.rules)
+        rules=ctx.rules,
+        overlay=overlay,
+        reuse=reuse)
     extra = {} if ctx.shell_label is None else {"shell_label": ctx.shell_label}
     inputs = resolve.Inputs(
         collected=collected,
@@ -268,18 +276,33 @@ def settings(ctx, query):
         home=ctx.home,
         root=ctx.root,
         **extra)
-    entries = resolve.resolve(inputs, ctx.rules, ctx.agent_fields)
+    return resolve.resolve(inputs, ctx.rules, ctx.agent_fields), collected
+
+
+def answer(ctx, listing, project, overlay=None, reuse=None):
+    """Return the settings payload dict for one listed project (the 200 body of settings).
+
+    A folder that is missing carries the display fields and no entries.
+    overlay and reuse go to resolved. It writes nothing.
+    """
+    if project.state == projects.STATE_MISSING and not project.implicit:
+        out = {"project": project.key, "state": project.state, "entries": [],
+               "rows": [], "rules": {}, "files": [], "installed": version.installed(ctx),
+               "attention": [], "attention_equal": 0}
+        out.update(_display_fields(ctx, project))
+        return out
+    entries, collected = resolved(ctx, project, overlay, listing, reuse)
     rows = _rows(entries)
     installed = version.installed(ctx)
-    answer = {"project": project.key, "state": project.state, "entries": entries,
-              "no_user_settings": not any(
-                  record["layer"] == "user" for record in collected["settings_files"]),
-              "rows": rows, "rules": _rules_for(ctx, rows, installed),
-              "files": _files(ctx, collected, entries), "installed": installed,
-              "attention": _attention(entries, rows),
-              "attention_equal": _attention_equal(entries, rows)}
-    answer.update(_display_fields(ctx, project))
-    return 200, answer
+    out = {"project": project.key, "state": project.state, "entries": entries,
+           "no_user_settings": not any(
+               record["layer"] == "user" for record in collected["settings_files"]),
+           "rows": rows, "rules": _rules_for(ctx, rows, installed),
+           "files": _files(ctx, collected, entries), "installed": installed,
+           "attention": _attention(entries, rows),
+           "attention_equal": _attention_equal(entries, rows)}
+    out.update(_display_fields(ctx, project))
+    return out
 
 
 # ---------------------------------------------------------------- #64 /api/rules

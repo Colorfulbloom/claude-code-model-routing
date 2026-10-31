@@ -16,11 +16,21 @@
 // Settings pages working. A retry that recovers /api/projects sets data-rendered back to "1".
 // data-usage="1" follows the first /api/usage answer for the current project, once it is stored and drawn,
 // whatever its status. It never resets, and a page that needs usage numbers waits for it.
+//
+// Editing (js/edit_session.js). The edit token comes in the printed link as #/...?edit=<token>. One session
+// takes it from the address before the router reads the hash, at boot and on every hashchange, and then asks
+// GET /api/edit for the mode. Boot also waits for that answer before data-rendered, and a failed answer
+// leaves the mode null and rejects nothing. After a save, an undo, or a raced or unverified answer, every
+// project's cached data is dropped (dropProjectData), the current project is loaded again and the edit
+// targets and history are fetched fresh. Targets and history never go through the api cache, and they load
+// only on the trail of the main session's effortLevel and on Settings in ready mode, because each targets call runs the resolver many times.
+// An answer that was in flight when the data was dropped is thrown away, so it cannot bring the old value back.
 
 import { createApi } from "./api.js";
+import { createEditSession } from "./edit_session.js";
 import { setStrings, t, DEFAULT_RANGE } from "./format.js";
 import {
-  PAGES, ALL_KEY, parseHash, hashFor, sectionFor, navFor, showSection, onRouteChange,
+  PAGES, ALL_KEY, MAIN_KEY, parseHash, hashFor, sectionFor, navFor, showSection, onRouteChange,
 } from "./router.js";
 import { createShell } from "./shell.js";
 import * as overview from "./pages/overview.js";
@@ -61,10 +71,93 @@ const state = {
   transcriptsDir: null,
   configFile: null,
   reader: null,
+  editTargets: null,
+  editHistory: null,
 };
 const loading = new Map();
+let generation = 0;
+let editSeq = 0;
 let sections = {};
 let shell = null;
+
+// ---------------------------------------------------------------- the edit session
+
+let storage = null;
+try {
+  storage = window.sessionStorage || null;
+} catch (err) {
+  storage = null;
+}
+
+const session = createEditSession({
+  api,
+  storage,
+  getHash: () => window.location.hash,
+  replaceHash: (hash) => window.history.replaceState(null, "", hash),
+  onChange: () => {
+    if (!editing()) {
+      state.editTargets = null;
+      state.editHistory = null;
+      editSeq += 1;
+    }
+    // Draw first: loadEdit does nothing with edits off, and the page still has to show that mode.
+    if (started) renderPages(SETTINGS_PAGES);
+    if (started && wantsTargets()) loadEdit();
+  },
+  onWrite: () => refreshAll(),
+});
+
+// Runs first on every hashchange, because it is registered before boot adds the router's listener. The router's
+// parseHash then never sees edit=.
+window.addEventListener("hashchange", () => {
+  if (session.take()) session.refresh();
+});
+
+const editing = () => session.mode() === "locked" || session.mode() === "ready";
+
+// The one route that shows an edit control: the main session's effortLevel trail.
+function onEditRoute() {
+  const r = state.route;
+  return r.name === "trail" && r.params.agent === MAIN_KEY && r.params.setting === "effortLevel";
+}
+
+// Targets load on the edit route, and on Settings in ready mode, where they decide whether the page says editing
+// is on. Settings never waits on them: it draws first and draws again when they land. All projects loads none.
+function wantsTargets() {
+  return onEditRoute() || (state.route.name === "settings" && session.mode() === "ready");
+}
+
+// Forgets every project's data, so nothing drawn after a write comes from before it. The generation makes
+// an answer that is still on its way, asked for before this call, drop itself when it lands.
+function dropProjectData() {
+  generation += 1;
+  api.dropProjects();
+  loading.clear();
+  state.settings.clear();
+  state.usage.clear();
+}
+
+// Forgets the project data and loads it again, with fresh targets and history. It runs after a write, and when
+// the edit card learns that a file changed behind its back. It starts both payloads but waits on settings only.
+// It must never wait on /api/usage: a warm-up can hold that answer for a long time, and the card stays on
+// Saving until this returns.
+async function refreshAll() {
+  dropProjectData();
+  loadProject(state.project);
+  await Promise.all([api.settings(state.project), loadEdit()]);
+}
+
+// Targets and history for the current project, fetched fresh every time and never cached.
+async function loadEdit() {
+  if (!editing() || state.project === ALL_KEY) return;
+  const project = state.project;
+  const mine = ++editSeq;
+  const [targets, history] = await Promise.all([api.editTargets(project), api.editHistory(project)]);
+  if (mine !== editSeq || project !== state.project) return;
+  state.editTargets = targets;
+  state.editHistory = history;
+  renderPages(SETTINGS_PAGES);
+}
 
 // ---------------------------------------------------------------- state to page context
 
@@ -100,6 +193,18 @@ function context() {
     // patch is optional and wins over the current query, as in a link from All projects to one project.
     hashFor: (name, params, patch) => hashFor(name, params, Object.assign({}, state.route.query, patch)),
     setRange: (range) => go(state.route.name, state.route.params, { range }),
+    // The edit session. targets and history are { ok, status, data } or null. The three actions fill in the
+    // current project and resolve to an outcome { kind, res }. The token never leaves the session.
+    edit: {
+      mode: session.mode(),
+      targets: state.editTargets,
+      history: state.editHistory,
+      preview: (target, value) => session.preview(state.project, target, value),
+      save: (preview, target, value) => session.save(state.project, preview, target, value),
+      undo: (editId) => session.undo(state.project, editId),
+      reload: loadEdit,
+      refresh: refreshAll,
+    },
   };
 }
 
@@ -145,8 +250,10 @@ function measure() {
 // Asks for a project's two payloads once. Later calls return the same promise.
 function loadProject(key) {
   if (loading.has(key)) return loading.get(key);
+  const gen = generation;
   const done = Promise.all([
     api.usage(key).then((res) => {
+      if (gen !== generation) return;
       state.usage.set(key, res);
       if (key === state.project) {
         renderPages(USAGE_PAGES);
@@ -154,6 +261,7 @@ function loadProject(key) {
       }
     }),
     api.settings(key).then((res) => {
+      if (gen !== generation) return;
       state.settings.set(key, res);
       if (key === state.project) renderPages(SETTINGS_PAGES);
     }),
@@ -237,6 +345,11 @@ function handle(route, force) {
   const previous = state.route.name;
   const project = resolveProject(parsed.query.project);
   const fetches = !started || force || routeKey(parsed) !== routeKey(state.route) || project !== state.project;
+  if (project !== state.project) {
+    state.editTargets = null;
+    state.editHistory = null;
+    editSeq += 1;
+  }
   state.route = parsed;
   state.project = project;
   state.range = parsed.query.range || DEFAULT_RANGE;
@@ -248,6 +361,7 @@ function handle(route, force) {
   showSection(sections, sectionFor(parsed, state.project));
   if (fetches) {
     loadProject(state.project);
+    if (wantsTargets()) loadEdit();
     if (started && !force) {
       retryProjects();
       loadShared();
@@ -269,6 +383,9 @@ function collectSections() {
 }
 
 async function boot() {
+  // First, before any await, so the token is out of the address bar while the strings load.
+  session.take();
+  const editReady = session.refresh().catch((err) => { console.error("the edit status could not be read", err); });
   const strings = await api.strings();
   if (!strings.ok) throw new Error("strings.json did not load");
   setStrings(strings.data);
@@ -287,7 +404,7 @@ async function boot() {
   // handle() has already asked for the project's payloads. api.settings returns the same kept promise, so
   // this waits on settings, rules and files only. It must never wait on /api/usage: a held-back usage
   // payload leaves the Settings pages working, and data-usage tells a check when the usage pages are drawn.
-  await Promise.all([api.settings(state.project), loadShared()]);
+  await Promise.all([api.settings(state.project), loadShared(), editReady]);
   measure();
   // Only /api/projects decides this. A held-back /api/usage must not block it.
   root.setAttribute("data-rendered", projectsOk ? "1" : "error");

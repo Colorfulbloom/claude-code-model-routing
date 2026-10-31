@@ -160,13 +160,17 @@ def _read_bytes(path):
         return None, "unreadable"
 
 
-def _read_settings_file(layer, path, managed):
+def _read_settings_file(layer, path, managed, overlay=None):
     """Return (record, data, where). record is None for a missing file.
 
     data and where are None unless the record's status is "ok". data is not
-    masked yet.
+    masked yet. A path in overlay ({path: bytes}) is read from that map and
+    not from the disk, and counts as present even when no such file exists.
     """
-    raw, status = _read_bytes(path)
+    if overlay is not None and path in overlay:
+        raw, status = overlay[path], "ok"
+    else:
+        raw, status = _read_bytes(path)
     if status == "missing":
         return None, None, None
     if status == "unreadable":
@@ -266,7 +270,7 @@ def _merge_into(acc, where, new, new_where, path):
             _take_where(where, child, new_where)
 
 
-def collect_settings(config_dir, project_dir, managed_dir):
+def collect_settings(config_dir, project_dir, managed_dir, overlay=None):
     """Read the settings files.
 
     Returns {"sources": [...], "files": [...]}. "files" has one record per file
@@ -275,13 +279,16 @@ def collect_settings(config_dir, project_dir, managed_dir):
     that parsed, highest first: the merged managed files, local, project, user.
     Each is {"layer", "data", "where"}, with data masked and where mapping each
     key path to {"path", "line"}.
+
+    overlay is {path: bytes}, keyed by the exact path string joined below. A
+    file in it is read from the map, not the disk (see _read_settings_file).
     """
     files = []
     managed = []  # (data, where) of each ok managed file, in merge order
     if managed_dir is not None:
         paths, folder_record = _managed_paths(managed_dir)
         for path in paths:
-            record, data, where = _read_settings_file("managed", path, True)
+            record, data, where = _read_settings_file("managed", path, True, overlay)
             if record is None:
                 continue
             files.append(record)
@@ -295,7 +302,7 @@ def collect_settings(config_dir, project_dir, managed_dir):
         ("project", os.path.join(project_dir, ".claude", "settings.json")),
         ("user", os.path.join(config_dir, "settings.json")),
     ):
-        record, data, where = _read_settings_file(layer, path, False)
+        record, data, where = _read_settings_file(layer, path, False, overlay)
         if record is None:
             continue
         files.append(record)
@@ -391,14 +398,20 @@ def collect_rules_files(config_dir, project_dir):
     return out
 
 
-def collect(config_dir, project_dir, managed_dir, shell_env, rules):
-    """Run every collector. `rules` is the rules.json document."""
-    settings = collect_settings(config_dir, project_dir, managed_dir)
+def collect(config_dir, project_dir, managed_dir, shell_env, rules, overlay=None, reuse=None):
+    """Run every collector. `rules` is the rules.json document.
+
+    overlay is {path: bytes}, passed to collect_settings. reuse is an earlier
+    collect() result: its agents and rules_files are taken as they are and those
+    two collectors do not run. settings, settings_files and env always run.
+    """
+    settings = collect_settings(config_dir, project_dir, managed_dir, overlay)
     names = [v["name"] for v in rules.get("variables", [])]
     return {
         "settings": settings["sources"],
         "settings_files": settings["files"],
         "env": collect_env(settings["sources"], shell_env, names),
-        "agents": collect_agents(config_dir, project_dir),
-        "rules_files": collect_rules_files(config_dir, project_dir),
+        "agents": reuse["agents"] if reuse is not None else collect_agents(config_dir, project_dir),
+        "rules_files": (reuse["rules_files"] if reuse is not None
+                        else collect_rules_files(config_dir, project_dir)),
     }

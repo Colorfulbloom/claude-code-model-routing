@@ -7,7 +7,7 @@
 // it goes in as text through h.js and renderText, never as markup.
 
 import { h, clear } from "../h.js";
-import { t, renderText } from "../format.js";
+import { t, tn, renderText } from "../format.js";
 import { ALL_KEY, MAIN_KEY } from "../router.js";
 import { pageHead, chip, emptyState, projectPickerEmpty } from "../components.js";
 
@@ -162,7 +162,8 @@ export function missingFolderState(ctx, payload) {
 
 // The page head, the messages for a project or a config folder that is missing something, and the tiles.
 // Shared with the trail, which adds its panel after the tiles. The tiles come back as the last node.
-export function renderSettingsBody(root, ctx, activeSetting = null) {
+// slot is an optional node for the edit strip. It goes between the head and the tiles, and without it nothing changes.
+export function renderSettingsBody(root, ctx, activeSetting = null, slot = null) {
   root.appendChild(pageHead({ title: t("nav_settings"), intro: t("intro_settings") }));
   if (ctx.project.key === ALL_KEY) {
     root.appendChild(projectPickerEmpty());
@@ -183,6 +184,7 @@ export function renderSettingsBody(root, ctx, activeSetting = null) {
   if (payload.no_user_settings) {
     root.appendChild(emptyState(t("es_nouser_h"), t("es_nouser_t", { config_dir: payload.config_dir_display })));
   }
+  if (slot) root.appendChild(slot);
   root.appendChild(tilesFor(ctx, payload, activeSetting));
   return payload;
 }
@@ -222,9 +224,31 @@ function takeReturnFocus(root) {
   }
 }
 
+// One quiet line above the tiles with the edit state, worded as the effort trail's card words it. Edits off and
+// Locked have a line. Ready has one only when the main session has an Effort tile and its row has at least one
+// editable target, so the sentence never sends anyone nowhere. Otherwise it shows nothing. No project, no line.
+function effortEditable(ctx) {
+  const res = ctx.data.settings;
+  if (!res || !res.ok || !res.data || !winnerOf(res.data, "effortLevel")) return false;
+  const targets = ctx.edit.targets;
+  const data = targets && targets.ok ? targets.data : null;
+  if (!data || !Array.isArray(data.targets) || data.levels_state === "no_effort_support") return false;
+  return data.targets.length > 0;
+}
+
+function editLine(ctx) {
+  const mode = ctx.edit ? ctx.edit.mode : null;
+  if (ctx.project.key === ALL_KEY) return null;
+  if (mode === "ready") {
+    return effortEditable(ctx) ? h("p", { class: "p2-hint", "data-edit": "state" }, tn("ed_on")) : null;
+  }
+  if (mode !== "off" && mode !== "locked") return null;
+  return h("p", { class: "p2-hint", "data-edit": "state" }, mode === "off" ? tn("ed_off") : tn("ed_locked"));
+}
+
 export function render(root, ctx) {
   clear(root);
-  renderSettingsBody(root, ctx);
+  renderSettingsBody(root, ctx, null, editLine(ctx));
   // The Settings section also draws when a payload lands, so only the Settings route takes the record.
   if (ctx.route.name === "settings" && pendingReturn) takeReturnFocus(root);
 }

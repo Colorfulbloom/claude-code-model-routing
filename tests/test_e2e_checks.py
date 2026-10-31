@@ -11,6 +11,7 @@ import helpers
 import test_pages_e2e as pages
 import test_shell_e2e as shell
 import test_settings_e2e as settings_e2e
+import test_edit_e2e as edit_e2e
 
 INDEX = os.path.join(helpers.REPO, "dashboard", "static", "index.html")
 STRINGS_FILE = os.path.join(helpers.REPO, "dashboard", "static", "strings.json")
@@ -138,6 +139,16 @@ class Helpers(unittest.TestCase):
                        settings_e2e.TEXT_CONTRAST_BAD, settings_e2e.ASSUMED_CHECK):
             self.assertTrue(script.startswith("(() =>") and script.endswith("})()"))
 
+    def test_edit_scripts_fill_and_stay_expressions(self):
+        for script in (edit_e2e.HAS_RADIO, edit_e2e.DIFF_LINES, edit_e2e.TABLE_ROWS,
+                       edit_e2e.js(edit_e2e.CLICK_LEVEL, "medium"),
+                       edit_e2e.js(edit_e2e.CLICK_BUTTON, edit_e2e.SAVE),
+                       edit_e2e.js(edit_e2e.READ_TEXT, edit_e2e.STRIP_PATH)):
+            self.assertNotIn("%s", script)
+            self.assertEqual(script.count("("), script.count(")"), script)
+            self.assertEqual(script.count("{"), script.count("}"), script)
+        self.assertIn("\"medium\"", edit_e2e.js(edit_e2e.CLICK_LEVEL, "medium"))
+
     def test_label_script_fills_one_page_name(self):
         self.assertEqual(pages.LABEL_BAD.count("%"), 1)
         self.assertIn("main [data-page=models] .dt td", pages.LABEL_BAD % "models")
@@ -151,6 +162,8 @@ class Gating(unittest.TestCase):
     def test_browser_class_skips_without_the_opt_in(self):
         self.assertTrue(pages.PagesE2E.__unittest_skip__)
         self.assertTrue(settings_e2e.SettingsE2E.__unittest_skip__)
+        self.assertTrue(edit_e2e.EditPath.__unittest_skip__)
+        self.assertTrue(edit_e2e.EditLook.__unittest_skip__)
 
 
 if __name__ == "__main__":

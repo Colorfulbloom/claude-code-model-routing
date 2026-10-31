@@ -1,4 +1,9 @@
-"""Tests for the read-only local server (dashboard/server.py).
+"""Tests for the local server (dashboard/server.py), launched read-only.
+
+The write routes behind --allow-edits are tested in test_edit_server.py. Here a
+default launch prints its bare URL, and wait_for_url also accepts the
+--allow-edits form, http://127.0.0.1:<port>/#/settings?edit=<token>, and keeps
+the token in Proc.token.
 
 Every server runs in a temp folder under the helpers' temp base, in its own
 process, with an explicit environment: a throwaway HOME and CLAUDE_CONFIG_DIR
@@ -101,6 +106,7 @@ class Proc:
                                      stdout=self.out_fh, stderr=self.err_fh)
         self.url = None
         self.port = None
+        self.token = None
 
     def wait_for_url(self):
         deadline = time.time() + START_TIMEOUT
@@ -108,10 +114,12 @@ class Proc:
             text = self.stdout()
             if "\n" in text:
                 self.url = text.splitlines()[0]
-                m = re.fullmatch(r"http://127\.0\.0\.1:(\d+)/", self.url)
+                m = re.fullmatch(r"http://127\.0\.0\.1:(\d+)/(?:#/settings\?edit=([A-Za-z0-9_-]+))?",
+                                 self.url)
                 if not m:
                     raise AssertionError("unexpected first stdout line: %r" % self.url)
                 self.port = int(m.group(1))
+                self.token = m.group(2)
                 return self
             if self.proc.poll() is not None:
                 raise AssertionError("server exited early (%s): %s" % (
@@ -860,9 +868,9 @@ class StartUp(TempCase):
 
     def test_there_is_no_way_to_pick_another_address(self):
         self.assertEqual(list(inspect.signature(server.Server.__init__).parameters),
-                         ["self", "ctx", "port"])
+                         ["self", "ctx", "port", "write_routes"])
         options = {a.dest for a in server.build_parser()._actions}
-        self.assertEqual(options, {"help", "config_dir", "project", "port", "fixture"})
+        self.assertEqual(options, {"help", "config_dir", "project", "port", "fixture", "allow_edits"})
         for flag in ("--host", "--bind", "--address"):
             with open(os.devnull, "w") as null, contextlib.redirect_stderr(null):
                 with self.assertRaises(SystemExit):
