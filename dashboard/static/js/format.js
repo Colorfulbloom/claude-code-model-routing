@@ -70,6 +70,11 @@ export function pct(x) {
   return whole === 0 && x > 0 ? "<1%" : whole + "%";
 }
 
+// A share from the server (usage.py _shares): its whole percent, or "<1%" when lt1 is set.
+export function shareText(share, lt1) {
+  return lt1 ? "<1%" : (share || 0) + "%";
+}
+
 // Largest-remainder rounding so the shares add to 100. A share under half a percent that is not zero
 // reads "<1%".
 export function shares(values) {

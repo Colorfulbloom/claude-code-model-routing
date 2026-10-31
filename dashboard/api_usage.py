@@ -193,7 +193,11 @@ def _entries(ctx, listing, project):
 
 
 def usage(ctx, query):
-    """Return (200, {"project", "generated_at", "no_usage", "views", "prices"}).
+    """Return (200, {"project", "generated_at", "no_usage", "views", "model_names", "prices"}).
+
+    model_names maps every catalog model id to its display name (the id itself
+    when the catalog has no name), so the page can name a model that a view
+    does not list, such as the most common model of an agent.
 
     ?project=<key> picks a listed project, "all" picks every transcript folder,
     and no value means the current project. A key that is not listed gets 404
@@ -247,6 +251,7 @@ def usage(ctx, query):
             "generated_at": now.isoformat(),
             "no_usage": no_usage,
             "views": views,
+            "model_names": {m["id"]: m.get("display_name") or m["id"] for m in catalog},
             "prices": {"verified_on": cache.prices.get("verified_on"),
                        "source": cache.prices.get("source")},
         }

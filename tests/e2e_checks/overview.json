@@ -1,1 +1,1 @@
-{"page": "overview", "routes": [{"hash": "#/overview", "texts": ["Overview"]}]}
+{"page": "overview", "routes": [{"hash": "#/overview", "texts": ["Overview", "Tokens", "Estimated cost", "Cache hit rate", "Agent runs", "Estimated at API list price", "Opus 5.5", "Sonnet 5.5", "Haiku 5.5", "Fable 5.1"]}]}

@@ -42,7 +42,7 @@ UTC = datetime.timezone.utc
 NAMES = ["Tidewater reporting", "Driftwood", "Harbor Light", "Saltmarsh", "Lantern"]
 TIDEWATER = "Tidewater reporting"
 RANGES = {"today", "7d", "30d"}
-PAYLOAD_KEYS = {"project", "generated_at", "no_usage", "views", "prices"}
+PAYLOAD_KEYS = {"project", "generated_at", "no_usage", "views", "model_names", "prices"}
 TOTALS = ("input", "output", "cache_read", "cache_write_5m", "cache_write_1h", "thinking",
           "requests", "runs", "sessions", "unpriced_requests")
 WAIT = 30
@@ -348,6 +348,17 @@ class Routes(unittest.TestCase):
             self.assertIn("by_agent", view)
         self.assertEqual(self.single["generated_at"], self.listing["now"])
         self.assertIsNone(self.single["views"]["30d"]["by_project"])
+
+    def test_model_names_map_every_catalog_id_to_its_display_name(self):
+        want = {m["id"]: m.get("display_name") or m["id"] for m in RULES["models"]}
+        for payload in (self.single, self.everything):
+            self.assertEqual(payload["model_names"], want)
+        self.assertEqual(self.single["model_names"]["claude-opus-5-5"], "Opus 5.5")
+        # every model an agent ran with can be named from the map
+        for view in self.single["views"].values():
+            for agent in view["by_agent"]:
+                for row in agent["ran_with"]:
+                    self.assertIn(row["model"], self.single["model_names"])
 
     def test_all_projects_has_the_whole_shape(self):
         self.assertEqual(set(self.everything), PAYLOAD_KEYS)

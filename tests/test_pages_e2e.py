@@ -63,6 +63,7 @@ STACK_BAD = """(() => {
 })()"""
 
 DATA_RENDERED = "document.documentElement.getAttribute('data-rendered')"
+DATA_USAGE = "document.documentElement.getAttribute('data-usage')"
 
 
 # ---------------------------------------------------------------- pure helpers
@@ -182,7 +183,9 @@ class PagesE2E(unittest.TestCase):
             helpers.rmtree_force(cls.root)
 
     def wait_rendered(self):
+        """Boot is done (data-rendered) and the first /api/usage answer is drawn (data-usage), which comes second."""
         self.page.wait_for(DATA_RENDERED + " === '1'")
+        self.page.wait_for(DATA_USAGE + " === '1'")
 
     # ------------------------------------------------------------ the sweep
 
@@ -206,9 +209,10 @@ class PagesE2E(unittest.TestCase):
         for found in self.page.eval(STACK_BAD):
             bad.append("%s: stacked bar, %s" % (where, found))
         if texts:
-            shown = self.page.eval("(document.querySelector('main [data-page=%s]') || {}).innerText || ''" % page)
+            shown = self.page.eval("(document.querySelector('main [data-page=%s]') || {}).innerText || ''" % page).casefold()
             for text in texts:
-                if text not in shown:
+                # innerText applies CSS text-transform, so .tl-l labels and .dt th come back uppercase.
+                if text.casefold() not in shown:
                     bad.append("%s: text %r is not on the page" % (where, text))
         shot = self.page.call("Page.captureScreenshot", format="png")
         with open(os.path.join(self.out_dir, screenshot_name(page, hash_, width, theme)), "wb") as fh:
@@ -285,7 +289,11 @@ class PagesE2E(unittest.TestCase):
             while len(self.paused()) == seen and time.time() < deadline:
                 page.drain(0.2)
             self.assertGreater(len(self.paused()), seen, "no /api/usage request was held back")
-            self.assertIsNone(page.eval(DATA_RENDERED), "data-rendered was set while /api/usage was held")
+            # Boot does not wait on /api/usage: data-rendered is set while the request is still held, and
+            # data-usage stays unset until the answer is drawn.
+            page.wait_for(DATA_RENDERED + " === '1'")
+            self.assertEqual(page.eval(DATA_RENDERED), "1", "boot waited on the held /api/usage request")
+            self.assertIsNone(page.eval(DATA_USAGE), "data-usage was set while /api/usage was held")
         finally:
             try:
                 for event in self.paused():

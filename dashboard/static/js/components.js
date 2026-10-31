@@ -4,7 +4,7 @@
 
 import { h, frag } from "./h.js";
 import { icon } from "./icons.js";
-import { t, renderText, rangeWord, RANGES } from "./format.js";
+import { t, renderText, rangeWord, RANGES, fmtClock, fmtDate } from "./format.js";
 
 // ---------------------------------------------------------------- status
 
@@ -91,7 +91,9 @@ export function delta(current, previous, range, points = false) {
   return h("span", { class: ["delta", change < 0 && "delta-down"] }, h("span", { class: "delta-n" }, number), " ", rest);
 }
 
-export function estLine() {
+// verifiedOn is the price list's date (payload.prices.verified_on). It is taken now and drawn later: the
+// tooltip that shows it arrives in #59.
+export function estLine(verifiedOn = null) {
   return h("p", { class: "est" }, renderText(t("est_short")));
 }
 
@@ -140,9 +142,13 @@ export function rangeControl(active, onChange) {
   return group;
 }
 
-// configDir is the display form of the Claude config folder, such as "~/.claude".
-export function footerLine(configDir) {
-  return h("p", { class: "foot" }, renderText(t("footer", { config_dir: configDir })));
+// configDir is the display form of the Claude config folder, such as "~/.claude". generatedAt is the
+// payload's ISO time. A plain reload is the refresh, so there is no button.
+export function footerLine(configDir, generatedAt = null) {
+  const text = renderText(t("footer", { config_dir: configDir }));
+  const at = generatedAt ? new Date(generatedAt) : null;
+  if (!at || Number.isNaN(at.getTime())) return h("p", { class: "foot" }, text);
+  return h("p", { class: "foot" }, text, " ", t("read_at", { time: fmtClock(at), date: fmtDate(at) }));
 }
 
 // ---------------------------------------------------------------- empty states
