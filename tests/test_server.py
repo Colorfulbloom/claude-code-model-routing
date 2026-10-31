@@ -59,11 +59,13 @@ def write_json(path, data):
 def copy_tree(dest):
     """Copy the modules the server loads into dest, with no __pycache__.
 
-    dest/agent_md.py and dest/dashboard/*.py, *.json and static/. Returns the
-    path of the copied server.py.
+    dest/agent_md.py, dest/install.py (api_settings.files plans with it) and
+    dest/dashboard/*.py, *.json and static/. Returns the path of the copied
+    server.py.
     """
     os.makedirs(os.path.join(dest, "dashboard"))
     shutil.copy2(os.path.join(helpers.REPO, "agent_md.py"), dest)
+    shutil.copy2(os.path.join(helpers.REPO, "install.py"), dest)
     for name in os.listdir(DASHBOARD):
         full = os.path.join(DASHBOARD, name)
         if os.path.isfile(full) and name.endswith((".py", ".json")):
@@ -456,6 +458,20 @@ class RequestRules(unittest.TestCase):
 # --------------------------------------------------------------------------
 # Static files and path escapes, on a copy of the dashboard folder
 
+class ListenQueue(unittest.TestCase):
+    """Chrome opens several connections at once. One reset on a module fails the whole page before boot runs."""
+
+    def test_a_burst_of_connections_all_queue_while_the_server_is_busy(self):
+        srv = server.Server(None, 0)
+        self.addCleanup(srv.server_close)
+        socks = []
+        self.addCleanup(lambda: [s.close() for s in socks])
+        # Nothing accepts here, so each connection has to sit in the listen queue.
+        for _ in range(32):
+            socks.append(socket.create_connection(srv.server_address, timeout=2))
+        self.assertEqual(len(socks), 32)
+
+
 class StaticFiles(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -758,7 +774,10 @@ class Entries(TempCase):
             self.assertEqual(status, 200)
             answer = json.loads(body)
             self.assertEqual(answer["entries"], expected, name)
-            self.assertEqual(set(answer), {"project", "state", "entries"})
+            self.assertEqual(set(answer), {
+                "project", "state", "entries", "no_user_settings", "shell_label", "path_display",
+                "config_dir_display", "config_file_display", "models", "rows", "rules", "files", "installed", "attention",
+                "attention_equal"})
 
     def test_a_fixture_folder_may_be_empty(self):
         folder = os.path.join(self.root, "empty")

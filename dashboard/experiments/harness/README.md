@@ -42,6 +42,8 @@ Each case prints one JSON line. Next to `case`, `init_model`, `sent` and `stderr
 - `transcript` lists the effort fields from the throwaway transcripts, read before they're deleted. Each row is `[who, kind, effort, perTurnEffort]`, where `who` is `main` or `subagent` and `kind` is `assistant` or `api-request`. An `api-request` row carries `params.output_config.effort`, with `null` in the last place.
 - `result` lists the text of the session's stream-json `result` rows, each cut to 200 characters.
 
+Each line also has `init_version`, the Claude Code version from the stream-json init row, or `null` when there's no init row.
+
 ## Re-run
 
 Run a case file from the repo root.
@@ -57,6 +59,10 @@ The batch prints one JSON line per case. Compare those lines with `results-2026-
 The October 29 effort cases are in `cases-effort-sources.json`, `cases-effort-lowered-invalid.json` and `cases-model-settings.json`. Compare their lines with `results-2026-10-29-effort.jsonl`.
 
 The October 30 cases `ms-cap-same-file-max` and `ms-cap-same-file-invalid` are in `cases-model-settings.json`, so compare their lines with `results-2026-10-30-cap-values.jsonl`.
+
+The October 30 cases `ms-cap-invalid-alone`, `ms-cap-top-level-invalid` and `ms-cap-top-level-invalid-file-loads` are in `cases-model-settings.json`, so compare their lines with `results-2026-10-30-cap-invalid-alone.jsonl`.
+
+The October 30 case `ms-cap-user-low-project-invalid` is in `cases-model-settings.json`, so compare its line with `results-2026-10-30-cap-user-low-invalid.jsonl`.
 
 The October 29 invalid-file cases are in `cases-settings-invalid-json.json`. Compare their lines with `results-settings-invalid-json.jsonl`.
 

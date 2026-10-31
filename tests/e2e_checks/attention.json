@@ -1,1 +1,10 @@
-{"page": "attention", "routes": [{"hash": "#/attention", "texts": ["Needs attention"]}]}
+{"page": "attention", "routes": [
+  {"hash": "#/attention", "texts": [
+    "Needs attention", "Unknown", "Lowered", "Ignored", "Overridden",
+    "Runs at a lower level than it's set to", "Set here, but another source wins",
+    "Main session, Effort", "builder, Effort", "Open the trail",
+    "projects/tidewater-reporting/.claude/settings.local.json, line 3"]},
+  {"hash": "#/attention?project=driftwood", "texts": [
+    "Invalid", "Set to a value Claude Code doesn't accept", "projects/driftwood/.claude/settings.local.json, line 3"]},
+  {"hash": "#/attention?project=all", "texts": ["Pick a project"]}
+]}

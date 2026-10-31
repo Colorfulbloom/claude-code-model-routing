@@ -121,6 +121,43 @@ class WebSocket:
             pass
 
 
+def console_lines(events):
+    """The console messages and uncaught exceptions among DevTools events."""
+    out = []
+    for event in events:
+        params = event.get("params", {})
+        if event.get("method") == "Log.entryAdded":
+            out.append(params["entry"].get("text", ""))
+        elif event.get("method") == "Runtime.consoleAPICalled":
+            out.append(" ".join(str(a.get("value", a.get("description", ""))) for a in params.get("args", [])))
+        elif event.get("method") == "Runtime.exceptionThrown":
+            out.append("EXCEPTION " + json.dumps(params.get("exceptionDetails", {}))[:400])
+    return out
+
+
+def load_report(events, cap=4000):
+    """What a timed-out load shows: requests that failed, were refused or never finished, then the console."""
+    requests = {}
+    for event in events:
+        method = event.get("method")
+        params = event.get("params", {})
+        if method == "Network.requestWillBeSent":
+            requests[params["requestId"]] = {"url": params["request"]["url"], "end": None, "status": None}
+        elif params.get("requestId") in requests:
+            row = requests[params["requestId"]]
+            if method == "Network.responseReceived":
+                row["status"] = params["response"].get("status")
+            elif method == "Network.loadingFinished":
+                row["end"] = "finished"
+            elif method == "Network.loadingFailed":
+                row["end"] = params.get("errorText") or "failed"
+    bad = ["  %s %s %s" % (row["end"] or "NEVER FINISHED", row["status"], row["url"])
+           for row in requests.values() if row["end"] != "finished" or (row["status"] or 0) >= 400]
+    lines = ["%d requests, %d not clean" % (len(requests), len(bad))] + bad
+    lines += ["  console: " + line for line in console_lines(events)]
+    return "\n".join(lines)[:cap]
+
+
 class Page:
     """One browser tab over the DevTools protocol."""
 
@@ -128,6 +165,7 @@ class Page:
         self.ws = ws
         self.next_id = 0
         self.events = []
+        self.load_start = 0
 
     def call(self, method, **params):
         self.next_id += 1
@@ -160,7 +198,10 @@ class Page:
             if value:
                 return value
             time.sleep(0.1)
-        raise AssertionError("timed out waiting for %s (last value %r)" % (expression, value))
+        self.drain()
+        state = self.eval("document.readyState + ' ' + location.href")
+        raise AssertionError("timed out waiting for %s (last value %r)\n%s\n%s" % (
+            expression, value, state, load_report(self.events[self.load_start:])))
 
     def key(self, name):
         for kind in ("keyDown", "keyUp"):
@@ -170,6 +211,7 @@ class Page:
         self.call("Emulation.setDeviceMetricsOverride", width=width, height=height, deviceScaleFactor=1, mobile=False)
         self.call("Page.navigate", url="about:blank")
         time.sleep(0.2)
+        self.load_start = len(self.events)
         self.call("Page.navigate", url=url)
         self.wait_for("document.documentElement.getAttribute('data-rendered') !== null")
 
@@ -178,16 +220,7 @@ class Page:
         self.wait_for("JSON.stringify(%s) === %s" % (VISIBLE, json.dumps(json.dumps([expect_section]))))
 
     def messages(self):
-        out = []
-        for event in self.events:
-            params = event.get("params", {})
-            if event.get("method") == "Log.entryAdded":
-                out.append(params["entry"].get("text", ""))
-            elif event.get("method") == "Runtime.consoleAPICalled":
-                out.append(" ".join(str(a.get("value", a.get("description", ""))) for a in params.get("args", [])))
-            elif event.get("method") == "Runtime.exceptionThrown":
-                out.append("EXCEPTION " + json.dumps(params.get("exceptionDetails", {}))[:400])
-        return out
+        return console_lines(self.events)
 
 
 class Chrome:
@@ -222,7 +255,7 @@ class Chrome:
             path = urllib.parse.urlparse(targets[0]["webSocketDebuggerUrl"]).path
             self.ws = WebSocket("127.0.0.1", port, path)
             self.page = Page(self.ws)
-            for method in ("Page.enable", "Runtime.enable", "Log.enable"):
+            for method in ("Page.enable", "Runtime.enable", "Log.enable", "Network.enable"):
                 self.page.call(method)
         except BaseException:
             self.close()

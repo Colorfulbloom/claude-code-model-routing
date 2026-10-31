@@ -1,4 +1,9 @@
 {"page": "trail", "routes": [
+  {"hash": "#/settings/@main/effortLevel", "texts": [
+    "What decides the main session's effort", "Opus 5.5 (claude-opus-5-5)", "Runs as high", "Local settings",
+    "Set by CLAUDE_CODE_EFFORT_LEVEL in the env block of projects/tidewater-reporting/.claude/settings.local.json, line 3",
+    "Other values found", "Rules behind this value", "Files read"]},
   {"hash": "#/settings/builder/effort", "texts": ["What decides the effort for builder"]},
-  {"hash": "#/settings/@main/effortLevel", "texts": ["What decides the main session's effortLevel"]}
+  {"hash": "#/settings/builder/autoCompactWindow", "texts": ["What decides the compact window for builder"]},
+  {"hash": "#/settings/@main/maxEffortLevel?project=saltmarsh", "texts": ["What decides the main session's effort cap"]}
 ]}

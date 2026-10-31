@@ -2,11 +2,11 @@
 
 # Rules reference
 
-The dashboard will show each setting's value with a status word and a reason. This page defines those words, lists what the dashboard will read and what it can't see, and then lists every rule it will apply.
+The dashboard shows each setting's value with a status word and a reason. This page defines those words, lists what the dashboard reads and what it can't see, and then lists every rule it applies.
 
 ## Status words
 
-Every value on screen will have one of seven statuses. The status says whether the value counts, and the reason says why.
+Every value on screen has one of seven statuses. The status says whether the value counts, and the reason says why.
 
 - In effect. What a new session or agent starts with, before any launch flag or dispatch parameter. A `CLAUDE_CODE_AUTO_COMPACT_WINDOW` value below 100000 shows In effect too, with the value it runs at, because Claude Code raises it to 100000 ([model config, Values and warnings for CLAUDE_CODE_AUTO_COMPACT_WINDOW](https://code.claude.com/docs/en/model-config#claude_code_auto_compact_window-values)).
 - Overridden. Set here, but another source wins.
@@ -22,17 +22,17 @@ Every rule has one of three confidence words, and each rule names the Claude Cod
 
 - Documented. The Claude Code docs say so, and the rule links the page.
 - Tested. Checked on the version the rule names, with the experiment recorded in `dashboard/experiments/`. A Tested rule can quote the docs too, when the test confirms them or covers what they leave out.
-- Assumed. Neither the docs nor a test backs the whole rule yet. The screen will show it differently from the other two.
+- Assumed. Neither the docs nor a test backs the whole rule yet. The screen shows it differently from the other two.
 
-## What the dashboard will read
+## What the dashboard reads
 
-Planned for phase 1 and not built yet. The dashboard will work out each value from these sources.
+The dashboard works out each value from these sources, for the main session and for every agent. The Settings page shows the main session's model, effort, cache lifetime and compact window.
 
 - Settings files. The user file `~/.claude/settings.json`, the project's `.claude/settings.json` and `.claude/settings.local.json`, and the managed settings file ([settings, Settings files and who they affect](https://code.claude.com/docs/en/settings#settings-files-and-who-they-affect)). When several set a key, Claude Code takes the highest, in the order managed, `--settings`, local, project, user ([settings, Settings precedence](https://code.claude.com/docs/en/settings#settings-precedence)). Some keys follow their own order, and their rules say so.
-- Managed settings file. The dashboard will read only the file-based managed settings. On macOS, that's `/Library/Application Support/ClaudeCode/managed-settings.json` and the `.json` files in the optional `managed-settings.d/` folder beside it ([managed settings, Where each mechanism stores the policy](https://code.claude.com/docs/en/managed-settings#where-each-mechanism-stores-the-policy)). Claude Code merges `managed-settings.json` first, then the folder's files in alphabetical order ([managed settings, Split a file-based policy across teams](https://code.claude.com/docs/en/managed-settings#split-a-file-based-policy-across-teams)). Mobile device management (MDM) and server-managed settings rank above these files, but the dashboard won't read them, so they're under What the dashboard can't see. The record is [dashboard/experiments/2026-10-29-managed-settings-macos.json](../dashboard/experiments/2026-10-29-managed-settings-macos.json).
-- Shell. The environment variables of the shell the dashboard starts in. A value from there will show the source Shell, with the reason "Read when the dashboard started. A session from another terminal may differ." Claude Code reads shell variables when it starts, so a change counts from the next launch ([environment variables, Precedence](https://code.claude.com/docs/en/env-vars#precedence)).
-- Env blocks. The `env` block in each settings file. Its value overwrites the same variable from the shell, and when several files set a variable, the highest file wins ([settings reference, How env values interact with your shell](https://code.claude.com/docs/en/settings-reference#how-env-values-interact-with-your-shell)). Tested on 2.1.302, with the record in [dashboard/experiments/2026-10-29-env-block-order.json](../dashboard/experiments/2026-10-29-env-block-order.json). The value will show its settings file as the source.
-- Agent files. The files in `~/.claude/agents/` and the project's `.claude/agents/`, subfolders included, because Claude Code scans both recursively ([sub-agents, Choose the subagent scope](https://code.claude.com/docs/en/sub-agents#choose-the-subagent-scope)). The dashboard will read each file's frontmatter with a strict reader. Claude Code loads some frontmatter that reader rejects, so a rejected file that loads, or one in a form nobody has tested, shows Unknown. Tested on 2.1.302, with the record in [dashboard/experiments/2026-10-29-agent-files.json](../dashboard/experiments/2026-10-29-agent-files.json).
+- Managed settings file. The dashboard reads only the file-based managed settings. On macOS, that's `/Library/Application Support/ClaudeCode/managed-settings.json` and the `.json` files in the optional `managed-settings.d/` folder beside it ([managed settings, Where each mechanism stores the policy](https://code.claude.com/docs/en/managed-settings#where-each-mechanism-stores-the-policy)). Claude Code merges `managed-settings.json` first, then the folder's files in alphabetical order ([managed settings, Split a file-based policy across teams](https://code.claude.com/docs/en/managed-settings#split-a-file-based-policy-across-teams)). Mobile device management (MDM) and server-managed settings rank above these files, but the dashboard doesn't read them, so they're under What the dashboard can't see. The record is [dashboard/experiments/2026-10-29-managed-settings-macos.json](../dashboard/experiments/2026-10-29-managed-settings-macos.json).
+- Shell. The environment variables of the shell the dashboard starts in. A value from there shows the source Shell, and the What decides panel adds the note "Read when the dashboard started. A session from another terminal may differ." Claude Code reads shell variables when it starts, so a change counts from the next launch ([environment variables, Precedence](https://code.claude.com/docs/en/env-vars#precedence)).
+- Env blocks. The `env` block in each settings file. Its value overwrites the same variable from the shell, and when several files set a variable, the highest file wins ([settings reference, How env values interact with your shell](https://code.claude.com/docs/en/settings-reference#how-env-values-interact-with-your-shell)). Tested on 2.1.302, with the record in [dashboard/experiments/2026-10-29-env-block-order.json](../dashboard/experiments/2026-10-29-env-block-order.json). The value shows its settings file as the source.
+- Agent files. The files in `~/.claude/agents/` and the project's `.claude/agents/`, subfolders included, because Claude Code scans both recursively ([sub-agents, Choose the subagent scope](https://code.claude.com/docs/en/sub-agents#choose-the-subagent-scope)). The dashboard reads each file's frontmatter with a strict reader. Claude Code loads some frontmatter that reader rejects, so a rejected file that loads, or one in a form nobody has tested, shows Unknown. Tested on 2.1.302, with the record in [dashboard/experiments/2026-10-29-agent-files.json](../dashboard/experiments/2026-10-29-agent-files.json).
 - Rules folders. The files in `~/.claude/rules/` and the project's `.claude/rules/`. Claude Code loads the `.md` files there, a project's subfolders included ([memory, Set up rules](https://code.claude.com/docs/en/memory#set-up-rules)). It loads user rules first, and neither set overrides the other ([memory, User-level rules](https://code.claude.com/docs/en/memory#user-level-rules)). So the dashboard will list each file with its scope and pick no winner.
 - Plan. The optional `plan` field in the dashboard's own config, set to `subscription`, `api_key` or `cloud_provider`. The main conversation's default cache lifetime depends on how the account is billed ([prompt caching, Which TTL each request gets](https://code.claude.com/docs/en/prompt-caching#which-ttl-each-request-gets)). With `api_key` or `cloud_provider`, the dashboard shows five minutes. With `subscription` or no field, it shows Unknown, because it can't tell whether usage credits are in use.
 
@@ -73,16 +73,16 @@ A check against `/effort status` is weaker on 2.1.302. Before v2.1.304, it print
 
 ## What the dashboard can't see
 
-Some sources change a session after it starts, and others sit outside what the dashboard will read. So a value the dashboard will show as In effect can still change when one of these applies.
+Some sources change a session after it starts, and others sit outside what the dashboard reads. So a value the dashboard shows as In effect can still change when one of these applies.
 
 - Launch flags. The flags a session started with, such as `--model`, `--effort`, `--autocompact` and `--agents`. Each can change what runs. For example, `--model` beats `ANTHROPIC_MODEL` and the `model` setting ([CLI reference, CLI flags](https://code.claude.com/docs/en/cli-reference#cli-flags)).
 - `--settings` content. JSON passed with `--settings`, inline or as a file path, ranks above the user, project and local files and below managed settings ([settings, Change a setting for one session](https://code.claude.com/docs/en/settings#change-a-setting-for-one-session)). It's a launch flag, so the dashboard can't see it in phase 1.
 - MDM and server-managed settings. On macOS, MDM policy lives in the `com.anthropic.claudecode` managed preferences domain, and Anthropic's servers or a gateway hold server-managed settings ([managed settings, Where each mechanism stores the policy](https://code.claude.com/docs/en/managed-settings#where-each-mechanism-stores-the-policy)). Both rank above the managed settings file. By default, Claude Code uses the highest-ranked source that sets a policy and skips the rest ([managed settings, How Claude Code combines managed sources](https://code.claude.com/docs/en/managed-settings#how-claude-code-combines-managed-sources)). So a policy from either one can replace what the dashboard shows from the file.
-- `/effort` in a running session. A level picked with `/effort` or the `/model` picker beats `--effort` and every settings file, though not `CLAUDE_CODE_EFFORT_LEVEL` ([model config, Adjust effort level](https://code.claude.com/docs/en/model-config#adjust-effort-level)). A pick saved as the default lands under `modelSettings` in the user settings file, where the dashboard will read it for new sessions. A pick for this session only, a `max` pick or a pick in a `-p` run stays in that session. To check one, run `/effort status` there.
+- `/effort` in a running session. A level picked with `/effort` or the `/model` picker beats `--effort` and every settings file, though not `CLAUDE_CODE_EFFORT_LEVEL` ([model config, Adjust effort level](https://code.claude.com/docs/en/model-config#adjust-effort-level)). A pick saved as the default lands under `modelSettings` in the user settings file, where the dashboard reads it for new sessions. A pick for this session only, a `max` pick or a pick in a `-p` run stays in that session. To check one, run `/effort status` there.
 - Dispatch parameters. When Claude starts a subagent, it can pass a model alias and an effort level for that run. Both beat the agent's frontmatter, though `CLAUDE_CODE_EFFORT_LEVEL` still beats the effort ([sub-agents, Choose a model](https://code.claude.com/docs/en/sub-agents#choose-a-model); [sub-agents, Choose an effort level](https://code.claude.com/docs/en/sub-agents#choose-an-effort-level)). The effort parameter needs v2.1.292 or later.
 - Mod hooks. A mod's `agent.spawn` hook can choose a subagent's model, and Claude Code uses it in place of the dispatch model ([sub-agents, Choose a model](https://code.claude.com/docs/en/sub-agents#choose-a-model); [mods reference, Subagents](https://code.claude.com/docs/en/plugins/mods/reference#subagents)). The docs list a model, not an effort, for this hook.
-- Another terminal's environment. The dashboard will read the shell it starts in. A session started from another terminal reads that terminal's variables when it starts, so its values may differ ([environment variables, Precedence](https://code.claude.com/docs/en/env-vars#precedence)). That's why a Shell value will carry the reason "Read when the dashboard started. A session from another terminal may differ."
-- Usage credits. On a subscription, the main conversation's default cache lifetime is one hour within plan usage and five minutes once usage credits start ([prompt caching, Which TTL each request gets](https://code.claude.com/docs/en/prompt-caching#which-ttl-each-request-gets)). An agent's `experimental.cacheTtl` of `1h` is ignored while usage credits are in use ([sub-agents, Frontmatter reference](https://code.claude.com/docs/en/sub-agents#supported-frontmatter-fields)). The dashboard can't tell whether a session is drawing on usage credits, so those lifetimes will show Unknown on a subscription or with no plan set.
+- Another terminal's environment. The dashboard reads the shell it starts in. A session started from another terminal reads that terminal's variables when it starts, so its values may differ ([environment variables, Precedence](https://code.claude.com/docs/en/env-vars#precedence)). That's why a Shell value carries the note "Read when the dashboard started. A session from another terminal may differ."
+- Usage credits. On a subscription, the main conversation's default cache lifetime is one hour within plan usage and five minutes once usage credits start ([prompt caching, Which TTL each request gets](https://code.claude.com/docs/en/prompt-caching#which-ttl-each-request-gets)). An agent's `experimental.cacheTtl` of `1h` is ignored while usage credits are in use ([sub-agents, Frontmatter reference](https://code.claude.com/docs/en/sub-agents#supported-frontmatter-fields)). The dashboard can't tell whether a session is drawing on usage credits, so those lifetimes show Unknown on a subscription or with no plan set.
 
 ## Rules
 
@@ -125,11 +125,14 @@ Some sources change a session after it starts, and others sit outside what the d
 | agent-effort-lowered-by-cap | effort | agent | Tested | 2.1.302 |
 | agent-effort-lowered-unsupported-level | effort | agent | Tested | 2.1.302 |
 | agent-effort-user-settings-opus-5-5 | effort | agent | Tested | 2.1.302 |
+| agent-effort-user-settings-model-unknown | effort | agent | Documented | 2.1.302 |
 | agent-effort-default-model-unknown | effort | agent | Assumed | 2.1.302 |
 | agent-effort-default-no-effort-support | effort | agent | Tested | 2.1.302 |
 | agent-effort-default-by-model | effort | agent | Tested | 2.1.302 |
 | model-settings-name-matching | modelSettings | model | Tested | 2.1.302 |
 | model-settings-max-effort-per-model | modelSettings.maxEffortLevel | model | Tested | 2.1.302 |
+| max-effort-level-values | maxEffortLevel | main | Tested | 2.1.302 |
+| model-settings-max-effort-values | modelSettings.maxEffortLevel | model | Tested | 2.1.302 |
 | model-settings-auto-compact-window | modelSettings.autoCompactWindow | model | Tested | 2.1.302 |
 | prompt-cache-force-5m | promptCacheTtl | main | Tested | 2.1.302 |
 | subagent-prompt-cache-force-5m | subagentPromptCacheTtl | agent | Tested | 2.1.302 |
@@ -308,7 +311,7 @@ Quotes:
 
 Reason:
 
-> The lowest cap applies. {value} in {file} can't be raised from another file.
+> The lowest cap applies. The cap in {winner} can't be raised from another file.
 
 Quotes:
 
@@ -916,6 +919,31 @@ Quotes:
 - Confidence: Tested
 - Verified on: Claude Code 2.1.302, October 29, 2026
 
+### agent-effort-user-settings-model-unknown
+
+- Key: effort
+- Scope: agent
+- Combine: highest_layer
+- Layer order (highest first): env, agent, flag, managed, cli, local, project, user, default
+
+Reason:
+
+> {file} sets a top-level effortLevel of {value}, but the dashboard can't tell which model {agent} runs on. Opus 5.5 and models released after it ignore this key in the user file, and earlier models use it. So the dashboard can't say whether it counts for {agent}.
+
+Quotes:
+
+- [https://code.claude.com/docs/en/settings-reference#effortlevel](https://code.claude.com/docs/en/settings-reference#effortlevel)
+
+> Opus 5.5 and models released after it ignore it and start at their own default until you save a level for them, which `/effort` writes under `modelSettings`. In project, local, and managed settings, and with `--settings`, this key applies to every model.
+
+- [https://code.claude.com/docs/en/model-config#set-the-effort-level](https://code.claude.com/docs/en/model-config#set-the-effort-level)
+
+> If you set `effortLevel` in managed settings, Claude Code applies it at the settings step of the effort resolution order, and users can still change the level with `/effort` or `--effort`.
+
+- Experiment record: [../dashboard/experiments/2026-10-29-effort-user-key-by-model.json](../dashboard/experiments/2026-10-29-effort-user-key-by-model.json)
+- Confidence: Documented
+- Verified on: Claude Code 2.1.302, October 29, 2026
+
 ### agent-effort-default-model-unknown
 
 - Key: effort
@@ -1014,6 +1042,48 @@ Quotes:
 - [https://code.claude.com/docs/en/settings-reference#maxeffortlevel](https://code.claude.com/docs/en/settings-reference#maxeffortlevel)
 
 > That entry replaces this key for the model only within the settings source that sets both, such as your user settings or one managed source.
+
+- Experiment record: [../dashboard/experiments/2026-10-29-model-settings-max-effort.json](../dashboard/experiments/2026-10-29-model-settings-max-effort.json)
+- Confidence: Tested
+- Verified on: Claude Code 2.1.302, October 30, 2026
+
+### max-effort-level-values
+
+- Key: maxEffortLevel
+- Scope: main
+- Combine: lowest_value
+- Layer order (highest first): managed, cli, local, project, user
+
+Reason:
+
+> {value} isn't a level maxEffortLevel accepts in {file}, so Claude Code skips it and any other cap still applies. A cap takes low, medium, high, xhigh or max.
+
+Quotes:
+
+- [https://code.claude.com/docs/en/settings-reference#maxeffortlevel](https://code.claude.com/docs/en/settings-reference#maxeffortlevel)
+
+> string, one of `"low"`, `"medium"`, `"high"`, `"xhigh"`, or `"max"`. A `"max"` value sets no cap
+
+- Experiment record: [../dashboard/experiments/2026-10-29-model-settings-max-effort.json](../dashboard/experiments/2026-10-29-model-settings-max-effort.json)
+- Confidence: Tested
+- Verified on: Claude Code 2.1.302, October 30, 2026
+
+### model-settings-max-effort-values
+
+- Key: modelSettings.maxEffortLevel
+- Scope: model
+- Combine: lowest_value
+- Layer order (highest first): managed, cli, local, project, user
+
+Reason:
+
+> {value} isn't a level a modelSettings cap accepts in {file}, so Claude Code skips it for {model} and any other cap still applies. A cap takes low, medium, high, xhigh or max.
+
+Quotes:
+
+- [https://code.claude.com/docs/en/settings-reference#maxeffortlevel](https://code.claude.com/docs/en/settings-reference#maxeffortlevel)
+
+> string, one of `"low"`, `"medium"`, `"high"`, `"xhigh"`, or `"max"`. A `"max"` value sets no cap
 
 - Experiment record: [../dashboard/experiments/2026-10-29-model-settings-max-effort.json](../dashboard/experiments/2026-10-29-model-settings-max-effort.json)
 - Confidence: Tested

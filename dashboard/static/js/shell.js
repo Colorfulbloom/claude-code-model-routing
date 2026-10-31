@@ -2,7 +2,7 @@
 // Ported from nav3, switcher3 and version_chip in gen3.py. The pieces are built once and then
 // updated in place, so a focused link or select keeps focus when the route changes.
 
-import { h, clear } from "./h.js";
+import { h, clear, setLocalHref } from "./h.js";
 import { icon } from "./icons.js";
 import { t } from "./format.js";
 import { ALL_KEY, hashFor } from "./router.js";
@@ -161,7 +161,7 @@ export function createShell({ sidebar, topbar, onProject }) {
     groupLabels.forEach(([label, text]) => { label.textContent = text(state.project); });
     for (const [key, link] of links) {
       const active = key === state.nav;
-      link.setAttribute("href", hashFor(key, {}, state.query));
+      setLocalHref(link, hashFor(key, {}, state.query));
       link.classList.toggle("is-active", active);
       if (active) link.setAttribute("aria-current", "page");
       else link.removeAttribute("aria-current");

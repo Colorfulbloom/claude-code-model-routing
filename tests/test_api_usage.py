@@ -267,6 +267,31 @@ class FixtureClock(unittest.TestCase):
                                     {"HOME": home, "TZ": ""}, "darwin", RULES, FIELDS)
         self.assertIsNone(empty.tz_name)
 
+    def test_projects_carries_the_version_field(self):
+        ctx = self.ctx({})
+        self.assertIsNone(ctx.claude_version)
+        self.assertIsNone(ctx.path_env)
+        _status, payload = api_usage.api_projects(ctx, {})
+        self.assertEqual(payload["version"], {"installed": None, "rules_oldest": "2.1.302"})
+        # A fixed version in session.json shows as installed. Anything else is ignored.
+        _status, payload = api_usage.api_projects(self.ctx({"claude_version": "2.1.310"}), {})
+        self.assertEqual(payload["version"]["installed"], "2.1.310")
+        for bad in (5, None, ["2.1.310"], {}):
+            self.assertIsNone(self.ctx({"claude_version": bad}).claude_version, bad)
+        _status, payload = api_usage.api_projects(
+            dataclasses.replace(ctx, claude_version="2.2.0"), {})
+        self.assertEqual(payload["version"]["installed"], "2.2.0")
+
+    def test_live_context_searches_the_given_path(self):
+        home = os.path.join(self.root, "home")
+        ctx = server.live_context(os.path.join(home, "cfg"), os.path.join(home, "proj"),
+                                  {"HOME": home, "PATH": "/a:/b"}, "darwin", RULES, FIELDS)
+        self.assertEqual(ctx.path_env, "/a:/b")
+        self.assertIsNone(ctx.claude_version)
+        unset = server.live_context(os.path.join(home, "cfg"), os.path.join(home, "proj"),
+                                    {"HOME": home}, "darwin", RULES, FIELDS)
+        self.assertIsNone(unset.path_env)
+
     def test_each_context_has_its_own_cache(self):
         a, b = self.ctx({}), self.ctx({})
         self.assertIsNot(a.usage_cache, b.usage_cache)
@@ -325,6 +350,10 @@ class Routes(unittest.TestCase):
         self.assertFalse(os.path.isabs(self.listing["config_file_display"]))
         self.assertFalse(os.path.isabs(self.listing["transcripts_dir_display"]))
         self.assertNotIn(self.root, json.dumps(self.listing))
+
+    def test_projects_carries_the_demo_version(self):
+        # The demo's session.json fixes the installed version, newer than every rule.
+        self.assertEqual(self.listing["version"], {"installed": "2.1.310", "rules_oldest": "2.1.302"})
 
     def test_projects_reports_the_reader(self):
         reader = self.listing["reader"]

@@ -134,6 +134,17 @@ test("h: SAFE_URL drops every off-site or control-character value and keeps loca
   assert.equal(src.getAttribute("src"), null);
 });
 
+test("h: a link attribute name is compared in lower case, so HREF and Href get no off-site value", async () => {
+  createPage();
+  const { h } = await import(JS + "h.js");
+  for (const name of ["HREF", "Href", "hReF", "SRC", "Action", "FormAction", "XLINK:HREF"]) {
+    const el = h("a", { [name]: "javascript:x" });
+    assert.equal(el.getAttribute(name), null, name);
+    assert.equal(el.getAttribute(name.toLowerCase()), null, name);
+  }
+  assert.equal(h("a", { HREF: "/api/x" }).getAttribute("HREF"), "/api/x", "a local value is kept");
+});
+
 // ---------------------------------------------------------------- app.js
 
 test("range control: focus stays on the checked radio after the page head is rebuilt", async () => {

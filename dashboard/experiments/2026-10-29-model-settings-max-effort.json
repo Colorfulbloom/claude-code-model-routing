@@ -1,11 +1,21 @@
 {
  "date": "2026-10-29",
  "claude_version": "2.1.302",
- "ran": "--effort xhigh or high on claude-sonnet-5-5 or claude-haiku-5-5 with: project maxEffortLevel low plus a project modelSettings cap of xhigh for Sonnet 5.5 (same file); a user cap of low plus a project modelSettings cap of xhigh; a project modelSettings cap of low for Sonnet 5.5 only. On October 30, two more cases ran on 2.1.302 with --effort xhigh on Sonnet 5.5. One set a project maxEffortLevel of low plus a same-file per-model cap of max, and the other set the same with the invalid value turbo.",
- "result": "In the same file the per-model cap replaced the top-level cap, so xhigh ran. Across files the lowest cap still applied, so low ran. A per-model cap of low held on Sonnet 5.5 and didn't touch Haiku 5.5, which ran high. On October 30, the per-model cap of max let xhigh run. The per-model cap of turbo ran low, so the invalid entry didn't replace the top-level cap, and the settings file wasn't rejected.",
+ "ran": "--effort xhigh or high on claude-sonnet-5-5 or claude-haiku-5-5 with: project maxEffortLevel low plus a project modelSettings cap of xhigh for Sonnet 5.5 (same file); a user cap of low plus a project modelSettings cap of xhigh; a project modelSettings cap of low for Sonnet 5.5 only. On October 30, two more cases ran on 2.1.302 with --effort xhigh on Sonnet 5.5. One set a project maxEffortLevel of low plus a same-file per-model cap of max, and the other set the same with the invalid value turbo. Also on October 30, three more cases ran on 2.1.302. Two used --effort xhigh on Sonnet 5.5 with the invalid value turbo as the only cap, one as a project modelSettings cap and one as a project maxEffortLevel. The third set a project maxEffortLevel of turbo and a project model of Haiku 5.5 over a user model of Sonnet 5.5, with no flags. Also on October 30, one more case ran on 2.1.302 with --effort xhigh on Sonnet 5.5, a user maxEffortLevel of low and a project maxEffortLevel of turbo.",
+ "result": "In the same file the per-model cap replaced the top-level cap, so xhigh ran. Across files the lowest cap still applied, so low ran. A per-model cap of low held on Sonnet 5.5 and didn't touch Haiku 5.5, which ran high. On October 30, the per-model cap of max let xhigh run. The per-model cap of turbo ran low, so the invalid entry didn't replace the top-level cap, and the settings file wasn't rejected. With turbo as the only cap, xhigh ran in both flag cases, so neither the per-model nor the top-level turbo set a cap. In the third case Haiku 5.5 ran, so the project file still loaded and only the turbo value was skipped. With low in the user file and turbo in the project file, low ran, so the invalid project value didn't cancel the user cap.",
  "method": "dashboard/experiments/harness: claude -p in a throwaway HOME, CLAUDE_CONFIG_DIR and project under $TMPDIR, a fake key and ANTHROPIC_BASE_URL on 127.0.0.1. fakeapi.py logs the model, output_config.effort and cache_control ttl of each request. It answers 400, or a short text reply when the case sets text_reply; for agent cases it first streams one Agent tool call. Cases with prompt \"/effort status\" record the command's output, and runcase.py reads the effort fields from the throwaway transcripts before deleting them. The harness only allows requests to fakeapi.py on 127.0.0.1. Managed settings were not tested, because writing them needs admin rights.",
  "results_file": "harness/results-2026-10-29-effort.jsonl",
  "cases": {
+  "ms-cap-invalid-alone": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "xhigh",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
   "ms-cap-only-that-model": [
    [
     "main",
@@ -65,9 +75,53 @@
      "5m(default)"
     ]
    ]
+  ],
+  "ms-cap-top-level-invalid": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "xhigh",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "ms-cap-top-level-invalid-file-loads": [
+   [
+    "main",
+    "claude-haiku-5-5",
+    "medium",
+    [
+     "5m(default)"
+    ]
+   ]
+  ],
+  "ms-cap-user-low-project-invalid": [
+   [
+    "main",
+    "claude-sonnet-5-5",
+    "low",
+    [
+     "5m(default)"
+    ]
+   ]
   ]
  },
  "transcripts": {
+  "ms-cap-invalid-alone": [
+   [
+    "main",
+    "api-request",
+    "xhigh",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "xhigh"
+   ]
+  ],
   "ms-cap-only-that-model": [
    [
     "main",
@@ -151,15 +205,61 @@
     null,
     "low"
    ]
+  ],
+  "ms-cap-top-level-invalid": [
+   [
+    "main",
+    "api-request",
+    "xhigh",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "xhigh"
+   ]
+  ],
+  "ms-cap-top-level-invalid-file-loads": [
+   [
+    "main",
+    "api-request",
+    "medium",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "medium"
+   ]
+  ],
+  "ms-cap-user-low-project-invalid": [
+   [
+    "main",
+    "api-request",
+    "low",
+    null
+   ],
+   [
+    "main",
+    "assistant",
+    null,
+    "low"
+   ]
   ]
  },
  "case_files": {
+  "ms-cap-invalid-alone": "harness/cases-model-settings.json",
   "ms-cap-only-that-model": "harness/cases-model-settings.json",
   "ms-cap-other-file-lowest": "harness/cases-model-settings.json",
   "ms-cap-same-file-invalid": "harness/cases-model-settings.json",
   "ms-cap-same-file-max": "harness/cases-model-settings.json",
   "ms-cap-same-file-replaces": "harness/cases-model-settings.json",
-  "ms-cap-this-model": "harness/cases-model-settings.json"
+  "ms-cap-this-model": "harness/cases-model-settings.json",
+  "ms-cap-top-level-invalid": "harness/cases-model-settings.json",
+  "ms-cap-top-level-invalid-file-loads": "harness/cases-model-settings.json",
+  "ms-cap-user-low-project-invalid": "harness/cases-model-settings.json"
  },
  "later_runs": [
   {
@@ -170,6 +270,24 @@
     "ms-cap-same-file-invalid"
    ],
    "results_file": "harness/results-2026-10-30-cap-values.jsonl"
+  },
+  {
+   "date": "2026-10-30",
+   "claude_version": "2.1.302",
+   "cases": [
+    "ms-cap-invalid-alone",
+    "ms-cap-top-level-invalid",
+    "ms-cap-top-level-invalid-file-loads"
+   ],
+   "results_file": "harness/results-2026-10-30-cap-invalid-alone.jsonl"
+  },
+  {
+   "date": "2026-10-30",
+   "claude_version": "2.1.302",
+   "cases": [
+    "ms-cap-user-low-project-invalid"
+   ],
+   "results_file": "harness/results-2026-10-30-cap-user-low-invalid.jsonl"
   }
  ]
 }

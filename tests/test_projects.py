@@ -206,8 +206,12 @@ class States(Base):
         self.write_list([{"name": "Gone", "path": gone}])
         proc = self.serve()
         status, payload = self.get(proc, "/api/settings?project=gone")
-        self.assertEqual((status, payload),
-                         (200, {"project": "gone", "state": "missing_folder", "entries": []}))
+        self.assertEqual(status, 200)
+        self.assertEqual((payload["project"], payload["state"]), ("gone", "missing_folder"))
+        # Nothing was read: only the names the empty state needs come back.
+        self.assertEqual((payload["entries"], payload["rows"], payload["rules"], payload["files"]),
+                         ([], [], {}, []))
+        self.assertNotIn("no_user_settings", payload)
 
     def test_no_claude_folder_settings_still_resolve(self):
         bare = self.make_project("bare", claude=False)

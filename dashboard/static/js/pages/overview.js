@@ -7,6 +7,7 @@ import { h, clear } from "../h.js";
 import { t, rangeWord } from "../format.js";
 import { pageHead, rangeControl } from "../components.js";
 import { fillUsage } from "../usage-page.js";
+import { overviewCard } from "./attention.js";
 import { usageKpis, perBucketCard, costByModelCard, tokensByAgentCard, cacheCard, effortCard } from "../usage-cards.js";
 
 export function render(root, ctx) {
@@ -21,6 +22,6 @@ export function render(root, ctx) {
     h("div", { class: "g2 g2-fill" },
       tokensByAgentCard(u),
       h("div", { class: "stack" }, cacheCard(u), effortCard(u))),
-    // The Needs attention card goes here (#63). It stays out until the Settings branch rebases on this one.
+    overviewCard(ctx),
   ]);
 }
