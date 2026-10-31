@@ -1,6 +1,6 @@
 {"page": "rules", "routes": [
   {"hash": "#/rules", "texts": [
-    "Rules reference", "What backs each rule?", "All 67", "Tested 50", "Documented 8", "Assumed 9",
+    "Rules reference", "What backs each rule?", "All 67", "Tested 50", "Documented 9", "Assumed 8",
     "agent-auto-compact-window", "The winning source sets the auto-compact window for the agent.",
     "Neither the docs nor a test backs the whole rule yet.", "From the docs (2)",
     "Checked on Claude Code 2.1.302, October 29, 2026",

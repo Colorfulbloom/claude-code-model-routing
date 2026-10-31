@@ -29,6 +29,7 @@ CASES = (
     "effort-user-top-level-xhigh-ignored-opus-5-5",
     "effort-project-top-level-xhigh-opus-5-5",
     "model-main-default-unknown",
+    "effort-user-top-level-model-unknown",
     "effort-lowered-by-cap",
     "env-block-over-shell",
     "prompt-cache-force-5m-over-everything",

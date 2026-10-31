@@ -226,6 +226,29 @@ test("unknown: model-main-default-unknown shows Unknown with its reason and no v
   assert.ok(sub(effort, "en-note"));
 });
 
+test("unknown: the user file's effortLevel under an unknown model shows no value on the tile", () => {
+  const payload = real("effort-user-top-level-model-unknown");
+  const winner = payload.entries.find((e) => e.scope === "main" && e.key === "effortLevel");
+  assert.equal(winner.status, "unknown");
+  assert.ok(winner.value, "the entry keeps the file's value");
+  const tile = tileFor(show(payload), "effortLevel");
+  assert.equal(text(sub(tile, "st")), "Unknown");
+  assert.equal(sub(tile, "tl-v"), undefined);
+  assert.equal(tile.getAttribute("aria-label"), "Effort, Unknown. " + STRINGS.cell_desc);
+  assert.ok(text(sub(tile, "en-note")).includes("sets a top-level effortLevel of " + winner.value));
+});
+
+test("unknown: valueString and valueText hide the value of both unknown-model rules and nothing else", () => {
+  const p = { models: {} };
+  for (const id of ["effort-level-user-settings-model-unknown", "agent-effort-user-settings-model-unknown"]) {
+    const e = entry({ value: "xhigh", status: "unknown", rule_id: id, rule_ids: [id] });
+    assert.equal(settings.valueString(e, p), "");
+    assert.equal(settings.valueText(e, p), null);
+  }
+  assert.equal(settings.valueString(entry({ value: "xhigh", status: "unknown" }), p), "xhigh");
+  assert.equal(settings.valueString(entry({ value: "xhigh", rule_ids: ["effort-level-user-settings-model-unknown"] }), p), "xhigh");
+});
+
 test("the env block of a fixture reads as the file and line on a tile", () => {
   const root = show(real("env-block-over-shell"));
   const tile = tileFor(root, "model");
@@ -527,6 +550,18 @@ test("trail: an empty value and a missing value", () => {
   const none = mount(trailPayload([E({ value: null, status: "unknown" })]), "@main", "effortLevel").root;
   assert.equal(sub(winnerNode(none), "val"), undefined);
   assert.deepEqual(winnerNode(none).find((n) => hasClass(n, "sr")).map(text), ["Status", "Source", "Reason"]);
+});
+
+test("trail: the unknown-model effort rules show no value on the winner, in its card summary or on an agent row", () => {
+  const main = E({ value: "xhigh", status: "unknown", rule_ids: ["effort-level-user-settings-model-unknown"] });
+  const root = mount(trailPayload([main]), "@main", "effortLevel").root;
+  assert.equal(sub(winnerNode(root), "val"), undefined);
+  assert.equal(summaryOf(cardOf(root, "Winner")).startsWith("Unknown, "), true);
+  const agent = entry({ key: "effort", scope: "agent", agent: "builder", value: "xhigh", status: "unknown",
+    rule_ids: ["agent-effort-user-settings-model-unknown"] });
+  const aroot = mount(trailPayload([agent]), "builder", "effort").root;
+  assert.equal(sub(winnerNode(aroot), "val"), undefined);
+  assert.equal(summaryOf(cardOf(aroot, "Winner")).startsWith("Unknown, "), true);
 });
 
 test("trail: Assumed reads differently from Documented and Tested", () => {

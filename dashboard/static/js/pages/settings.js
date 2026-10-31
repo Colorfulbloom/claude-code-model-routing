@@ -22,11 +22,21 @@ export const TILES = [
 
 const HIDDEN = "hidden"; // what collect.py leaves in place of a value that looks like a secret
 
+// The two rules that mark the user file's top-level effortLevel Unknown because the model is not known. The
+// entry keeps the file's value for the reason text, but the value may not apply, so no screen shows it as the answer.
+const VALUE_NOT_SHOWN = ["effort-level-user-settings-model-unknown", "agent-effort-user-settings-model-unknown"];
+
+// True for an Unknown entry of those rules: its value stays in the entry but is not shown as a headline.
+export function valueNotShown(entry) {
+  return entry.status === "unknown" && Array.isArray(entry.rule_ids)
+    && entry.rule_ids.some((id) => VALUE_NOT_SHOWN.includes(id));
+}
+
 // The value of an entry as plain text. plain true is the Settings tile, where a model shows its display
 // name alone. A null value is "" here, and a model row shows its name and id otherwise.
 export function valueString(entry, payload, plain = false) {
   const value = entry.value;
-  if (value === null || value === undefined) return "";
+  if (value === null || value === undefined || valueNotShown(entry)) return "";
   if (value === HIDDEN) return t("hidden");
   if (value === "") return t("value_empty");
   if (entry.key === "model") {
@@ -41,7 +51,7 @@ export function valueString(entry, payload, plain = false) {
 
 // What shows for a value: text, or a span that explains a hidden value. Null shows nothing.
 export function valueText(entry, payload, plain = false) {
-  if (entry.value === null || entry.value === undefined) return null;
+  if (entry.value === null || entry.value === undefined || valueNotShown(entry)) return null;
   const text = valueString(entry, payload, plain);
   if (entry.value === HIDDEN) return h("span", { title: t("hidden_desc") }, text);
   return text;

@@ -574,7 +574,7 @@
         }
       ],
       "experiment": null,
-      "confidence": "assumed",
+      "confidence": "documented",
       "verified_on": {
         "claude_version": "2.1.302",
         "date": "2026-10-29"
@@ -1677,15 +1677,15 @@
           "status": "unknown"
         }
       ],
-      "reason": "{file} sets a top-level effortLevel of {value}, but the dashboard doesn't know the session's model. Opus 5.5 and models released after it ignore this key in the user file, and earlier models use it. So the dashboard can't say whether it counts. To check, run /effort status in a new session started in this project.",
+      "reason": "{file} sets a top-level effortLevel of {value}, and that level may not reach the session. Opus 5.5 and models released after it ignore this key in the user file, and earlier models use it. The dashboard doesn't know the session's model, so it can't say which level the session runs at. To check, run /effort status in a new session started in this project.",
       "quotes": [
         {
           "doc_url": "https://code.claude.com/docs/en/settings-reference#effortlevel",
           "quote": "Opus 5.5 and models released after it ignore it and start at their own default until you save a level for them, which `/effort` writes under `modelSettings`. In project, local, and managed settings, and with `--settings`, this key applies to every model."
         },
         {
-          "doc_url": "https://code.claude.com/docs/en/model-config#set-the-effort-level",
-          "quote": "If you set `effortLevel` in managed settings, Claude Code applies it at the settings step of the effort resolution order, and users can still change the level with `/effort` or `--effort`."
+          "doc_url": "https://code.claude.com/docs/en/model-config#adjust-effort-level",
+          "quote": "a top-level `effortLevel` in your user settings file doesn't count for Opus 5.5"
         }
       ],
       "experiment": "experiments/2026-10-29-effort-user-key-by-model.json",
@@ -2892,15 +2892,15 @@
           "status": "unknown"
         }
       ],
-      "reason": "{file} sets a top-level effortLevel of {value}, but the dashboard can't tell which model {agent} runs on. Opus 5.5 and models released after it ignore this key in the user file, and earlier models use it. So the dashboard can't say whether it counts for {agent}.",
+      "reason": "{file} sets a top-level effortLevel of {value}, and that level may not reach {agent}. Opus 5.5 and models released after it ignore this key in the user file, and earlier models use it. The dashboard can't tell which model {agent} runs on, so it can't say which level {agent} runs at.",
       "quotes": [
         {
           "doc_url": "https://code.claude.com/docs/en/settings-reference#effortlevel",
           "quote": "Opus 5.5 and models released after it ignore it and start at their own default until you save a level for them, which `/effort` writes under `modelSettings`. In project, local, and managed settings, and with `--settings`, this key applies to every model."
         },
         {
-          "doc_url": "https://code.claude.com/docs/en/model-config#set-the-effort-level",
-          "quote": "If you set `effortLevel` in managed settings, Claude Code applies it at the settings step of the effort resolution order, and users can still change the level with `/effort` or `--effort`."
+          "doc_url": "https://code.claude.com/docs/en/model-config#adjust-effort-level",
+          "quote": "a top-level `effortLevel` in your user settings file doesn't count for Opus 5.5"
         }
       ],
       "experiment": "experiments/2026-10-29-effort-user-key-by-model.json",
