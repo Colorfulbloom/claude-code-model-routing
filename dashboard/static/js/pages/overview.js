@@ -1,6 +1,6 @@
 // Overview. Ported from `overview` in gen3.py (screen 01). It reads one view of the /api/usage payload, so
 // switching range fetches nothing.
-// render(root, ctx) is called on every route, project or range change and when a payload arrives.
+// render(root, ctx) is called when the page is on screen and its route, project or range changes or a payload arrives.
 // ctx.data.usage and ctx.data.settings are null until they arrive, then { ok, status, data }.
 
 import { h, clear } from "../h.js";

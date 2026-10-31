@@ -420,6 +420,24 @@ test("reader.readable false: every usage page says it can't read the transcripts
   assert.ok(!flat(app.section("settings")).includes("Can't read the transcripts"));
 });
 
+test("payload.unreadable: every usage page says it can't read that folder, and a null still draws the page", async () => {
+  const folder = "~/.claude/projects/-work-tidewater";
+  const respond = (pathname) => {
+    if (pathname !== "/api/usage") return null;
+    return [200, { ...usageOf(TIDEWATER), no_usage: true, unreadable: folder }];
+  };
+  for (const [hash, section] of [["#/overview", "overview"], ["#/agents", "agents"], ["#/models", "models"],
+    ["#/sessions", "sessions"], ["#/sessions/x", "session-detail"]]) {
+    const app = await boot({ hash, respond });
+    const page = app.section(section);
+    assert.deepEqual(texts(page, "cd-h"), ["Can't read the transcripts"], hash);
+    assert.ok(flat(page).includes("The dashboard can't find or read " + folder), hash);
+    assert.ok(!flat(page).includes("No usage yet"), hash);
+  }
+  const app = await boot({ hash: "#/overview" });
+  assert.ok(byClass(app.section("overview"), "kpi").length > 0, "no unreadable field draws the tiles");
+});
+
 test("reader.readable false shows at once, with usage held back", async () => {
   let release;
   const gate = new Promise((resolve) => { release = resolve; });
@@ -1177,6 +1195,38 @@ test("sessions: Show all expands from the payload, keeps focus, and holds only f
   await app.go("#/sessions?range=30d&project=all");
   assert.equal(bodyRows(sessionsTable(page())).length, 10, "another project starts short");
   assert.equal(app.count("/api/usage"), 2, "one request per project");
+});
+
+test("route change: Show all stays open on a hidden Sessions page and its first child is not redrawn", async () => {
+  const app = await boot({ hash: "#/sessions" });
+  const page = () => app.section("sessions");
+  // The open state lives in sessions.js, which an earlier check may have left open for this view.
+  const more = byClass(page(), "at-more")[0];
+  if (more) tagOf(more, "button")[0].click();
+  const total = viewOf(TIDEWATER, "30d").sessions.length;
+  assert.equal(bodyRows(sessionsTable(page())).length, total);
+  const first = page().firstChild;
+  await app.go("#/overview");
+  await app.go("#/models");
+  await app.go("#/overview?range=7d");
+  assert.equal(page().firstChild, first, "the hidden Sessions section kept the same first child");
+  assert.equal(bodyRows(sessionsTable(page())).length, total, "and its table is still open");
+  assert.deepEqual(visible(app), ["overview"]);
+});
+
+test("route change: a range set on one page is drawn on the next page when it is shown", async () => {
+  const app = await boot({ hash: "#/overview" });
+  const active = (name) => byClass(app.section(name), "is-active").map(flat);
+  assert.deepEqual(active("overview"), ["30 days"]);
+  const agentsBefore = app.section("agents").firstChild;
+  const radio = byClass(app.section("overview"), "seg").find((n) => flat(n) === "7 days");
+  radio.click();
+  await tick(20);
+  assert.deepEqual(active("overview"), ["7 days"]);
+  assert.equal(app.section("agents").firstChild, agentsBefore, "Agents is hidden, so it was not drawn");
+  await app.go("#/agents?range=7d");
+  assert.deepEqual(active("agents"), ["7 days"], "Agents shows the new range on arrival");
+  assert.equal(app.count("/api/usage"), 1);
 });
 
 // ---------------------------------------------------------------- all projects
