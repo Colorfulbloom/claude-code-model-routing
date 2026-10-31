@@ -27,11 +27,11 @@ fact: code.claude.com headings carry custom ids, so check anchors against the re
 check: curl -sL https://code.claude.com/docs/en/sub-agents | grep -o 'id="supported-frontmatter-fields"'
 evidence: tests/test_doc_anchors.py, dashboard/rules.json
 fp: 6ca7160c12a6
-as_of: 3fd2d26 2026-10-30
+as_of: ce1f71d 2026-10-30
 author: verifier
 created: 2026-10-29
 last_used: 2026-10-30
-uses: 5
+uses: 7
 promote: approved
 
 ### D-6bed Patching os.stat alone misses pathlib on Python 3.9
@@ -61,8 +61,8 @@ promote: approved
 fact: Transcript rows that share a message.id can carry growing usage, so keeping the first row undercounts output. usage.py keeps the largest output_tokens. Tested on made-up fixtures only.
 check: /usr/bin/python3 -m unittest discover -s tests -p 'test_usage.py' -k largest_output
 evidence: dashboard/usage.py, tests/test_usage.py
-fp: f4af581e34f1
-as_of: 203ae0d 2026-10-30
+fp: fbb580237bd6
+as_of: ce1f71d 2026-10-30
 author: deep-reasoner
 created: 2026-10-30
 last_used: 2026-10-30
@@ -73,8 +73,8 @@ fact: The worktree guard refuses what it cannot check first: git -C <dir>, a com
 check: in a worktree-isolated agent run: git -C . log -1 --oneline
 evidence: .gitignore
 fp: 2e3aab966fe0
-as_of: 0e72fd4 2026-10-30
+as_of: ce1f71d 2026-10-30
 author: deep-reasoner
 created: 2026-10-30
 last_used: 2026-10-30
-uses: 3
+uses: 7
