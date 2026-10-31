@@ -24,3 +24,16 @@ created: 2026-10-30
 last_used: 2026-10-30
 uses: 0
 retired: 2026-10-30 retired-by-lead
+
+### W-871e A Sec-Fetch-Site guard must exempt the top-level load of /
+fact: A server that refuses cross-site Sec-Fetch-Site also refuses a plain link from another site. server.py exempts only GET / with Mode navigate and Dest document, which holds no settings and can't be framed. A Chrome extension navigate to /api/settings got forbidden, so read JSON with fetch() from the loaded page.
+check: /usr/bin/python3 -m unittest discover -s tests -p test_server.py -k test_cross_site_link_opens
+evidence: dashboard/server.py, tests/test_server.py
+fp: 123182b228b8
+as_of: 3fd2d26 2026-10-30
+author: deep-reasoner
+created: 2026-10-30
+last_used: 2026-10-30
+uses: 1
+superseded_by: W-d2ec
+retired: 2026-10-31 superseded

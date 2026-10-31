@@ -49,3 +49,16 @@ last_used: 2026-10-21
 uses: 3
 superseded_by: T-7629
 retired: 2026-10-30 superseded
+
+### T-c826 MR_TEST_TMP is optional and created when missing
+fact: tests/helpers.py _tmp_base creates MR_TEST_TMP if set and missing; unset means the system temp dir.
+check: grep -n -A4 "def _tmp_base" tests/helpers.py
+evidence: tests/helpers.py
+fp: 99286733860d
+as_of: ce1f71d 2026-10-30
+author: deep-reasoner
+created: 2026-10-20
+last_used: 2026-10-30
+uses: 41
+promote: approved
+retired: 2026-10-31 retired-by-lead

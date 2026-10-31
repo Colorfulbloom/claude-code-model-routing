@@ -26,8 +26,8 @@ uses: 1
 fact: code.claude.com headings carry custom ids, so check anchors against the rendered HTML id="..." attributes, not .md heading slugs. Python urllib's default User-Agent gets 403; send a custom one as tests/test_doc_anchors.py does. WebFetch summarises long pages and that test checks anchors only, so confirm a new quote with curl -sL <url>.md | grep.
 check: curl -sL https://code.claude.com/docs/en/sub-agents | grep -o 'id="supported-frontmatter-fields"'
 evidence: tests/test_doc_anchors.py, dashboard/rules.json
-fp: 6ca7160c12a6
-as_of: ce1f71d 2026-10-30
+fp: f4aec696e38d
+as_of: 47fab08 2026-10-31
 author: verifier
 created: 2026-10-29
 last_used: 2026-10-30
@@ -38,8 +38,8 @@ promote: approved
 fact: Python 3.9 pathlib keeps its own reference to os.stat, so patching os.stat misses Path.exists, Path.read_text and Path.iterdir; a home guard wraps the Path methods directly, as tests/test_resolve.py does.
 check: /usr/bin/python3 -m unittest discover -s tests -p 'test_resolve.py' -k Guard
 evidence: tests/test_resolve.py
-fp: 92effdf0213d
-as_of: 203ae0d 2026-10-30
+fp: 49fd95a17782
+as_of: 47fab08 2026-10-31
 author: fast-worker
 created: 2026-10-29
 last_used: 2026-10-29

@@ -1,11 +1,11 @@
 # testing
 
-### T-7629 Full suite runs 1665 tests in about 204 seconds
-fact: discover -s tests from the repo root runs 1665 tests in about 204 s on 3fd2d26, 18 skipped: 16 end-to-end tests need MR_E2E=1 and the owner runs them, 2 need MR_DOCS_LIVE=1 or MR_SUBAGENT_DOCS. Run it alone. A broken pty test can leave a hung process.
+### T-7629 Full suite runs 1871 tests in about 194 seconds
+fact: discover -s tests from the repo root runs 1871 tests in about 194 s on 47fab08, 36 skipped: 34 end-to-end tests need MR_E2E=1 and the owner runs them, 2 need MR_DOCS_LIVE=1 or MR_SUBAGENT_DOCS. Run it alone. A broken pty test can leave a hung process.
 check: /usr/bin/python3 -m unittest discover -s tests 2>&1 | tail -3
 evidence: tests
-fp: ea54fe1acf6d
-as_of: 3fd2d26 2026-10-30
+fp: 5003069ecd62
+as_of: 47fab08 2026-10-31
 author: deep-reasoner
 created: 2026-10-20
 last_used: 2026-10-30
@@ -22,18 +22,6 @@ author: deep-reasoner
 created: 2026-10-20
 last_used: 2026-10-30
 uses: 66
-promote: approved
-
-### T-c826 MR_TEST_TMP is optional and created when missing
-fact: tests/helpers.py _tmp_base creates MR_TEST_TMP if set and missing; unset means the system temp dir.
-check: grep -n -A4 "def _tmp_base" tests/helpers.py
-evidence: tests/helpers.py
-fp: 99286733860d
-as_of: ce1f71d 2026-10-30
-author: deep-reasoner
-created: 2026-10-20
-last_used: 2026-10-30
-uses: 41
 promote: approved
 
 ### T-d689 New installer messages need a parity allowance
@@ -62,8 +50,8 @@ uses: 3
 fact: dashboard/experiments/harness/ runs claude -p in a throwaway HOME against fakeapi.py on 127.0.0.1. "/effort status" and "/autocompact" send no request. Never run a batch as a check. Only text_reply true cases write normal assistant rows, so only they can back a claim about the top-level effort field.
 check: grep -n "PROMPT_ALLOWLIST = \|def check_frontmatter" dashboard/experiments/harness/runcase.py
 evidence: dashboard/experiments/harness/README.md, dashboard/experiments/harness/runcase.py
-fp: 81c2d5ef2810
-as_of: 203ae0d 2026-10-30
+fp: a51c2d40602f
+as_of: 47fab08 2026-10-31
 author: deep-reasoner
 created: 2026-10-29
 last_used: 2026-10-30
@@ -85,9 +73,20 @@ uses: 3
 fact: NoHomePathsInTestsTest bans the home path prefixes in every tests/*.py file, so sample paths use a neutral root such as /work/. tests/fixtures/ is not scanned. Import a test module whole (import test_x as x): from test_x import TestClass makes discover run that class twice.
 check: grep -n "NoHomePathsInTestsTest" tests/test_hivemind.py; grep -n "^import test_" tests/test_api_usage.py
 evidence: tests/test_hivemind.py, tests/test_api_usage.py
-fp: 2f556a57df43
-as_of: ce1f71d 2026-10-30
+fp: 64b0abccca38
+as_of: 47fab08 2026-10-31
 author: deep-reasoner
 created: 2026-10-30
 last_used: 2026-10-30
 uses: 1
+
+### T-d32f A copied server tree must carry install.py
+fact: api_settings imports install.py at import time, so tests/test_server.py copy_tree copies it.
+check: grep -n "install.py" tests/test_server.py
+evidence: dashboard/api_settings.py, tests/test_server.py
+fp: 46d664d63ade
+as_of: 47fab08 2026-10-31
+author: fast-worker
+created: 2026-10-31
+last_used: 2026-10-31
+uses: 0

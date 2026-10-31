@@ -155,6 +155,18 @@
         }
       ]
     },
+    "board-tidy|scrummaster|claude-sonnet-5-5|high": {
+      "last_date": "2026-10-31",
+      "samples": [
+        {
+          "agent_id": "a6565a748e8a89138",
+          "date": "2026-10-31",
+          "duration_ms": 54386,
+          "effort": "high",
+          "v": 67780
+        }
+      ]
+    },
     "board-update|scrummaster|claude-opus-5-5|medium": {
       "last_date": "2026-10-29",
       "samples": [
@@ -492,19 +504,28 @@
           "effort": "medium",
           "round": 11,
           "v": 1739
+        },
+        {
+          "agent_id": "a3ed9bdf8c77ec31b",
+          "date": "2026-10-30",
+          "duration_ms": 64860,
+          "effort": "medium",
+          "round": 12,
+          "v": 16147
+        },
+        {
+          "agent_id": "a3ed9bdf8c77ec31b",
+          "date": "2026-10-30",
+          "duration_ms": 6262,
+          "effort": "medium",
+          "round": 14,
+          "v": 1120
         }
       ]
     },
     "commit-message|tech-writer|claude-opus-5-5|medium": {
       "last_date": "2026-10-30",
       "samples": [
-        {
-          "agent_id": "a1834d887b660f6a4",
-          "date": "2026-10-29",
-          "duration_ms": 49294,
-          "effort": "medium",
-          "v": 24017
-        },
         {
           "agent_id": "ad1a98054e8ca162c",
           "date": "2026-10-29",
@@ -637,11 +658,18 @@
           "duration_ms": 5067,
           "effort": "medium",
           "v": 20282
+        },
+        {
+          "agent_id": "acb7430a6b400e7c4",
+          "date": "2026-10-30",
+          "duration_ms": 27725,
+          "effort": "medium",
+          "v": 21583
         }
       ]
     },
     "commit-pr-text|tech-writer|claude-opus-5-5|medium": {
-      "last_date": "2026-10-30",
+      "last_date": "2026-10-31",
       "samples": [
         {
           "agent_id": "ae5895731fecd76d8",
@@ -712,6 +740,13 @@
           "duration_ms": 18026,
           "effort": "medium",
           "v": 18343
+        },
+        {
+          "agent_id": "a7ec34805ad5a74e9",
+          "date": "2026-10-31",
+          "duration_ms": 11224,
+          "effort": "medium",
+          "v": 20957
         }
       ]
     },
@@ -930,6 +965,13 @@
           "duration_ms": 343252,
           "effort": "medium",
           "v": 135327
+        },
+        {
+          "agent_id": "a6421c8eb694cb984",
+          "date": "2026-10-30",
+          "duration_ms": 217465,
+          "effort": "medium",
+          "v": 171490
         }
       ]
     },
@@ -1242,6 +1284,18 @@
         }
       ]
     },
+    "docs-rebase|fast-worker|claude-sonnet-5-5|high": {
+      "last_date": "2026-10-30",
+      "samples": [
+        {
+          "agent_id": "a1307c0b0152c8436",
+          "date": "2026-10-30",
+          "duration_ms": 238258,
+          "effort": "high",
+          "v": 57650
+        }
+      ]
+    },
     "docs|tech-writer|claude-opus-5-5|xhigh": {
       "last_date": "2026-10-30",
       "samples": [
@@ -1400,14 +1454,6 @@
       "last_date": "2026-10-30",
       "samples": [
         {
-          "agent_id": "ad4ff8899cbcf7957",
-          "date": "2026-10-29",
-          "duration_ms": 1416827,
-          "effort": "high",
-          "round": 2,
-          "v": 23677
-        },
-        {
           "agent_id": "afa0f47d6db1144eb",
           "date": "2026-10-29",
           "duration_ms": 1621920,
@@ -1554,10 +1600,18 @@
         {
           "agent_id": "a73b8dee3c621a106",
           "date": "2026-10-30",
-          "duration_ms": 269578,
+          "duration_ms": 596765,
           "effort": "high",
           "round": 9,
-          "v": 40726
+          "v": 48821
+        },
+        {
+          "agent_id": "a73b8dee3c621a106",
+          "date": "2026-10-30",
+          "duration_ms": 165607,
+          "effort": "high",
+          "round": 11,
+          "v": 10821
         }
       ]
     },
@@ -1927,6 +1981,13 @@
           "duration_ms": 627816,
           "effort": "high",
           "v": 147367
+        },
+        {
+          "agent_id": "a74ac12ccad3be2d3",
+          "date": "2026-10-30",
+          "duration_ms": 453909,
+          "effort": "high",
+          "v": 150905
         }
       ]
     },
@@ -2785,6 +2846,19 @@
           "duration_ms": 86904,
           "effort": "medium",
           "v": 61765
+        }
+      ]
+    },
+    "ui-copy+resumed|tech-writer|claude-opus-5-5|medium": {
+      "last_date": "2026-10-30",
+      "samples": [
+        {
+          "agent_id": "a3ed9bdf8c77ec31b",
+          "date": "2026-10-30",
+          "duration_ms": 6283,
+          "effort": "medium",
+          "round": 13,
+          "v": 4578
         }
       ]
     },
