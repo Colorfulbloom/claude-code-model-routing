@@ -135,8 +135,9 @@ function quotesBlock(rule) {
 }
 
 // One rule. installed is the Claude Code version on this machine, or null. A rule marked due reads as
-// due for a new check.
-export function ruleItem(rule, installed) {
+// due for a new check. reason is an optional node or text (the Rules reference page words each rule's reason),
+// and it goes right after the line with the rule id and its badge.
+export function ruleItem(rule, installed, reason = null) {
   const confidence = rule.confidence;
   const verified = rule.verified_on || {};
   const date = verified.date ? fmtTime(verified.date) + ", " + verified.date.slice(0, 4) : "";
@@ -144,6 +145,7 @@ export function ruleItem(rule, installed) {
     h("div", { class: "ru-top" },
       externalLink({ class: "ru-id", "aria-label": t("rule_link_sr", { rule_id: rule.rule_id }) }, rule.reference_url, rule.rule_id),
       h("span", { class: ["cf", "cf-" + confidence] }, t("conf_" + confidence))),
+    reason ? h("p", { class: "ru-rs" }, reason) : null,
     confidence === "assumed" ? h("p", { class: "ru-def" }, t("assumed_def")) : null,
     // Screen 07 writes the year, and the day here comes from rules.json as YYYY-MM-DD.
     h("p", { class: "ru-ck" }, rule.due

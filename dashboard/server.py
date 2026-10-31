@@ -106,6 +106,7 @@ DRAIN_CAP = 65536
 # One line per route. Each is a function (ctx, query) -> (status, payload).
 ROUTES = {
     "/api/projects": api_usage.api_projects,
+    "/api/rules": api_settings.rules,
     "/api/settings": api_settings.settings,
     "/api/usage": api_usage.usage,
 }

@@ -1,4 +1,5 @@
-"""The /api/settings route: the resolved value of every setting, as JSON.
+"""The settings routes, as JSON: /api/settings (the resolved value of every setting)
+and /api/rules (the rules reference).
 
 A route is a function (ctx, query) -> (status, payload). ctx is the server's
 Context and query is the parsed query string. The server turns the payload into
@@ -244,3 +245,22 @@ def settings(ctx, query):
               "attention": _attention(entries, rows)}
     answer.update(_display_fields(ctx, project))
     return 200, answer
+
+
+# ---------------------------------------------------------------- #64 /api/rules
+
+def rules(ctx, query):
+    """Return (200, {"installed", "rules"}) for the Rules reference page.
+
+    rules holds every rule of ctx.rules, sorted by rule_id. Each is the record
+    the trail shows (see _rule_record) plus "reason", the rule's own sentence
+    with its slots still in braces, which the page words. installed is the
+    Claude Code version on this machine, or null.
+    """
+    installed = version.installed(ctx)
+    out = []
+    for rule in sorted(ctx.rules.get("rules", []), key=lambda r: r["rule_id"]):
+        record = _rule_record(rule, installed)
+        record["reason"] = rule["reason"]
+        out.append(record)
+    return 200, {"installed": installed, "rules": out}

@@ -298,6 +298,25 @@ class SettingsE2E(unittest.TestCase):
         for line in lines:
             self.assertIn("You have 2.1.310, so this rule is due for a new check.", line)
 
+    def test_typing_in_the_rules_search_narrows_the_list_and_keeps_focus(self):
+        items = json.dumps("[data-page=rules] ul.rules > li")
+        box = json.dumps("[data-page=rules] .search input")
+        self.show("#/rules", "rules")
+        self.page.wait_for("document.querySelectorAll(%s).length > 20" % items)
+        total = self.page.eval("document.querySelectorAll(%s).length" % items)
+        self.page.eval("document.querySelector(%s).focus()" % box)
+        self.assert_focus("[data-page=rules] .search input")
+        self.page.call("Input.insertText", text="winning source")  # a real input event, as typing sends
+        self.page.wait_for("document.querySelectorAll(%s).length < %d" % (items, total))
+        shown = self.page.eval("document.querySelectorAll(%s).length" % items)
+        self.assertGreater(shown, 0)
+        self.assertLess(shown, total)
+        self.assert_focus("[data-page=rules] .search input")
+        self.assertEqual(self.page.eval("document.querySelector(%s).value" % box), "winning source")
+        self.assertEqual(self.texts_of("[data-page=rules] .cd-sub"), ["%d of %d rules shown." % (shown, total)])
+        for reason in self.texts_of("[data-page=rules] ul.rules > li .ru-rs"):
+            self.assertIn("winning source", reason.lower())
+
     def test_external_links_carry_their_guards(self):
         self.show(EFFORT_TRAIL, "trail")
         self.page.wait_for("Boolean(document.getElementById('trail'))")

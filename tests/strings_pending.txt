@@ -1,5 +1,4 @@
 c_files_table
-c_rules_list
 f_differs
 f_matches
 f_missing
@@ -9,12 +8,4 @@ h_next
 h_state
 no_level
 refused
-rules_all
-rules_clear_search
-rules_filter_label
-rules_match_count
-rules_no_match
-rules_search_label
-rules_search_placeholder
-rules_sub
 showing
