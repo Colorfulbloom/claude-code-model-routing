@@ -155,6 +155,19 @@ test("page: the value is left out when it has no text, and the chip stays", () =
   assert.equal(text(sub(sub(scribe, "at-m"), "st")), "Overridden");
 });
 
+test("page: an unknown-model effort row shows no value and keeps the chip", () => {
+  const entries = [
+    entry({ value: "xhigh", status: "unknown", rule_ids: ["effort-level-user-settings-model-unknown"] }),
+    entry({ key: "effort", scope: "agent", agent: "builder", value: "xhigh", status: "unknown",
+      rule_ids: ["agent-effort-user-settings-model-unknown"] }),
+  ];
+  const groups = [{ status: "unknown", rows: [
+    { entry: 0, route: route("@main", "effortLevel") }, { entry: 1, route: route("builder", "effort") }] }];
+  const root = show(handPayload(entries, groups));
+  assert.equal(byClass(root, "at-v").length, 0);
+  assert.deepEqual(byClass(root, "at-m").map(text), ["Unknown", "Unknown"]);
+});
+
 test("page: an empty string shows as the word for empty and a hidden value shows its word", () => {
   const entries = [entry({ value: "", status: "invalid" }), entry({ value: "hidden", status: "invalid", line: 9 })];
   const groups = [{ status: "invalid", rows: [

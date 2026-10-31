@@ -140,7 +140,7 @@ Some sources change a session after it starts, and others sit outside what the d
 | --- | --- | --- | --- | --- |
 | effort-level-user-settings-opus-5-5 | effortLevel | main | Tested | 2.1.302 |
 | model-main-session-order | model | main | Tested | 2.1.302 |
-| model-main-default | model | main | Assumed | 2.1.302 |
+| model-main-default | model | main | Documented | 2.1.302 |
 | env-block-order | env | main | Tested | 2.1.302 |
 | effort-level-layer-order | effortLevel | main | Tested | 2.1.302 |
 | model-settings-effort-per-model | modelSettings | model | Tested | 2.1.302 |
@@ -274,7 +274,7 @@ Quotes:
 > In `/status`, which also displays your account information
 
 - Experiment record: none
-- Confidence: Assumed
+- Confidence: Documented
 - Verified on: Claude Code 2.1.302, October 29, 2026
 
 ### env-block-order
@@ -640,7 +640,7 @@ Quotes:
 
 Reason:
 
-> {file} sets a top-level effortLevel of {value}, but the dashboard doesn't know the session's model. Opus 5.5 and models released after it ignore this key in the user file, and earlier models use it. So the dashboard can't say whether it counts. To check, run /effort status in a new session started in this project.
+> {file} sets a top-level effortLevel of {value}, and that level may not reach the session. Opus 5.5 and models released after it ignore this key in the user file, and earlier models use it. The dashboard doesn't know the session's model, so it can't say which level the session runs at. To check, run /effort status in a new session started in this project.
 
 Quotes:
 
@@ -648,9 +648,9 @@ Quotes:
 
 > Opus 5.5 and models released after it ignore it and start at their own default until you save a level for them, which `/effort` writes under `modelSettings`. In project, local, and managed settings, and with `--settings`, this key applies to every model.
 
-- [https://code.claude.com/docs/en/model-config#set-the-effort-level](https://code.claude.com/docs/en/model-config#set-the-effort-level)
+- [https://code.claude.com/docs/en/model-config#adjust-effort-level](https://code.claude.com/docs/en/model-config#adjust-effort-level)
 
-> If you set `effortLevel` in managed settings, Claude Code applies it at the settings step of the effort resolution order, and users can still change the level with `/effort` or `--effort`.
+> a top-level `effortLevel` in your user settings file doesn't count for Opus 5.5
 
 - Experiment record: [../dashboard/experiments/2026-10-29-effort-user-key-by-model.json](../dashboard/experiments/2026-10-29-effort-user-key-by-model.json)
 - Confidence: Documented
@@ -974,7 +974,7 @@ Quotes:
 
 Reason:
 
-> {file} sets a top-level effortLevel of {value}, but the dashboard can't tell which model {agent} runs on. Opus 5.5 and models released after it ignore this key in the user file, and earlier models use it. So the dashboard can't say whether it counts for {agent}.
+> {file} sets a top-level effortLevel of {value}, and that level may not reach {agent}. Opus 5.5 and models released after it ignore this key in the user file, and earlier models use it. The dashboard can't tell which model {agent} runs on, so it can't say which level {agent} runs at.
 
 Quotes:
 
@@ -982,9 +982,9 @@ Quotes:
 
 > Opus 5.5 and models released after it ignore it and start at their own default until you save a level for them, which `/effort` writes under `modelSettings`. In project, local, and managed settings, and with `--settings`, this key applies to every model.
 
-- [https://code.claude.com/docs/en/model-config#set-the-effort-level](https://code.claude.com/docs/en/model-config#set-the-effort-level)
+- [https://code.claude.com/docs/en/model-config#adjust-effort-level](https://code.claude.com/docs/en/model-config#adjust-effort-level)
 
-> If you set `effortLevel` in managed settings, Claude Code applies it at the settings step of the effort resolution order, and users can still change the level with `/effort` or `--effort`.
+> a top-level `effortLevel` in your user settings file doesn't count for Opus 5.5
 
 - Experiment record: [../dashboard/experiments/2026-10-29-effort-user-key-by-model.json](../dashboard/experiments/2026-10-29-effort-user-key-by-model.json)
 - Confidence: Documented

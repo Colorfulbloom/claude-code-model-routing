@@ -6,8 +6,8 @@
     "subagent-model-default",
     "agent-effort-default-model-unknown"
   ],
-  "confidence": "assumed",
-  "source": "assumed: no source says which model Claude Code picks when nothing sets one",
+  "confidence": "documented",
+  "source": "documented: model-config, \"The behavior of `default` depends on your account type\"",
   "claude_version": "2.1.302",
   "expect": [
     {

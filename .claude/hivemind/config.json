@@ -2,6 +2,7 @@
   "version": 1,
   "index_max_lines": 50,
   "topic_max_bytes": 4096,
+  "tally_topic_max_bytes": 32768,
   "reviewed_max_lines": 60,
   "inject_budget_tokens": {
     "default": 800,
