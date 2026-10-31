@@ -1,27 +1,27 @@
 # testing
 
-### T-7629 Full suite runs 1871 tests in about 194 seconds
-fact: discover -s tests from the repo root runs 1871 tests in about 194 s on 47fab08, 36 skipped: 34 end-to-end tests need MR_E2E=1 and the owner runs them, 2 need MR_DOCS_LIVE=1 or MR_SUBAGENT_DOCS. Run it alone. A broken pty test can leave a hung process.
+### T-7629 Full suite runs 2285 tests in about 220 seconds
+fact: discover -s tests runs 2285 tests in about 220 s on 0766733, 38 skipped: 36 need MR_E2E=1 and the owner runs them, 2 need MR_DOCS_LIVE=1 or MR_SUBAGENT_DOCS. Run it alone. A broken pty test can leave a hung process.
 check: /usr/bin/python3 -m unittest discover -s tests 2>&1 | tail -3
 evidence: tests
-fp: 5003069ecd62
-as_of: 47fab08 2026-10-31
+fp: cd05221c1ce5
+as_of: 0766733 2026-10-31
 author: deep-reasoner
 created: 2026-10-20
-last_used: 2026-10-30
-uses: 18
+last_used: 2026-10-31
+uses: 20
 promote: approved
 
 ### T-5589 Subsets run through discover -k; dotted names fail
-fact: Dotted names (python3 -m unittest tests.test_x) fail with "No module named 'helpers'"; use discover -s tests -k <pattern> or -p test_x.py. discover comes first: -v before it is rejected.
+fact: Dotted names (tests.test_x) fail with "No module named 'helpers'"; use discover -s tests -k <pattern> or -p test_x.py. discover comes first: -v before it is rejected.
 check: /usr/bin/python3 -m unittest tests.test_parity 2>&1 | grep "No module named"
 evidence: tests/helpers.py
 fp: 99286733860d
-as_of: ce1f71d 2026-10-30
+as_of: 0766733 2026-10-31
 author: deep-reasoner
 created: 2026-10-20
-last_used: 2026-10-30
-uses: 66
+last_used: 2026-10-31
+uses: 73
 promote: approved
 
 ### T-d689 New installer messages need a parity allowance
@@ -37,7 +37,7 @@ uses: 1
 
 ### T-2160 A resumed round starts at a real brief
 fact: promptId follows the parent's prompt. A brief is a user row with origin.kind coordinator, human, or peer from an agent the transcript did not launch.
-check: grep -n "def is_brief" -A20 hooks/hivemind_lib.py
+check: grep -n "def is_brief" hooks/hivemind_lib.py
 evidence: hooks/hivemind_lib.py, tests/fixtures/rounds/README.md
 fp: 3a06f4c51c50
 as_of: 72a81f7 2026-10-29
@@ -47,46 +47,46 @@ last_used: 2026-10-29
 uses: 3
 
 ### T-07ef The settings harness makes no real API call
-fact: dashboard/experiments/harness/ runs claude -p in a throwaway HOME against fakeapi.py on 127.0.0.1. "/effort status" and "/autocompact" send no request. Never run a batch as a check. Only text_reply true cases write normal assistant rows, so only they can back a claim about the top-level effort field.
-check: grep -n "PROMPT_ALLOWLIST = \|def check_frontmatter" dashboard/experiments/harness/runcase.py
-evidence: dashboard/experiments/harness/README.md, dashboard/experiments/harness/runcase.py
-fp: a51c2d40602f
-as_of: 47fab08 2026-10-31
+fact: dashboard/experiments/harness/ runs claude -p in a throwaway HOME against fakeapi.py on 127.0.0.1. "/effort status" and "/autocompact" send no request. Never run a batch as a check. Only text_reply true cases write normal assistant rows, so only they can back a claim about the top-level effort field. With no model set a case starts on claude-opus-5-5, where a user top-level effortLevel doesn't count and the request carries medium, so a case for another model sets it.
+check: grep -n "PROMPT_ALLOWLIST = " dashboard/experiments/harness/runcase.py
+evidence: dashboard/experiments/harness/README.md, dashboard/experiments/harness/runcase.py, dashboard/experiments/harness/results-step2-compact.jsonl
+fp: b8cce11c735d
+as_of: 0766733 2026-10-31
 author: deep-reasoner
 created: 2026-10-29
-last_used: 2026-10-30
-uses: 9
+last_used: 2026-10-31
+uses: 10
 promote: approved
 
 ### T-6b2f Collector where maps have tuple keys
 fact: collect.py where maps use tuple keys (modelSettings names hold dots); json.dumps needs a converter, as jsonable() in tests/test_collect.py.
 check: grep -n "def jsonable" tests/test_collect.py
 evidence: dashboard/collect.py, tests/test_collect.py
-fp: b27ebfc18420
-as_of: 0e72fd4 2026-10-30
+fp: 75d9e963b7d4
+as_of: 0766733 2026-10-31
 author: deep-reasoner
 created: 2026-10-29
-last_used: 2026-10-30
-uses: 3
+last_used: 2026-10-31
+uses: 4
 
 ### T-3ad1 tests/*.py: no home paths, no imported TestCase
-fact: NoHomePathsInTestsTest bans the home path prefixes in every tests/*.py file, so sample paths use a neutral root such as /work/. tests/fixtures/ is not scanned. Import a test module whole (import test_x as x): from test_x import TestClass makes discover run that class twice.
-check: grep -n "NoHomePathsInTestsTest" tests/test_hivemind.py; grep -n "^import test_" tests/test_api_usage.py
-evidence: tests/test_hivemind.py, tests/test_api_usage.py
-fp: 64b0abccca38
-as_of: 47fab08 2026-10-31
+fact: NoHomePathsInTestsTest bans home path prefixes in tests/*.py, so sample paths use a root such as /work/. tests/fixtures/ is not scanned. Import a test module whole (import test_x as x): from test_x import TestClass makes discover run that class twice.
+check: grep -n "NoHomePathsInTestsTest" tests/test_hivemind.py
+evidence: tests/test_hivemind.py
+fp: 751bc849be0e
+as_of: 0766733 2026-10-31
 author: deep-reasoner
 created: 2026-10-30
-last_used: 2026-10-30
-uses: 1
+last_used: 2026-10-31
+uses: 7
 
 ### T-d32f A copied server tree must carry install.py
 fact: api_settings imports install.py at import time, so tests/test_server.py copy_tree copies it.
 check: grep -n "install.py" tests/test_server.py
 evidence: dashboard/api_settings.py, tests/test_server.py
-fp: 46d664d63ade
-as_of: 47fab08 2026-10-31
+fp: e75c6d27bbb0
+as_of: 0766733 2026-10-31
 author: fast-worker
 created: 2026-10-31
 last_used: 2026-10-31
-uses: 0
+uses: 3
