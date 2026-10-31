@@ -107,7 +107,9 @@ class FreshInstall(InstalledCase):
     def test_every_file_matches_after_a_fresh_install(self):
         self.install()
         payload = self.answer()
-        self.assertEqual(set(payload), {"files"})
+        self.assertEqual(set(payload), {"files", "choices"})
+        self.assertEqual(payload["choices"],
+                         {"status": "ok", "bad": [], "path": self.shown("model-routing-choices.json")})
         self.assertGreater(len(payload["files"]), 10)
         for item in payload["files"]:
             self.assertEqual(set(item), {"path", "state"})
@@ -221,6 +223,19 @@ class Edits(InstalledCase):
         self.addCleanup(os.chmod, path, 0o644)
         self.assertEqual(states(self.answer())[self.shown(SCOUT)], "differs")
 
+    @unittest.skipIf(hasattr(os, "geteuid") and os.geteuid() == 0, "root can read a file with mode 0")
+    def test_an_installed_file_with_no_read_access_differs_and_the_page_still_answers(self):
+        self.install()
+        path = os.path.join(self.cfg, "rules", sorted(os.listdir(os.path.join(self.cfg, "rules")))[0])
+        os.chmod(path, 0)
+        self.addCleanup(os.chmod, path, 0o644)
+        status, payload = ROUTE(self.ctx(), {})
+        self.assertEqual(status, 200)
+        got = {item["path"]: item for item in payload["files"]}
+        shown = self.shown("rules/" + os.path.basename(path))
+        self.assertEqual(got[shown]["state"], "differs")
+        self.assertNotIn("caution", got[shown])
+
     def test_file_modes_are_not_compared(self):
         self.install()
         path = os.path.join(self.cfg, SCOUT)
@@ -254,6 +269,91 @@ class SavedChoices(InstalledCase):
         got = states(self.answer())
         self.assertEqual(got.pop(self.shown("model-routing-choices.json")), "differs")
         self.assertEqual(set(got.values()), {"match"})
+
+
+class Caution(InstalledCase):
+    """A row carries caution when the installer would not keep what is installed there (saved choices)."""
+
+    OTHER = "agents/judge.md"
+
+    def picked(self):
+        """Install with a hand-picked scout, so the repo's default scout file differs from the installed one."""
+        self.install("--agent", "scout=sonnet:high")
+        self.assertNotEqual(read(os.path.join(self.cfg, SCOUT)), read(os.path.join(self.sb.src, SCOUT)))
+
+    def items(self):
+        payload = self.answer()
+        return payload, {item["path"]: item for item in payload["files"]}
+
+    def check_plain_rows(self, items):
+        """An untouched file and a matching agent row have no caution."""
+        rule = next(p for p in items if p.startswith(self.shown("rules/")))
+        for path in (rule, self.shown(self.OTHER)):
+            self.assertEqual(items[path]["state"], "match", path)
+            self.assertNotIn("caution", items[path], path)
+
+    def test_a_broken_choices_file_cautions_the_picked_agent_and_the_choices_file(self):
+        self.picked()
+        choices = os.path.join(self.cfg, "model-routing-choices.json")
+        write(choices, "not json")
+        payload, items = self.items()
+        self.assertEqual(payload["choices"],
+                         {"status": "bad", "bad": [], "path": self.shown("model-routing-choices.json")})
+        self.assertEqual(items[self.shown(SCOUT)], {"path": self.shown(SCOUT), "state": "differs", "caution": True})
+        self.assertEqual(items[self.shown("model-routing-choices.json")]["caution"], True)
+        self.check_plain_rows(items)
+
+    def test_a_missing_choices_file_cautions_the_picked_agent_and_the_choices_file(self):
+        self.picked()
+        os.remove(os.path.join(self.cfg, "model-routing-choices.json"))
+        payload, items = self.items()
+        self.assertEqual(payload["choices"],
+                         {"status": "missing", "bad": [], "path": self.shown("model-routing-choices.json")})
+        self.assertEqual(items[self.shown(SCOUT)]["state"], "differs")
+        self.assertEqual(items[self.shown(SCOUT)]["caution"], True)
+        self.assertEqual(items[self.shown("model-routing-choices.json")]["state"], "missing")
+        self.assertEqual(items[self.shown("model-routing-choices.json")]["caution"], True)
+        self.check_plain_rows(items)
+
+    def test_one_bad_entry_cautions_only_that_agent(self):
+        self.picked()
+        choices = os.path.join(self.cfg, "model-routing-choices.json")
+        data = json.loads(read(choices))
+        data["agents"]["scout"] = {"model": "sonnet", "effort": "nonsense"}
+        write(choices, json.dumps(data))
+        write(os.path.join(self.cfg, self.OTHER), "edited by hand\n")
+        payload, items = self.items()
+        self.assertEqual(payload["choices"],
+                         {"status": "ok", "bad": ["scout"], "path": self.shown("model-routing-choices.json")})
+        self.assertEqual(items[self.shown(SCOUT)]["caution"], True)
+        self.assertEqual(items[self.shown("model-routing-choices.json")]["state"], "differs")
+        self.assertEqual(items[self.shown("model-routing-choices.json")]["caution"], True)
+        self.assertEqual(items[self.shown(self.OTHER)]["state"], "differs", "a plain hand edit")
+        self.assertNotIn("caution", items[self.shown(self.OTHER)])
+        rule = next(p for p in items if p.startswith(self.shown("rules/")))
+        self.assertNotIn("caution", items[rule])
+
+    def test_a_missing_choices_file_over_a_fresh_install_still_cautions_the_hand_edited_agent(self):
+        self.install()
+        os.remove(os.path.join(self.cfg, "model-routing-choices.json"))
+        write(os.path.join(self.cfg, SCOUT), "edited by hand\n")
+        items = self.items()[1]
+        self.assertEqual(items[self.shown(SCOUT)]["caution"], True)
+        self.assertEqual(items[self.shown("model-routing-choices.json")]["caution"], True)
+
+    def test_a_fresh_install_has_status_ok_and_no_caution(self):
+        self.install()
+        payload = self.answer()
+        self.assertEqual(payload["choices"]["status"], "ok")
+        self.assertEqual(payload["choices"]["bad"], [])
+        for item in payload["files"]:
+            self.assertNotIn("caution", item, item["path"])
+
+    def test_a_nothing_installed_folder_gives_no_caution_on_a_matching_row_and_one_on_the_choices_file(self):
+        payload = self.answer()
+        self.assertEqual(payload["choices"]["status"], "missing")
+        cautions = [item["path"] for item in payload["files"] if item.get("caution")]
+        self.assertEqual(cautions, [self.shown("model-routing-choices.json")])
 
 
 class Display(InstalledCase):
@@ -339,6 +439,12 @@ class InstallerErrors(unittest.TestCase):
         repo = new_dir(self)
         write(os.path.join(repo, "agents", "odd.md"), "---\nname: odd\ndescription: x\n---\nBody\n")
         self.assertEqual(ROUTE(self.ctx(repo), {}), (500, {"error": "installer"}))
+
+    def test_a_repo_file_that_cannot_be_read_gives_an_installer_error(self):
+        repo = new_dir(self)
+        write(os.path.join(repo, "rules", "one.md"), "one\n")
+        with mock.patch.object(api_settings.install, "build_plan", side_effect=PermissionError(13, "denied")):
+            self.assertEqual(ROUTE(self.ctx(repo), {}), (500, {"error": "installer"}))
 
     def test_a_repo_with_only_rules_still_answers(self):
         repo = new_dir(self)

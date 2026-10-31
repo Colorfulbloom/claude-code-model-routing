@@ -75,6 +75,13 @@ function plainRow(ctx, payload, row) {
       h("span", { class: "at-p" }, statusPlain(row.status))));
 }
 
+// The line for no rows. When the server left out overridden entries that equal their winner, it says so, because
+// "In effect or Default" alone would hide that some values are overridden.
+function emptyLine(payload) {
+  const equal = payload.attention_equal > 0;
+  return h("p", { class: "at-empty" }, equal ? t("at_empty_equal") : t("at_empty"));
+}
+
 function groupCard(ctx, payload, group) {
   return card({
     title: t("status_" + group.status),
@@ -95,7 +102,7 @@ export function overviewCard(ctx) {
       h("p", { class: "at-more" },
         h("a", { href: ctx.hashFor("attention") }, t("see_all_attention", { n: rows.length }))),
     ]
-    : h("p", { class: "at-empty" }, t("at_empty"));
+    : emptyLine(payload);
   return card({ title: t("nav_attention"), icon: "issues", sub: t("attention_card_sub"), body });
 }
 
@@ -114,7 +121,7 @@ export function render(root, ctx) {
   }
   const groups = payload.attention || [];
   if (!groups.length) {
-    root.appendChild(card({ title: t("nav_attention"), body: h("p", { class: "at-empty" }, t("at_empty")) }));
+    root.appendChild(card({ title: t("nav_attention"), body: emptyLine(payload) }));
     return;
   }
   for (const group of groups) root.appendChild(groupCard(ctx, payload, group));

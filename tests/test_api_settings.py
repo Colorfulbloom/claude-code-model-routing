@@ -31,7 +31,8 @@ FIELDS = resolve.load_agent_fields()
 ROUTE = server.ROUTES["/api/settings"]
 ANSWER_KEYS = {
     "project", "state", "entries", "no_user_settings", "shell_label", "path_display",
-    "config_dir_display", "config_file_display", "models", "rows", "rules", "files", "installed", "attention"}
+    "config_dir_display", "config_file_display", "models", "rows", "rules", "files", "installed", "attention",
+    "attention_equal"}
 REFERENCE_PAGE = os.path.join(helpers.REPO, "docs", "rules-reference.md")
 REFERENCE_URL = "https://github.com/Colorfulbloom/claude-code-model-routing/blob/main/docs/rules-reference.md"
 EXPERIMENT_BASE = "https://github.com/Colorfulbloom/claude-code-model-routing/blob/main/dashboard/"
@@ -462,6 +463,7 @@ class VersionAndDue(unittest.TestCase):
         payload = call(ctx, "listed")[1]
         self.assertEqual(payload["installed"], "2.1.310")
         self.assertEqual(payload["attention"], [])
+        self.assertEqual(payload["attention_equal"], 0)
 
     def test_version_field_counts_the_agent_field_table(self):
         ctx = context(os.path.join(FIXTURE_DIR, self.NAME))
@@ -531,6 +533,33 @@ class AttentionUnit(unittest.TestCase):
         entries = [attention_entry("in_effect", "high"), attention_entry("ignored", "high")]
         self.assertEqual([g["status"] for g in self.groups(entries)], ["ignored"])
 
+    def equal(self, entries):
+        return api_settings._attention_equal(entries, api_settings._rows(entries))
+
+    def test_the_equal_count_is_the_overridden_entries_left_out(self):
+        entries = [attention_entry("in_effect", "high"),
+                   attention_entry("overridden", "high"),
+                   attention_entry("overridden", "high"),
+                   attention_entry("overridden", "low")]
+        self.assertEqual(self.equal(entries), 2)
+        self.assertEqual([r["entry"] for r in self.groups(entries)[0]["rows"]], [3])
+
+    def test_the_equal_count_is_zero_when_nothing_was_left_out(self):
+        self.assertEqual(self.equal([attention_entry("in_effect", "high"), attention_entry("overridden", "low")]), 0)
+        self.assertEqual(self.equal([attention_entry("in_effect", "high"), attention_entry("ignored", "high")]), 0)
+
+    def test_hidden_and_null_pairs_are_not_counted(self):
+        self.assertEqual(self.equal([attention_entry("in_effect", collect.HIDDEN),
+                                     attention_entry("overridden", collect.HIDDEN)]), 0)
+        self.assertEqual(self.equal([attention_entry("in_effect", None, key="agentFile", agent="a"),
+                                     attention_entry("overridden", None, key="agentFile", agent="a")]), 0)
+
+    def test_the_equal_count_counts_across_rows(self):
+        entries = [attention_entry("in_effect", "high"), attention_entry("overridden", "high"),
+                   attention_entry("in_effect", "x", agent="b"), attention_entry("overridden", "x", agent="b")]
+        self.assertEqual(self.equal(entries), 2)
+        self.assertEqual(self.groups(entries), [])
+
 
 class AttentionEveryFixture(unittest.TestCase):
     @classmethod
@@ -591,6 +620,21 @@ class AttentionEveryFixture(unittest.TestCase):
                     dropped = (entry["status"] == "overridden" and entry["value"] is not None
                                and entry["value"] != "hidden" and entry["value"] == winner["value"])
                     self.assertEqual(index in listed, not dropped, (name, index))
+
+    def test_the_equal_count_is_the_number_of_entries_left_out(self):
+        for name, payload in self.answers.items():
+            with self.subTest(name):
+                listed = {row["entry"] for g in payload["attention"] for row in g["rows"]}
+                by_entry = {i: r for r in payload["rows"] for i in r["entries"]}
+                left_out = 0
+                for index, entry in enumerate(payload["entries"]):
+                    if entry["status"] != "overridden":
+                        continue
+                    winner = payload["entries"][by_entry[index]["entries"][0]]
+                    if entry["value"] is not None and entry["value"] != "hidden" and entry["value"] == winner["value"]:
+                        left_out += 1
+                        self.assertNotIn(index, listed)
+                self.assertEqual(payload["attention_equal"], left_out)
 
     def test_the_resolver_rows_walk_in_order(self):
         for name, payload in self.answers.items():

@@ -61,9 +61,9 @@ const WORDS = {
 
 // ---------------------------------------------------------------- the page
 
-test("page: the head comes first, then the Installed files card, then the foot line outside it", () => {
+test("page: the head comes first, then the Installed files card, then two foot lines outside it", () => {
   const root = show(FILES);
-  assert.equal(root.childNodes.length, 3);
+  assert.equal(root.childNodes.length, 4);
   assert.equal(root.childNodes[0].classList.contains("ph"), true);
   assert.equal(text(byTag(root, "h1")[0]), "Installed files");
   assert.equal(text(sub(root, "intro")), STRINGS.intro_files);
@@ -77,6 +77,11 @@ test("page: the head comes first, then the Installed files card, then the foot l
   assert.equal(hasClass(foot, "foot"), true);
   assert.equal(text(foot), "Compared when the page loaded.");
   assert.equal(card.contains(foot), false);
+  const scope = root.childNodes[3];
+  assert.equal(scope.tagName, "p");
+  assert.equal(hasClass(scope, "foot"), true);
+  assert.equal(text(scope), STRINGS.files_scope);
+  assert.equal(card.contains(scope), false);
 });
 
 test("page: the table has File, State and What to do, each cell carrying its column name", () => {
@@ -144,34 +149,46 @@ test("page: the words are the strings in strings.json", () => {
 test("page: All projects shows the same page", () => {
   const one = show(FILES);
   const all = show(FILES, { project: { key: "all", name: "All projects" } });
-  assert.equal(all.childNodes.length, 3);
+  assert.equal(all.childNodes.length, 4);
   assert.equal(text(all), text(one));
   assert.equal(byClass(all, "es").length, 0, "no picker prompt");
 });
 
-test("page: a missing or failed payload shows the head only", () => {
-  for (const [label, root] of [
-    ["none", show(null)],
-    ["not ok", show(null, { res: { ok: false, status: 500, data: null } })],
-    ["404", show(null, { res: { ok: false, status: 404, data: null } })],
-    ["no data", show(null, { res: { ok: true, status: 200, data: null } })],
+test("page: no answer yet shows the head only", () => {
+  const root = show(null);
+  assert.equal(root.childNodes.length, 1);
+  assert.equal(root.childNodes[0].classList.contains("ph"), true);
+});
+
+test("page: a failed answer shows the head and the Can't compare the files state, with no table and no foot", () => {
+  for (const [label, res] of [
+    ["not ok", { ok: false, status: 500, data: null }],
+    ["404", { ok: false, status: 404, data: null }],
+    ["no data", { ok: true, status: 200, data: null }],
   ]) {
-    assert.equal(root.childNodes.length, 1, label);
+    const root = show(null, { res });
+    assert.equal(root.childNodes.length, 2, label);
     assert.equal(root.childNodes[0].classList.contains("ph"), true, label);
+    assert.equal(text(byTag(root.childNodes[1], "h2")[0]), "Can't compare the files", label);
+    assert.equal(text(sub(root, "es-t")), STRINGS.files_error_t, label);
+    assert.equal(byClass(root, "cd-ic").length, 1, label);
+    assert.equal(byTag(root, "table").length, 0, label);
+    assert.equal(byClass(root, "foot").length, 0, label);
   }
 });
 
 test("page: an answer with no files draws the table with no rows and the foot line", () => {
   const root = show({ files: [] });
-  assert.equal(root.childNodes.length, 3);
+  assert.equal(root.childNodes.length, 4);
   assert.equal(rowsOf(root).length, 0);
   assert.equal(byTag(root, "th").length, 3);
   assert.equal(text(root.childNodes[2]), STRINGS.files_foot);
+  assert.equal(text(root.childNodes[3]), STRINGS.files_scope);
 });
 
 test("page: an answer with no files list is the same as an empty one", () => {
   const root = show({});
-  assert.equal(root.childNodes.length, 3);
+  assert.equal(root.childNodes.length, 4);
   assert.equal(rowsOf(root).length, 0);
 });
 
@@ -189,7 +206,7 @@ test("page: it draws again from scratch", () => {
   files.render(root, ctx);
   assert.equal(byClass(root, "ph").length, 1);
   assert.equal(byClass(root, "cd").length, 1);
-  assert.equal(byClass(root, "foot").length, 1);
+  assert.equal(byClass(root, "foot").length, 2);
   assert.equal(rowsOf(root).length, FILES.files.length);
 });
 
@@ -202,6 +219,97 @@ test("page: values from the server go in as text and never as markup", () => {
   assert.equal(text(sub(root, "mono")), evil);
   const source = fs.readFileSync(new URL("js/pages/files.js", STATIC), "utf8");
   assert.equal(/innerHTML|outerHTML|insertAdjacentHTML|document\.write/.test(source), false);
+});
+
+// ---------------------------------------------------------------- saved choices
+
+const CHOICES_PATH = "config/model-routing-choices.json";
+const agentFiles = (state) => [
+  { path: "config/agents/scout.md", state, caution: true },
+  { path: "config/agents/judge.md", state: "match" },
+  { path: "config/rules/one.md", state: "match" },
+  { path: CHOICES_PATH, state: "match" },
+];
+
+const noticeOf = (root) => {
+  const heads = byTag(root, "h2").map(text);
+  return heads.filter((x) => /choices/.test(x));
+};
+
+test("choices: the demo answer has status ok and shows no notice", () => {
+  assert.equal(FILES.choices.status, "ok");
+  assert.deepEqual(FILES.choices.bad, []);
+  const root = show(FILES);
+  assert.deepEqual(noticeOf(root), []);
+  assert.equal(byClass(root, "cd").length, 1);
+});
+
+test("choices: a broken file shows its heading and text above the table card, with the path", () => {
+  const root = show({ files: agentFiles("differs"), choices: { status: "bad", bad: [], path: CHOICES_PATH } });
+  assert.equal(root.childNodes.length, 5);
+  const notice = root.childNodes[1];
+  assert.equal(hasClass(notice, "cd"), true);
+  assert.equal(text(byTag(notice, "h2")[0]), "Can't use the saved choices");
+  assert.equal(text(sub(notice, "es-t")),
+    CHOICES_PATH + " is broken, so the installer uses the repo's default model and effort for every agent. " +
+    "With --yes, that undoes any pick you made. Run it in a terminal without --yes and pick again.");
+  assert.equal(byClass(notice, "cd-ic").length, 1);
+  assert.equal(byTag(root.childNodes[2], "table").length, 1, "the table card follows");
+  assert.equal(byClass(root, "nt").length, 0, "not a div.nt notice");
+});
+
+test("choices: a missing file shows its notice, unless every row is Missing", () => {
+  const some = show({ files: agentFiles("differs").slice(0, 2).concat([{ path: CHOICES_PATH, state: "missing", caution: true }]),
+    choices: { status: "missing", bad: [], path: CHOICES_PATH } });
+  assert.deepEqual(noticeOf(some), ["No saved choices file"]);
+  assert.equal(text(sub(some.childNodes[1], "es-t")),
+    CHOICES_PATH + " is missing, so the installer uses the repo's default model and effort for every agent. " +
+    "With --yes, that undoes any pick you made. Run it in a terminal without --yes and pick again.");
+  const none = show({ files: [{ path: "config/a.md", state: "missing" }, { path: CHOICES_PATH, state: "missing" }],
+    choices: { status: "missing", bad: [], path: CHOICES_PATH } });
+  assert.deepEqual(noticeOf(none), []);
+  assert.equal(none.childNodes.length, 4, "head, card and the two foot lines");
+});
+
+test("choices: an ok file with bad names lists them joined with a comma and a space", () => {
+  const root = show({ files: agentFiles("differs"), choices: { status: "ok", bad: ["scout", "judge"], path: CHOICES_PATH } });
+  assert.deepEqual(noticeOf(root), ["Can't use some saved choices"]);
+  assert.equal(text(sub(root.childNodes[1], "es-t")),
+    CHOICES_PATH + " has no usable choice for scout, judge, so the installer uses the repo's default model and effort instead. " +
+    "With --yes, that undoes any pick you made. Run it in a terminal without --yes and pick again.");
+});
+
+test("choices: an ok file with no bad names, or no choices field, shows no notice", () => {
+  assert.deepEqual(noticeOf(show({ files: agentFiles("match"), choices: { status: "ok", bad: [], path: CHOICES_PATH } })), []);
+  assert.deepEqual(noticeOf(show({ files: agentFiles("match") })), []);
+});
+
+test("choices: a Differs row with caution reads the pick-again words, others keep the update words", () => {
+  const root = show({ files: [
+    { path: "config/agents/scout.md", state: "differs", caution: true },
+    { path: "config/agents/judge.md", state: "differs" },
+    { path: "config/agents/fast-worker.md", state: "match" },
+  ], choices: { status: "ok", bad: ["scout"], path: CHOICES_PATH } });
+  assert.deepEqual(rowsOf(root).map((tr) => text(cells(tr)[2])), [
+    "Run the installer without --yes and pick again", "Run the installer again to update it", "Nothing to do"]);
+  assert.deepEqual(rowsOf(root).map((tr) => text(cells(tr)[1])), ["Differs", "Differs", "Matches"]);
+});
+
+test("choices: the flag in the What to do cell stays on one line", () => {
+  const root = show({ files: [{ path: "config/agents/scout.md", state: "differs", caution: true }] });
+  const flag = sub(cells(rowsOf(root)[0])[2], "nw");
+  assert.equal(flag.tagName, "span");
+  assert.equal(text(flag), "--yes");
+});
+
+test("choices: a missing row with caution reads the pick-again words, others keep the add words", () => {
+  const root = show({ files: [
+    { path: CHOICES_PATH, state: "missing", caution: true },
+    { path: "config/agents/scout.md", state: "missing" },
+  ] });
+  const [first, second] = rowsOf(root);
+  assert.equal(text(cells(first)[2]), "Run the installer without --yes and pick again");
+  assert.equal(text(cells(second)[2]), "Run the installer to add it");
 });
 
 // ---------------------------------------------------------------- run

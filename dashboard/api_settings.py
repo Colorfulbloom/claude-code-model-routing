@@ -12,7 +12,6 @@ nothing.
 """
 import json
 import os
-import sys
 
 import agent_frontmatter
 import collect
@@ -20,11 +19,8 @@ import projects
 import resolve
 import version
 
-# #65, /api/files: the installer's own plan. The repo root goes on the path at the end, so nothing already
-# there is shadowed. install.py puts its own folder on the path for agent_md.
-REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if REPO not in sys.path:
-    sys.path.append(REPO)
+# #65, /api/files: the installer's own plan. install.py sits at the repo root, and importing collect above
+# already put that folder on the path.
 import install  # noqa: E402
 
 MAIN_AGENT = "@main"  # the agent key of the main session's rows
@@ -142,6 +138,41 @@ def _rules_for(ctx, rows, installed):
     return out
 
 
+def _equals_winner(entry, winner):
+    """Return True when an overridden entry holds the same value as the winner.
+
+    Hidden values cannot be compared and a null value says nothing, so those
+    are never equal.
+    """
+    value = entry["value"]
+    return (entry["status"] == "overridden" and value is not None
+            and value != collect.HIDDEN and value == winner)
+
+
+def _attention_walk(entries, rows):
+    """Return (groups, equal): the attention rows by status and how many were left out.
+
+    Resolver rows and their entries are walked in order. equal counts the
+    overridden entries left out because they equal the winner's value (the
+    row's first entry), because nothing was lost.
+    """
+    groups = {status: [] for status in ATTENTION_ORDER}
+    equal = 0
+    for row in rows:
+        winner = entries[row["entries"][0]]["value"]
+        for index in row["entries"]:
+            entry = entries[index]
+            status = entry["status"]
+            if status not in groups:
+                continue
+            if _equals_winner(entry, winner):
+                equal += 1
+                continue
+            groups[status].append({"entry": index,
+                                   "route": {"agent": row["agent"], "setting": row["setting"]}})
+    return groups, equal
+
+
 def _attention(entries, rows):
     """Return the groups of Needs attention, in the order of ATTENTION_ORDER.
 
@@ -154,21 +185,13 @@ def _attention(entries, rows):
     row's first entry), because nothing was lost. Hidden values cannot be
     compared and a null value says nothing, so those stay.
     """
-    groups = {status: [] for status in ATTENTION_ORDER}
-    for row in rows:
-        winner = entries[row["entries"][0]]["value"]
-        for index in row["entries"]:
-            entry = entries[index]
-            status = entry["status"]
-            if status not in groups:
-                continue
-            value = entry["value"]
-            comparable = value is not None and value != collect.HIDDEN
-            if status == "overridden" and comparable and value == winner:
-                continue
-            groups[status].append({"entry": index,
-                                   "route": {"agent": row["agent"], "setting": row["setting"]}})
+    groups, _equal = _attention_walk(entries, rows)
     return [{"status": status, "rows": groups[status]} for status in ATTENTION_ORDER if groups[status]]
+
+
+def _attention_equal(entries, rows):
+    """Return how many overridden entries _attention leaves out because they equal the winner."""
+    return _attention_walk(entries, rows)[1]
 
 
 def _files(ctx, collected, entries):
@@ -209,7 +232,8 @@ def settings(ctx, query):
     record carries due, true when that version is newer than the one the rule
     was checked on. attention holds the groups of the Needs attention page, each
     with its rows (an entry index and the trail route), and is empty for a
-    folder that is missing.
+    folder that is missing. attention_equal counts the overridden entries left
+    out of attention because they equal the winner (0 for a missing folder).
 
     ?project=<key> picks the project and no value means the current one. The
     answer for a key that is not listed, or for "all", carries no settings data.
@@ -226,7 +250,7 @@ def settings(ctx, query):
     if project.state == projects.STATE_MISSING and not project.implicit:
         answer = {"project": project.key, "state": project.state, "entries": [],
                   "rows": [], "rules": {}, "files": [], "installed": version.installed(ctx),
-                  "attention": []}
+                  "attention": [], "attention_equal": 0}
         answer.update(_display_fields(ctx, project))
         return 200, answer
     collected = collect.collect(
@@ -252,7 +276,8 @@ def settings(ctx, query):
                   record["layer"] == "user" for record in collected["settings_files"]),
               "rows": rows, "rules": _rules_for(ctx, rows, installed),
               "files": _files(ctx, collected, entries), "installed": installed,
-              "attention": _attention(entries, rows)}
+              "attention": _attention(entries, rows),
+              "attention_equal": _attention_equal(entries, rows)}
     answer.update(_display_fields(ctx, project))
     return 200, answer
 
@@ -313,19 +338,40 @@ def files(ctx, query):
     File modes are not compared.
 
     model-routing-manifest.txt and the hook entries in settings.json are not in
-    the plan, so they do not show. A repo the installer cannot plan gives
-    (500, {"error": "installer"}). Nothing is written.
+    the plan, so they do not show. A repo the installer cannot plan, or a repo
+    file it cannot read, gives (500, {"error": "installer"}). Nothing is
+    written.
+
+    The answer also carries choices, {"status", "bad", "path"}. status is the
+    saved choices file's status from install.load_choices (ok, missing or bad),
+    bad lists the agents with no usable saved choice and path is the file in
+    display form. A file gets "caution": true, only when the installer would
+    not keep what is installed. That holds for an agents/<name>.md file in the
+    state differs when name is affected (every agent when status is not ok,
+    else the names in bad), and for the choices file in the state differs or
+    missing when status is not ok or bad is not empty. Otherwise the key is
+    left out.
     """
+    choices_path = os.path.join(ctx.config_dir, install.CHOICES_NAME)
     try:
         agents = install.list_agents(ctx.repo_dir)
         defaults = install.load_agent_defaults(ctx.repo_dir, agents)
-        choices, _status, _bad = install.load_choices(
-            os.path.join(ctx.config_dir, install.CHOICES_NAME), agents, defaults)
+        choices, status, bad = install.load_choices(choices_path, agents, defaults)
         plan = install.build_plan(ctx.repo_dir, choices)
-    except (install.InstallError, install.MissingFieldsError):
+    except (OSError, install.InstallError, install.MissingFieldsError):
         return 500, {"error": "installer"}
+    affected = set(agents) if status != "ok" else set(bad)
+    unsure = status != "ok" or bool(bad)
     out = []
     for entry in plan:
         path = os.path.join(ctx.config_dir, *entry.rel.split("/"))
-        out.append({"path": _display(ctx, path), "state": _file_state(path, entry.data)})
-    return 200, {"files": out}
+        state = _file_state(path, entry.data)
+        item = {"path": _display(ctx, path), "state": state}
+        if state == FILE_DIFFERS and entry.rel.startswith("agents/") and entry.rel.endswith(".md"):
+            if entry.rel[len("agents/"):-len(".md")] in affected:
+                item["caution"] = True
+        elif entry.rel == install.CHOICES_NAME and state in (FILE_DIFFERS, FILE_MISSING) and unsure:
+            item["caution"] = True
+        out.append(item)
+    return 200, {"files": out,
+                 "choices": {"status": status, "bad": list(bad), "path": _display(ctx, choices_path)}}

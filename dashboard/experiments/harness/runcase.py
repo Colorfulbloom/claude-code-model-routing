@@ -54,10 +54,11 @@ ENV_ALLOWLIST, and no settings file may set hooks, statusLine, apiKeyHelper, the
 AWS and OTEL helper keys, forceLoginMethod or any key with "mcp" in its name. Every
 refusal happens before a folder is made or any process starts. Claude Code and
 fakeapi.py get only PATH, TMPDIR and LANG from the caller's environment.
-Prints one JSON line: the init model, "init_agents" and what the fake API got ("sent"),
-plus "transcript" and "result". "init_agents" is the "agents" list of the stream-json
-init row, keeping only strings, each cut to 100 characters, or null when there is no
-init row or no list. "transcript" lists [who, kind, effort, perTurnEffort]
+Prints one JSON line: the init model, "init_agents", "init_version" and what the fake API
+got ("sent"), plus "transcript" and "result". "init_agents" is the "agents" list of the
+stream-json init row, keeping only strings, each cut to 100 characters, or null when there
+is no init row or no list. "init_version" is the init row's claude_code_version, or null
+when there is no init row. "transcript" lists [who, kind, effort, perTurnEffort]
 rows read from every *.jsonl under the config dir's projects/ folder before the
 throwaway root is removed: kind "assistant" rows carry the row's effort and
 perTurnEffort, kind "api-request" rows carry params.output_config.effort and None.
@@ -608,6 +609,7 @@ def main():
             seen.append(k)
     print(json.dumps({"case": case.get("name"), "init_model": init and init.get("model"),
                       "init_agents": init_agents(init),
+                      "init_version": init and init.get("claude_code_version"),
                       "sent": [list(k) for k in seen], "stderr": r.stderr[-200:].strip(),
                       "transcript": read_transcript(cfg), "result": results}))
     shutil.rmtree(root, True)

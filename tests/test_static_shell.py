@@ -52,11 +52,26 @@ LINK_BYPASS_OUTSIDE_H = (
     r"(?i)\.setAttributeNS\(",
     r"(?i)\[\s*[\"'`]setAttribute",
 )
+# An assignment operator, not a comparison (== and ===) and not an arrow (=>).
+ASSIGNMENT = r"(?:[-+*/%&|^]|\*\*|<<|>>>?|&&|\|\||\?\?)?=(?![=>])"
 LINK_BYPASS_EVERYWHERE = (
     r"\.(?:href|src|action|formAction)\s*=(?!=)",
     r"\[\s*[\"'`](?:href|src|action|formAction)[\"'`]\s*\]\s*=(?!=)",
     r"(?i)\bhttps?\b",  # any scheme, whichever way its slashes are written
     r"(?i)\\x2f|\\u002f|\\u\{0*2f\}",  # an escaped slash spelled as a code
+    # Ways to move the page or open another one without a link value.
+    r"\blocation\s*\.\s*(?:assign|replace)\s*\(",  # location.assign( and location.replace(, with or without window.
+    r"\blocation\s*\[\s*[\"'`](?:assign|replace)[\"'`]\s*\]",  # location["assign"]
+    r"\b(?:window|globalThis|self)\s*\.\s*open\s*\(",
+    r"(?<![\w$.])open\s*\(",  # a bare open(, not a method and not part of a longer name such as setOpen(
+    r"\[\s*[\"'`]open[\"'`]\s*\]\s*\(",
+    r"\blocation\s*" + ASSIGNMENT,  # location = x and window.location = x
+    r"\blocation\s*\.\s*(?!hash\b)\w+\s*" + ASSIGNMENT,  # location.href = x, any property but hash
+    r"\blocation\s*\[[^\]]*\]\s*" + ASSIGNMENT,
+    r"\bObject\s*\.\s*assign\s*\((?!\s*\{)",  # Object.assign( on anything but an object literal
+    r"\bObject\s*\[\s*[\"'`]assign[\"'`]\s*\]",
+    r"\bReflect\s*\.\s*set\s*\(",
+    r"\bReflect\s*\[\s*[\"'`]set[\"'`]\s*\]",
 )
 
 
@@ -252,7 +267,7 @@ class JsModules(unittest.TestCase):
         for value in allowed:
             self.assertIsNotNone(pattern.match(value), repr(value))
         self.assertNotIn("UNSAFE_URL", text)
-        self.assertRegex(text, r"URL_ATTRS\.has\(name\) && !SAFE_URL\.test\(")
+        self.assertRegex(text, r"URL_ATTRS\.has\(String\(name\)\.toLowerCase\(\)\) && !SAFE_URL\.test\(")
 
     def external_url(self):
         # The EXTERNAL_URL literal as a Python pattern, with the same "$" change as above.
@@ -325,10 +340,27 @@ class JsModules(unittest.TestCase):
             "link.href = url;", 'link["href"] = url;', "const u = /^https:\\/\\/x/;", "const u = /^https:\\x2f\\x2f/;",
             'const u = "https:\\u002f\\u002fx";', 'const u = "https:" + "//x";', 'const u = "HTTP" + ":";',
             'const u = "a\\/\\x2f";',
+            "location.assign(url);", "window.location.assign(url);", "location.replace(url);",
+            "window.location.replace(url);", 'location["assign"](url);', 'window.location["replace"](url);',
+            "window.open(url);", "globalThis.open(url);", "self.open(url);", "open(url);", "x = open (url);",
+            "location = url;", "window.location = url;", "document.location = url;", "location.href = url;",
+            "window.location.pathname = url;", "location.search = url;", "location.href += url;",
+            "location.hashX = url;", 'location["href"] = url;',
+            "Object.assign(target, source);", "Object.assign(location, source);", "Object.assign(window.location, x);",
+            "Reflect.set(location, 'href', url);",
         ]
         for line in bypasses:
             self.assertNotEqual(link_bypasses(line, "trail.js"), [], line)
-        self.assertEqual(link_bypasses('link.setAttribute("aria-label", word);', "trail.js"), [])
+        allowed = [
+            'link.setAttribute("aria-label", word);', "window.location.hash = x;", "location.hash = x;",
+            "if (location.href == x) {}", "if (location.href === x) {}", "if (location === x) {}",
+            "if (location.pathname >= x) {}", "const here = location.pathname;", "setOpen(true);", "isOpen(x);",
+            "el.open(x);", "this.open(x);", "reopen(x);", "Object.assign({}, a, b);", "Object.assign( { a: 1 }, b);",
+            "const f = (location) => location.hash;", "const open = true;",
+        ]
+        for line in allowed:
+            self.assertEqual(link_bypasses(line, "trail.js"), [], line)
+        self.assertEqual(link_bypasses("\n".join(allowed), "trail.js"), [])
 
     def test_references_stay_local(self):
         for path in sorted(JS_DIR.rglob("*.js")):

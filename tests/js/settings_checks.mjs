@@ -758,15 +758,24 @@ test("trail: assumed rules on a real agent row", () => {
   }
 });
 
-test("trail: a row the payload does not have shows the head and tiles and no panel", () => {
-  for (const [agent, setting] of [["@main", "noSuchSetting"], ["ghost", "effort"], ["@main", "env.NOPE"]]) {
+test("trail: a row the payload does not have shows the head, tiles and one line saying so, and no panel", () => {
+  const cases = [
+    ["@main", "noSuchSetting", "This project has no noSuchSetting for Main session, so there's no trail to show."],
+    ["ghost", "effort", "This project has no effort for ghost, so there's no trail to show."],
+    ["@main", "env.NOPE", "This project has no env.NOPE for Main session, so there's no trail to show."],
+    ["nobody", "effortLevel", "This project has no effort for nobody, so there's no trail to show."],
+  ];
+  for (const [agent, setting, line] of cases) {
     const { root } = mount(real("effort-lowered-by-cap"), agent, setting);
     assert.equal(panelOf(root), undefined, agent + "/" + setting);
-    assert.deepEqual(root.childNodes.map((n) => n.getAttribute("class").split(" ")[0]), ["ph", "tiles"]);
+    assert.deepEqual(root.childNodes.map((n) => n.getAttribute("class").split(" ")[0]), ["ph", "tiles", "foot"]);
+    assert.equal(root.childNodes[2].tagName, "p");
+    assert.equal(text(root.childNodes[2]), line, agent + "/" + setting);
     assert.equal(tilesOf(root).length, 4);
     assert.equal(tilesOf(root).filter((n) => n.getAttribute("aria-current") === "true").length, 0);
   }
 });
+
 
 test("trail: All projects shows the picker and no panel", () => {
   const { root } = mount(real("effort-lowered-by-cap"), "@main", "effortLevel", { project: { key: "all", name: "All projects" } });

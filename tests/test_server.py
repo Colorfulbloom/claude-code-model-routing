@@ -762,7 +762,8 @@ class Entries(TempCase):
             self.assertEqual(answer["entries"], expected, name)
             self.assertEqual(set(answer), {
                 "project", "state", "entries", "no_user_settings", "shell_label", "path_display",
-                "config_dir_display", "config_file_display", "models", "rows", "rules", "files", "installed", "attention"})
+                "config_dir_display", "config_file_display", "models", "rows", "rules", "files", "installed", "attention",
+                "attention_equal"})
 
     def test_a_fixture_folder_may_be_empty(self):
         folder = os.path.join(self.root, "empty")

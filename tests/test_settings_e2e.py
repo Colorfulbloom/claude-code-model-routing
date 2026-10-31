@@ -239,6 +239,8 @@ class SettingsE2E(unittest.TestCase):
         self.show("#/settings/nobody/effort", "trail")
         self.page.wait_for("document.querySelectorAll('[data-page=trail] a.tl').length === 4")
         self.assertIsNone(self.page.eval("document.getElementById('trail') && document.getElementById('trail').id"))
+        line = self.page.eval("document.querySelector('[data-page=trail] p.foot').innerText")
+        self.assertEqual(line, "This project has no effort for nobody, so there's no trail to show.")
         self.assertEqual(self.exceptions_since(before), [])
 
     def test_all_projects_on_a_trail_route_shows_the_picker(self):

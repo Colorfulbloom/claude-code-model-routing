@@ -389,5 +389,19 @@
    "model": "claude-haiku-5-5"
   },
   "name": "ms-cap-top-level-invalid-file-loads"
+ },
+ {
+  "user": {
+   "model": "claude-sonnet-5-5",
+   "maxEffortLevel": "low"
+  },
+  "project": {
+   "maxEffortLevel": "turbo"
+  },
+  "args": [
+   "--effort",
+   "xhigh"
+  ],
+  "name": "ms-cap-user-low-project-invalid"
  }
 ]

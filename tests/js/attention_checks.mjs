@@ -312,6 +312,29 @@ test("overviewCard: no rows gives the empty line and no list", () => {
   assert.equal(text(sub(node, "at-empty")), "Every value is In effect or Default");
 });
 
+test("overviewCard: no rows with equal values left out says so", () => {
+  createPage();
+  const node = attention.overviewCard(makeCtx(handPayload(ENTRIES, [], { attention_equal: 2 })));
+  assert.equal(byClass(node, "at").length, 0);
+  assert.equal(text(sub(node, "at-empty")),
+    "Every value is In effect or Default, or Overridden by a source that sets the same value");
+  const zero = attention.overviewCard(makeCtx(handPayload(ENTRIES, [], { attention_equal: 0 })));
+  assert.equal(text(sub(zero, "at-empty")), "Every value is In effect or Default");
+});
+
+test("page: no groups with equal values left out says so, and a zero count keeps the short line", () => {
+  const root = show(handPayload(ENTRIES, [], { attention_equal: 3 }));
+  assert.equal(text(sub(root, "at-empty")), STRINGS.at_empty_equal);
+  assert.equal(byClass(root, "cd").length, 1);
+  assert.equal(text(sub(show(handPayload(ENTRIES, [], { attention_equal: 0 })), "at-empty")), STRINGS.at_empty);
+  assert.equal(text(sub(show(handPayload(ENTRIES, [])), "at-empty")), STRINGS.at_empty, "no field at all");
+});
+
+test("page: groups with rows ignore attention_equal", () => {
+  const root = show(handPayload(ENTRIES, GROUPS, { attention_equal: 5 }));
+  assert.equal(byClass(root, "at-empty").length, 0);
+});
+
 // ---------------------------------------------------------------- run
 
 let failed = 0;

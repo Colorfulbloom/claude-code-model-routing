@@ -3,6 +3,7 @@
 // The page's Content-Security-Policy allows exactly this: no inline script, no inline style.
 
 const SVG_NS = "http://www.w3.org/2000/svg";
+// The set is lower case, and an attribute name is compared in lower case, so HREF and Href count as href.
 const URL_ATTRS = new Set(["href", "src", "action", "formaction", "xlink:href"]);
 // A link value is allowed only when it starts with "#" or with a single "/" (not "//" and not "/\\", which
 // browsers read as a host) and holds no control character. A URL parser strips tab and newline before it
@@ -42,7 +43,7 @@ function applyAttrs(el, attrs) {
       throw new TypeError("use { on: { click: fn } } instead of " + name);
     } else if (name === "value") {
       el.value = value;
-    } else if (URL_ATTRS.has(name) && !SAFE_URL.test(String(value))) {
+    } else if (URL_ATTRS.has(String(name).toLowerCase()) && !SAFE_URL.test(String(value))) {
       continue;
     } else {
       el.setAttribute(name, value === true ? "" : String(value));

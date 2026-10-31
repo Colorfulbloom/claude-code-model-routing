@@ -1,0 +1,42 @@
+{
+  "fixture": "cap-user-low-project-invalid",
+  "rule_ids": [
+    "max-effort-level-values",
+    "max-effort-level-lowest-cap",
+    "effort-lowered-by-cap"
+  ],
+  "confidence": "tested",
+  "source": "dashboard/experiments/2026-10-29-model-settings-max-effort.json#ms-cap-user-low-project-invalid",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "maxEffortLevel",
+      "value": "turbo",
+      "status": "invalid",
+      "layer": "project",
+      "file": "project/.claude/settings.json",
+      "scope": "main",
+      "model": "claude-sonnet-5-5",
+      "rule_id": "max-effort-level-values"
+    },
+    {
+      "key": "maxEffortLevel",
+      "value": "low",
+      "status": "in_effect",
+      "layer": "user",
+      "file": "config/settings.json",
+      "scope": "main"
+    },
+    {
+      "key": "effortLevel",
+      "value": "xhigh",
+      "status": "lowered",
+      "layer": "flag",
+      "file": "session.json:flags",
+      "scope": "main",
+      "model": "claude-sonnet-5-5",
+      "becomes": "low",
+      "rule_id": "effort-lowered-by-cap"
+    }
+  ]
+}

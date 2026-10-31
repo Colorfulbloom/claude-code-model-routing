@@ -241,7 +241,8 @@ function insidePanel(root) {
 
 // Escape closes the trail and returns to Settings. The listener sits in the capture phase, so it sees the key
 // before shell.js, which closes the sidebar panel on the same key. It leaves a key the sidebar panel owns
-// alone, and a key that something else already handled.
+// alone. It is the first listener on the document in that phase, so defaultPrevented can only come from a
+// capture listener that ran before it, and the check stays for that case.
 function onKeydown(event) {
   if (event.key !== "Escape" || event.defaultPrevented || !active || active.root.hidden) return;
   const sidebar = document.getElementById("sidebar");
@@ -271,7 +272,13 @@ export function render(root, ctx) {
   const payload = renderSettingsBody(root, ctx, agent === MAIN_KEY ? setting : null);
   if (!payload) return;
   const row = rowFor(payload, agent, setting);
-  if (!row) return;
+  if (!row) {
+    // No row for this agent and setting, so there is no panel. A line says why.
+    root.appendChild(h("p", { class: "foot" }, t("trail_no_row", {
+      setting: settingWord(setting), agent: agent === MAIN_KEY ? t("row_main") : agent,
+    })));
+    return;
+  }
   const { panel, title } = buildPanel(payload, row);
   root.appendChild(panel);
   const key = agent + "\n" + setting;
