@@ -11,6 +11,7 @@ import { h, clear, externalLink } from "../h.js";
 import { t, renderText, fmtTime } from "../format.js";
 import { MAIN_KEY } from "../router.js";
 import { card, chip } from "../components.js";
+import * as editCard from "../edit_card.js";
 import {
   renderSettingsBody, valueText, valueString, sourceText, layerText, settingWord, winnerOf, returnFocusTo,
 } from "./settings.js";
@@ -54,8 +55,10 @@ function fromShell(entry, payload) {
   return file !== null && file !== undefined && file === payload.shell_label;
 }
 
-// One entry of the row, big for the winner and a card for the others.
-function entryNode(entry, payload, big) {
+// One entry of the row, big for the winner and a card for the others. edit is what edit_card.js handed this
+// render, or null: it adds a Change link to the top line and a lock line at the end of the entry.
+function entryNode(entry, payload, big, edit) {
+  const extra = edit ? edit.extras(entry) : {};
   const value = valueText(entry, payload);
   const layer = layerText(entry, payload);
   const hasBecomes = entry.becomes !== undefined && entry.becomes !== null;
@@ -65,13 +68,15 @@ function entryNode(entry, payload, big) {
       value === null ? null : [h("span", { class: "sr" }, t("lbl_value")), h("span", { class: "val" }, value)],
       h("span", { class: "sr" }, t("lbl_status")),
       chip(entry.status),
-      hasBecomes ? h("span", { class: "runs" }, t("runs_as", { becomes: entry.becomes })) : null),
+      hasBecomes ? h("span", { class: "runs" }, t("runs_as", { becomes: entry.becomes })) : null,
+      extra.act || null),
     h("div", { class: "en-src" },
       h("span", { class: "sr" }, t("lbl_source")),
       layer ? h("span", { class: "ly" }, layer) : null,
       h("span", { class: "pa" }, renderText(sourceText(entry, payload)))),
     h("p", { class: "en-rs" }, h("span", { class: "sr" }, t("lbl_reason")), renderText(entry.reason || "")),
-    shell ? h("p", { class: "en-note" }, t("shell_note")) : null);
+    shell ? h("p", { class: "en-note" }, t("shell_note")) : null,
+    extra.lock || null);
 }
 
 // "Model" and "Effort cap" above the cards.
@@ -100,16 +105,16 @@ function metaBlock(payload, row) {
   return lines.length ? h("dl", { class: "meta" }, lines) : null;
 }
 
-function winnerCard(payload, winner) {
+function winnerCard(payload, winner, edit) {
   const value = valueString(winner, payload);
   const summary = (value ? value + " " : "") + t("status_" + winner.status) + ", " + sourceText(winner, payload, true);
   return card({
     title: t("sec_winner"), icon: "flag", summary: renderText(summary), open: true, heading: "h3",
-    body: h("div", { class: "win" }, entryNode(winner, payload, true)),
+    body: h("div", { class: "win" }, entryNode(winner, payload, true, edit)),
   });
 }
 
-function othersCard(payload, others) {
+function othersCard(payload, others, edit) {
   const n = others.length;
   const m = others.filter((e) => LOST.includes(e.status)).length;
   let summary;
@@ -117,7 +122,7 @@ function othersCard(payload, others) {
   else summary = n === 1 && m === 1 ? t("sum_values_1") : t("sum_values", { n, m });
   return card({
     title: t("sec_values_other"), icon: "list", summary, open: true, heading: "h3",
-    body: h("div", { class: "ens ens-a" }, others.map((e) => entryNode(e, payload, false))),
+    body: h("div", { class: "ens ens-a" }, others.map((e) => entryNode(e, payload, false, edit))),
   });
 }
 
@@ -206,8 +211,9 @@ function filesCard(payload) {
 
 // ---------------------------------------------------------------- panel
 
-// The panel and its heading. The caller moves focus to the heading.
-function buildPanel(payload, row) {
+// The panel and its heading. The caller moves focus to the heading. edit is null except on the main session's
+// effort, where its card goes between the meta block and the Winner card.
+function buildPanel(payload, row, edit) {
   const entries = entriesOf(payload, row);
   const winner = entries[0];
   const setting = settingWord(row.setting);
@@ -216,8 +222,9 @@ function buildPanel(payload, row) {
   const panel = h("div", { id: "trail", class: "trail-a" },
     title,
     metaBlock(payload, row),
-    winner ? winnerCard(payload, winner) : null,
-    entries.length > 1 ? othersCard(payload, entries.slice(1)) : null,
+    edit ? edit.card : null,
+    winner ? winnerCard(payload, winner, edit) : null,
+    entries.length > 1 ? othersCard(payload, entries.slice(1), edit) : null,
     rulesCard(payload, row),
     filesCard(payload));
   return { panel, title };
@@ -260,16 +267,20 @@ function bindKeys() {
 
 export function render(root, ctx) {
   const hadFocus = insidePanel(root);
+  const editFocus = editCard.focusKey(); // an edit control that holds focus keeps it across this draw
   clear(root);
   if (ctx.route.name !== "trail") { // the route carries the parameters this page needs
     active = null;
     arrived = null;
+    editCard.leave();
     return;
   }
   const { agent, setting } = ctx.route.params;
   active = { root, ctx, agent, setting };
   bindKeys();
-  const payload = renderSettingsBody(root, ctx, agent === MAIN_KEY ? setting : null);
+  // The edit card and strip show on the main session's effort trail only. Any other row is drawn as before.
+  const edit = agent === MAIN_KEY && setting === "effortLevel" ? editCard.begin(ctx) : editCard.leave();
+  const payload = renderSettingsBody(root, ctx, agent === MAIN_KEY ? setting : null, edit && edit.strip);
   if (!payload) return;
   const row = rowFor(payload, agent, setting);
   if (!row) {
@@ -279,11 +290,14 @@ export function render(root, ctx) {
     })));
     return;
   }
-  const { panel, title } = buildPanel(payload, row);
+  const { panel, title } = buildPanel(payload, row, edit);
   root.appendChild(panel);
+  if (edit) edit.done();
   const key = agent + "\n" + setting;
-  if (arrived !== key || hadFocus) {
+  // Focus on an edit control stays where it was. Any other focus inside the panel goes to the heading.
+  if (arrived !== key || (hadFocus && !editFocus)) {
     arrived = key;
     title.focus();
   }
+  if (edit) editCard.settle(root, editFocus);
 }

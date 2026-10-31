@@ -615,6 +615,14 @@ def _safe_rows(store, target):
         return []
 
 
+def _ledger_damaged(store, target):
+    """True when the target's ledger is damaged. A store folder that can't be read counts as no ledger."""
+    try:
+        return store.ledger_damaged(target)
+    except edit_store.StoreError:
+        return False
+
+
 def _row_out(ctx, target, rows, row):
     """Return one history row: what the page shows for an edit and whether it can be undone."""
     store = ctx.edit.store
@@ -723,6 +731,12 @@ def _store_answer(req, exc):
         return 409, {"error": "not_undoable", "reason": exc.reason}
     if isinstance(exc, edit_store.UnknownEdit):
         return 404, {"error": "unknown_edit"}
+    if isinstance(exc, edit_store.ConfigDirMissing):
+        return 500, {"error": "config_dir_missing", "file_unchanged": True,
+                     "config_dir_display": _display_or_none(ctx, exc.path)}
+    if isinstance(exc, edit_store.LedgerDamaged):
+        return 500, {"error": "ledger_damaged", "file_unchanged": True,
+                     "ledger_display": _display_or_none(ctx, exc.path)}
     return 500, {"error": "write_failed", "file_unchanged": True}  # WriteFailed, or a store error with no name
 
 
@@ -867,14 +881,19 @@ def undo(ctx, body):
             raise _Answer(400, {"error": "bad_request"})
         store = ctx.edit.store
         found = None
+        damaged = None
         for layer in edit_store.LAYERS:
             try:
                 target = edit_store.target_for(ctx, project.key, layer)
                 if store.find(target, edit_id) is not None:
                     found = target
                     break
+                if _ledger_damaged(store, target):
+                    damaged = target
             except edit_store.StoreError:
                 continue
+        if found is None and damaged is not None:
+            raise edit_store.LedgerDamaged(store.ledger_path(damaged))  # its rows can't be searched
         if found is None:
             raise _Answer(404, {"error": "unknown_edit"})
         req = _Request(ctx, listing, project, found, undo=True)
@@ -906,13 +925,18 @@ def history(ctx, query):
         return answer.status, answer.body
     store = ctx.edit.store
     found = []
+    damaged = []
     for layer in edit_store.LAYERS:
         try:
             target = edit_store.target_for(ctx, project.key, layer)
         except edit_store.Refused:
             continue
+        if _ledger_damaged(store, target):
+            damaged.append({"layer": layer, "file_display": _display(ctx, target.path),
+                            "ledger_display": _display(ctx, store.ledger_path(target))})
         rows = _safe_rows(store, target)
         for row in rows:
             found.append((row.get("time") or "", _seq(row.get("backup")), _row_out(ctx, target, rows, row)))
     found.sort(key=lambda item: (item[0], item[1]), reverse=True)
-    return 200, {"enabled": True, "project": project.key, "rows": [item[2] for item in found]}
+    return 200, {"enabled": True, "project": project.key, "rows": [item[2] for item in found],
+                 "damaged_ledgers": damaged}

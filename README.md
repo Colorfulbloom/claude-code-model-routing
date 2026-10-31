@@ -422,7 +422,7 @@ Use `cp`, not `mv`, so the file keeps its mode and the backup stays in place. A 
 
 After an undo from the server, compare against the row's `restored_from_backup`, not its `backup`. The `backup` on an undo row holds the file from before the undo, so `cmp` reports a difference by design.
 
-The store keeps the newest 20 rows per file, and an undo counts as one. Older rows and their backups go after the next successful write. A backup is read-only to the page, because no route edits or deletes one.
+The store keeps the newest 20 rows per file, and an undo counts as one. Older rows go after the next successful write, and their backups go with them. Backups older than a `ledger.json` you moved aside stay until you delete them by hand. A backup is read-only to the page, because no route edits or deletes one.
 
 Backups can hold secrets. The ledger masks its values, but a `.bak` file is an exact copy, and `settings.local.json` can hold API keys. The store's folders are mode 0700 and its files 0600. Keep those modes, and don't commit or paste a backup.
 

@@ -27,9 +27,31 @@ export async function fetchJSON(path) {
   }
 }
 
+// A POST with the edit token. Like fetchJSON it never throws, but it parses the body on an error status too,
+// because the error code (bad_token, stale, raced, unverified) is in it. A body that won't parse gives data null.
+export async function postJSON(path, body, token) {
+  try {
+    const res = await fetch(path, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { Accept: "application/json", "Content-Type": "application/json", "X-Dashboard-Token": token || "" },
+      body: JSON.stringify(body),
+    });
+    let data = null;
+    try {
+      data = await res.json();
+    } catch (err) {
+      data = null;
+    }
+    return { ok: res.ok, status: res.status, data };
+  } catch (err) {
+    return { ok: false, status: 0, data: null };
+  }
+}
+
 // One Api per page load. Each call returns a promise that is created once, so a second call for the same
 // data (a project picked again, a range switched) fetches nothing.
-export function createApi(fetcher = fetchJSON) {
+export function createApi(fetcher = fetchJSON, poster = postJSON) {
   const shared = new Map();
   const perProject = new Map();
 
@@ -59,6 +81,15 @@ export function createApi(fetcher = fetchJSON) {
     usage: (key) => once(perProject, "usage:" + key, "/api/usage" + projectQuery(key)),
     settings: (key) => once(perProject, "settings:" + key, "/api/settings" + projectQuery(key)),
     // True once both of a project's payloads were asked for.
+    // The edit routes never go through the cache, so a save is never followed by an old answer.
+    editStatus: () => fetcher("/api/edit"),
+    editTargets: (key) => fetcher("/api/edit/targets" + projectQuery(key)),
+    editHistory: (key) => fetcher("/api/edit/history" + projectQuery(key)),
+    editPreview: (body, token) => poster("/api/edit/preview", body, token),
+    editSave: (body, token) => poster("/api/edit/save", body, token),
+    editUndo: (body, token) => poster("/api/edit/undo", body, token),
+    // Forgets every project's usage: and settings: answer. The shared keys stay.
+    dropProjects: () => { perProject.clear(); },
     hasProject: (key) => perProject.has("usage:" + key) && perProject.has("settings:" + key),
   };
 }

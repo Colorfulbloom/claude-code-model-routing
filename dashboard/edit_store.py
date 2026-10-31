@@ -89,6 +89,22 @@ class WriteFailed(StoreError):
     """A step failed before the rename. The settings file is as it was."""
 
 
+class LedgerDamaged(WriteFailed):
+    """ledger.json can't be read as rows, so no write runs until it is fixed. The file is as it was."""
+
+    def __init__(self, path):
+        super().__init__("the ledger is damaged")
+        self.path = path
+
+
+class ConfigDirMissing(WriteFailed):
+    """The config folder isn't there, and the backup store lives in it. The file is as it was."""
+
+    def __init__(self, path):
+        super().__init__("config folder missing")
+        self.path = path
+
+
 class Raced(StoreError):
     """Another writer got in after the rename, or the file differs from its backup."""
 
@@ -394,6 +410,23 @@ class Store:
             return None
         return os.path.join(self.config_dir, STORE_DIR, BACKUPS_DIR, _target_id(target), name)
 
+    def ledger_path(self, target):
+        """Full path of a target's ledger, for display."""
+        return os.path.join(self.config_dir, STORE_DIR, BACKUPS_DIR, _target_id(target), LEDGER_FILE)
+
+    def ledger_damaged(self, target):
+        """True when the target's ledger is there but can't be read as rows. Reads only."""
+        store_fd = self._open_store(target, create=False)
+        if store_fd is None:
+            return False
+        try:
+            self._read_ledger(store_fd)
+        except ValueError:
+            return True
+        finally:
+            os.close(store_fd)
+        return False
+
     def rows(self, target):
         """The visible rows, oldest first. Reads only and creates nothing."""
         rows = self._read_rows(target, strict=False)
@@ -518,7 +551,7 @@ class Store:
             fd = os.open(self.config_dir, _DIR_FLAGS)
         except FileNotFoundError:
             if create:
-                raise WriteFailed("config folder missing") from None
+                raise ConfigDirMissing(self.config_dir) from None
             return None
         except OSError as exc:
             raise WriteFailed("cannot open the config folder") from exc
@@ -657,7 +690,7 @@ class Store:
                 try:
                     all_rows = self._read_ledger(store_fd)
                 except ValueError:
-                    raise WriteFailed("the ledger is damaged") from None
+                    raise LedgerDamaged(self.ledger_path(target)) from None
                 rows = _trim(all_rows, current)
                 job = produce(raw, rows, current, store_fd)
                 if job.new_raw == raw:
@@ -758,6 +791,18 @@ class Store:
             raise Unverified("fsync", row, backup_path)
         return True if restoring else None
 
+    def _oldest_mtime(self, store_fd, rows):
+        """The mtime of the oldest row's backup that can be read, or None when no row has one."""
+        for row in rows:
+            name = row.get("backup")
+            if not _valid_backup(name):
+                continue
+            try:
+                return os.stat(name, dir_fd=store_fd, follow_symlinks=False).st_mtime_ns
+            except OSError:
+                continue
+        return None
+
     def _prune(self, store_fd, rows):
         """Keep the newest RETENTION rows and the backups they name. Never fails a save."""
         try:
@@ -768,8 +813,23 @@ class Store:
                 except OSError:
                     kept = rows
             named = set(row.get("backup") for row in kept)
+            dropped = set(row.get("backup") for row in rows[:len(rows) - len(kept)])
+            floor = self._oldest_mtime(store_fd, kept)
             for name in os.listdir(store_fd):
-                if _BACKUP_RE.match(name) and name not in named:
+                if not _BACKUP_RE.match(name) or name in named:
+                    continue
+                if name in dropped:
+                    _unlink(name, store_fd)
+                    continue
+                # A backup no row names is a crash orphan only if it is as new as the
+                # ledger. An older one predates a ledger that was moved aside: keep it.
+                if floor is None:
+                    continue
+                try:
+                    stamp = os.stat(name, dir_fd=store_fd, follow_symlinks=False).st_mtime_ns
+                except OSError:
+                    continue
+                if stamp >= floor:
                     _unlink(name, store_fd)
         except OSError:
             pass

@@ -127,6 +127,16 @@ export function createPage({ narrow = true } = {}) {
     },
     history: { replaceState(_a, _b, url) { win.location._hash = url; } },
     addEventListener(type, fn) { (listeners[type] = listeners[type] || []).push(fn); },
+    // A sessionStorage for the edit token. A check can replace it, or make the property throw, as a blocked one does.
+    sessionStorage: (() => {
+      const items = new Map();
+      return {
+        getItem: (k) => (items.has(k) ? items.get(k) : null),
+        setItem: (k, v) => { items.set(k, String(v)); },
+        removeItem: (k) => { items.delete(k); },
+        items,
+      };
+    })(),
     matchMedia: () => media,
     scrollTo() {},
   };

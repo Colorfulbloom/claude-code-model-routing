@@ -576,3 +576,112 @@ body{background:var(--page-bg)}
  * All projects
  * ====================================================================== */
 .fn{color:var(--text-muted);font-size:var(--text-xs);margin-left:2px}
+
+/* Change effort card, a part of the Settings and trail section above: the level picker, the review of a change,
+   the notices and the undo strip on the trail of the main session's effort. Direction B, Pick the result
+   (phase 2 design, boards 01 to 05). Tokens only. */
+/* Primary button: nothing above carries the one committing action on a screen */
+.p2-pri{background:var(--accent);color:var(--text-on-accent);border-color:var(--accent)}
+.p2-pri:hover{background:var(--accent);box-shadow:inset 0 0 0 2px var(--text-on-accent)}
+.btn[disabled]{background:var(--surface-2);color:var(--text-muted);border-color:var(--border-strong);cursor:default}
+.btn[disabled]:hover{background:var(--surface-2);box-shadow:none}
+
+/* Level picker: native radios in .segs and .seg, two lines so a level carries its own note */
+.p2-segs{display:inline-grid;grid-auto-flow:column;grid-auto-columns:minmax(88px,1fr);gap:4px;justify-self:start}
+.p2-seg{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-height:44px;padding:4px 10px;cursor:pointer;color:var(--text);border:var(--border-width) solid transparent;text-align:center}
+.p2-seg .p2-sv{font:var(--weight-medium) var(--text-sm)/1.2 var(--font-mono)}
+.p2-seg .p2-sn{font:var(--text-xs)/1.2 var(--font-sans);color:var(--text-muted);white-space:nowrap}
+.p2-seg.is-active{border-color:var(--border-strong)}
+.p2-seg.is-active .p2-sv{font-weight:var(--weight-semibold)}
+.p2-seg:has(input:focus-visible){outline:var(--focus-width) solid var(--focus-ring);outline-offset:var(--focus-offset)}
+.p2-seg.is-off{cursor:default}
+.p2-field{display:grid;gap:var(--space-2)}
+.p2-lab{font-size:var(--text-sm);font-weight:var(--weight-semibold)}
+.p2-hint{color:var(--text-muted);font-size:var(--text-sm);max-width:72ch}
+
+/* The card that is open, and the link that opens it from a value */
+.p2-act{margin-left:auto}
+.p2-on{box-shadow:var(--shadow-card),inset 0 3px 0 var(--accent)}
+.p2-tag{display:inline-flex;align-items:center;font-size:var(--text-xs);font-weight:var(--weight-semibold);padding:3px 8px;border-radius:var(--radius-sm);background:var(--surface-2);color:var(--text);border:var(--border-width) solid var(--border-strong)}
+.p2-btns{display:flex;gap:var(--space-2);flex-wrap:wrap;align-items:center}
+
+/* Diff of the file. Status colours stay on statuses, so a line reads by its mark, its word and the accent tint. */
+.p2-df{margin:0;border:var(--border-width) solid var(--border-strong);border-radius:var(--radius-md);overflow:hidden;background:var(--surface);min-width:0}
+.p2-df-h{display:flex;flex-wrap:wrap;gap:2px var(--space-3);padding:var(--space-2) var(--space-3);font-size:var(--text-sm);border-bottom:var(--border-width) solid var(--border)}
+.p2-df-h .pa{font-family:var(--font-mono);font-size:var(--text-xs);align-self:center}
+.p2-df ol{margin:0;padding:var(--space-1) 0;list-style:none;font:var(--text-xs)/1.6 var(--font-mono)}
+.p2-df li{display:grid;grid-template-columns:32px 18px minmax(0,1fr);padding:0 var(--space-3) 0 0}
+.p2-df .p2-n{color:var(--text-muted);text-align:right;padding-right:var(--space-2);font-variant-numeric:tabular-nums}
+.p2-df .p2-m{font-weight:var(--weight-semibold);text-align:center}
+.p2-df code{white-space:pre-wrap;overflow-wrap:anywhere;min-width:0}
+.p2-df .p2-del{background:var(--surface-2);color:var(--text-muted)}
+.p2-df .p2-add{background:var(--nav-active-bg);color:var(--text);box-shadow:inset 3px 0 0 var(--accent)}
+.p2-df .p2-add code{font-weight:var(--weight-medium)}
+.p2-df mark{background:transparent;color:inherit;font-weight:var(--weight-semibold);text-decoration:underline;text-underline-offset:2px}
+
+/* Now and after headline */
+.p2-arrow{color:var(--text-muted);padding:0 var(--space-1)}
+.p2-head{display:flex;align-items:baseline;gap:var(--space-3);flex-wrap:wrap}
+.p2-big{font:var(--weight-semibold) var(--text-2xl)/var(--leading-tight) var(--font-mono);letter-spacing:-.01em}
+.p2-big.is-was{color:var(--text-muted);font-weight:var(--weight-regular)}
+.p2-rvw{display:grid;gap:var(--space-4)}
+.p2-sub{font-size:var(--text-sm);font-weight:var(--weight-semibold);margin-bottom:var(--space-2)}
+.p2-ctl{display:flex;gap:var(--space-2);flex-wrap:wrap;align-items:center}
+.p2-ctl .p2-hint{margin-left:var(--space-1)}
+.p2-tbl{table-layout:auto}
+.p2-tbl td{overflow-wrap:anywhere}
+.p2-tbl .p2-cell{display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap}
+.p2-tbl .val{font-weight:var(--weight-semibold)}
+.p2-tbl .p2-tr-on td{background:var(--surface)}
+.p2-tbl .p2-tr-on td:first-child{box-shadow:inset 3px 0 0 var(--accent);padding-left:var(--space-3)}
+.p2-tbl td:first-child,.p2-tbl th:first-child{padding-left:var(--space-3)}
+.p2-tbl td.p2-src{font-size:var(--text-xs);color:var(--text-muted);font-family:var(--font-mono)}
+
+/* Save stays in view while the review is read */
+.p2-stick{position:sticky;bottom:0;z-index:3;background:var(--card-bg);border-top:var(--border-width) solid var(--border);padding:var(--space-3) 0;margin-bottom:calc(var(--space-3) * -1)}
+.p2-tr-h th{padding:var(--space-4) 0 var(--space-2);font-size:var(--text-sm);text-transform:none;letter-spacing:0;color:var(--text);border-bottom:var(--border-width) solid var(--border-strong)}
+
+/* Notices, in the .nt frame with a status bar, mark and word */
+.nt.p2-nt{margin:0;display:grid;gap:var(--space-2);max-width:none}
+.p2-nt-warn{background:var(--status-overridden-bg);border-left-color:var(--status-overridden-fg)}
+.p2-nt-err{background:var(--status-invalid-bg);border-left-color:var(--status-invalid-fg)}
+.p2-nt-ok{background:var(--status-in-effect-bg);border-left-color:var(--status-in-effect-fg)}
+.p2-nt-h{display:flex;align-items:center;gap:var(--space-2);font-weight:var(--weight-semibold)}
+.p2-mk{font-family:var(--font-sans);width:1em;text-align:center;flex:none}
+.p2-nt-warn .p2-mk{color:var(--status-overridden-fg)} .p2-nt-err .p2-mk{color:var(--status-invalid-fg)} .p2-nt-ok .p2-mk{color:var(--status-in-effect-fg)}
+.p2-nt p{font-size:var(--text-sm);max-width:78ch}
+.p2-nt .btn{background:var(--card-bg)}
+.p2-nt .btn.p2-pri{background:var(--accent)}
+.p2-nt .p2-btns{margin-top:var(--space-1)}
+.p2-strip{display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap;margin:0;max-width:none;width:100%}
+.p2-strip .p2-t{flex:1;min-width:220px;font-size:var(--text-sm);display:flex;gap:var(--space-2);align-items:baseline}
+.p2-strip .p2-mk{align-self:baseline}
+
+/* Value that can't be edited here */
+.p2-lock{display:flex;gap:var(--space-2);align-items:flex-start;margin-top:var(--space-2);padding-top:var(--space-2);border-top:var(--border-width) solid var(--border);font-size:var(--text-sm);color:var(--text)}
+.p2-lock span{max-width:72ch}
+.p2-lock .ic{flex:none;color:var(--text-muted);margin-top:1px}
+
+@media (max-width: 720px){
+  .p2-segs{display:grid;grid-auto-flow:row;grid-template-columns:repeat(4,minmax(0,1fr));width:100%}
+  .p2-seg{padding:4px 1px}
+  .btn{min-height:44px}
+  .p2-btns,.p2-ctl{width:100%}
+  .p2-btns .btn,.p2-ctl .btn{flex:1 1 auto;justify-content:center}
+  .p2-ctl .p2-hint{margin-left:0;flex-basis:100%}
+  .p2-act{margin-left:0}
+  .p2-strip .p2-t{min-width:0;flex-basis:100%}
+  .p2-strip .btn{flex:1 1 auto;justify-content:center}
+  .p2-tbl td{justify-content:flex-start}
+  .p2-tbl td::before{min-width:64px}
+  .p2-tbl td:first-child,.p2-tbl th:first-child{padding-left:0}
+  .p2-tbl .p2-tr-on td:first-child{padding-left:var(--space-2)}
+  .p2-tbl .p2-tr-on td{background:transparent}
+  .p2-tbl .p2-tr-on{box-shadow:inset 3px 0 0 var(--accent);padding-left:var(--space-2)}
+  .p2-tbl .p2-tr-on td:first-child{box-shadow:none;padding-left:0}
+  .p2-tr-same td:nth-child(2){display:none}
+  .p2-tr-h,.p2-tr-h th{display:block}
+  .p2-tr-h th{padding:var(--space-3) 0 var(--space-1)}
+  .p2-df li{grid-template-columns:26px 16px minmax(0,1fr);padding-right:var(--space-2)}
+  .p2-df .p2-n{padding-right:var(--space-1)}
+}

@@ -13,6 +13,7 @@ import stat
 import sys
 import tempfile
 import threading
+import time
 import unittest
 from unittest import mock
 
@@ -584,6 +585,17 @@ class SaveTests(Base):
             self.store.seam = None
         self.assertEqual(before, fd_count())
 
+    def test_a_missing_config_folder_is_its_own_error_and_creates_nothing(self):
+        target = self.target("project")
+        gone = os.path.join(self.root, "gone")
+        store = es.Store(gone)
+        with self.assertRaises(es.ConfigDirMissing) as ctx:
+            store.save(target, effort_plan("high"))
+        self.assertEqual(gone, ctx.exception.path)
+        self.assertIsInstance(ctx.exception, es.WriteFailed)
+        self.assertFalse(os.path.exists(gone))
+        self.assertEqual(SETTINGS, read(self.project_file))
+
     def test_concurrent_saves_run_one_after_another(self):
         target = self.target("project")
         errors = []
@@ -820,11 +832,19 @@ class HostileTests(Base):
             write(ledger, junk)
             self.assertEqual([], self.store.rows(target), junk)
             before = read(self.project_file)
-            with self.assertRaises(es.WriteFailed):
+            self.assertTrue(self.store.ledger_damaged(target), junk)
+            with self.assertRaises(es.LedgerDamaged) as caught:
                 self.store.save(target, effort_plan("low"))
+            self.assertEqual(ledger, caught.exception.path)
             self.assertEqual(before, read(self.project_file))
             self.assertEqual(junk, read(ledger))
         self.assertEqual(1, len(self.baks(target)))
+
+    def test_a_sound_or_absent_ledger_is_not_damaged(self):
+        target = self.target("project")
+        self.assertFalse(self.store.ledger_damaged(target))
+        self.store.save(target, effort_plan("high"))
+        self.assertFalse(self.store.ledger_damaged(target))
 
     def test_bad_backup_names_in_the_ledger_are_treated_as_absent(self):
         target = self.target("project")
@@ -857,15 +877,17 @@ class CrashTests(Base):
 
     def test_crash_after_the_backup_leaves_an_orphan_the_next_save_removes(self):
         target = self.target("project")
+        first = self.store.save(target, effort_plan("first"))
+        first_raw = read(self.project_file)
         self.crash_then_restart("after_backup", target)
-        self.assertEqual(SETTINGS, read(self.project_file))
-        orphan = self.baks(target)
+        self.assertEqual(first_raw, read(self.project_file))
+        orphan = [name for name in self.baks(target) if name != first["backup"]]
         self.assertEqual(1, len(orphan))
-        self.assertEqual([], self.store.rows(target))
+        self.assertEqual([first], self.store.rows(target))
         row = self.store.save(target, effort_plan("low2"))
-        self.assertEqual([row["backup"]], self.baks(target))
+        self.assertEqual(sorted([first["backup"], row["backup"]]), self.baks(target))
         self.assertNotIn(orphan[0], self.baks(target))
-        self.assertEqual([row], self.store.rows(target))
+        self.assertEqual([first, row], self.store.rows(target))
 
     def test_a_crash_with_a_never_applied_row_is_not_the_newest_row(self):
         for seam_name in ("after_ledger", "after_temp", "before_rename"):
@@ -1232,6 +1254,23 @@ class RetentionTests(Base):
         self.assertNotIn(orphan, self.baks(target))
         self.assertEqual(2, len(self.baks(target)))
         self.assertTrue(row["backup"].startswith("000043-"))
+
+    def test_backups_from_before_a_moved_ledger_stay_through_every_save(self):
+        target = self.target("project")
+        folder = self.store_dir(target)
+        for n in range(5):
+            self.store.save(target, effort_plan("v%d" % n))
+        old = self.baks(target)
+        self.assertEqual(5, len(old))
+        for name in old:
+            hour_ago = time.time() - 3600
+            os.utime(os.path.join(folder, name), (hour_ago, hour_ago))
+        os.rename(os.path.join(folder, "ledger.json"), os.path.join(folder, "ledger.json.aside"))
+        for n in range(3):
+            self.store.save(target, effort_plan("w%d" % n))
+            self.assertEqual(old, [name for name in self.baks(target) if name in old])
+        self.assertEqual(8, len(self.baks(target)))
+        self.assertEqual(3, len(self.store.rows(target)))
 
     def test_a_prune_failure_never_fails_the_save(self):
         target = self.target("project")

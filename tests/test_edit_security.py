@@ -87,6 +87,30 @@ def _flags_read_only(node, consts, seen=()):
     return False
 
 
+def _is_getattr(call):
+    return (isinstance(call, ast.Call) and isinstance(call.func, ast.Name) and call.func.id == "getattr"
+            and len(call.args) >= 2)
+
+
+def _bound_to(node, modules, names):
+    """What an expression names in a watched module, for the scan to follow.
+
+    Returns (module, None) for a watched module, (module, attr) for one of its functions, or None. The forms are
+    the module name, "os.replace", an alias already followed, and getattr(os, "replace") with a constant name.
+    """
+    if isinstance(node, ast.Name):
+        if node.id in modules and modules[node.id] != "pathlib":
+            return (modules[node.id], None)
+        return names.get(node.id)
+    if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name) and node.value.id in modules:
+        return (modules[node.value.id], node.attr)
+    if _is_getattr(node) and isinstance(node.args[0], ast.Name) and node.args[0].id in modules:
+        name = node.args[1]
+        if isinstance(name, ast.Constant) and isinstance(name.value, str):
+            return (modules[node.args[0].id], name.value)
+    return None
+
+
 def scan_source(source, name):
     """Return the Findings for every call in source that can write, create, move, delete or change a file.
 
@@ -109,6 +133,24 @@ def scan_source(source, name):
         elif isinstance(node, ast.ImportFrom) and node.module in WATCHED_MODULES:
             for alias in node.names:
                 names[alias.asname or alias.name] = (node.module, alias.name)
+    # A name bound to a watched module, or to one of its functions, is followed too: "o = os", "f = os.replace",
+    # "f = getattr(os, 'replace')" and "g = f". The pass repeats until nothing new is bound.
+    assigns = [n for n in ast.walk(tree) if isinstance(n, ast.Assign) and len(n.targets) == 1
+               and isinstance(n.targets[0], ast.Name)]
+    grew = True
+    while grew:
+        grew = False
+        for node in assigns:
+            target, value = node.targets[0].id, node.value
+            bound = _bound_to(value, modules, names)
+            if bound is None:
+                continue
+            if bound[1] is None and target not in modules:
+                modules[target] = bound[0]
+                grew = True
+            elif bound[1] is not None and names.get(target) != bound:
+                names[target] = bound
+                grew = True
     found = []
 
     def add(call, kind, detail=""):
@@ -120,7 +162,14 @@ def scan_source(source, name):
             continue
         func = call.func
         module = attr = None
-        if isinstance(func, ast.Name):
+        if _is_getattr(call) and isinstance(call.args[0], ast.Name) and call.args[0].id in modules:
+            # getattr(os, name) with a name the scan can't read could be any function of the module.
+            if _bound_to(call, modules, names) is None:
+                add(call, "getattr", modules[call.args[0].id] + "." + "?")
+            continue
+        if isinstance(func, ast.Call) and _bound_to(func, modules, names) is not None:
+            module, attr = _bound_to(func, modules, names)  # getattr(os, "replace")(a, b)
+        elif isinstance(func, ast.Name):
             if func.id in names:
                 module, attr = names[func.id]
             elif func.id == "open":
@@ -207,6 +256,19 @@ POSITIVE_SAMPLES = {
     "tempfile mkstemp": "import tempfile\ntempfile.mkstemp()",
     "tempfile mkdtemp": "import tempfile\ntempfile.mkdtemp()",
     "tempfile TemporaryDirectory": "import tempfile\ntempfile.TemporaryDirectory()",
+    "alias of os.replace": "import os\nf = os.replace\nf('a', 'b')",
+    "alias of an alias": "import os\nf = os.replace\ng = f\ng('a', 'b')",
+    "alias of a module": "import os\no = os\no.unlink('f')",
+    "alias of from os import": "from os import replace\nf = replace\nf('a', 'b')",
+    "alias of shutil.rmtree": "import shutil\nf = shutil.rmtree\nf('x')",
+    "alias of os.open with write flags": "import os\nf = os.open\nf('f', os.O_WRONLY)",
+    "getattr called at once": "import os\ngetattr(os, 'replace')('a', 'b')",
+    "getattr bound to a name": "import os\nf = getattr(os, 'unlink')\nf('a')",
+    "getattr bound to a name, with a default": "import os\nf = getattr(os, 'unlink', None)\nf('a')",
+    "getattr os.open with write flags": "import os\nf = getattr(os, 'open')\nf('f', os.O_WRONLY)",
+    "getattr with a name the scan can't read": "import os\ngetattr(os, name)('a')",
+    "getattr with a name held in a variable": "import os\nf = getattr(os, name)\nf('a')",
+    "getattr on an aliased module": "import os as o\ngetattr(o, 'remove')('a')",
 }
 for _name in ("rename", "renames", "replace", "unlink", "remove", "mkdir", "makedirs", "rmdir", "removedirs",
               "link", "symlink", "truncate", "ftruncate", "write", "chmod", "fchmod", "utime", "mkfifo"):
@@ -229,6 +291,9 @@ NEGATIVE_SAMPLES = {
     "pathlib reads": "p.read_text()\np.read_bytes()\np.exists()\np.open('rb')\np.open()",
     "a reference that is not a call": "import os\nneeds = (os.open, os.rename, os.unlink)",
     "json.dump": "import json\njson.dumps({})",
+    "an alias of a read": "import os\nf = os.stat\nf('x')\ng = getattr(os, 'listdir')\ng('.')",
+    "an alias of a module used to read": "import os\no = os\no.listdir('.')\no.path.join('a', 'b')",
+    "getattr on something else": "getattr(obj, name)('a')\ngetattr(obj, 'replace')('a', 'b')",
 }
 
 
@@ -258,6 +323,12 @@ class ScannerWorks(unittest.TestCase):
         found = scan_source("import os\n\nx = 1\nos.replace('a', 'b')\nopen('f', 'w')\n", "sample.py")
         self.assertEqual([(f.line, f.call, f.detail, f.first) for f in found],
                          [(4, "os.replace", "", "'a'"), (5, "open", "'w'", "'f'")])
+
+    def test_a_followed_alias_is_reported_at_its_call(self):
+        found = scan_source("import os\nf = os.replace\n\nf('a', 'b')\ngetattr(os, 'rename')('c', 'd')\n"
+                            "getattr(os, name)('e')\n", "sample.py")
+        self.assertEqual([(f.line, f.call) for f in found],
+                         [(4, "os.replace"), (5, "os.rename"), (6, "getattr")])
 
     def test_reads_are_not_findings(self):
         for label, source in sorted(NEGATIVE_SAMPLES.items()):

@@ -1264,15 +1264,57 @@ class StoreFailures(Base):
         self.assertEqual((status, body), (500, {"error": "write_failed", "file_unchanged": True}))
         self.assertEqual(self.world.read("project"), self.original)
 
-    def test_a_damaged_ledger_answers_write_failed(self):
+    def test_a_missing_config_folder_has_its_own_answer_on_save(self):
         self.world.edit(self.target, "medium")
+        before = self.world.read("project")
+        status, pv = self.world.preview(self.target, "high")
+        gone = os.path.join(self.world.cfg, "gone")
+        self.world.store.config_dir = gone
+        status, body = self.world.save(pv, self.target, "high")
+        self.assertEqual((status, body["error"], body["file_unchanged"]), (500, "config_dir_missing", True))
+        self.assertEqual(body["config_dir_display"], "config/gone")
+        self.assertEqual(self.world.read("project"), before)
+        self.assertFalse(os.path.exists(gone))
+
+    def damage_ledger(self):
+        saved = self.world.edit(self.target, "medium")
         ledger = [os.path.join(d, f) for d, _x, files in os.walk(self.world.cfg) for f in files
                   if f == "ledger.json"][0]
         with open(ledger, "w") as fh:
             fh.write("{not json")
+        return saved, ledger
+
+    def test_a_damaged_ledger_has_its_own_answer_on_save(self):
+        _saved, ledger = self.damage_ledger()
+        before = self.world.read("project")
         status, pv = self.world.preview(self.target, "high")
         status, body = self.world.save(pv, self.target, "high")
-        self.assertEqual((status, body), (500, {"error": "write_failed", "file_unchanged": True}))
+        self.assertEqual(status, 500)
+        self.assertEqual(body["error"], "ledger_damaged")
+        self.assertIs(body["file_unchanged"], True)
+        self.assertTrue(body["ledger_display"].endswith("ledger.json"))
+        self.assertEqual(self.world.read("project"), before)
+        with open(ledger) as fh:
+            self.assertEqual(fh.read(), "{not json")
+
+    def test_a_damaged_ledger_has_its_own_answer_on_undo(self):
+        saved, _ledger = self.damage_ledger()
+        before = self.world.read("project")
+        status, body = self.world.undo(saved["edit"]["id"])
+        self.assertEqual(status, 500)
+        self.assertEqual(body["error"], "ledger_damaged")
+        self.assertEqual(self.world.read("project"), before)
+
+    def test_history_names_a_damaged_ledger_and_shows_no_rows(self):
+        self.damage_ledger()
+        history = self.world.history()
+        self.assertEqual(history["rows"], [])
+        self.assertEqual([item["layer"] for item in history["damaged_ledgers"]], ["project"])
+        self.assertTrue(history["damaged_ledgers"][0]["ledger_display"].endswith("ledger.json"))
+
+    def test_history_lists_no_damaged_ledger_when_all_are_sound(self):
+        self.world.edit(self.target, "medium")
+        self.assertEqual(self.world.history()["damaged_ledgers"], [])
 
     def test_a_file_that_moved_before_the_rename_is_stale_with_a_fresh_preview(self):
         moved = dumps({"effortLevel": "low", "added": True}).encode()
@@ -1329,6 +1371,8 @@ class StoreFailures(Base):
             (edit_store.Refused("symlink"), 422, {"error": "symlink"}),
             (edit_store.Refused("too_large"), 422, {"error": "too_large"}),
             (edit_store.WriteFailed("x"), 500, {"error": "write_failed", "file_unchanged": True}),
+            (edit_store.ConfigDirMissing(None), 500, {"error": "config_dir_missing", "file_unchanged": True,
+                                                      "config_dir_display": None}),
             (edit_store.ChangedSinceSave(None), 409, {"error": "changed_since_save", "backup_display": None}),
             (edit_store.BackupDamaged(None), 409, {"error": "backup_damaged", "backup_display": None}),
             (edit_store.NotUndoable("not_newest"), 409, {"error": "not_undoable", "reason": "not_newest"}),
@@ -1466,7 +1510,7 @@ class History(Base):
             target = target_of(world.targets(), layer, ends)["target"]
             ids[step] = world.edit(target, value)["edit"]["id"]
         rows = world.history()
-        self.assertEqual(set(rows), {"enabled", "project", "rows"})
+        self.assertEqual(set(rows), {"enabled", "project", "rows", "damaged_ledgers"})
         self.assertEqual((rows["enabled"], rows["project"]), (True, world.key))
         self.assertEqual([r["id"] for r in rows["rows"]], [ids[3], ids[2], ids[1], ids[0]])
         self.assertEqual([r["layer"] for r in rows["rows"]], ["user", "project", "local", "user"])
@@ -1556,7 +1600,7 @@ class History(Base):
         self.assertEqual(api_edit.history(world.ctx, {"project": ["a", "b"]}), (400, {"error": "bad_request"}))
         self.assertEqual(api_edit.history(world.ctx, {"project": ["all"]}), (400, {"error": "bad_request"}))
         self.assertEqual(api_edit.history(world.ctx, {"project": ["nope"]}), (404, {"error": "unknown_project"}))
-        self.assertEqual(api_edit.history(world.ctx, {}), (200, {"enabled": True, "project": world.key, "rows": []}))
+        self.assertEqual(api_edit.history(world.ctx, {}), (200, {"enabled": True, "project": world.key, "rows": [], "damaged_ledgers": []}))
 
 
 # --------------------------------------------------------------------------
