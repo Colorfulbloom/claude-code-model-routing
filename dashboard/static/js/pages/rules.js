@@ -5,9 +5,9 @@
 // its slots in braces ({file}, {model}), and reasonText words them. Every value comes from the server as data,
 // so it goes in as text through h.js and renderText, never as markup.
 //
-// The search and the filter live in this module, so they survive a draw again. render() runs on every hash
-// change, so a section that already shows the same payload object is left as it is, and a keystroke or a
-// filter change rebuilds only the list and the count line.
+// The search and the filter live in this module, so they survive a draw again. render() runs when the Rules
+// route is shown and when its payload arrives, so a section that already shows the same payload object is
+// left as it is, and a keystroke or a filter change rebuilds only the list and the count line.
 
 import { h, clear } from "../h.js";
 import { t, renderText } from "../format.js";

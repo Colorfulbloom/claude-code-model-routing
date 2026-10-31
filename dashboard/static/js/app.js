@@ -2,6 +2,9 @@
 // /api/files in parallel. Each page renders again when its own data arrives, and a route the server
 // does not answer yet leaves that page's stub showing.
 //
+// Only the visible section is drawn, the one sectionFor names. A payload that lands for a hidden page waits,
+// and moving to that page draws it for the current project and range.
+//
 // Switching range fetches nothing. Switching project fetches that project's payloads once and keeps
 // them in memory. A network error or a 5xx is not kept: /api/projects, the project payloads, rules and files are
 // asked for again on the next route change or project change, and never on a range change. A 4xx stays,
@@ -113,10 +116,13 @@ function focusedRangeSection() {
   return null;
 }
 
+// Draws the pages in names that are on screen. The others wait until a route change shows them.
 function renderPages(names) {
+  const visible = sectionFor(state.route, state.project);
   const keep = focusedRangeSection();
   const ctx = context();
   for (const name of names) {
+    if (name !== visible) continue;
     try {
       MODULES[name].render(sections[name], ctx);
     } catch (err) {
@@ -247,7 +253,7 @@ function handle(route, force) {
       loadShared();
     }
   }
-  renderPages(PAGES);
+  renderPages([sectionFor(parsed, state.project)]);
   if (started && !force && previous !== parsed.name) window.scrollTo(0, 0);
 }
 

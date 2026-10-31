@@ -42,7 +42,7 @@ UTC = datetime.timezone.utc
 NAMES = ["Tidewater reporting", "Driftwood", "Harbor Light", "Saltmarsh", "Lantern"]
 TIDEWATER = "Tidewater reporting"
 RANGES = {"today", "7d", "30d"}
-PAYLOAD_KEYS = {"project", "generated_at", "no_usage", "views", "model_names", "prices"}
+PAYLOAD_KEYS = {"project", "generated_at", "no_usage", "unreadable", "views", "model_names", "prices"}
 TOTALS = ("input", "output", "cache_read", "cache_write_5m", "cache_write_1h", "thinking",
           "requests", "runs", "sessions", "unpriced_requests")
 WAIT = 30
@@ -748,6 +748,88 @@ class InProcess(unittest.TestCase):
         self.assertTrue(rows)
         for agent in rows:
             self.assertTrue(agent["pin"] is None or agent["pin"]["state"] is None, agent["route_key"])
+
+    # unreadable
+
+    def folder_of(self, name):
+        """The transcript folder name of a demo project: the set keeps them under its own config."""
+        return transcripts.sanitize(os.path.join(self.out, "projects", name))
+
+    def shown(self, ctx, *parts):
+        return resolve.display_path(os.path.join(ctx.config_dir, "projects", *parts), home=ctx.home, root=ctx.root)
+
+    def failing_listing(self, bad):
+        real = transcripts._listdir_checked
+        return mock.patch.object(transcripts, "_listdir_checked", lambda path: None if path in bad else real(path))
+
+    def test_a_project_folder_that_cannot_be_listed_is_named_not_empty(self):
+        ctx = make_ctx(self.out)
+        folder = self.folder_of("tidewater-reporting")
+        with self.failing_listing({os.path.join(ctx.config_dir, "projects", folder)}):
+            _s, payload = call(ctx, api_usage.usage, project=self.keys[TIDEWATER])
+        self.assertEqual(payload["unreadable"], self.shown(ctx, folder))
+        self.assertTrue(payload["unreadable"].endswith(folder))
+        self.assertIs(payload["no_usage"], True)
+
+    def test_a_project_whose_files_all_fail_to_open_is_named(self):
+        ctx = make_ctx(self.out)
+        folder = self.folder_of("tidewater-reporting")
+        inside = os.path.join(ctx.config_dir, "projects", folder) + os.sep
+        real = transcripts.Reader._parse
+        patch = mock.patch.object(
+            transcripts.Reader, "_parse",
+            staticmethod(lambda item, *rest: None if item.path.startswith(inside) else real(item, *rest)))
+        with patch:
+            _s, payload = call(ctx, api_usage.usage, project=self.keys[TIDEWATER])
+            _s, other = call(ctx, api_usage.usage, project=self.keys["Driftwood"])
+        self.assertEqual(payload["unreadable"], self.shown(ctx, folder))
+        self.assertIs(payload["no_usage"], True)
+        self.assertIsNone(other["unreadable"], "a project that opened its files is not named")
+
+    def test_one_file_that_fails_among_others_does_not_name_the_folder(self):
+        ctx = make_ctx(self.out)
+        folder = self.folder_of("tidewater-reporting")
+        first = sorted(p for p in jsonl_files(os.path.join(ctx.config_dir, "projects", folder))
+                       if os.sep + "subagents" + os.sep not in p)[0]
+        real = transcripts.Reader._parse
+        patch = mock.patch.object(
+            transcripts.Reader, "_parse",
+            staticmethod(lambda item, *rest: None if item.path == first else real(item, *rest)))
+        with patch:
+            _s, payload = call(ctx, api_usage.usage, project=self.keys[TIDEWATER])
+        self.assertIsNone(payload["unreadable"])
+        self.assertIs(payload["no_usage"], False)
+
+    def test_a_top_folder_that_cannot_be_listed_is_named_on_every_scope(self):
+        ctx = make_ctx(self.out)
+        top = os.path.join(ctx.config_dir, "projects")
+        with self.failing_listing({top}):
+            for scope in (self.keys[TIDEWATER], "all"):
+                _s, payload = call(ctx, api_usage.usage, project=scope)
+                self.assertEqual(payload["unreadable"], self.shown(ctx), scope)
+        self.assertEqual(self.shown(ctx), resolve.display_path(top, home=ctx.home, root=ctx.root))
+
+    def test_all_projects_does_not_name_one_failed_project_folder(self):
+        ctx = make_ctx(self.out)
+        folder = self.folder_of("tidewater-reporting")
+        with self.failing_listing({os.path.join(ctx.config_dir, "projects", folder)}):
+            _s, payload = call(ctx, api_usage.usage, project="all")
+        self.assertIsNone(payload["unreadable"])
+        self.assertIs(payload["no_usage"], False)
+
+    def test_a_project_with_no_transcript_folder_is_not_unreadable(self):
+        ctx = make_ctx(self.out)
+        _s, payload = call(ctx, api_usage.usage, project=self.keys["Saltmarsh"])
+        self.assertIs(payload["no_usage"], True)
+        self.assertIsNone(payload["unreadable"])
+
+    def test_a_kept_answer_is_rebuilt_when_the_failure_changes(self):
+        ctx = make_ctx(self.out)
+        folder = self.folder_of("tidewater-reporting")
+        key = self.keys[TIDEWATER]
+        self.assertIsNone(call(ctx, api_usage.usage, project=key)[1]["unreadable"])
+        with self.failing_listing({os.path.join(ctx.config_dir, "projects", folder)}):
+            self.assertEqual(call(ctx, api_usage.usage, project=key)[1]["unreadable"], self.shown(ctx, folder))
 
     def test_a_list_edit_rebuilds(self):
         copy = copy_set(self.root, self.out, "rebuild-list")

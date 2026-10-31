@@ -25,8 +25,12 @@ Record = collections.namedtuple(
 # signature is a hash over the files a read used (path, size, mtime and meta file
 # identity, or the path alone for a file skipped as old). It changes when any of
 # them does, so a caller can tell a read that found nothing new.
+# unreadable is the set of project folder names the read could not use: a folder
+# it could not list, or one whose files all failed to open. top_unreadable is True
+# when the projects folder itself could not be listed.
 ReadResult = collections.namedtuple(
-    "ReadResult", "records notes oldest_seen oldest_by_folder signature", defaults=(None,))
+    "ReadResult", "records notes oldest_seen oldest_by_folder signature unreadable top_unreadable",
+    defaults=(None, frozenset(), False))
 
 # One entry per file. offset is the end of the last complete line that was parsed.
 _Entry = collections.namedtuple(
@@ -91,6 +95,19 @@ def folder_matches(project_path, folder, first_cwd=None):
     if first_cwd is None or first_cwd != real:
         return False
     return folder.startswith(full[:_MAX_UNITS] + "-")
+
+
+def unreadable_folder(project_path, folders):
+    """The folder in folders that project_path names, or None.
+
+    A folder that failed has no rows, so there is no first cwd to confirm a path
+    over 200 units. Such a path matches on the 200-unit prefix and the dash.
+    """
+    full = _dashed(os.path.realpath(project_path))
+    for folder in sorted(folders):
+        if folder == full or (len(full) > _MAX_UNITS and folder.startswith(full[:_MAX_UNITS] + "-")):
+            return folder
+    return None
 
 
 def project_folders(projects, records):
@@ -198,6 +215,15 @@ def _listdir(path):
         return []
 
 
+def _listdir_checked(path):
+    """The entries of path, or None when it cannot be listed."""
+    try:
+        with os.scandir(path) as it:
+            return list(it)
+    except OSError:
+        return None
+
+
 def _is_dir(entry):
     return entry.is_dir(follow_symlinks=False)
 
@@ -294,7 +320,7 @@ class Reader:
         if now.tzinfo is None:
             now = now.replace(tzinfo=_UTC)
         cutoff = (now - datetime.timedelta(days=self.horizon_days)).timestamp()
-        found, ignored = self._scan(os.path.join(self.config_dir, "projects"))
+        found, ignored, unlisted, top_unreadable = self._scan(os.path.join(self.config_dir, "projects"))
         self.files_found = len(found)
 
         notes = {
@@ -308,11 +334,13 @@ class Reader:
         seen = set()
         oldest_skipped = None
         skipped_by_folder = {}
+        opened, failed = set(), set()
         signature = []
         for item in sorted(found, key=lambda f: f.path):
             if item.st.st_mtime < cutoff:
                 signature.append((item.path,))
                 notes["skipped_old_files"] += 1
+                opened.add(item.folder)
                 if oldest_skipped is None or item.st.st_mtime < oldest_skipped:
                     oldest_skipped = item.st.st_mtime
                 low = skipped_by_folder.get(item.folder)
@@ -321,7 +349,9 @@ class Reader:
                 continue
             entry = self._load(item)
             if entry is None:
+                failed.add(item.folder)
                 continue
+            opened.add(item.folder)
             seen.add(item.path)
             signature.append((item.path, entry.size, entry.mtime_ns, entry.meta_sig))
             records.extend(entry.records)
@@ -347,22 +377,33 @@ class Reader:
             low = by_folder.get(folder)
             if low is None or skipped_dt < low:
                 by_folder[folder] = skipped_dt
-        return ReadResult(records, notes, oldest, by_folder, hash(tuple(signature)))
+        # A folder is unreadable when its listing failed, or when it had files and none of them opened.
+        unreadable = frozenset(unlisted | (failed - opened))
+        return ReadResult(records, notes, oldest, by_folder, hash(tuple(signature)), unreadable, top_unreadable)
 
     def _scan(self, root):
-        """Transcript files under root plus a count of everything else.
+        """Transcript files under root, a count of everything else, the project
+        folders that could not be listed, and whether root itself could not.
 
         Symlinks are never followed. A directory that is not part of the layout
         counts once and is not walked.
         """
         files = []
         ignored = 0
-        for top in _listdir(root):
+        unlisted = set()
+        tops = _listdir_checked(root)
+        if tops is None:
+            return files, ignored, unlisted, True
+        for top in tops:
             if top.is_symlink() or not _is_dir(top):
                 ignored += 1
                 continue
             folder = top.name
-            for entry in _listdir(top.path):
+            inside = _listdir_checked(top.path)
+            if inside is None:
+                unlisted.add(folder)
+                continue
+            for entry in inside:
                 name = entry.name
                 if entry.is_symlink():
                     ignored += 1
@@ -381,7 +422,7 @@ class Reader:
                     ignored += self._scan_session(files, entry, folder)
                 else:
                     ignored += 1
-        return files, ignored
+        return files, ignored, unlisted, False
 
     def _scan_session(self, files, session_dir, folder):
         ignored = 0

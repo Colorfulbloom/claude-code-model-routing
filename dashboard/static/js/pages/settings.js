@@ -225,6 +225,6 @@ function takeReturnFocus(root) {
 export function render(root, ctx) {
   clear(root);
   renderSettingsBody(root, ctx);
-  // Every page draws on every route change, so only the Settings route takes the record.
+  // The Settings section also draws when a payload lands, so only the Settings route takes the record.
   if (ctx.route.name === "settings" && pendingReturn) takeReturnFocus(root);
 }

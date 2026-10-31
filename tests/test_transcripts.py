@@ -477,6 +477,87 @@ class ScanTests(TmpCase):
         self.assertEqual({one}, set(reader._cache))
 
 
+class UnreadableTests(TmpCase):
+    def failing_listing(self, bad):
+        real = transcripts._listdir_checked
+        return mock.patch.object(transcripts, "_listdir_checked", lambda path: None if path in bad else real(path))
+
+    def test_a_folder_that_cannot_be_listed_is_unreadable_and_the_others_still_read(self):
+        cfg = self.config()
+        write_lines(self.main_path(cfg), [row_line("m1", "r1", "2026-11-02T10:00:00.000Z")])
+        write_lines(self.main_path(cfg, S2, "-work-other"), [row_line("m2", "r2", "2026-11-02T10:00:01.000Z", sid=S2)])
+        with self.failing_listing({os.path.join(cfg, "projects", "-work-other")}):
+            result = transcripts.Reader(cfg).read(NOW)
+        self.assertEqual(frozenset({"-work-other"}), result.unreadable)
+        self.assertIs(False, result.top_unreadable)
+        self.assertEqual(["m1"], [r.message_id for r in result.records])
+
+    def test_a_top_folder_that_cannot_be_listed_is_flagged(self):
+        cfg = self.config()
+        write_lines(self.main_path(cfg), [row_line("m1", "r1", "2026-11-02T10:00:00.000Z")])
+        with self.failing_listing({os.path.join(cfg, "projects")}):
+            result = transcripts.Reader(cfg).read(NOW)
+        self.assertIs(True, result.top_unreadable)
+        self.assertEqual([], result.records)
+
+    def test_a_folder_whose_files_all_fail_to_open_is_unreadable(self):
+        cfg = self.config()
+        write_lines(self.main_path(cfg), [row_line("m1", "r1", "2026-11-02T10:00:00.000Z")])
+        write_lines(self.main_path(cfg, S2), [row_line("m2", "r2", "2026-11-02T10:00:01.000Z", sid=S2)])
+        write_lines(self.main_path(cfg, S1, "-work-ok"), [row_line("m3", "r3", "2026-11-02T10:00:02.000Z")])
+        real = open
+
+        def fake(file, mode="r", *args, **kwargs):
+            if os.fspath(file).startswith(os.path.join(cfg, "projects", FOLDER) + os.sep):
+                raise PermissionError(13, "denied")
+            return real(file, mode, *args, **kwargs)
+
+        with mock.patch("builtins.open", fake):
+            result = transcripts.Reader(cfg).read(NOW)
+        self.assertEqual(frozenset({FOLDER}), result.unreadable)
+        self.assertEqual(["m3"], [r.message_id for r in result.records])
+
+    def test_a_folder_with_one_good_file_is_not_unreadable(self):
+        cfg = self.config()
+        bad = self.main_path(cfg, S2)
+        write_lines(self.main_path(cfg), [row_line("m1", "r1", "2026-11-02T10:00:00.000Z")])
+        write_lines(bad, [row_line("m2", "r2", "2026-11-02T10:00:01.000Z", sid=S2)])
+        real = open
+
+        def fake(file, mode="r", *args, **kwargs):
+            if os.fspath(file) == bad:
+                raise PermissionError(13, "denied")
+            return real(file, mode, *args, **kwargs)
+
+        with mock.patch("builtins.open", fake):
+            result = transcripts.Reader(cfg).read(NOW)
+        self.assertEqual(frozenset(), result.unreadable)
+        self.assertEqual(["m1"], [r.message_id for r in result.records])
+
+    def test_a_folder_with_no_files_and_a_missing_projects_folder_stay_readable(self):
+        cfg = self.config()
+        os.makedirs(os.path.join(cfg, "projects", "-empty"))
+        result = transcripts.Reader(cfg).read(NOW)
+        self.assertEqual(frozenset(), result.unreadable)
+        self.assertIs(False, result.top_unreadable)
+
+    def test_a_folder_of_old_files_is_not_unreadable(self):
+        cfg = self.config()
+        path = self.main_path(cfg)
+        write_lines(path, [row_line("m1", "r1", "2026-01-02T10:00:00.000Z")])
+        age(path, 200)
+        result = transcripts.Reader(cfg).read(NOW)
+        self.assertEqual(frozenset(), result.unreadable)
+
+    def test_unreadable_folder_matches_a_short_path_exactly_and_a_long_one_by_prefix(self):
+        self.assertEqual("-work-demo-app", transcripts.unreadable_folder("/work/demo/app", {"-work-demo-app", "-x"}))
+        self.assertIsNone(transcripts.unreadable_folder("/work/demo/app", {"-work-demo-app-2"}))
+        long_path = "/" + "a" * 250
+        full = transcripts.sanitize(long_path)
+        self.assertEqual(full + "-hash", transcripts.unreadable_folder(long_path, {"-b", full + "-hash"}))
+        self.assertIsNone(transcripts.unreadable_folder(long_path, {full}))
+
+
 class CacheTests(TmpCase):
     def setUp(self):
         self.cfg = self.config()

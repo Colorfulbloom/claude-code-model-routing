@@ -202,8 +202,31 @@ def _entries(ctx, listing, project):
     return resolve.resolve(inputs, ctx.rules, ctx.agent_fields)
 
 
+def _unreadable(ctx, result, project):
+    """The display path of what the reader could not use for this scope, or None.
+
+    The projects folder when it could not be listed, for every scope. Else, for a
+    listed project, its own transcript folder when it could not be listed or all
+    its files failed to open. All projects shows what it could read, so one failed
+    folder does not show there.
+    """
+    top = os.path.join(ctx.config_dir, "projects")
+    if result.top_unreadable:
+        return resolve.display_path(top, home=ctx.home, root=ctx.root)
+    if project is not None and project.path:
+        folder = transcripts.unreadable_folder(project.path, result.unreadable)
+        if folder is not None:
+            return resolve.display_path(os.path.join(top, folder), home=ctx.home, root=ctx.root)
+    return None
+
+
 def usage(ctx, query):
-    """Return (200, {"project", "generated_at", "no_usage", "views", "model_names", "prices"}).
+    """Return (200, {"project", "generated_at", "no_usage", "unreadable", "views", "model_names", "prices"}).
+
+    unreadable is None, or the display path of the folder the reader could not
+    use (see _unreadable). The page then says it can't read the transcripts
+    there, not that no usage ran. no_usage keeps its meaning, so it is still
+    true for a project whose folder failed.
 
     model_names maps every catalog model id to its display name (the id itself
     when the catalog has no name), so the page can name a model that a view
@@ -238,6 +261,8 @@ def usage(ctx, query):
         shown = [{"key": r["key"], "name": r["name"], "folder": folders[r["key"]]} for r in rows]
         fingerprint = (
             result.signature,
+            result.unreadable,
+            result.top_unreadable,
             tuple((r["key"], r["name"], r["folder"]) for r in shown),
             hashlib.sha256(json.dumps(entries, sort_keys=True).encode("utf-8")).hexdigest(),
             now.date().isoformat(),
@@ -260,6 +285,7 @@ def usage(ctx, query):
             "project": scope,
             "generated_at": now.isoformat(),
             "no_usage": no_usage,
+            "unreadable": _unreadable(ctx, result, project),
             "views": views,
             "model_names": {m["id"]: m.get("display_name") or m["id"] for m in catalog},
             "prices": {"verified_on": cache.prices.get("verified_on"),

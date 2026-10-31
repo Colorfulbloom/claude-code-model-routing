@@ -96,15 +96,16 @@ function missingUsageNote(ctx) {
     h("p", { class: "nt-t" }, renderText(t("es_missing_usage_t", missingSlots(ctx)))));
 }
 
-function transcriptsState(ctx) {
-  return emptyState(t("s_transcripts_h"), t("s_transcripts_t", { path: ctx.transcriptsDir }));
+// path is the folder the dashboard could not read: the transcripts folder, or one project's folder.
+function transcriptsState(ctx, path = ctx.transcriptsDir) {
+  return emptyState(t("s_transcripts_h"), t("s_transcripts_t", { path }));
 }
 
 // Draws the usage page body, or the state that stands in for it. The first match wins, in this order:
 //   1. a listed project whose folder is missing: the Folder not found state, and nothing else. The one
 //      exception is a project whose payload answered with a view and some usage, on a transcripts folder
 //      the dashboard can read. That draws a note above the body and goes on with the steps below.
-//   2. a transcripts folder the dashboard cannot read
+//   2. a transcripts folder the dashboard cannot read, or a payload that names an unreadable folder
 //   3. the payload has not arrived: one waiting line
 //   4. the payload failed or has no view for this range: the transcripts state (nothing until the folder is known)
 //   5. the project has no usage at all
@@ -127,6 +128,10 @@ export function fillUsage(root, ctx, draw, opts = {}) {
   }
   if (unreadable) {
     root.appendChild(transcriptsState(ctx));
+    return;
+  }
+  if (payload && typeof payload.unreadable === "string" && payload.unreadable) {
+    root.appendChild(transcriptsState(ctx, payload.unreadable));
     return;
   }
   if (!res) {
