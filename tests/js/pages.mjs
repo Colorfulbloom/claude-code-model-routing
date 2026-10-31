@@ -137,6 +137,15 @@ test("overview 30 days: four tiles in order, each with a delta and its lines", a
   assert.match(flat(byClass(tiles[2], "delta")[0]), /points vs previous 30 days$/, "the hit rate moves in points");
 });
 
+test("overview: the Needs attention card shows the first three rows and a link to the page", async () => {
+  const app = await boot({ hash: "#/overview" });
+  const page = app.section("overview");
+  await until(() => page.find((n) => hasClass(n, "at-plain")).length === 1, "the Needs attention card");
+  const card = cardOf(page, "Needs attention");
+  assert.deepEqual(texts(card, "at-n"), ["Main session, Cache lifetime", "Main session, Effort", "builder, Effort"]);
+  assert.equal(texts(card, "at-more")[0], "See all 13");
+});
+
 test("overview 30 days: cost legend in cost order with its shares, then the agents, effort and footer", async () => {
   const app = await boot({ hash: "#/overview" });
   const page = app.section("overview");
@@ -171,7 +180,7 @@ test("overview 30 days: cost legend in cost order with its shares, then the agen
   assert.match(foot, /^Read from the transcripts in .+\/projects\. /);
   assert.match(foot, /Read at \d{1,2}:\d{2} [AP]M on [A-Z][a-z]+ \d{1,2}\. Reload the page to update\.$/);
   assert.equal(byClass(page, "foot").length, 1);
-  assert.equal(byClass(page, "cd").length, 5, "five cards, and no Needs attention card");
+  assert.equal(byClass(page, "cd").length, 6, "five usage cards and the Needs attention card");
 });
 
 test("overview Today: hourly columns with a tick every 6 hours and no caption", async () => {
