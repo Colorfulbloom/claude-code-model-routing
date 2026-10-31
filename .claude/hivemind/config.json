@@ -31,13 +31,15 @@
     "failed-briefs",
     "dead-ends",
     "token-tallies",
-    "dashboard"
+    "dashboard",
+    "testing-edit"
   ],
   "id_prefix": {
     "testing": "T",
     "failed-briefs": "B",
     "dead-ends": "D",
-    "dashboard": "W"
+    "dashboard": "W",
+    "testing-edit": "E"
   },
   "slices": {
     "deep-reasoner": [
