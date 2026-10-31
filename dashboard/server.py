@@ -1,13 +1,21 @@
 #!/usr/bin/env python3
-"""A read-only local server for the Routing Dashboard.
+"""A local server for the Routing Dashboard, read-only unless --allow-edits is on.
 
     python3 dashboard/server.py [--config-dir DIR] [--project DIR]
-                                [--port N] [--fixture FOLDER]
+                                [--port N] [--fixture FOLDER] [--allow-edits]
 
 It prints its URL, http://127.0.0.1:<port>/, and serves the files in
 dashboard/static/ plus the resolved settings as JSON. It binds 127.0.0.1 and
-nothing else, and there is no option to change that. It answers GET and HEAD
-only, and it writes no file of any kind, __pycache__ included.
+nothing else, and there is no option to change that. A default launch answers
+GET and HEAD only and writes no file of any kind, __pycache__ included.
+
+Edits. --allow-edits adds POST on the routes in write_routes_for, and the URL
+it prints ends in #/settings?edit=<token>. The token is new on each launch, and
+a fragment never reaches a server or a log. edit_store.py does every write, to
+one settings file and to <config dir>/routing-dashboard/backups/. A save changes
+an effort value on a line that already exists in a user, project or local file.
+It adds no line and creates no file. The flag refuses to start on win32 or with
+a fixture inside the repo.
 
 Config dir. --config-dir, else CLAUDE_CONFIG_DIR, else $HOME/.claude, the rule
 install.py uses (see default_config_dir). The project is --project, else the
@@ -29,7 +37,19 @@ Safety rules the handler keeps:
     Sec-Fetch-Site header, when present, must be same-origin or none. The one
     exception is a top-level load of "/", which holds no settings. Anything
     else gets a 403 with no settings data. No response carries a CORS header.
-  * Only "/", "/static/<file>" and the routes in ROUTES map to anything.
+  * Only "/", "/static/<file>", the routes in ROUTES and, with --allow-edits,
+    the routes from write_routes_for map to anything.
+  * A POST reaches a write route only through Handler._handle_write, and every
+    check there runs before any file is touched. The Host rule above holds. The
+    Origin header is required and must be one of the two above, and a
+    Sec-Fetch-Site header, when present, must be same-origin, so the top-level
+    exception never applies. The Content-Type must be exactly application/json
+    and the body at most DRAIN_CAP bytes. The request needs exactly one
+    X-Dashboard-Token header, and it must match this launch's token.
+  * The token comes only from the URL main prints. No route returns it, and the
+    server never takes it from a query string or a body and never logs it.
+  * Without --allow-edits the write routes are empty, so a POST to one gets the
+    same 405 as any other POST.
   * A response, a log line or an error message never holds a value
     collect.py hides. Logs name the method, the path without its query and the
     status. A failed route logs its exception class and nothing else.
@@ -43,9 +63,11 @@ sys.dont_write_bytecode = True  # before any repo module is imported
 import argparse  # noqa: E402
 import dataclasses  # noqa: E402
 import datetime  # noqa: E402
+import hmac  # noqa: E402
 import http.server  # noqa: E402
 import json  # noqa: E402
 import os  # noqa: E402
+import secrets  # noqa: E402
 import socket  # noqa: E402
 import socketserver  # noqa: E402
 import urllib.parse  # noqa: E402
@@ -54,9 +76,11 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 if HERE not in sys.path:
     sys.path.insert(0, HERE)
 
+import api_edit  # noqa: E402
 import api_settings  # noqa: E402
 import api_usage  # noqa: E402
 import collect  # noqa: E402
+import edit_store  # noqa: E402
 import resolve  # noqa: E402
 
 HOST = "127.0.0.1"
@@ -98,7 +122,9 @@ ERROR_NAMES = {
     404: "not_found",
     405: "method_not_allowed",
     408: "timeout",
+    413: "too_large",
     414: "uri_too_long",
+    415: "bad_content_type",
     431: "headers_too_large",
     500: "internal",
 }
@@ -107,12 +133,42 @@ DRAIN_CAP = 65536
 
 # One line per route. Each is a function (ctx, query) -> (status, payload).
 ROUTES = {
+    "/api/edit": api_edit.edit_info,
+    "/api/edit/history": api_edit.history,
+    "/api/edit/targets": api_edit.targets,
     "/api/files": api_settings.files,
     "/api/projects": api_usage.api_projects,
     "/api/rules": api_settings.rules,
     "/api/settings": api_settings.settings,
     "/api/usage": api_usage.usage,
 }
+
+
+def write_routes_for(allow):
+    """The write routes of a launch: empty unless --allow-edits is on.
+
+    Each is a function (ctx, body) -> (status, payload), where body is the parsed
+    JSON object. Only a POST that passes Handler._handle_write reaches one.
+    """
+    if not allow:
+        return {}
+    return {
+        "/api/edit/preview": api_edit.preview,
+        "/api/edit/save": api_edit.save,
+        "/api/edit/undo": api_edit.undo,
+    }
+
+
+def edits_supported():
+    """True where the edit store can work by descriptor: no win32, and the dir_fd calls exist."""
+    if sys.platform.startswith("win32"):
+        return False
+    if not (hasattr(os, "O_NOFOLLOW") and hasattr(os, "O_DIRECTORY")):
+        return False
+    needs_dir_fd = (os.open, os.rename, os.stat, os.mkdir, os.unlink)
+    if not all(fn in os.supports_dir_fd for fn in needs_dir_fd):
+        return False
+    return os.stat in os.supports_follow_symlinks and os.listdir in os.supports_fd
 
 
 # --------------------------------------------------------------------------
@@ -146,6 +202,7 @@ class Context:
     path_env: object = None  # the PATH text to search for claude, or None (read nothing)
     usage_cache: object = dataclasses.field(default_factory=api_usage.Cache, compare=False,
                                             repr=False)
+    edit: object = dataclasses.field(default=None, compare=False, repr=False)  # api_edit.EditState, or None
 
 
 def default_config_dir(env, cwd):
@@ -298,8 +355,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if getattr(self, "command", None) != "HEAD":
             self.wfile.write(body)
 
-    def _send_error_json(self, status, extra=()):
-        body = json.dumps({"error": ERROR_NAMES.get(status, "error")}).encode("utf-8")
+    def _send_error_json(self, status, extra=(), name=None):
+        body = json.dumps({"error": name or ERROR_NAMES.get(status, "error")}).encode("utf-8")
         self._send(status, JSON_TYPE, body, extra)
 
     def send_error(self, code, message=None, explain=None):
@@ -346,16 +403,20 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 and [v.strip().lower() for v in dests] == ["document"])
 
     def _drain_body(self):
-        """Read a small request body so closing the socket does not reset the reply."""
+        """Read a small request body so closing the socket does not reset the reply.
+
+        Returns the bytes read, or b"" when it read none.
+        """
         try:
             length = int(self.headers.get("Content-Length") or 0)
         except ValueError:
-            return
+            return b""
         if 0 < length <= DRAIN_CAP:
             try:
-                self.rfile.read(length)
+                return self.rfile.read(length)
             except OSError:
                 pass
+        return b""
 
     # -- methods
 
@@ -372,15 +433,22 @@ class Handler(http.server.BaseHTTPRequestHandler):
         raise AttributeError(name)
 
     def _handle(self):
+        raw_path = self.path.partition("#")[0]
+        path, _, query = raw_path.partition("?")
+        write_routes = self.server.write_routes
+        if self.command == "POST" and path in write_routes:
+            self._handle_write(path)
+            return
         self._drain_body()
         if not (self._host_ok() and self._origin_ok() and self._fetch_site_ok()):
             self._send_error_json(403)
             return
+        if path in write_routes:
+            self._send_error_json(405, (("Allow", "POST"),))
+            return
         if self.command not in ("GET", "HEAD"):
             self._send_error_json(405, (("Allow", "GET, HEAD"),))
             return
-        raw_path = self.path.partition("#")[0]
-        path, _, query = raw_path.partition("?")
         route = ROUTES.get(path)
         if route is not None:
             self._run_route(route, query)
@@ -391,14 +459,71 @@ class Handler(http.server.BaseHTTPRequestHandler):
         else:
             self._send_error_json(404)
 
+    def _handle_write(self, path):
+        """The gate for a POST to a write route. Every check runs before any file is touched."""
+        body = self._drain_body()
+        if not self._host_ok():
+            self._send_error_json(403)
+            return
+        origins = self.headers.get_all("Origin") or []
+        if not (len(origins) == 1 and origins[0].strip().lower() in self._allowed("http://")):
+            self._send_error_json(403)
+            return
+        sites = self.headers.get_all("Sec-Fetch-Site") or []
+        if sites and not (len(sites) == 1 and sites[0].strip().lower() == "same-origin"):
+            self._send_error_json(403)
+            return
+        types = self.headers.get_all("Content-Type") or []
+        if not (len(types) == 1 and types[0].strip().lower() == "application/json"):
+            self._send_error_json(415)
+            return
+        if self.headers.get_all("Transfer-Encoding"):
+            self._send_error_json(400)
+            return
+        lengths = self.headers.get_all("Content-Length") or []
+        text = lengths[0].strip() if len(lengths) == 1 else ""
+        if not (text.isascii() and text.isdigit() and len(text) <= 10 and int(text) <= DRAIN_CAP):
+            self._send_error_json(413)
+            return
+        if len(body) < int(text):
+            self._send_error_json(400)
+            return
+        if not self._token_ok():
+            self._send_error_json(403, name="bad_token")
+            return
+        try:
+            parsed = json.loads(body.decode("utf-8"))
+        except (ValueError, RecursionError):  # UnicodeDecodeError is a ValueError
+            parsed = None
+        if not isinstance(parsed, dict):
+            self._send_error_json(400)
+            return
+        self._call_route(self.server.write_routes[path], parsed)
+
+    def _token_ok(self):
+        """True when there is exactly one X-Dashboard-Token header and it is this launch's token."""
+        state = self.server.ctx.edit
+        values = self.headers.get_all("X-Dashboard-Token") or []
+        if state is None or len(values) != 1:
+            return False
+        try:
+            given = values[0].encode("utf-8", "surrogateescape")
+            expected = state.token.encode("utf-8")
+        except (AttributeError, UnicodeError):
+            return False
+        return hmac.compare_digest(given, expected)
+
     def _run_route(self, route, query):
         try:
             parsed = urllib.parse.parse_qs(query, max_num_fields=50)
         except ValueError:
             self._send_error_json(400)
             return
+        self._call_route(route, parsed)
+
+    def _call_route(self, route, arg):
         try:
-            status, payload = route(self.server.ctx, parsed)
+            status, payload = route(self.server.ctx, arg)
             body = json.dumps(payload).encode("utf-8")
         except Exception as exc:  # no traceback and no str(exc): either could hold a value
             self.log_message("route error %s", _clean(type(exc).__name__, 60))
@@ -449,8 +574,9 @@ class Server(http.server.ThreadingHTTPServer):
     # and one reset module stops the whole page before any script runs.
     request_queue_size = 128
 
-    def __init__(self, ctx, port=DEFAULT_PORT):
+    def __init__(self, ctx, port=DEFAULT_PORT, write_routes=None):
         self.ctx = ctx
+        self.write_routes = write_routes or {}
         super().__init__((HOST, port), Handler)
 
     def server_bind(self):
@@ -481,7 +607,8 @@ def _port(text):
 def build_parser():
     parser = argparse.ArgumentParser(
         prog="server.py",
-        description="Read-only local server for the Routing Dashboard. Binds 127.0.0.1 only.")
+        description="Local server for the Routing Dashboard. Binds 127.0.0.1 only. "
+        "Read-only unless --allow-edits is on.")
     parser.add_argument("--config-dir", help="Claude config folder (default: "
                         "CLAUDE_CONFIG_DIR, else $HOME/.claude)")
     parser.add_argument("--project", help="project folder (default: the folder the server "
@@ -491,7 +618,16 @@ def build_parser():
                         "(default: %d)" % DEFAULT_PORT)
     parser.add_argument("--fixture", metavar="FOLDER",
                         help="read a fixture folder instead of the real machine")
+    parser.add_argument("--allow-edits", action="store_true",
+                        help="turn on the edit routes and print a link with a key "
+                        "for this launch; only that link unlocks editing "
+                        "(default: off, and the server writes no file)")
     return parser
+
+
+def _under(path, folder):
+    """True when path is folder or lies below it. Both are real paths."""
+    return path == folder or path.startswith(folder.rstrip(os.sep) + os.sep)
 
 
 def main(argv=None, env=None):
@@ -502,6 +638,14 @@ def main(argv=None, env=None):
     cwd = os.getcwd()
     if args.fixture is not None and not os.path.isdir(args.fixture):
         parser.error("--fixture needs an existing folder")
+    if args.allow_edits:
+        if not edits_supported():
+            parser.error("--allow-edits needs file calls this system lacks, "
+                         "so it can't run here (Windows is one such system)")
+        if args.fixture is not None and _under(os.path.realpath(args.fixture),
+                                                os.path.realpath(REPO_DIR)):
+            parser.error("--allow-edits refuses a fixture inside the repo, so a save "
+                         "can't change it; copy the fixture outside the repo first")
     rules = resolve.load_rules()
     agent_fields = resolve.load_agent_fields()
     config_dir = os.path.abspath(args.config_dir) if args.config_dir else None
@@ -513,14 +657,23 @@ def main(argv=None, env=None):
         ctx = live_context(config_dir or default_config_dir(env, cwd), project_dir or cwd,
                            env, sys.platform, rules, agent_fields,
                            project_explicit=args.project is not None)
+    token = None
+    if args.allow_edits:
+        token = secrets.token_urlsafe(32)
+        state = api_edit.EditState(token, secrets.token_urlsafe(16),
+                                   edit_store.Store(ctx.config_dir, fixed_now=ctx.fixed_now))
+        ctx = dataclasses.replace(ctx, edit=state)
     try:
-        server = Server(ctx, args.port)
+        server = Server(ctx, args.port, write_routes_for(args.allow_edits))
     except OSError:
         sys.stderr.write("server: cannot listen on 127.0.0.1:%d, the port may be in use\n"
                          % args.port)
         return 1
     api_usage.start_warm(ctx)
-    sys.stdout.write("http://%s:%d/\n" % (HOST, server.server_address[1]))
+    if token is None:
+        sys.stdout.write("http://%s:%d/\n" % (HOST, server.server_address[1]))
+    else:
+        sys.stdout.write("http://%s:%d/#/settings?edit=%s\n" % (HOST, server.server_address[1], token))
     sys.stdout.flush()
     try:
         server.serve_forever()

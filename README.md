@@ -333,7 +333,7 @@ To use it, copy it into a project's `.claude/agents/`, fill in the bracketed pla
 
 ## Dashboard
 
-The Routing Dashboard is a local, read-only page that shows where your tokens went and which of your settings apply. The Project dropdown picks one project, or All projects, the view across every project folder. Usage covers today, 7 days or 30 days.
+The Routing Dashboard is a local page that shows where your tokens went and which of your settings apply. It's read-only unless you start the server with `--allow-edits`. The Project dropdown picks one project, or All projects, the view across every project folder. Usage covers today, 7 days or 30 days.
 
 - Overview. Usage in the project over the range you pick, read from its transcripts.
 - Agents. Each agent's runs, tokens, estimated cost and cache, with the model and effort it ran with against its pin.
@@ -352,7 +352,7 @@ python3 /path/to/claude-code-model-routing/dashboard/server.py
 
 It prints `http://127.0.0.1:8377/`, the address to open in your browser. Ctrl-C stops it. `--port N` changes the port, `--project DIR` picks another project, and `--config-dir DIR` picks another config folder. The default config folder is `CLAUDE_CONFIG_DIR`, else `~/.claude`.
 
-The server binds 127.0.0.1 only, answers GET and HEAD only, and writes no file. There's no login, because the page is local.
+The server binds 127.0.0.1 only. A default launch answers GET and HEAD only and writes no file. With `--allow-edits` it also answers POST on its edit routes, and it writes only the settings file you save and its backups. There's no login, because the page is local, but an edit needs the key from the link the flag prints.
 
 To list more projects, add `routing-dashboard.json` to your config folder. `plan` is optional, and it takes `subscription`, `api_key` or `cloud_provider`. The file is read again on every request, so an edit needs no restart. Without it, the list holds the current project only.
 
@@ -363,6 +363,68 @@ To list more projects, add `routing-dashboard.json` to your config folder. `plan
 Usage comes from your transcripts, through the dashboard's transcript reader. The reader parses each assistant line, keeps only the usage fields, and retains and writes nothing else. A test proves it. Cost is an estimate at API list price, and what you pay depends on your plan.
 
 The [rules reference](docs/rules-reference.md) lists those fields, the files the reader takes, what a recorded effort level can't prove and every rule the dashboard applies.
+
+### Edit settings with --allow-edits
+
+`--allow-edits` turns on the server's edit routes, so a launch can change one setting, the main session's effort level. Without the flag nothing changes. The server stays read-only, and a POST to an edit route gets a 405.
+
+```bash
+python3 /path/to/claude-code-model-routing/dashboard/server.py --allow-edits
+```
+
+An edit changes `effortLevel` or `modelSettings.<name>.effortLevel`, on a line that already exists in a user, project or local settings file. It adds no line, creates no file and leaves every other byte alone. It never touches managed settings, and it refuses a symlink, a hard link or a file over 1 MiB.
+
+The flag prints a different link, `http://127.0.0.1:8377/#/settings?edit=<key>`, with a key in the URL fragment. Only that link unlocks editing. The key lasts one launch, so the plain address, a bookmark or a link from an earlier launch stays read-only. A browser doesn't send a fragment to any server, and the server never logs the key.
+
+Every save writes a backup first, to `routing-dashboard/backups/<target-id>/` in your config folder. Project and local files back up there too, so a backup never lands in a repo.
+
+The flag refuses a `--fixture` folder inside this repo, so a save can't change a test fixture. Copy the fixture somewhere else first. It also won't start on Windows, which lacks the file calls the edit store needs.
+
+A save fires [`ConfigChange` hooks](https://code.claude.com/docs/en/hooks#configchange). Claude Code watches its settings files and runs those hooks for each change it detects, so a save or an undo runs them in every session watching that file. A hook can block the change for its session, but the file on disk stays written and the dashboard can't see the result. This repo installs no such hook.
+
+A saved effort change reaches a new session, not a running one. Claude Code [reads `effortLevel` and `modelSettings` once](https://code.claude.com/docs/en/settings#when-edits-take-effect), at session start. Use `/effort` to change a running session.
+
+One narrow window stays open. The server compares the file's bytes just before it renames the new file into place, and it refuses the save if they changed. A write from another program after that check and before the rename is lost, and the backup won't hold it. The server can't lock Claude Code out of these files, so this is an accepted limit.
+
+### Undo a save by hand
+
+Once a file has changed since a save, the server won't undo that save, so the backup is the way back. Each settings file has its own folder in the backup store. The folder's name is the first 16 hex characters of the SHA-256 of the file's real path.
+
+```bash
+FILE=~/.claude/settings.json
+STORE=~/.claude/routing-dashboard/backups/$(python3 -c 'import hashlib, os, sys; print(hashlib.sha256(os.fsencode(os.path.realpath(sys.argv[1]))).hexdigest()[:16])' "$FILE")
+cat "$STORE/ledger.json"
+```
+
+Use your own config folder in `STORE` if it isn't `~/.claude`, and point `FILE` at the file you want back. The store sits in the config folder for project and local files too.
+
+`ledger.json` in that folder lists the writes, oldest first, under `rows`. Each row describes one `.bak` file. Pick the row for the save you want to reverse.
+
+- `time` is when the server wrote the row, in UTC.
+- `kind` is `edit` for a save and `undo` for an undo.
+- `layer` and `key_path` name the settings file and the setting.
+- `old_value` and `new_value` show the change, masked.
+- `backup` names the `.bak` file, a full copy of the settings file from just before this write.
+- `before_sha256` is that backup's hash, and `after_sha256` is the file's hash right after the write.
+- `restored_from` and `restored_from_backup` appear on an undo row. They name the row and the backup it copied back.
+
+Put the row's backup back with `cp`, then compare with `cmp`, which prints nothing when the files match. A backup is the whole file, not one line. If something else changed the file since that save, restoring drops that change too, so read the `diff` first. If you want to keep it, change the one line by hand instead.
+
+```bash
+BACKUP="$STORE/<backup from the row>"
+shasum -a 256 "$BACKUP"     # must equal the row's before_sha256
+diff "$FILE" "$BACKUP"      # shows what you are about to replace
+cp "$BACKUP" "$FILE"
+cmp "$FILE" "$BACKUP"
+```
+
+Use `cp`, not `mv`, so the file keeps its mode and the backup stays in place. A hand restore counts as a settings change, so `ConfigChange` hooks fire again. The ledger doesn't record it. If you restored the newest row's backup, the next save drops that row and its backup, because the file already holds those bytes.
+
+After an undo from the server, compare against the row's `restored_from_backup`, not its `backup`. The `backup` on an undo row holds the file from before the undo, so `cmp` reports a difference by design.
+
+The store keeps the newest 20 rows per file, and an undo counts as one. Older rows and their backups go after the next successful write. A backup is read-only to the page, because no route edits or deletes one.
+
+Backups can hold secrets. The ledger masks its values, but a `.bak` file is an exact copy, and `settings.local.json` can hold API keys. The store's folders are mode 0700 and its files 0600. Keep those modes, and don't commit or paste a backup.
 
 ## Known limits
 

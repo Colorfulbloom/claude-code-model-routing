@@ -6,7 +6,7 @@ Settings for the `designer` agent and any design work. Paths are relative to the
 
 - Freeze: design work starts only when the owner asks, and agents never propose design changes unprompted.
 - Design source: `dashboard/static/tokens.css` (plain HTML and JavaScript, no build step, served by Python's standard library on 127.0.0.1). It's a light and dark token sheet with system fonts, and the only design source. Read its header comment first. The token sheet wins any conflict with the implementation.
-- Implementation: the page and its script in `dashboard/static/`, beside the token sheet, rendered at http://127.0.0.1 on the server's port. No login, because the page is local and read-only.
+- Implementation: the page and its script in `dashboard/static/`, beside the token sheet, rendered at http://127.0.0.1 on the server's port. No login, because the page is local. It's read-only unless the server starts with `--allow-edits`, and then each edit needs the key from the link the server prints.
 - Tokens: `dashboard/static/tokens.css`, not mirrored anywhere. Contrast grades: the header comment in that file.
 - Benchmark: Stack, direction A from round 3, which the owner picked on #39. Its screens and tools live in `docs/design/usage-stack/`. The designer agent's usability rules for app and canvas UI apply to this web page too. Before any design work on it, read `~/.claude/designer/usability-for-apps.md` if it exists.
 - Reuse first:

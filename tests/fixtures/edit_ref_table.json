@@ -1,0 +1,112 @@
+[
+ {
+  "note": "a plain file value",
+  "entry": {
+   "key": "effortLevel",
+   "layer": "user",
+   "file": "config/settings.json",
+   "line": 2
+  },
+  "ref": "[\"@main\",\"effortLevel\",\"user\",\"config/settings.json\",\"effortLevel\"]"
+ },
+ {
+  "note": "the same entry on another line",
+  "entry": {
+   "key": "effortLevel",
+   "layer": "user",
+   "file": "config/settings.json",
+   "line": 40
+  },
+  "ref": "[\"@main\",\"effortLevel\",\"user\",\"config/settings.json\",\"effortLevel\"]"
+ },
+ {
+  "note": "a model name with dots",
+  "entry": {
+   "key": "effortLevel",
+   "layer": "project",
+   "file": "project/.claude/settings.json",
+   "line": 1,
+   "path": "modelSettings.claude-opus-4.6.effortLevel"
+  },
+  "ref": "[\"@main\",\"effortLevel\",\"project\",\"project/.claude/settings.json\",\"modelSettings.claude-opus-4.6.effortLevel\"]"
+ },
+ {
+  "note": "a null file",
+  "entry": {
+   "key": "effortLevel",
+   "layer": "default",
+   "file": null
+  },
+  "ref": "[\"@main\",\"effortLevel\",\"default\",null,\"effortLevel\"]"
+ },
+ {
+  "note": "a missing file field",
+  "entry": {
+   "key": "effortLevel",
+   "layer": "default"
+  },
+  "ref": "[\"@main\",\"effortLevel\",\"default\",null,\"effortLevel\"]"
+ },
+ {
+  "note": "a non-ASCII path",
+  "entry": {
+   "key": "effortLevel",
+   "layer": "local",
+   "file": "~/réglages/settings.local.json",
+   "path": "modelSettings.modèle-é.effortLevel"
+  },
+  "ref": "[\"@main\",\"effortLevel\",\"local\",\"~/réglages/settings.local.json\",\"modelSettings.modèle-é.effortLevel\"]"
+ },
+ {
+  "note": "a quote in a path",
+  "entry": {
+   "key": "effortLevel",
+   "layer": "user",
+   "file": "config/settings.json",
+   "path": "modelSettings.a\"b.effortLevel"
+  },
+  "ref": "[\"@main\",\"effortLevel\",\"user\",\"config/settings.json\",\"modelSettings.a\\\"b.effortLevel\"]"
+ },
+ {
+  "note": "an agent row",
+  "entry": {
+   "agent": "reviewer",
+   "key": "effortLevel",
+   "layer": "agent",
+   "file": "config/agents/reviewer.md",
+   "line": 4
+  },
+  "ref": "[\"reviewer\",\"effortLevel\",\"agent\",\"config/agents/reviewer.md\",\"effortLevel\"]"
+ },
+ {
+  "note": "an empty agent and an empty path",
+  "entry": {
+   "agent": "",
+   "key": "maxEffortLevel",
+   "layer": "user",
+   "file": "config/settings.json",
+   "path": ""
+  },
+  "ref": "[\"@main\",\"maxEffortLevel\",\"user\",\"config/settings.json\",\"maxEffortLevel\"]"
+ },
+ {
+  "note": "a backslash, a tab and a control character",
+  "entry": {
+   "key": "effortLevel",
+   "layer": "user",
+   "file": "C:\\cfg\\a\tb.json",
+   "path": "modelSettings.x\\y.effortLevel"
+  },
+  "ref": "[\"@main\",\"effortLevel\",\"user\",\"C:\\\\cfg\\\\a\\tb.json\",\"modelSettings.x\\\\y.effortLevel\"]"
+ },
+ {
+  "note": "a character outside the basic plane and a line separator",
+  "entry": {
+   "key": "effortLevel",
+   "layer": "project",
+   "file": "p/😀/s.json",
+   "path": "modelSettings.m n.effortLevel"
+  },
+  "ref": "[\"@main\",\"effortLevel\",\"project\",\"p/😀/s.json\",\"modelSettings.m n.effortLevel\"]"
+ }
+]
