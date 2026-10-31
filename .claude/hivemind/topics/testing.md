@@ -10,7 +10,7 @@ author: deep-reasoner
 created: 2026-10-20
 last_used: 2026-10-30
 uses: 17
-promote: proposed
+promote: approved
 
 ### T-5589 Subsets run through discover -k; dotted names fail
 fact: Dotted names (python3 -m unittest tests.test_x) fail with "No module named 'helpers'"; use discover -s tests -k <pattern> or -p test_x.py. discover comes first: -v before it is rejected.
