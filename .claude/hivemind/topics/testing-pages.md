@@ -4,8 +4,8 @@
 fact: A new app.css block headed ' * Title' fails test_one_section_per_page_with_shared_first, so Settings CSS uses one-line comments inside "Settings and trail", and test_settings_page_layout_stays_inside_its_scope checks each rule's leftmost class. Object.assign( on anything but an object literal in dashboard/static/js fails test_no_file_gets_around_the_link_helpers. fakedom createPage() swaps globalThis.document, so patch document after the page exists. edit_session_checks.mjs shows how to reach app.js's ctx from a copy. To prove a node check bites, mutate a scratch tar copy of the repo, not the tree.
 check: grep -n "Object.s.*assign\|shared_first" tests/test_static_shell.py
 evidence: tests/test_static_shell.py, tests/js/fakedom.mjs, tests/js/edit_session_checks.mjs
-fp: b5295d512535
-as_of: 0a1241f 2026-11-01
+fp: 5674e21793c7
+as_of: c5bce3a 2026-11-01
 author: fast-worker
 created: 2026-11-01
 last_used: 2026-11-01
@@ -15,30 +15,30 @@ uses: 0
 fact: CARD_FILES in test_edit_card_js.py and the source list in edit_card_checks.mjs hold edit_card, edit_flow, edit_pick, edit_review, edit_foot and edit_ui. A new card module joins both.
 check: grep -n "edit_pick" tests/test_edit_card_js.py tests/js/edit_card_checks.mjs
 evidence: tests/test_edit_card_js.py, tests/js/edit_card_checks.mjs
-fp: 2f4a44ed6e55
-as_of: 0a1241f 2026-11-01
+fp: 28265b8b1895
+as_of: c5bce3a 2026-11-01
 author: deep-reasoner
 created: 2026-11-01
 last_used: 2026-11-01
-uses: 0
+uses: 1
 
 ### P-2fdd edit_card_checks: project keys, flows persist
-fact: edit_card_checks.mjs drives the Settings page with a unique project key per app and targets stamped with it, because targetsData returns null on a project mismatch. Flows persist between checks, so a check on notSavedProjects starts with fresh(), an off render.
+fact: edit_card_checks.mjs drives the Settings page with a unique project key per app and targets stamped with it, because targetsData returns null on a project mismatch. Flows persist between checks, so a check on notSavedProjects starts with fresh(), an off render. reviewFacts reads layer, ref, line and shared from the preview, so a hand-made preview must carry them. applyWant in edit_card.js matches "btn:"+want, except remove:<layer>, the raw data-edit-focus.
 check: grep -n "function fresh" tests/js/edit_card_checks.mjs
-evidence: tests/js/edit_card_checks.mjs, dashboard/static/js/edit_flow.js
-fp: 75e5082368e4
-as_of: 0a1241f 2026-11-01
+evidence: tests/js/edit_card_checks.mjs, dashboard/static/js/edit_flow.js, dashboard/static/js/edit_review.js, dashboard/static/js/edit_card.js
+fp: 576e2b352e8f
+as_of: c5bce3a 2026-11-01
 author: deep-reasoner
 created: 2026-11-01
 last_used: 2026-11-01
-uses: 0
+uses: 1
 
 ### P-d516 fakedom: disabled focus, topbar outside the root
 fact: fakedom focus() ignores a disabled element. page.doc.documentElement is not the parent of the app tree, so find shell options with page.topbar.find.
 check: grep -n "app.topbar.find" tests/js/edit_session_checks.mjs
 evidence: tests/js/fakedom.mjs, tests/js/edit_session_checks.mjs
-fp: 4944b52148d5
-as_of: 0a1241f 2026-11-01
+fp: b64480c1c446
+as_of: c5bce3a 2026-11-01
 author: fast-worker
 created: 2026-11-01
 last_used: 2026-11-01
@@ -56,12 +56,12 @@ last_used: 2026-11-01
 uses: 0
 
 ### P-c029 e2e_checks JSON also feeds the node pages test
-fact: pages.mjs reads every tests/e2e_checks/*.json through test_pages_js.py as well as the browser sweep, so a text change updates that file. In the E2E rail .s4-note also matches the shared-file and still-holds notes, so waits match Pick a file by text (PICK_NOTE).
+fact: pages.mjs reads every tests/e2e_checks/*.json through test_pages_js.py as well as the browser sweep, so a text change updates that file. In the E2E rail .s4-note also matches the shared-file and still-holds notes, so waits match Pick a file by text (PICK_NOTE). The E2E fixture (project line, no local file) preselects a local create, so no Pick a file shows there: waits use positive signs (picked row, diff, New file tag, Save on).
 check: grep -n PICK_NOTE tests/test_edit_e2e.py
 evidence: tests/js/pages.mjs, tests/test_edit_e2e.py, dashboard/static/js/edit_review.js
-fp: def54428e57f
-as_of: 0a1241f 2026-11-01
+fp: b6f15784aba2
+as_of: c5bce3a 2026-11-01
 author: fast-worker
 created: 2026-11-01
 last_used: 2026-11-01
-uses: 0
+uses: 1

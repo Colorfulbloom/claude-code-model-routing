@@ -53,8 +53,8 @@ fp: 2e3aab966fe0
 as_of: 203ae0d 2026-10-30
 author: verifier
 created: 2026-10-29
-last_used: 2026-10-30
-uses: 3
+last_used: 2026-11-01
+uses: 4
 promote: approved
 
 ### D-2e12 Rows with one message.id can carry growing output_tokens
