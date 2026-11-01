@@ -31,7 +31,7 @@ as_of: 0766733 2026-10-31
 author: verifier
 created: 2026-10-29
 last_used: 2026-10-31
-uses: 8
+uses: 11
 promote: approved
 
 ### D-6bed Patching os.stat alone misses pathlib on Python 3.9
@@ -65,8 +65,8 @@ fp: fbb580237bd6
 as_of: ce1f71d 2026-10-30
 author: deep-reasoner
 created: 2026-10-30
-last_used: 2026-10-30
-uses: 0
+last_used: 2026-10-31
+uses: 1
 
 ### D-3ca7 Worktree agents: git -C, computed command names, busy heredocs
 fact: The worktree guard refuses what it cannot check first: git -C <dir>, a command named by a variable or a quoted path with a space, and a heredoc body mixing quotes, backticks and $( ). Plain heredocs, even after cd or into the scratchpad, variables as arguments, gh --jq pipes and for loops ran (October 30 probes). A new isolation worktree starts at origin/main, not development.

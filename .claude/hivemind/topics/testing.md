@@ -1,15 +1,15 @@
 # testing
 
-### T-7629 Full suite runs 2285 tests in about 220 seconds
-fact: discover -s tests runs 2285 tests in about 220 s on 0766733, 38 skipped: 36 need MR_E2E=1 and the owner runs them, 2 need MR_DOCS_LIVE=1 or MR_SUBAGENT_DOCS. Run it alone. A broken pty test can leave a hung process.
+### T-7629 Full suite runs 2364 tests in about 220 seconds
+fact: discover -s tests runs 2364 tests in 220 to 250 s on 0a1241f, 39 skipped: 37 need MR_E2E=1 and the owner runs them, 2 need MR_DOCS_LIVE=1 or MR_SUBAGENT_DOCS. Run it alone. A broken pty test can leave a hung process.
 check: /usr/bin/python3 -m unittest discover -s tests 2>&1 | tail -3
 evidence: tests
-fp: cd05221c1ce5
-as_of: 0766733 2026-10-31
+fp: 97820965441a
+as_of: 0a1241f 2026-11-01
 author: deep-reasoner
 created: 2026-10-20
-last_used: 2026-10-31
-uses: 20
+last_used: 2026-11-01
+uses: 21
 promote: approved
 
 ### T-5589 Subsets run through discover -k; dotted names fail
@@ -17,11 +17,11 @@ fact: Dotted names (tests.test_x) fail with "No module named 'helpers'"; use dis
 check: /usr/bin/python3 -m unittest tests.test_parity 2>&1 | grep "No module named"
 evidence: tests/helpers.py
 fp: 99286733860d
-as_of: 0766733 2026-10-31
+as_of: 0a1241f 2026-11-01
 author: deep-reasoner
 created: 2026-10-20
-last_used: 2026-10-31
-uses: 73
+last_used: 2026-11-01
+uses: 76
 promote: approved
 
 ### T-d689 New installer messages need a parity allowance
@@ -55,7 +55,7 @@ as_of: 0766733 2026-10-31
 author: deep-reasoner
 created: 2026-10-29
 last_used: 2026-10-31
-uses: 10
+uses: 11
 promote: approved
 
 ### T-6b2f Collector where maps have tuple keys

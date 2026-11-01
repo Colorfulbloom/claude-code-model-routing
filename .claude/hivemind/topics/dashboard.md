@@ -16,11 +16,11 @@ fact: tests/test_shell_js.py runs tests/js/checks.mjs on fakedom.mjs. tests/test
 check: /usr/bin/python3 -m unittest discover -s tests -p test_shell_js.py
 evidence: tests/test_shell_js.py, tests/js/rules_checks.mjs, dashboard/static/js/h.js, tests/test_pages_js.py
 fp: 33b0db260eba
-as_of: 0766733 2026-10-31
+as_of: 0a1241f 2026-11-01
 author: fast-worker
 created: 2026-10-30
-last_used: 2026-10-31
-uses: 6
+last_used: 2026-11-01
+uses: 8
 
 ### W-f6ed macOS traps in server tests: bytecode prefix, second bind
 fact: /usr/bin/python3 3.9.6 sets sys.pycache_prefix under $HOME/Library/Caches, so a no-writes test that hashes source folders passes even with dont_write_bytecode False. Run the child with -X pycache_prefix=, as NoWrites does; -B would defeat it. A second bind to 0.0.0.0 fails even for a loopback-only socket, so check with lsof -nP -a -p <pid> -iTCP -sTCP:LISTEN -Fn.
@@ -48,8 +48,8 @@ uses: 1
 fact: Only the section sectionFor names draws. Usage pages draw through fillUsage in usage-page.js, which owns the empty, wait, error and unreadable states. data-rendered doesn't wait on /api/usage. app.js sets data-usage="1" once the first answer for the current project is drawn, so a check of usage numbers waits for both. Chrome's innerText applies text-transform, so e2e text compares casefold.
 check: grep -n "data-usage" dashboard/static/js/app.js
 evidence: dashboard/static/js/app.js, dashboard/static/js/usage-page.js, tests/test_pages_e2e.py
-fp: 7afc0c85b949
-as_of: 0766733 2026-10-31
+fp: f8a0753e3638
+as_of: 0a1241f 2026-11-01
 author: fast-worker
 created: 2026-10-30
 last_used: 2026-10-30
@@ -59,9 +59,9 @@ uses: 0
 fact: Links to other sites go only through externalLink in h.js, https only. trail.js hears Escape in the capture phase to act before shell.js. A missing_folder project answers with empty entries unless it is implicit, which still resolves.
 check: grep -n "not project.implicit" dashboard/api_settings.py
 evidence: dashboard/static/js/h.js, dashboard/static/js/pages/trail.js, dashboard/api_settings.py
-fp: ddf10c9ded57
-as_of: 0766733 2026-10-31
+fp: 2db97570cc0d
+as_of: 0a1241f 2026-11-01
 author: deep-reasoner
 created: 2026-10-31
-last_used: 2026-10-31
-uses: 0
+last_used: 2026-11-01
+uses: 4
