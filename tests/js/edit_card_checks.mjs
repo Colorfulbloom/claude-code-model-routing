@@ -3852,6 +3852,45 @@ test("remove: Cancel puts focus back on that row's Remove line link", async () =
   assert.equal(FElement.focused, removeLink(blocked.root, "local"));
 });
 
+// The browser test for Add waits on these signs: pressing the project row of an insert moves the pick to it, and the
+// diff holds one added line, no deleted line and no New file tag. Save stays on.
+test("add: the project row of an insert is picked on its own, with the effort line added and no New file tag", async () => {
+  fresh();
+  const a = app({ data: dataOf(INS.start), backend: worldFlow(INS) });
+  await a.choose("high");
+  assert.equal(fileOf(INS.start.targets, "high", "project").op, "insert");
+  await a.pickRow("project");
+  assert.deepEqual(checkedOf(rowInputs(a.root)), ["project"]);
+  assert.ok(hasClass(rowOf(rowIn(a.root, "project")), "is-pick"));
+  // The line above the new one gains a comma, so the diff may show it as deleted. No deleted line holds the setting.
+  assert.ok(byClass(a.rail(), "p2-del").every((n) => !text(n).includes("effortLevel")), "an add removes no effort line");
+  assert.ok(byClass(a.rail(), "p2-add").some((n) => text(n).includes('"effortLevel"') && text(n).includes('"high"')), "the added line holds the level");
+  assert.equal(byClass(a.rail(), "p2-tag").length, 0, "an insert is not a new file");
+  assert.ok(!off(footButtons(a)[0]), "Save is on");
+  assert.deepEqual(a.log.save, []);
+});
+
+// The browser test for Remove then Cancel waits on these signs: nothing is saved or undone, the link is back and
+// focused, the levels are on again and the diff and the marked row are gone.
+test("remove: Cancel after a press saves nothing, and the link, the levels and the rest rows come back", async () => {
+  fresh();
+  const a = app({ data: dataOf(RM.start), backend: worldFlow(RM) });
+  removeLink(a.root, "project").click();
+  await settle();
+  assert.equal(FElement.focused, btn(a.root, STRINGS.ed_cancel));
+  assert.ok(levelInputs(a.root).every(off), "every level is off");
+  assert.equal(byClass(a.root, "is-pick").length, 1);
+  assert.ok(byClass(a.rail(), "p2-del").length > 0, "the diff deletes a line");
+  btn(a.root, STRINGS.ed_cancel).click();
+  await settle();
+  assert.deepEqual(a.log.save, [], "nothing was saved");
+  assert.equal(FElement.focused, removeLink(a.root, "project"));
+  assert.ok(levelInputs(a.root).every((r) => !off(r)), "every level is on again");
+  assert.equal(byClass(a.root, "is-pick").length, 0);
+  assert.equal(byClass(a.root, "p2-df").length, 0);
+  assert.equal(strips(a.root).length, 0, "no result line");
+});
+
 test("remove: the git warning stays off a removal and shows on a set", async () => {
   fresh();
   const pv = clone(RM.local_preview);
