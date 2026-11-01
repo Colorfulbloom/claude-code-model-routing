@@ -34,7 +34,8 @@
     "dashboard",
     "testing-edit",
     "dashboard-settings",
-    "testing-pages"
+    "testing-pages",
+    "testing-edit-core"
   ],
   "id_prefix": {
     "testing": "T",
@@ -43,7 +44,8 @@
     "dashboard": "W",
     "testing-edit": "E",
     "dashboard-settings": "S",
-    "testing-pages": "P"
+    "testing-pages": "P",
+    "testing-edit-core": "C"
   },
   "slices": {
     "deep-reasoner": [
