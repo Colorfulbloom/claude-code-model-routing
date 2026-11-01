@@ -78,7 +78,7 @@ class ChecksFiles(unittest.TestCase):
                     self.assertNotIn("\n", text, where)
                     self.assertNotIn("  ", text, where)
                     self.assertNotIn("{", text, where)  # an unfilled slot
-                    self.assertNotIn(text.lower(), uppercased, where)  # .tl-l, .ru-l and .meta dt show these in capitals
+                    self.assertNotIn(text.lower(), uppercased, where)  # .s4-lab, .ru-l and .meta dt show these in capitals
 
 
 class Helpers(unittest.TestCase):
@@ -140,9 +140,10 @@ class Helpers(unittest.TestCase):
             self.assertTrue(script.startswith("(() =>") and script.endswith("})()"))
 
     def test_edit_scripts_fill_and_stay_expressions(self):
-        for script in (edit_e2e.HAS_RADIO, edit_e2e.DIFF_LINES, edit_e2e.TABLE_ROWS,
+        for script in (edit_e2e.HAS_RADIO, edit_e2e.DIFF_LINES, edit_e2e.ROW_COUNT,
                        edit_e2e.js(edit_e2e.CLICK_LEVEL, "medium"),
                        edit_e2e.js(edit_e2e.CLICK_BUTTON, edit_e2e.SAVE),
+                       edit_e2e.js(edit_e2e.IS_ON, edit_e2e.SAVE),
                        edit_e2e.js(edit_e2e.READ_TEXT, edit_e2e.STRIP_PATH)):
             self.assertNotIn("%s", script)
             self.assertEqual(script.count("("), script.count(")"), script)

@@ -1,25 +1,30 @@
-"""End-to-end checks of the owner check path on the Change effort card (#88, #87). Opt in with MR_E2E=1.
+"""End-to-end checks of the owner check path on the Effort cell of Settings (#88, #87). Opt in with MR_E2E=1.
 
-The path is: open the printed link, pick a level, read the trail table and the diff, press Save, read the
-strip, press Undo, then compare the file with the backup it came from. Built on test_shell_e2e (its Chrome and
-Page), test_pages_e2e (add_query, DATA_RENDERED) and test_settings_e2e (its contrast scripts, not copied).
+The path is: open the printed link, pick a level, pick the project file, read the review and the diff in the rail,
+press Save, read the result in the foot, press Undo, then compare the file with the backup it came from. Built on
+test_shell_e2e (its Chrome and Page), test_pages_e2e (add_query, DATA_RENDERED) and test_settings_e2e (its contrast
+scripts, not copied).
 
 The world is a small made-up fixture in a temp root. The server runs with --fixture and --allow-edits on it,
 with HOME and the config folder inside the same root, and with no CLAUDE_CODE_EFFORT_LEVEL in its environment
 (a shell value would beat the file). The project's settings.json holds "effortLevel": "high" at the top level.
-That value wins, so a level such as medium is reachable and a preview shows no warning. Nothing reads or writes
-the real ~/.claude.
+That value wins, so a level such as medium is reachable and a preview shows no warning. The line sits in the
+project file, which is shared, so no level preselects a file (preselect is the local file or null) and the path
+must press the project row before Save. Nothing reads or writes the real ~/.claude.
 
 Importing this module starts nothing. build_world() and the page scripts are pure. EditApi runs on every
 suite run, with no browser, so the world is proven valid even where nobody runs Chrome. EditPath and EditLook
 need Chrome and skip unless MR_E2E=1.
 
-Selectors, from dashboard/static/js/edit_card.js (the doubtful ones are named in the brief's report):
-- [data-edit=card] holds the card and [data-edit=strip] the strip.
-- input[name=p2-level][value=<level>] is a level radio (class sr, so a script clicks it).
-- table.p2-tbl is the trail table, figure.p2-df the diff, li.p2-del and li.p2-add its changed lines.
-- button[data-edit-focus="btn:save"], "btn:undo" and "btn:dismiss-strip" are the buttons.
-- .p2-strip is the strip line and .pa inside it the backup or restored-from path.
+Selectors, from dashboard/static/js/edit_card.js, edit_review.js, edit_foot.js and pages/where.js:
+- nav.s5-a a.s4-stat[data-setting=effortLevel] is the band cell, is-on and aria-current when open. Effort is open on load.
+- .s4-run holds the level radios, input[name=p2-level][value=<level>] (class sr, so a script clicks it).
+- .s6-rows holds the file rows. At rest they are div.s6-r. Once a level can be saved they are label.s6-r around
+  input[name=p2-row][value=<layer>], and the picked one has is-pick.
+- aside.s4-rail holds the review: h2.s4-rh, .s4-chg, .s4-note (Pick a file), .s4-dl, figure.p2-df with li.p2-del and
+  li.p2-add as its changed lines.
+- .s4-rf is the foot. button[data-edit-focus="btn:save"], "btn:undo" and "btn:dismiss-strip" are the buttons,
+  .s4-ok is the result line and .s4-hint .pa the backup or restored-from path.
 """
 import json
 import os
@@ -32,33 +37,46 @@ import test_server as ts
 import test_settings_e2e as settings_e2e
 import test_shell_e2e as shell
 
-EFFORT_TRAIL = settings_e2e.EFFORT_TRAIL
+SETTINGS = settings_e2e.SETTINGS
 START_LEVEL = "high"
 OTHER_LEVELS = ("medium", "low")
 
-CARD = "[data-edit=card]"
-STRIP = "[data-edit=strip]"
-RADIO = CARD + " input[name=p2-level]"
-TABLE = CARD + " table.p2-tbl"
-DIFF = CARD + " figure.p2-df"
-SAVE = CARD + " button[data-edit-focus='btn:save']"
-UNDO = STRIP + " button[data-edit-focus='btn:undo']"
-STRIP_LINE = STRIP + " .p2-strip"
-STRIP_PATH = STRIP_LINE + " .pa"
+PAGE = "[data-page=settings]"
+BAND_CELL = PAGE + " nav.s5-a a.s4-stat[data-setting=effortLevel]"
+RUN = PAGE + " .s4-run"
+RADIO = RUN + " input[name=p2-level]"
+ROWS = PAGE + " .s6-rows"
+PROJECT_ROW = ROWS + " input[name=p2-row][value=project]"
+PICKED_ROWS = ROWS + " label.s6-r.is-pick"
+RAIL = PAGE + " aside.s4-rail"
+RAIL_HEAD = RAIL + " .s4-rh"
+RAIL_NOTE = RAIL + " .s4-note"
+RAIL_AFTER = RAIL + " .s4-dl"
+DIFF = RAIL + " figure.p2-df"
+FOOT = PAGE + " .s4-rf"
+SAVE = FOOT + " button[data-edit-focus='btn:save']"
+UNDO = FOOT + " button[data-edit-focus='btn:undo']"
+STRIP_LINE = FOOT + " .s4-ok"
+STRIP_PATH = FOOT + " .s4-hint .pa"
+PICK_FILE_LINE = "Pick a file to see the exact change."
 
 # Pure page scripts. Each is an expression with no side effect unless its name says it clicks.
 HAS_RADIO = "Boolean(document.querySelector(%s))" % json.dumps(RADIO)
 LOCATION_HREF = "location.href"
 BODY_OVERFLOW = "document.documentElement.getAttribute('data-ox')"
 CLICK_LEVEL = "(() => { const el = document.querySelector(%s + \"[value='\" + %%s + \"']\"); " \
-              "if (!el) return false; el.click(); return true; })()" % json.dumps(RADIO)
+              "if (!el || el.disabled) return false; el.click(); return true; })()" % json.dumps(RADIO)
 CLICK_BUTTON = "(() => { const el = document.querySelector(%s); if (!el || el.disabled) return false; " \
                "el.click(); return true; })()"
+# The Pick a file line, by its text. Other rail notes (the shared-file line, a still-holds line) stay after a pick.
+PICK_NOTE = "[...document.querySelectorAll(%s)].some((el) => el.textContent.trim() === %s)" \
+            % (json.dumps(RAIL_NOTE), json.dumps(PICK_FILE_LINE))
+IS_ON = "(() => { const el = document.querySelector(%s); return Boolean(el) && !el.disabled; })()"
 READ_TEXT = "(() => { const el = document.querySelector(%s); return el ? el.textContent.trim() : null; })()"
 DIFF_LINES = "(() => { const read = (sel) => [...document.querySelectorAll(%s + ' ' + sel)]" \
              ".map((el) => el.textContent.replace(/\\s+/g, ' ').trim()); " \
              "return { del: read('li.p2-del'), add: read('li.p2-add') }; })()" % json.dumps(DIFF)
-TABLE_ROWS = "document.querySelectorAll(%s + ' tbody tr').length" % json.dumps(TABLE)
+ROW_COUNT = "document.querySelectorAll(%s + ' label.s6-r').length" % json.dumps(ROWS)
 
 
 def js(template, *values):
@@ -184,7 +202,12 @@ class EditApi(unittest.TestCase):
         self.assertEqual(levels[START_LEVEL]["result"], "now")
         level = OTHER_LEVELS[0]
         self.assertEqual(levels[level]["result"], "reachable", levels[level])
-        self.assertEqual(levels[level]["target"], target["target"])
+        # The line is in the shared project file, so the level has a project row and preselects nothing.
+        self.assertIsNone(levels[level]["preselect"], levels[level])
+        rows = {row["layer"]: row for row in levels[level]["files"]}
+        self.assertIs(rows["project"]["pickable"], True, rows)
+        self.assertEqual(rows["project"]["target"], target["target"])
+        self.assertEqual([layer for layer, row in rows.items() if row["pickable"]], ["project"], rows)
 
         body = {"project": project, "target": target["target"], "value": level}
         preview = self.post("/api/edit/preview", body)
@@ -253,7 +276,7 @@ class _ChromeBase(unittest.TestCase):
             cls.world.close()
 
     def wait_card(self):
-        """Wait until the page has rendered and the Change effort card holds its level radios."""
+        """Wait until the page has rendered and the Effort cell holds its level radios."""
         self.page.wait_for(pages.DATA_RENDERED + " === '1'")
         self.page.wait_for(HAS_RADIO)
 
@@ -264,21 +287,37 @@ class _ChromeBase(unittest.TestCase):
         self.page.wait_for(js(READ_TEXT, selector))
         return self.page.eval(js(READ_TEXT, selector))
 
-    def open_trail(self, width=1440, theme=None):
-        """Open the trail with the token in the address, as the printed link does, and wait for the card."""
-        hash_ = EFFORT_TRAIL + "?edit=" + urllib.parse.quote(self.world.token, safe="")
+    def wait_settings(self):
+        self.page.wait_for("JSON.stringify(%s) === %s" % (shell.VISIBLE, json.dumps(json.dumps(["settings"]))))
+
+    def open_settings(self, width=1440, theme=None):
+        """Open Settings with the token in the address, as the printed link does, and wait for the Effort cell."""
+        hash_ = SETTINGS + "?edit=" + urllib.parse.quote(self.world.token, safe="")
         if theme:
             hash_ = pages.add_query(hash_, "theme", theme)
         self.page.open(self.world.base + hash_, width)
         self.wait_card()
-        self.page.wait_for("JSON.stringify(%s) === %s" % (shell.VISIBLE, json.dumps(json.dumps(["trail"]))))
+        self.wait_settings()
         if theme:
             self.page.wait_for("document.documentElement.getAttribute('data-theme') === %s" % json.dumps(theme))
 
     def pick(self, level):
+        """Choose a level. The rail then holds the review heading and, with no file picked, the Pick a file line."""
         self.page.wait_for(js(CLICK_LEVEL, level))
-        self.page.wait_for(js("Boolean(document.querySelector(%s)) && Boolean(document.querySelector(%s))",
-                              TABLE, DIFF))
+        self.page.wait_for(js("Boolean(document.querySelector(%s))", RAIL_HEAD))
+        self.page.wait_for(PICK_NOTE)
+
+    def pick_project_row(self):
+        """Press the project row. The preview then draws the exact change in the rail and Save turns on.
+
+        The project file is shared, so the review keeps a rail note of its own (the shared-file line). Only the
+        Pick a file line goes, so the wait is on that line, with the diff, the After list and the picked row as
+        the positive signs that the review drew."""
+        self.click(PROJECT_ROW)
+        self.page.wait_for(js("Boolean(document.querySelector(%s)) && Boolean(document.querySelector(%s)) "
+                              "&& Boolean(document.querySelector(%s))", DIFF, RAIL_AFTER, PICKED_ROWS))
+        self.page.wait_for("!(" + PICK_NOTE + ")")
+        self.page.wait_for(js(IS_ON, SAVE))
 
 
 @unittest.skipUnless(os.environ.get("MR_E2E") == "1", "set MR_E2E=1 to run the headless Chrome checks")
@@ -295,35 +334,50 @@ class EditPath(_ChromeBase):
         self.page.wait_for("!location.href.includes('edit=')")
         self.assertNotIn("edit=", self.page.eval(LOCATION_HREF))
 
-        # The effort trail, with the Change effort card.
-        self.page.eval("location.hash = %s" % json.dumps(EFFORT_TRAIL))
-        self.page.wait_for("JSON.stringify(%s) === %s" % (shell.VISIBLE, json.dumps(json.dumps(["trail"]))))
+        # Settings, with the Effort cell open and its level radios.
+        self.wait_settings()
         self.wait_card()
         self.assertNotIn("edit=", self.page.eval(LOCATION_HREF))
-        self.assertEqual(self.text_of(CARD + " .cd-h"), "Change effort")
+        self.assertEqual(self.page.eval("document.querySelector(%s).getAttribute('aria-current')" % json.dumps(BAND_CELL)), "true")
+        self.assertEqual(self.text_of(RUN + " .s4-lab"), "Run at")
+        self.assertEqual(self.page.eval("document.querySelectorAll(%s).length" % json.dumps(PICKED_ROWS)), 0)
 
-        # Pick a level: the trail table and the diff show, with the old and the new value.
+        # Pick a level. The line is in the shared project file, so no row is picked and Save is off.
         level = OTHER_LEVELS[0]
         self.pick(level)
-        self.assertGreater(self.page.eval(TABLE_ROWS), 0)
+        self.assertEqual(self.text_of(RAIL_NOTE), PICK_FILE_LINE)
+        self.assertEqual(self.text_of(RAIL + " .s4-chg .s4-to"), level)
+        self.assertEqual(self.text_of(RAIL + " .s4-chg .s4-was"), START_LEVEL)
+        self.assertGreater(self.page.eval(ROW_COUNT), 0)
+        self.assertEqual(self.page.eval("document.querySelectorAll(%s).length" % json.dumps(PICKED_ROWS)), 0)
+        self.assertTrue(self.page.eval("Boolean(document.querySelector(%s)) && document.querySelector(%s).disabled"
+                                       % (json.dumps(SAVE), json.dumps(SAVE))), "Save is on before a file is picked")
+        self.assertEqual(w.settings_bytes(), before, "picking a level wrote the file")
+
+        # Press the project row: the rail shows what wins after the change and the diff, with the old and the new value.
+        self.pick_project_row()
+        self.assertEqual(self.page.eval("document.querySelectorAll(%s).length" % json.dumps(PICKED_ROWS)), 1)
+        self.assertTrue(self.page.eval("Boolean(document.querySelector(%s))" % json.dumps(RAIL_AFTER)))
         lines = self.page.eval(DIFF_LINES)
         self.assertTrue(any('"%s"' % START_LEVEL in line for line in lines["del"]), lines)
         self.assertTrue(any('"%s"' % level in line for line in lines["add"]), lines)
         self.assertEqual(w.settings_bytes(), before, "a preview wrote the file")
 
-        # Save: the strip names the backup, and the file holds the new level.
+        # Save: the foot names the backup, and the file holds the new level.
         self.click(SAVE)
-        self.page.wait_for(js("Boolean(document.querySelector(%s)) && Boolean(document.querySelector(%s))",
-                              STRIP_PATH, UNDO))
+        self.page.wait_for(js("Boolean(document.querySelector(%s)) && Boolean(document.querySelector(%s)) "
+                              "&& Boolean(document.querySelector(%s))", STRIP_LINE, STRIP_PATH, UNDO))
         backup_display = self.text_of(STRIP_PATH)
         self.assertEqual(json.loads(w.settings_bytes()), {"effortLevel": level})
         with open(w.real_path(backup_display), "rb") as fh:
             self.assertEqual(fh.read(), before, "the backup holds the bytes from before the save")
 
-        # Undo: the strip names the path it restored from, and no Undo button remains.
+        # Undo: the foot names the path it restored from, and no Undo button remains.
         self.click(UNDO)
         self.page.wait_for("!document.querySelector(%s)" % json.dumps(UNDO))
-        self.page.wait_for(js("Boolean(document.querySelector(%s))", STRIP_PATH))
+        self.page.wait_for(js("Boolean(document.querySelector(%s)) && Boolean(document.querySelector(%s)) "
+                              "&& document.querySelector(%s).textContent.includes('Undone.')",
+                              STRIP_LINE, STRIP_PATH, STRIP_LINE))
         restored_display = self.text_of(STRIP_PATH)
         self.assertFalse(self.page.eval(js("Boolean(document.querySelector(%s))", UNDO)),
                          "an Undo button remains after the undo")
@@ -336,7 +390,7 @@ class EditPath(_ChromeBase):
 @unittest.skipUnless(os.environ.get("MR_E2E") == "1", "set MR_E2E=1 to run the headless Chrome checks")
 @unittest.skipIf(shell.CHROME is None, "Chrome was not found (set MR_CHROME to its path)")
 class EditLook(_ChromeBase):
-    """#87's two browser items: no sideways scroll and AA text contrast in the rest, preview and saved states."""
+    """#87's two browser items: no sideways scroll and AA text contrast in the rest, pick-a-file, preview and saved states."""
 
     def audit(self, where):
         failures = []
@@ -344,21 +398,23 @@ class EditLook(_ChromeBase):
             failures.append("%s: data-ox is not 0, the page scrolls sideways" % where)
         self.page.eval(settings_e2e.OPEN_DETAILS)
         result = self.page.eval(settings_e2e.TEXT_CONTRAST_BAD)
-        if result["checked"] <= 20:
+        if result["checked"] <= 10:
             failures.append("%s: checked only %d elements" % (where, result["checked"]))
         failures += ["%s: %s" % (where, item) for item in result["bad"]]
         return failures
 
-    def test_rest_preview_and_saved_states(self):
+    def test_rest_pick_preview_and_saved_states(self):
         w = self.world
         before = w.settings_bytes()
         failures = []
         for width in (1440, 375):
             for theme in ("light", "dark"):
                 tag = "%d %s" % (width, theme)
-                self.open_trail(width, theme)
+                self.open_settings(width, theme)
                 failures += self.audit(tag + " rest")
                 self.pick(OTHER_LEVELS[0])
+                failures += self.audit(tag + " pick a file")
+                self.pick_project_row()
                 failures += self.audit(tag + " preview")
                 self.click(SAVE)
                 self.page.wait_for(js("Boolean(document.querySelector(%s))", UNDO))

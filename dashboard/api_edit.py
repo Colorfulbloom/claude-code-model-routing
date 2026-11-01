@@ -16,11 +16,13 @@ Standard library only, Python 3.9.
 import hashlib
 import hmac
 import json
+import os
 import re
 
 import api_settings
 import collect
 import edit_store
+import git_check
 import json_edit
 import projects
 import resolve
@@ -33,6 +35,10 @@ RANKS = rules_schema.EFFORT_LEVELS  # low to max, for comparing levels and caps
 REPLACED_RULE = "max-effort-level-replaced-in-file"
 LAYER_REASONS = {"managed": "managed", "flag": "flag", "cli": "cli", "default": "default"}
 LAYER_ORDER = {"local": 0, "project": 1, "user": 2}  # the order other targets are tried in
+# The lock reason a file row carries when the file holds no line to change. One entry per state, so
+# a later ticket that makes the state editable deletes its entry here and nothing else.
+ROW_LOCKS = {"no_line": "add_later", "absent": "create_later"}
+EFFECT_RANK = ("applies", "lowered", "unknown", "wont_apply")  # best first
 _SEQ_RE = re.compile(r"^(\d{6})-")
 
 
@@ -157,14 +163,16 @@ def _caps_below(entries, level):
 def _runs_as(view, entries):
     """Return the level the main effort row runs at, or None when it is unknown.
 
-    With no model the resolver applies no cap (resolve.py, _computed_becomes), so a
-    level above a top-level cap is lowered here. This is the only place that does.
+    The resolver sets no "becomes" for a winner it did not lower: with no model it
+    applies no cap, and a modelSettings line (key effortLevel) never gets one under a
+    cap (resolve.py, _computed_becomes). So a level above a top-level cap is lowered
+    here, whenever the winner has no "becomes". This is the only place that does.
     """
     winner = _winner(_effort_row(entries))
     if winner is None or winner["status"] == "unknown":
         return None
     value = winner.get("becomes", winner["value"])
-    if view.model is None and isinstance(value, str) and value in LEVELS:
+    if "becomes" not in winner and isinstance(value, str) and value in LEVELS:
         caps = _caps_below(entries, value)
         if caps:
             value = caps[0]["value"]
@@ -201,6 +209,7 @@ class _View:
         self.project = project
         self.overlay = overlay
         self.missing = False
+        self.repo_locked = False
         self.entries = []
         self.collected = None
         self.effort = []
@@ -284,7 +293,21 @@ def _classify(view, entry):
     if not _key_allowed(key_path) or _display(ctx, target.path) != entry.get("file"):
         _block(view, entry, "unparsed", key_path)
         return
+    if view.repo_locked:
+        _block(view, entry, "not_repo_root", key_path)
+        return
     view.targets.append(_Target(layer, key_path, target, raw, entry))
+
+
+def _repo_locked(project):
+    """True when the project is a repo subfolder, a worktree or a submodule: every write locks.
+
+    Claude Code reads settings.local.json at the repo root, so a root file the dashboard
+    can't see could beat any line written here. An unexpanded path is not walked.
+    """
+    if project.unexpanded:
+        return False
+    return git_check.repo_place(project.path) in ("subfolder", "linked")
 
 
 def _view(ctx, listing, project, overlay=None):
@@ -293,6 +316,7 @@ def _view(ctx, listing, project, overlay=None):
     if project.state == projects.STATE_MISSING and not project.implicit:
         view.missing = True
         return view
+    view.repo_locked = _repo_locked(project)
     view.entries, view.collected = api_settings.resolved(ctx, project, overlay=overlay, listing=listing)
     view.effort = _effort_row(view.entries)
     for entry in view.effort:
@@ -401,12 +425,152 @@ def _order(view, winner):
     return first + rest
 
 
-def _level_row(level, result, target, runs_as, certain, limits):
-    return {"level": level, "result": result, "target": target, "runs_as": runs_as,
-            "certain": certain, "limits": limits}
+def _file_row(layer, file_display, state, line=None, value=None, status=None, target=None, lock_reason=None):
+    return {"layer": layer, "file_display": file_display, "state": state, "line": line, "value": value,
+            "status": status, "target": target, "shared": layer == "project",
+            "lock_reason": ROW_LOCKS.get(state, lock_reason)}
 
 
-def _levels(view):
+def _modelsettings_locked(view, data):
+    """True when modelSettings, or the table entry of the running model, is not an object."""
+    if "modelSettings" not in data:
+        return False
+    table = data["modelSettings"]
+    if not isinstance(table, dict):
+        return True
+    if view.model is None:
+        return False
+    catalog = view.ctx.rules.get("models", [])
+    for name, item in table.items():
+        if resolve.normalize_model(name, catalog)[0] == view.model and not isinstance(item, dict):
+            return True
+    return False
+
+
+def _empty_file_row(view, layer):
+    """Return the file row of a layer that has no entry on the main effort trail."""
+    ctx = view.ctx
+    try:
+        target = edit_store.target_for(ctx, view.project.key, layer)
+    except edit_store.Refused as exc:
+        return _file_row(layer, None, "locked", lock_reason=exc.code)
+    display = _display(ctx, target.path)
+    try:
+        raw = edit_store.read_target(target)
+    except edit_store.Refused as exc:
+        if exc.code != "file_missing":
+            return _file_row(layer, display, "locked", lock_reason=exc.code)
+        if not os.path.lexists(target.base):
+            return _file_row(layer, display, "locked", lock_reason="file_missing")
+        return _file_row(layer, display, "absent")
+    except OSError:
+        return _file_row(layer, display, "locked", lock_reason="unparsed")
+    try:
+        _text, data = json_edit.parse_strict(raw)  # for the lock reason only, never for a value
+    except json_edit.Refused:
+        return _file_row(layer, display, "locked", lock_reason="unparsed")
+    if _modelsettings_locked(view, data):
+        return _file_row(layer, display, "locked", lock_reason="parent_not_object")
+    return _file_row(layer, display, "no_line")
+
+
+def _file_states(view):
+    """Return one row per layer (local, project, user) for the files the page can draw. Empty for a missing folder.
+
+    A row says whether the file holds an effort line (has_line), holds none (no_line), is not
+    there yet (absent) or can't be edited (locked). A value comes only from the trail, which is
+    masked, never from the file itself.
+    """
+    if view.missing:
+        return []
+    by_ref = {t.ref: t for t in view.targets}
+    rows = []
+    for layer in sorted(edit_store.LAYERS, key=LAYER_ORDER.get):
+        entries = [e for e in view.effort if e["layer"] == layer]
+        found = next((e for e in entries if ref_of(e) in by_ref), None)
+        if found is not None:
+            rows.append(_file_row(layer, found.get("file"), "has_line", found.get("line"),
+                                  _masked(found.get("value")), found["status"], by_ref[ref_of(found)].id))
+        elif entries:
+            first = entries[0]
+            rows.append(_file_row(layer, first.get("file"), "locked", first.get("line"),
+                                  _masked(first.get("value")), first["status"],
+                                  lock_reason=view.blocked_refs.get(ref_of(first), "unparsed")))
+        else:
+            rows.append(_empty_file_row(view, layer))
+    if view.repo_locked:
+        for row in rows:
+            row["lock_reason"] = "not_repo_root"
+            row["target"] = None
+    return rows
+
+
+def _effect(view, target, level):
+    """Return (effect, runs_as, lock_reason) of setting one target to a level, from the real resolver run.
+
+    effect is applies, lowered, unknown or wont_apply, and None when the edit is refused.
+    """
+    entries = _simulate(view, target, level)
+    if entries is None:
+        return None, None, "not_editable"
+    row = _effort_row(entries)
+    mine = next((e for e in row if ref_of(e) == target.ref), None)
+    winner = _winner(row)
+    runs = _runs_as(view, entries)
+    if mine is None:
+        effect = "wont_apply"
+    elif mine["status"] == "unknown":
+        effect = "unknown"
+    elif winner is None or ref_of(winner) != target.ref:
+        effect = "wont_apply"
+    elif (winner["status"] == "in_effect" and winner["value"] == level
+          and not limits_for(view, level, entries)):
+        effect = "applies"
+    else:
+        effect = "lowered"
+    if effect != "unknown" and runs == view.runs_as:
+        effect = "wont_apply"  # a file change that leaves the level where it is today
+    return effect, _masked(runs), None
+
+
+def _level_file(view, file_row, level, order):
+    """Return the row of one file under one level."""
+    layer = file_row["layer"]
+    out = {"layer": layer, "target": None, "op": None, "line": file_row["line"], "runs_as": None,
+           "effect": None, "lock_reason": file_row["lock_reason"], "pickable": False}
+    if file_row["state"] != "has_line":
+        return out
+    best = None
+    for target in order:
+        if target.layer != layer:
+            continue
+        effect, runs, lock = _effect(view, target, level)
+        rank = EFFECT_RANK.index(effect) if effect is not None else len(EFFECT_RANK)
+        if best is None or rank < best[0]:
+            best = (rank, target, effect, runs, lock)
+    if best is None:
+        return out
+    _rank, target, effect, runs, lock = best
+    out.update(target=target.id, op="replace", line=target.entry.get("line"), runs_as=runs, effect=effect,
+               lock_reason=lock, pickable=lock is None and effect in EFFECT_RANK[:3])
+    return out
+
+
+def _level_row(level, result, runs_as, certain, limits, files=None, preselect=None):
+    files = files or []
+    return {"level": level, "result": result, "runs_as": runs_as, "certain": certain, "limits": limits,
+            "files": files, "preselect": preselect, "saveable": any(row["pickable"] for row in files)}
+
+
+def _preselect(files):
+    """Return the local file's target when it would apply the level, else None. Never a shared file."""
+    for row in files:
+        if row["layer"] == "local" and row["effect"] == "applies" and row["pickable"]:
+            return row["target"]
+    return None
+
+
+def _levels(view, file_rows):
     if view.missing or view.levels_state == "no_effort_support":
         return []
     certain = view.model is not None
@@ -415,7 +579,7 @@ def _levels(view):
     out = []
     for level in LEVELS:
         if level == today:
-            out.append(_level_row(level, "now", None, level, certain, []))
+            out.append(_level_row(level, "now", level, certain, []))
             continue
         best = None
         first = None
@@ -434,12 +598,13 @@ def _levels(view):
                     and not limits_for(view, level, entries)):
                 reached = target
                 break
+        files = [_level_file(view, row, level, order) for row in file_rows]
         if reached is not None:
-            out.append(_level_row(level, "reachable", reached.id, level, certain, []))
+            out.append(_level_row(level, "reachable", level, certain, [], files, _preselect(files)))
         else:
             entries = first if first is not None else view.entries
-            out.append(_level_row(level, "stopped", None, best if best is not None else today,
-                                  certain, limits_for(view, level, entries)))
+            out.append(_level_row(level, "stopped", best if best is not None else today,
+                                  certain, limits_for(view, level, entries), files, _preselect(files)))
     return out
 
 
@@ -546,6 +711,7 @@ def _warning(view, edited, value, before, after):
             limits = [limit]
     return {"status": status, "reason": entry.get("reason"), "rule_ids": list(entry.get("rule_ids") or []),
             "in_effect_changes": _runs_as(view, before["entries"]) != _runs_as(view, entries),
+            "model_known": view.model is not None,
             "limits": limits}
 
 
@@ -576,6 +742,16 @@ def _preview(ctx, view, edited, value):
         "base_file": _hmac(ctx, edited.raw),
         "base_trail": _hmac(ctx, trail.encode("utf-8")),
         "base_others": others,
+        "op": "replace",
+        "layer": edited.layer,
+        "shared": edited.layer == "project",
+        "line": edited.entry.get("line"),
+        "ref": edited.ref,
+        "new_file": False,
+        "creates_dir": False,
+        "ledger_damaged": _ledger_damaged(ctx.edit.store, edited.store_target),
+        "runs_before": _masked(_runs_as(view, before["entries"])),
+        "runs_after": _masked(_runs_as(view, after["entries"])),
     }
     return _Preview(payload, new_raw, layers)
 
@@ -788,17 +964,43 @@ def _editable_view(ctx, listing, project, target_id):
 
 # ---------------------------------------------------------------- routes
 
+def _project_lock(view):
+    return "not_repo_root" if view.repo_locked else None
+
+
+def _read_only(view, project, file_rows):
+    """Return the targets answer when edits are off: what runs today and which levels exist, nothing to write.
+
+    It holds no target ids, no per-level simulation and no save flags. The only resolver pass is the one _view ran.
+    """
+    levels = []
+    if not (view.missing or view.levels_state == "no_effort_support"):
+        levels = [{"level": level, "result": "now" if level == view.runs_as else "offered"} for level in LEVELS]
+    files = [{key: value for key, value in row.items() if key != "target"} for row in file_rows]
+    return {"enabled": False, "project": project.key, "state": project.state,
+            "agent": MAIN_AGENT, "setting": SETTING, "runs_as": view.runs_as,
+            "model": view.model, "levels_state": view.levels_state,
+            "project_lock": _project_lock(view), "files": files, "levels": levels}
+
+
 def targets(ctx, query):
-    """GET /api/edit/targets: the main effort row, what can be edited and what each level would do."""
-    if ctx.edit is None:
-        return 200, {"enabled": False}
+    """GET /api/edit/targets: the main effort row, what can be edited and what each level would do.
+
+    With edits off it answers the read-only form from _read_only, for the same project checks.
+    """
     try:
         listing, project = _pick(ctx, query.get("project") or [])
         view = _view(ctx, listing, project)
+        files = _file_states(view)
+        if ctx.edit is None:
+            return 200, _read_only(view, project, files)
+        levels = _levels(view, files)
         return 200, {"enabled": True, "project": project.key, "state": project.state,
                      "agent": MAIN_AGENT, "setting": SETTING, "runs_as": view.runs_as,
                      "model": view.model, "levels_state": view.levels_state,
-                     "targets": _targets_out(view), "blocked": view.blocked, "levels": _levels(view)}
+                     "project_lock": _project_lock(view),
+                     "targets": _targets_out(view), "blocked": view.blocked, "files": files,
+                     "levels": levels, "saveable": any(row["saveable"] for row in levels)}
     except _Answer as answer:
         return answer.status, answer.body
 

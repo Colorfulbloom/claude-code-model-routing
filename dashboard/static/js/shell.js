@@ -143,15 +143,20 @@ export function createShell({ sidebar, topbar, onProject }) {
 
   let shownProjects = "";
 
-  // state: { projects, project, route, nav, query, version }
+  // state: { projects, project, route, nav, query, version, notSaved } where notSaved is a list of the keys of the
+  // projects with a change waiting on Save, or nothing.
   function update(state) {
-    // Switcher: the listed projects, then All projects. Unlisted folders are never in this list.
-    const wanted = JSON.stringify(state.projects.map((p) => [p.key, p.name, p.state]));
+    // Switcher: the listed projects, then All projects. Unlisted folders are never in this list. A project with a
+    // change waiting on Save says so in its option, which a phone's native select shows too.
+    const pending = Array.isArray(state.notSaved) ? state.notSaved : [];
+    const wanted = JSON.stringify(state.projects.map((p) => [p.key, p.name, p.state, pending.includes(p.key)]));
     if (wanted !== shownProjects) {
       shownProjects = wanted;
       clear(select);
       for (const p of state.projects) {
-        const text = p.state === "missing_folder" ? t("opt_missing", { name: p.name }) : p.name;
+        let text = p.name;
+        if (p.state === "missing_folder") text = t("opt_missing", { name: p.name });
+        else if (pending.includes(p.key)) text = t("opt_not_saved", { name: p.name });
         select.appendChild(h("option", { value: p.key }, text));
       }
       select.appendChild(h("option", { value: ALL_KEY }, t("all_projects")));

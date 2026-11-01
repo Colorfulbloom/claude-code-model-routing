@@ -227,6 +227,31 @@ test("range change: makes no /api/usage request after a real payload, and redraw
   assert.equal(app.calls.length, before, "a range switch fetches nothing");
 });
 
+// ---------------------------------------------------------------- the Settings band in the app
+
+test("settings: a change of ?setting= alone redraws Settings with that cell open and fetches nothing", async () => {
+  const app = await boot({ hash: "#/settings" });
+  const cells = () => app.section("settings").find((n) => n.tagName === "a" && n.getAttribute("data-setting"));
+  const open = () => cells().filter((n) => n.getAttribute("aria-current") === "true").map((n) => n.getAttribute("data-setting"));
+  assert.deepEqual(open(), ["effortLevel"], "Effort is open on load");
+  const before = app.calls.length;
+  await app.go("#/settings?setting=model");
+  assert.deepEqual(open(), ["model"]);
+  assert.equal(app.calls.length, before, "the same route in the same project fetches nothing");
+  // Every link on the page keeps the project and the range, and the cells carry their own setting.
+  const href = cells().find((n) => n.getAttribute("data-setting") === "promptCacheTtl").getAttribute("href");
+  assert.match(href, /^#\/settings\?.*setting=promptCacheTtl$/);
+  // The sidebar links leave setting out, and another route drops it.
+  const nav = app.sidebar.find((n) => n.tagName === "a" && n.getAttribute("href") && n.getAttribute("href").startsWith("#/agents"));
+  assert.ok(nav.length > 0 && nav.every((n) => !n.getAttribute("href").includes("setting=")));
+  await app.go("#/agents?setting=model");
+  assert.equal(app.section("agents").hidden, false);
+  assert.equal(app.section("settings").hidden, true);
+  // A value the band does not have reads as Effort.
+  await app.go("#/settings?setting=bogus");
+  assert.deepEqual(open(), ["effortLevel"]);
+});
+
 // ---------------------------------------------------------------- the usage payload held back or failing
 
 test("usage held back: data-rendered reaches 1 and data-usage stays unset, then the answer draws the page", async () => {

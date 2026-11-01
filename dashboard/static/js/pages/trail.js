@@ -1,6 +1,6 @@
-// The trail of what decides one value, at #/settings/<agent key>/<setting key>. It draws the Settings head and
-// tiles, then the "What decides" panel for the row: the winner, every value that lost, the rules behind
-// them and the files read. Screen 07 in docs/design/usage-stack/a-usage is the reference, and app.css holds
+// The trail of what decides one value, at #/settings/<agent key>/<setting key>. It draws its own head, with a
+// link back to the setting on the Settings page, then the "What decides" panel for the row: the winner, every
+// value that lost, the rules behind them and the files read. Screen 07 in docs/design/usage-stack/a-usage is the reference, and app.css holds
 // every class used here (section "Settings and trail").
 //
 // The panel works from the server's rows, entries and rules, not from any tile, so it opens for any row,
@@ -9,25 +9,17 @@
 
 import { h, clear, externalLink } from "../h.js";
 import { t, renderText, fmtTime } from "../format.js";
-import { MAIN_KEY } from "../router.js";
-import { card, chip } from "../components.js";
-import * as editCard from "../edit_card.js";
+import { MAIN_KEY, BAND_SETTINGS } from "../router.js";
+import { card, chip, pageHead } from "../components.js";
 import {
-  renderSettingsBody, valueText, valueString, sourceText, layerText, settingWord, winnerOf, returnFocusTo,
+  renderGuards, valueText, valueString, sourceText, layerText, settingWord, winnerOf, returnFocusTo,
 } from "./settings.js";
+import { rowFor, entriesOf, fromShell } from "./where.js";
 
 const LOST = ["overridden", "ignored", "invalid"]; // the statuses that did not count
 const CONFIDENCE_ORDER = ["tested", "documented", "assumed"];
 
 // ---------------------------------------------------------------- rows
-
-function rowFor(payload, agent, setting) {
-  return (payload.rows || []).find((r) => r.agent === agent && r.setting === setting) || null;
-}
-
-function entriesOf(payload, row) {
-  return row.entries.map((i) => payload.entries[i]).filter(Boolean);
-}
 
 // The winner of the row of another setting for the same agent, or null when it has no such row.
 function winnerFor(payload, agent, setting) {
@@ -46,19 +38,8 @@ function layeredSource(entry, payload) {
   return (layer ? layer + ", " : "") + sourceText(entry, payload, true);
 }
 
-// True when the value was read from the shell: its file is the shell, or it is a default that came through a
-// variable whose own row is a shell value (see sourceText).
-function fromShell(entry, payload) {
-  const file = entry.file === null || entry.file === undefined || entry.file === ""
-    ? (entry.via ? (winnerOf(payload, "env." + entry.via) || {}).file : null)
-    : entry.file;
-  return file !== null && file !== undefined && file === payload.shell_label;
-}
-
-// One entry of the row, big for the winner and a card for the others. edit is what edit_card.js handed this
-// render, or null: it adds a Change link to the top line and a lock line at the end of the entry.
-function entryNode(entry, payload, big, edit) {
-  const extra = edit ? edit.extras(entry) : {};
+// One entry of the row, big for the winner and a card for the others.
+function entryNode(entry, payload, big) {
   const value = valueText(entry, payload);
   const layer = layerText(entry, payload);
   const hasBecomes = entry.becomes !== undefined && entry.becomes !== null;
@@ -68,15 +49,13 @@ function entryNode(entry, payload, big, edit) {
       value === null ? null : [h("span", { class: "sr" }, t("lbl_value")), h("span", { class: "val" }, value)],
       h("span", { class: "sr" }, t("lbl_status")),
       chip(entry.status),
-      hasBecomes ? h("span", { class: "runs" }, t("runs_as", { becomes: entry.becomes })) : null,
-      extra.act || null),
+      hasBecomes ? h("span", { class: "runs" }, t("runs_as", { becomes: entry.becomes })) : null),
     h("div", { class: "en-src" },
       h("span", { class: "sr" }, t("lbl_source")),
       layer ? h("span", { class: "ly" }, layer) : null,
       h("span", { class: "pa" }, renderText(sourceText(entry, payload)))),
     h("p", { class: "en-rs" }, h("span", { class: "sr" }, t("lbl_reason")), renderText(entry.reason || "")),
-    shell ? h("p", { class: "en-note" }, t("shell_note")) : null,
-    extra.lock || null);
+    shell ? h("p", { class: "en-note" }, t("shell_note")) : null);
 }
 
 // "Model" and "Effort cap" above the cards.
@@ -105,16 +84,16 @@ function metaBlock(payload, row) {
   return lines.length ? h("dl", { class: "meta" }, lines) : null;
 }
 
-function winnerCard(payload, winner, edit) {
+function winnerCard(payload, winner) {
   const value = valueString(winner, payload);
   const summary = (value ? value + " " : "") + t("status_" + winner.status) + ", " + sourceText(winner, payload, true);
   return card({
     title: t("sec_winner"), icon: "flag", summary: renderText(summary), open: true, heading: "h3",
-    body: h("div", { class: "win" }, entryNode(winner, payload, true, edit)),
+    body: h("div", { class: "win" }, entryNode(winner, payload, true)),
   });
 }
 
-function othersCard(payload, others, edit) {
+function othersCard(payload, others) {
   const n = others.length;
   const m = others.filter((e) => LOST.includes(e.status)).length;
   let summary;
@@ -122,7 +101,7 @@ function othersCard(payload, others, edit) {
   else summary = n === 1 && m === 1 ? t("sum_values_1") : t("sum_values", { n, m });
   return card({
     title: t("sec_values_other"), icon: "list", summary, open: true, heading: "h3",
-    body: h("div", { class: "ens ens-a" }, others.map((e) => entryNode(e, payload, false, edit))),
+    body: h("div", { class: "ens ens-a" }, others.map((e) => entryNode(e, payload, false))),
   });
 }
 
@@ -211,9 +190,9 @@ function filesCard(payload) {
 
 // ---------------------------------------------------------------- panel
 
-// The panel and its heading. The caller moves focus to the heading. edit is null except on the main session's
-// effort, where its card goes between the meta block and the Winner card.
-function buildPanel(payload, row, edit) {
+// The panel and its heading. The caller moves focus to the heading. The trail is read-only: changes are made on the
+// Settings page.
+function buildPanel(payload, row) {
   const entries = entriesOf(payload, row);
   const winner = entries[0];
   const setting = settingWord(row.setting);
@@ -222,9 +201,8 @@ function buildPanel(payload, row, edit) {
   const panel = h("div", { id: "trail", class: "trail-a" },
     title,
     metaBlock(payload, row),
-    edit ? edit.card : null,
-    winner ? winnerCard(payload, winner, edit) : null,
-    entries.length > 1 ? othersCard(payload, entries.slice(1), edit) : null,
+    winner ? winnerCard(payload, winner) : null,
+    entries.length > 1 ? othersCard(payload, entries.slice(1)) : null,
     rulesCard(payload, row),
     filesCard(payload));
   return { panel, title };
@@ -256,7 +234,20 @@ function onKeydown(event) {
   if (sidebar && sidebar.classList.contains("is-open")) return;
   const { agent, setting, ctx } = active;
   returnFocusTo(agent, setting);
-  window.location.hash = ctx.hashFor("settings", {});
+  window.location.hash = ctx.hashFor("settings", {}, settingPatch(agent, setting));
+}
+
+// The Settings page opens on the cell of a main session row, when the band has a cell for it.
+function settingPatch(agent, setting) {
+  return agent === MAIN_KEY && BAND_SETTINGS.includes(setting) ? { setting } : {};
+}
+
+// The head: the Settings title and intro as on the Settings page, and for a main session row with a cell a link to
+// change that setting there.
+function trailHead(ctx, agent, setting) {
+  const patch = settingPatch(agent, setting);
+  const link = patch.setting ? h("a", { href: ctx.hashFor("settings", {}, patch) }, t("trail_change_link")) : null;
+  return pageHead({ title: t("nav_settings"), intro: t("intro_settings"), right: link });
 }
 
 function bindKeys() {
@@ -267,20 +258,17 @@ function bindKeys() {
 
 export function render(root, ctx) {
   const hadFocus = insidePanel(root);
-  const editFocus = editCard.focusKey(); // an edit control that holds focus keeps it across this draw
   clear(root);
   if (ctx.route.name !== "trail") { // the route carries the parameters this page needs
     active = null;
     arrived = null;
-    editCard.leave();
     return;
   }
   const { agent, setting } = ctx.route.params;
   active = { root, ctx, agent, setting };
   bindKeys();
-  // The edit card and strip show on the main session's effort trail only. Any other row is drawn as before.
-  const edit = agent === MAIN_KEY && setting === "effortLevel" ? editCard.begin(ctx) : editCard.leave();
-  const payload = renderSettingsBody(root, ctx, agent === MAIN_KEY ? setting : null, edit && edit.strip);
+  root.appendChild(trailHead(ctx, agent, setting));
+  const payload = renderGuards(root, ctx);
   if (!payload) return;
   const row = rowFor(payload, agent, setting);
   if (!row) {
@@ -290,14 +278,12 @@ export function render(root, ctx) {
     })));
     return;
   }
-  const { panel, title } = buildPanel(payload, row, edit);
+  const { panel, title } = buildPanel(payload, row);
   root.appendChild(panel);
-  if (edit) edit.done();
   const key = agent + "\n" + setting;
-  // Focus on an edit control stays where it was. Any other focus inside the panel goes to the heading.
-  if (arrived !== key || (hadFocus && !editFocus)) {
+  // Focus inside the panel goes to the heading, because the nodes it held were rebuilt.
+  if (arrived !== key || hadFocus) {
     arrived = key;
     title.focus();
   }
-  if (edit) editCard.settle(root, editFocus);
 }

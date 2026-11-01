@@ -105,7 +105,12 @@ export class FElement extends FNode {
     if (!/\[role="radio"\]\[aria-checked="true"\]/.test(sel)) throw new Error("unsupported selector " + sel);
     return this.find((n) => n.getAttribute("role") === "radio" && n.getAttribute("aria-checked") === "true")[0] || null;
   }
-  focus() { FElement.focused = this; this.focusCalls = (this.focusCalls || 0) + 1; }
+  // A disabled control takes no focus, as in a browser.
+  focus() {
+    if (this.attrs.has("disabled")) return;
+    FElement.focused = this;
+    this.focusCalls = (this.focusCalls || 0) + 1;
+  }
 }
 FElement.focused = null;
 

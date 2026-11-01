@@ -29,6 +29,7 @@ sys.path.insert(0, DASHBOARD)
 import api_edit  # noqa: E402
 import api_settings  # noqa: E402
 import edit_store  # noqa: E402
+import git_check  # noqa: E402
 import json_edit  # noqa: E402
 import projects  # noqa: E402
 import resolve  # noqa: E402
@@ -61,6 +62,11 @@ class World:
 
     def __init__(self, case, user=None, project=None, local=None, managed=None, agents=None,
                  shell_env=None, listed=None, edit=True):
+        # A MR_TEST_TMP inside a repo must not lock every edit test. A test that wants a lock
+        # sets its own return value on self.place.
+        self.place = mock.patch.object(git_check, "repo_place", return_value="no_repo")
+        self.place.start()
+        case.addCleanup(self.place.stop)
         self.root = os.path.realpath(tempfile.mkdtemp(prefix="mr-api-edit-", dir=helpers._tmp_base()))
         case.addCleanup(helpers.rmtree_force, self.root)
         self.cfg = os.path.join(self.root, "config")
@@ -173,6 +179,16 @@ def level_of(body, level):
     return [row for row in body["levels"] if row["level"] == level][0]
 
 
+def file_of(row, layer):
+    """Return the row of one file in a level answer or in the top-level files list."""
+    rows = row["files"] if isinstance(row, dict) else row
+    return [f for f in rows if f["layer"] == layer][0]
+
+
+def project_row(row):
+    return file_of(row, "project")
+
+
 def kinds(row):
     return [limit["kind"] for limit in row["limits"]]
 
@@ -243,7 +259,8 @@ class Constants(Base):
         self.assertEqual(api_edit.edit_info(world.ctx, {}), (200, {"enabled": True, "launch_id": "launch-test"}))
         off = World(self, user={}, edit=False)
         self.assertEqual(api_edit.edit_info(off.ctx, {}), (200, {"enabled": False, "launch_id": None}))
-        self.assertEqual(api_edit.targets(off.ctx, {}), (200, {"enabled": False}))
+        status, body = api_edit.targets(off.ctx, {})
+        self.assertEqual((status, body["enabled"]), (200, False))
         self.assertEqual(api_edit.history(off.ctx, {}), (200, {"enabled": False}))
 
 
@@ -290,7 +307,8 @@ class TargetsShape(Base):
         world = World(self, user={"model": SONNET}, project={"effortLevel": "high"})
         body = world.targets()
         self.assertEqual(set(body), {"enabled", "project", "state", "agent", "setting", "runs_as", "model",
-                                     "levels_state", "targets", "blocked", "levels"})
+                                     "levels_state", "project_lock", "targets", "blocked", "files", "levels",
+                                     "saveable"})
         self.assertEqual((body["enabled"], body["project"], body["state"], body["agent"], body["setting"]),
                          (True, "project", "ok", "@main", "effortLevel"))
         self.assertEqual((body["runs_as"], body["model"], body["levels_state"]), ("high", SONNET, "ok"))
@@ -501,14 +519,21 @@ class Levels(Base):
         self.assertEqual([row["level"] for row in body["levels"]], list(LEVELS))
         project = target_of(body, "project")["target"]
         for row in body["levels"]:
-            self.assertEqual(set(row), {"level", "result", "target", "runs_as", "certain", "limits"})
+            self.assertEqual(set(row), {"level", "result", "runs_as", "certain", "limits", "files",
+                                        "preselect", "saveable"})
             self.assertIs(row["certain"], True)
             self.assertEqual(row["limits"], [])
-        self.assertEqual(level_of(body, "high"), {"level": "high", "result": "now", "target": None,
-                                                  "runs_as": "high", "certain": True, "limits": []})
+        self.assertEqual(level_of(body, "high"), {"level": "high", "result": "now", "runs_as": "high",
+                                                  "certain": True, "limits": [], "files": [],
+                                                  "preselect": None, "saveable": False})
         for name in ("low", "medium", "xhigh"):
-            self.assertEqual(level_of(body, name), {"level": name, "result": "reachable", "target": project,
-                                                    "runs_as": name, "certain": True, "limits": []})
+            row = level_of(body, name)
+            self.assertEqual((row["result"], row["runs_as"], row["certain"], row["limits"], row["preselect"],
+                              row["saveable"]), ("reachable", name, True, [], None, True))
+            self.assertEqual([f["layer"] for f in row["files"]], ["local", "project", "user"])
+            self.assertEqual(row["files"][1], {"layer": "project", "target": project, "op": "replace", "line": 2,
+                                               "runs_as": name, "effect": "applies", "lock_reason": None,
+                                               "pickable": True})
 
     def test_a_target_is_tried_winner_first_then_the_rest(self):
         # No model: the user file value is unknown and wins, the project "max" is invalid. Only the
@@ -521,7 +546,8 @@ class Levels(Base):
         project = target_of(body, "project")["target"]
         for name in LEVELS:
             row = level_of(body, name)
-            self.assertEqual((row["result"], row["target"], row["certain"]), ("reachable", project, False))
+            self.assertEqual((row["result"], row["certain"], row["preselect"]), ("reachable", False, None))
+            self.assertEqual(project_row(row)["target"], project)
 
     def test_the_order_is_winner_then_local_project_user_and_a_model_path_first(self):
         world = World(self, user={"model": OPUS, "effortLevel": "low",
@@ -543,7 +569,8 @@ class Levels(Base):
         self.assertEqual(level_of(body, "low")["result"], "now")
         for name in ("medium", "high", "xhigh"):
             row = level_of(body, name)
-            self.assertEqual((row["result"], row["target"], row["runs_as"]), ("stopped", None, "low"))
+            self.assertEqual((row["result"], row["runs_as"]), ("stopped", "low"))
+            self.assertNotIn("target", row)
             self.assertEqual(len(row["limits"]), 1)
             limit = row["limits"][0]
             self.assertEqual((limit["kind"], limit["value"], limit["layer"], limit["file_display"], limit["line"],
@@ -595,7 +622,7 @@ class Levels(Base):
     def test_a_model_without_the_level_gives_a_model_limit_and_stops(self):
         world = World(self, user={"model": "claude-opus-4-6"}, project={"effortLevel": "low"})
         row = level_of(world.targets(), "xhigh")
-        self.assertEqual((row["result"], row["target"], row["runs_as"]), ("stopped", None, "high"))
+        self.assertEqual((row["result"], row["runs_as"]), ("stopped", "high"))
         self.assertEqual(kinds(row), ["model"])
         limit = row["limits"][0]
         self.assertEqual((limit["value"], limit["lock_reason"], limit["layer"], limit["file_display"],
@@ -626,7 +653,7 @@ class WinnersThatCannotBeEdited(Base):
         self.assertEqual(body["runs_as"], "high")
         self.assertEqual(level_of(body, "high")["result"], "now")
         row = level_of(body, "medium")
-        self.assertEqual((row["result"], row["target"], row["runs_as"]), ("stopped", None, "high"))
+        self.assertEqual((row["result"], row["runs_as"]), ("stopped", "high"))
         self.assertEqual(len(row["limits"]), 1)
         limit = row["limits"][0]
         self.assertEqual((limit["kind"], limit["value"], limit["layer"], limit["lock_reason"], limit["line"]),
@@ -662,7 +689,7 @@ class WinnersThatCannotBeEdited(Base):
         self.assertEqual([b["reason"] for b in body["blocked"] if b["layer"] == "local"], ["symlink"])
         self.assertEqual(body["runs_as"], "high")
         row = level_of(body, "medium")
-        self.assertEqual((row["result"], row["target"]), ("stopped", None))
+        self.assertEqual(row["result"], "stopped")
         limit = row["limits"][0]
         self.assertEqual((limit["kind"], limit["layer"], limit["lock_reason"]), ("winner", "local", "symlink"))
         self.assert_limits(row["limits"])
@@ -686,8 +713,7 @@ class NoModelTable(Base):
         self.assertEqual((low["result"], low["certain"]), ("now", False))
         for name in ("medium", "high", "xhigh"):
             row = level_of(body, name)
-            self.assertEqual((row["result"], row["target"], row["runs_as"], row["certain"]),
-                             ("stopped", None, "low", False), name)
+            self.assertEqual((row["result"], row["runs_as"], row["certain"]), ("stopped", "low", False), name)
             self.assertEqual(kinds(row), ["cap"], name)
             limit = row["limits"][0]
             self.assertEqual((limit["value"], limit["layer"], limit["lock_reason"]), ("low", "user", "cap_later"))
@@ -703,7 +729,9 @@ class NoModelTable(Base):
                              ("xhigh", "reachable")):
             row = level_of(body, name)
             self.assertEqual((row["result"], row["certain"]), (result, False), name)
-        self.assertEqual(level_of(body, "low")["target"], project)
+        low = level_of(body, "low")
+        self.assertEqual(project_row(low)["target"], project)
+        self.assertIsNone(low["preselect"])
 
     def test_a_per_model_cap_with_no_model_is_not_a_limit(self):
         world = World(self, user={"modelSettings": {OPUS: {"maxEffortLevel": "low"}}},
@@ -721,8 +749,7 @@ class NoModelTable(Base):
         self.assertEqual((body["levels_state"], body["runs_as"]), ("model_unknown", None))
         self.assertEqual(target_of(body, "user")["status"], "unknown")
         for row in body["levels"]:
-            self.assertEqual((row["result"], row["target"], row["runs_as"], row["certain"]),
-                             ("stopped", None, None, False))
+            self.assertEqual((row["result"], row["runs_as"], row["certain"]), ("stopped", None, False))
             self.assertEqual(len(row["limits"]), 1)
             self.assertEqual(row["limits"][0], {"kind": "model_unknown", "value": None, "layer": None,
                                                 "file_display": None, "line": None, "editable": False,
@@ -754,6 +781,301 @@ class NoModelTable(Base):
 
 
 # --------------------------------------------------------------------------
+# File rows and what each level does to each file (T19a)
+
+def view_of(world):
+    listing = projects.load(world.ctx)
+    return api_edit._view(world.ctx, listing, listing.find(world.key))
+
+
+class FileStates(Base):
+    ROW_KEYS = {"layer", "file_display", "state", "line", "value", "status", "target", "shared", "lock_reason"}
+
+    def files(self, world):
+        return world.targets()["files"]
+
+    def test_files_come_in_the_order_local_project_user_with_every_field(self):
+        world = World(self, user={"model": SONNET}, project={"effortLevel": "high"})
+        files = self.files(world)
+        self.assertEqual([f["layer"] for f in files], ["local", "project", "user"])
+        for row in files:
+            self.assertEqual(set(row), self.ROW_KEYS)
+        self.assertEqual([f["shared"] for f in files], [False, True, False])
+
+    def test_has_line_takes_line_value_status_and_target_from_the_trail(self):
+        world = World(self, user={"model": SONNET}, project={"effortLevel": "high"})
+        body = world.targets()
+        row = file_of(body["files"], "project")
+        self.assertEqual(row, {"layer": "project", "file_display": "project/.claude/settings.json",
+                               "state": "has_line", "line": 2, "value": "high", "status": "in_effect",
+                               "target": target_of(body, "project")["target"], "shared": True,
+                               "lock_reason": None})
+
+    def test_no_line_when_the_file_holds_no_effort_line(self):
+        world = World(self, user={"model": SONNET}, project={"effortLevel": "high"})
+        row = file_of(self.files(world), "user")
+        self.assertEqual((row["state"], row["lock_reason"], row["line"], row["value"], row["status"],
+                          row["target"], row["file_display"]),
+                         ("no_line", "add_later", None, None, None, None, "config/settings.json"))
+
+    def test_absent_when_the_leaf_is_gone(self):
+        world = World(self, user={"model": SONNET}, project={"effortLevel": "high"})
+        row = file_of(self.files(world), "local")
+        self.assertEqual((row["state"], row["lock_reason"], row["target"], row["file_display"]),
+                         ("absent", "create_later", None, "project/.claude/settings.local.json"))
+
+    def test_absent_when_the_claude_folder_is_gone(self):
+        world = World(self, user={"model": SONNET})
+        shutil.rmtree(os.path.join(world.proj, ".claude"))
+        files = self.files(world)
+        self.assertEqual([(f["layer"], f["state"], f["lock_reason"]) for f in files],
+                         [("local", "absent", "create_later"), ("project", "absent", "create_later"),
+                          ("user", "no_line", "add_later")])
+
+    def test_locked_by_a_symlink_at_the_leaf(self):
+        world = World(self, user={"model": SONNET}, project={"effortLevel": "high"})
+        real = os.path.join(world.root, "elsewhere.json")
+        world.put(real, {"model": OPUS})
+        os.symlink(real, world.path("local"))
+        row = file_of(self.files(world), "local")
+        self.assertEqual((row["state"], row["lock_reason"], row["target"], row["line"]),
+                         ("locked", "symlink", None, None))
+
+    def test_locked_by_a_hard_link(self):
+        world = World(self, user={"model": SONNET}, project={"effortLevel": "high"}, local={"model": OPUS})
+        os.link(world.path("local"), os.path.join(world.root, "second.json"))
+        row = file_of(self.files(world), "local")
+        self.assertEqual((row["state"], row["lock_reason"]), ("locked", "hard_link"))
+
+    def test_locked_by_a_file_that_does_not_parse(self):
+        world = World(self, user={"model": SONNET}, project={"effortLevel": "high"}, local="{ not json")
+        row = file_of(self.files(world), "local")
+        self.assertEqual((row["state"], row["lock_reason"], row["target"]), ("locked", "unparsed", None))
+
+    def test_a_line_in_a_symlinked_file_is_locked_with_its_line_and_value(self):
+        world = World(self, user={"model": SONNET})
+        real = os.path.join(world.root, "elsewhere.json")
+        world.put(real, {"effortLevel": "high"})
+        os.symlink(real, world.path("local"))
+        row = file_of(self.files(world), "local")
+        self.assertEqual((row["state"], row["lock_reason"], row["line"], row["value"], row["status"],
+                          row["target"]), ("locked", "symlink", 2, "high", "in_effect", None))
+
+    def test_file_missing_when_the_project_folder_is_gone(self):
+        world = World(self, user={"model": SONNET})
+        view = view_of(world)
+        shutil.rmtree(world.proj)
+        rows = api_edit._file_states(view)
+        self.assertEqual([(f["layer"], f["state"], f["lock_reason"]) for f in rows],
+                         [("local", "locked", "file_missing"), ("project", "locked", "file_missing"),
+                          ("user", "no_line", "add_later")])
+
+    def test_file_missing_when_the_config_folder_is_gone(self):
+        world = World(self, project={"effortLevel": "high"})
+        view = view_of(world)
+        shutil.rmtree(world.cfg)
+        self.assertEqual(file_of(api_edit._file_states(view), "user")["lock_reason"], "file_missing")
+
+    def test_a_missing_project_gives_no_files_no_levels_and_not_saveable(self):
+        world = World(self, user={"model": SONNET}, listed=[{"name": "gone", "path": "{root}/not-there"}])
+        status, body = api_edit.targets(world.ctx, {"project": ["gone"]})
+        self.assertEqual(status, 200)
+        self.assertEqual((body["files"], body["levels"], body["saveable"]), ([], [], False))
+
+    def test_no_effort_support_keeps_the_files_and_is_not_saveable(self):
+        world = World(self, user={"model": "claude-haiku-4-5"}, project={"effortLevel": "high"})
+        body = world.targets()
+        self.assertEqual((body["levels"], body["saveable"]), ([], False))
+        self.assertEqual(file_of(body["files"], "project")["state"], "has_line")
+
+    def test_parent_not_object_for_a_model_settings_that_is_not_an_object(self):
+        world = World(self, user={"model": OPUS}, project={"effortLevel": "high"},
+                      local={"modelSettings": [1, 2]})
+        row = file_of(self.files(world), "local")
+        self.assertEqual((row["state"], row["lock_reason"]), ("locked", "parent_not_object"))
+
+    def test_parent_not_object_for_a_model_entry_that_is_not_an_object(self):
+        world = World(self, user={"model": OPUS}, project={"effortLevel": "high"},
+                      local={"modelSettings": {OPUS: 5}})
+        row = file_of(self.files(world), "local")
+        self.assertEqual((row["state"], row["lock_reason"]), ("locked", "parent_not_object"))
+
+    def test_an_entry_of_another_model_that_is_not_an_object_does_not_lock(self):
+        world = World(self, user={"model": OPUS}, project={"effortLevel": "high"},
+                      local={"modelSettings": {SONNET: 5}})
+        self.assertEqual(file_of(self.files(world), "local")["state"], "no_line")
+
+    def test_a_planted_secret_never_reaches_the_answer(self):
+        world = World(self, user={"model": SONNET, "env": {"ANTHROPIC_API_KEY": SECRET}},
+                      project={"effortLevel": SECRET},
+                      local={"apiKeyHelper": SECRET, "modelSettings": {"x": {"token": SECRET}}})
+        body = world.targets()
+        self.assertNotIn(SECRET, json.dumps(body))
+        self.assertEqual(file_of(body["files"], "project")["value"], "hidden")
+        for level in body["levels"]:
+            for row in level["files"]:
+                self.assertNotIn(SECRET, json.dumps(row))
+
+    def test_a_planted_secret_in_a_locked_file_with_a_line_is_masked(self):
+        world = World(self, user={"model": SONNET})
+        real = os.path.join(world.root, "elsewhere.json")
+        world.put(real, {"effortLevel": SECRET})
+        os.symlink(real, world.path("local"))
+        body = world.targets()
+        self.assertNotIn(SECRET, json.dumps(body))
+        row = file_of(body["files"], "local")
+        self.assertEqual((row["state"], row["value"]), ("locked", "hidden"))
+
+    def test_the_row_locks_table_names_the_two_states(self):
+        self.assertEqual(api_edit.ROW_LOCKS, {"no_line": "add_later", "absent": "create_later"})
+
+    def test_a_preview_and_a_save_do_not_read_the_file_rows(self):
+        world = World(self, user={"model": SONNET}, project={"effortLevel": "low"})
+        target = target_of(world.targets(), "project")["target"]
+        with mock.patch.object(api_edit, "_file_states", side_effect=AssertionError("called")):
+            world.edit(target, "high")
+
+
+class LevelFiles(Base):
+    ROW_KEYS = {"layer", "target", "op", "line", "runs_as", "effect", "lock_reason", "pickable"}
+
+    def test_every_non_running_level_has_one_row_per_file_in_file_order(self):
+        world = World(self, user={"model": SONNET}, project={"effortLevel": "high"})
+        body = world.targets()
+        for level in body["levels"]:
+            if level["result"] == "now":
+                self.assertEqual((level["files"], level["preselect"], level["saveable"]), ([], None, False))
+                continue
+            self.assertEqual([f["layer"] for f in level["files"]], [f["layer"] for f in body["files"]])
+            for row in level["files"]:
+                self.assertEqual(set(row), self.ROW_KEYS)
+
+    def test_a_row_without_a_line_carries_the_file_lock_and_nothing_else(self):
+        world = World(self, user={"model": SONNET}, project={"effortLevel": "high"})
+        row = level_of(world.targets(), "low")
+        self.assertEqual(file_of(row, "local"), {"layer": "local", "target": None, "op": None, "line": None,
+                                                 "runs_as": None, "effect": None, "lock_reason": "create_later",
+                                                 "pickable": False})
+        self.assertEqual(file_of(row, "user")["lock_reason"], "add_later")
+
+    def test_applies_in_local_is_preselected(self):
+        world = World(self, user={"model": SONNET}, local={"effortLevel": "high"})
+        body = world.targets()
+        local = target_of(body, "local")["target"]
+        row = level_of(body, "low")
+        self.assertEqual(file_of(row, "local"), {"layer": "local", "target": local, "op": "replace", "line": 2,
+                                                 "runs_as": "low", "effect": "applies", "lock_reason": None,
+                                                 "pickable": True})
+        self.assertEqual((row["preselect"], row["saveable"]), (local, True))
+        self.assertIs(body["saveable"], True)
+
+    def test_lowered_by_a_cap_is_pickable_and_never_preselected(self):
+        world = World(self, user={"model": SONNET, "maxEffortLevel": "medium"}, local={"effortLevel": "low"})
+        row = level_of(world.targets(), "xhigh")
+        local = file_of(row, "local")
+        self.assertEqual((local["effect"], local["runs_as"], local["pickable"]), ("lowered", "medium", True))
+        self.assertEqual((row["preselect"], row["saveable"]), (None, True))
+
+    def test_lowered_onto_todays_level_reads_wont_apply_and_is_not_pickable(self):
+        world = World(self, user={"model": SONNET, "maxEffortLevel": "low"}, local={"effortLevel": "low"})
+        body = world.targets()
+        row = level_of(body, "high")
+        local = file_of(row, "local")
+        self.assertEqual((local["effect"], local["runs_as"], local["lock_reason"], local["pickable"]),
+                         ("wont_apply", "low", None, False))
+        self.assertEqual((row["preselect"], row["saveable"]), (None, False))
+        self.assertIs(body["saveable"], False)
+
+    def test_an_overridden_line_reads_wont_apply(self):
+        world = World(self, user={"model": SONNET}, project={"effortLevel": "low"}, local={"effortLevel": "high"})
+        row = level_of(world.targets(), "medium")
+        project = file_of(row, "project")
+        self.assertEqual((project["effect"], project["pickable"]), ("wont_apply", False))
+        local = file_of(row, "local")
+        self.assertEqual((local["effect"], local["pickable"]), ("applies", True))
+
+    def test_unknown_with_no_model_is_pickable_and_not_preselected(self):
+        world = World(self, user={"effortLevel": "high"})
+        body = world.targets()
+        for level in body["levels"]:
+            user = file_of(level, "user")
+            self.assertEqual((user["effect"], user["runs_as"], user["pickable"]), ("unknown", None, True))
+            self.assertIsNone(level["preselect"])
+            self.assertIs(level["saveable"], True)
+
+    def test_a_file_with_a_top_level_and_a_model_line_takes_the_better_one(self):
+        world = World(self, user={"model": OPUS, "effortLevel": "high",
+                                  "modelSettings": {OPUS: {"effortLevel": "low"}}})
+        body = world.targets()
+        model_path = target_of(body, "user", "modelSettings.claude-opus-5-5.effortLevel")["target"]
+        top = target_of(body, "user", '"effortLevel"]')["target"]
+        self.assertNotEqual(model_path, top)
+        view = view_of(world)
+        by_id = {t.id: t for t in view.targets}
+        self.assertEqual(api_edit._effect(view, by_id[top], "medium")[0], "wont_apply")
+        for name in ("medium", "high", "xhigh"):
+            user = file_of(level_of(body, name), "user")
+            self.assertEqual((user["target"], user["effect"]), (model_path, "applies"), name)
+
+    def test_a_target_the_json_editor_refuses_is_not_editable(self):
+        world = World(self, user={"model": SONNET}, local={"effortLevel": "high"})
+        view = view_of(world)
+        with mock.patch.object(api_edit, "_simulate", return_value=None):
+            row = api_edit._level_file(view, api_edit._file_states(view)[0], "low", view.targets)
+        self.assertEqual((row["op"], row["effect"], row["runs_as"], row["lock_reason"], row["pickable"]),
+                         ("replace", None, None, "not_editable", False))
+
+    def test_a_level_where_every_row_is_grey_is_not_saveable(self):
+        world = World(self, user={"model": OPUS})  # a default wins and no file holds a line
+        body = world.targets()
+        self.assertIs(body["saveable"], False)
+        for level in body["levels"]:
+            self.assertEqual((level["preselect"], level["saveable"]), (None, False))
+            for row in level["files"]:
+                self.assertIn(row["lock_reason"], ("add_later", "create_later"))
+                self.assertEqual((row["pickable"], row["target"], row["effect"]), (False, None, None))
+
+    def test_a_project_where_only_local_has_a_line_and_it_is_locked(self):
+        world = World(self, user={"model": SONNET})
+        real = os.path.join(world.root, "elsewhere.json")
+        world.put(real, {"effortLevel": "high"})
+        os.symlink(real, world.path("local"))
+        body = world.targets()
+        self.assertIs(body["saveable"], False)
+        for level in body["levels"]:
+            self.assertIsNone(level["preselect"])
+            if level["result"] == "now":
+                continue
+            local = file_of(level, "local")
+            self.assertEqual((local["lock_reason"], local["line"], local["pickable"]), ("symlink", 2, False))
+
+    def test_a_line_only_in_the_project_file_is_pickable_and_never_preselected(self):
+        world = World(self, user={"model": SONNET}, project={"effortLevel": "high"})
+        body = world.targets()
+        for name in ("low", "medium", "xhigh"):
+            row = level_of(body, name)
+            self.assertEqual(row["result"], "reachable")
+            self.assertIsNone(row["preselect"], name)
+            self.assertEqual((project_row(row)["pickable"], row["saveable"]), (True, True))
+
+    def test_a_winner_in_the_project_file_does_not_make_it_the_preselect_when_local_could_reach(self):
+        # Local holds an invalid "max", so the project value wins. The old answer pointed every
+        # reachable level at the project file. Now local is the preselect and project is a choice.
+        world = World(self, user={"model": SONNET}, project={"effortLevel": "high"}, local={"effortLevel": "max"})
+        body = world.targets()
+        self.assertEqual(target_of(body, "local")["status"], "invalid")
+        local = target_of(body, "local")["target"]
+        project = target_of(body, "project")["target"]
+        view = view_of(world)
+        self.assertEqual(api_edit._order(view, api_edit._winner(view.effort))[0].id, project)
+        for name in ("low", "medium", "xhigh"):
+            row = level_of(body, name)
+            self.assertEqual(row["preselect"], local, name)
+            self.assertTrue(project_row(row)["pickable"], name)
+            self.assertNotEqual(row["preselect"], project)
+
+
+# --------------------------------------------------------------------------
 # Preview
 
 class Preview(Base):
@@ -768,7 +1090,9 @@ class Preview(Base):
         status, pv = world.preview(target, "high")
         self.assertEqual(status, 200)
         self.assertEqual(set(pv), {"target", "old_value", "new_value", "no_change", "before", "after",
-                                   "changes", "warning", "diff", "base_file", "base_trail", "base_others"})
+                                   "changes", "warning", "diff", "base_file", "base_trail", "base_others",
+                                   "op", "layer", "shared", "line", "ref", "new_file", "creates_dir",
+                                   "ledger_damaged", "runs_before", "runs_after"})
         self.assertEqual((pv["target"], pv["old_value"], pv["new_value"], pv["no_change"]),
                          (target, "low", "high", False))
         self.assertNotIn("new_raw", pv)
@@ -778,6 +1102,43 @@ class Preview(Base):
                                              "project/.claude/settings.local.json": "missing",
                                              "managed/managed-settings.json": "missing"})
         self.assertEqual(pv["base_file"], api_edit._hmac(world.ctx, world.read("project")))
+
+    def test_the_new_fields_describe_the_edit(self):
+        world = self.world(user={"model": SONNET, "maxEffortLevel": "medium"})
+        body = world.targets()
+        target = target_of(body, "project")
+        status, pv = world.preview(target["target"], "xhigh")
+        self.assertEqual(status, 200)
+        self.assertEqual((pv["op"], pv["layer"], pv["shared"], pv["line"], pv["ref"]),
+                         ("replace", "project", True, 2, target["ref"]))
+        self.assertEqual((pv["new_file"], pv["creates_dir"], pv["ledger_damaged"]), (False, False, False))
+        self.assertEqual((pv["runs_before"], pv["runs_after"]), ("low", "medium"))
+
+    def test_a_user_edit_is_not_shared(self):
+        world = self.world(user={"model": SONNET, "effortLevel": "low"}, project={})
+        status, pv = world.preview(target_of(world.targets(), "user")["target"], "high")
+        self.assertEqual((status, pv["layer"], pv["shared"]), (200, "user", False))
+
+    def test_a_damaged_ledger_shows_in_the_preview(self):
+        world = self.world()
+        target = target_of(world.targets(), "project")["target"]
+        with mock.patch.object(world.store, "ledger_damaged", return_value=True):
+            status, pv = world.preview(target, "high")
+        self.assertEqual((status, pv["ledger_damaged"]), (200, True))
+
+    def test_the_new_fields_stay_out_of_every_hashed_base(self):
+        world = self.world()
+        target = target_of(world.targets(), "project")["target"]
+        status, pv = world.preview(target, "high")
+        self.assertEqual(status, 200)
+        trail = json.dumps({"before": pv["before"]["entries"], "after": pv["after"]["entries"]}, sort_keys=True)
+        self.assertEqual(pv["base_file"], api_edit._hmac(world.ctx, world.read("project")))
+        self.assertEqual(pv["base_trail"], api_edit._hmac(world.ctx, trail.encode("utf-8")))
+        self.assertEqual(set(pv["base_others"]), {"config/settings.json", "project/.claude/settings.local.json",
+                                                  "managed/managed-settings.json"})
+        # A save built from this preview is not stale, so nothing new fed a hash.
+        status, body = world.save(pv, target, "high")
+        self.assertEqual(status, 200, body)
 
     def test_before_and_after_are_settings_payloads(self):
         world = self.world()
@@ -967,7 +1328,7 @@ class Warnings(Base):
     def test_in_effect_with_a_limit_carries_the_limits_in_the_no_model_case(self):
         world = World(self, user={"maxEffortLevel": "low"}, project={"effortLevel": "low"})
         warning = self.preview(world, "project", "high")["warning"]
-        self.assertEqual(set(warning), {"status", "reason", "rule_ids", "in_effect_changes", "limits"})
+        self.assertEqual(set(warning), {"status", "reason", "rule_ids", "in_effect_changes", "model_known", "limits"})
         self.assertEqual(warning["status"], "in_effect")
         self.assertEqual(kinds(warning), ["cap"])
         self.assertEqual(warning["limits"][0]["value"], "low")
@@ -984,6 +1345,33 @@ class Warnings(Base):
                          [("cap", "user", "medium"), ("cap", "project", "high")])
         self.assertIs(warning["in_effect_changes"], True)  # low before, medium after
         self.assert_limits(warning["limits"])
+
+    def test_a_per_model_line_under_a_cap_is_lowered_and_the_model_is_known(self):
+        world = World(self, user={"model": OPUS, "modelSettings": {OPUS: {"effortLevel": "low"}}},
+                      project={"maxEffortLevel": "high"})
+        body = world.targets()
+        self.assertEqual(body["runs_as"], "low")
+        row = level_of(body, "xhigh")
+        user = file_of(row, "user")
+        self.assertEqual((user["effect"], user["runs_as"], user["pickable"]), ("lowered", "high", True))
+        pv = self.preview(world, "user", "xhigh")
+        self.assertEqual((pv["runs_before"], pv["runs_after"]), ("low", "high"))
+        warning = pv["warning"]
+        self.assertIs(warning["model_known"], True)
+        self.assertEqual([(l["kind"], l["value"]) for l in warning["limits"]], [("cap", "high")])
+        self.assertIs(warning["in_effect_changes"], True)  # low before, high after
+
+    def test_a_per_model_line_at_the_cap_today_reads_wont_apply(self):
+        world = World(self, user={"model": OPUS, "modelSettings": {OPUS: {"effortLevel": "high"}}},
+                      project={"maxEffortLevel": "high"})
+        body = world.targets()
+        self.assertEqual(body["runs_as"], "high")
+        user = file_of(level_of(body, "xhigh"), "user")
+        self.assertEqual((user["effect"], user["runs_as"], user["pickable"]), ("wont_apply", "high", False))
+
+    def test_the_warning_says_the_model_is_unknown_when_there_is_none(self):
+        world = World(self, user={"maxEffortLevel": "low"}, project={"effortLevel": "low"})
+        self.assertIs(self.preview(world, "project", "high")["warning"]["model_known"], False)
 
     def test_lowered_by_the_model_gives_the_model_limit(self):
         world = World(self, user={"model": "claude-opus-4-6"}, project={"effortLevel": "low"})
@@ -1497,6 +1885,119 @@ class Undo(Base):
                                      "restored_from_display"})
 
 
+class RepoLock(Base):
+    """A project that is a repo subfolder, a worktree or a submodule locks every write (T23)."""
+
+    def make(self):
+        return World(self, user={"model": SONNET, "effortLevel": "high"}, project={"effortLevel": "low"},
+                     local={"effortLevel": "medium"})
+
+    def lock(self, world, place):
+        world.place.stop()
+        world.place = mock.patch.object(git_check, "repo_place", return_value=place)
+        world.place.start()
+        self.addCleanup(world.place.stop)
+
+    def test_subfolder_and_linked_lock_every_row(self):
+        for place in ("subfolder", "linked"):
+            with self.subTest(place=place):
+                world = self.make()
+                before = world.targets()
+                ids = [t["target"] for t in before["targets"]]
+                self.assertTrue(ids)
+                self.assertIsNone(before["project_lock"])
+                self.lock(world, place)
+                after = world.targets()
+                self.assertEqual(after["project_lock"], "not_repo_root")
+                self.assertEqual(after["targets"], [])
+                self.assertEqual(len(after["blocked"]), len(before["targets"]))
+                self.assertEqual({b["reason"] for b in after["blocked"]}, {"not_repo_root"})
+                self.assertIs(after["saveable"], False)
+                self.assertEqual({f["layer"] for f in after["files"]}, {"user", "project", "local"})
+                for row in after["files"]:
+                    self.assertEqual(row["lock_reason"], "not_repo_root")
+                    self.assertIsNone(row["target"])
+                self.assertEqual(file_of(after["files"], "user")["state"], "locked")
+                for level in after["levels"]:
+                    self.assertIs(level["saveable"], False)
+                    self.assertIsNone(level["preselect"])
+                    for row in level["files"]:
+                        self.assertEqual(row["lock_reason"], "not_repo_root")
+                        self.assertIs(row["pickable"], False)
+                for target in ids:
+                    status, body = world.preview(target, "xhigh")
+                    self.assertEqual((status, body), (422, {"error": "not_repo_root"}))
+
+    def test_a_missing_file_keeps_its_state_but_locks(self):
+        world = World(self, user={"model": SONNET})
+        self.lock(world, "subfolder")
+        rows = world.targets()["files"]
+        self.assertEqual(file_of(rows, "local")["state"], "absent")
+        self.assertEqual(file_of(rows, "local")["lock_reason"], "not_repo_root")
+        self.assertEqual(file_of(rows, "project")["lock_reason"], "not_repo_root")
+
+    def test_a_forced_save_is_refused_and_the_file_is_untouched(self):
+        for place in ("subfolder", "linked"):
+            with self.subTest(place=place):
+                world = self.make()
+                target = target_of(world.targets(), "local")["target"]
+                status, pv = world.preview(target, "low")
+                self.assertEqual(status, 200)
+                before = world.snapshot()
+                self.lock(world, place)
+                status, body = world.save(pv, target, "low")
+                self.assertEqual((status, body), (422, {"error": "not_repo_root"}))
+                self.assertEqual(world.snapshot(), before)
+
+    def test_a_repo_lock_that_appears_between_the_check_and_the_write_is_refused(self):
+        world = self.make()
+        target = target_of(world.targets(), "local")["target"]
+        status, pv = world.preview(target, "low")
+        self.assertEqual(status, 200)
+        # The store makes its own folder before it plans, so only the settings files are compared.
+        before = {k: v for k, v in world.snapshot().items() if "routing-dashboard" not in k}
+        world.place.stop()
+        # The view before the lock sees no repo, the view the write plan reads again sees a subfolder.
+        world.place = mock.patch.object(git_check, "repo_place", side_effect=["no_repo", "subfolder"])
+        world.place.start()
+        self.addCleanup(world.place.stop)
+        status, body = world.save(pv, target, "low")
+        self.assertEqual((status, body), (422, {"error": "not_repo_root"}))
+        after = {k: v for k, v in world.snapshot().items() if "routing-dashboard" not in k}
+        self.assertEqual(after, before)
+
+    def test_undo_stays_open_while_locked(self):
+        world = World(self, user={"model": SONNET}, project={"effortLevel": "low"})
+        original = world.read("project")
+        target = target_of(world.targets(), "project")["target"]
+        saved = world.edit(target, "high")
+        self.lock(world, "subfolder")
+        status, body = world.undo(saved["edit"]["id"])
+        self.assertEqual(status, 200)
+        self.assertIs(body["matches_backup"], True)
+        self.assertEqual(world.read("project"), original)
+
+    def test_root_and_no_repo_lock_nothing(self):
+        for place in ("root", "no_repo"):
+            with self.subTest(place=place):
+                world = self.make()
+                self.lock(world, place)
+                body = world.targets()
+                self.assertIsNone(body["project_lock"])
+                self.assertEqual(body["blocked"], [])
+                self.assertEqual(len(body["targets"]), 3)
+                self.assertNotIn("not_repo_root", {f["lock_reason"] for f in body["files"]})
+                target = target_of(body, "user")["target"]
+                self.assertEqual(world.preview(target, "low")[0], 200)
+
+    def test_an_unexpanded_project_is_not_walked(self):
+        project = projects.Project("x", "~/nowhere", unexpanded=True) if hasattr(projects, "Project") else None
+        if project is None:
+            self.skipTest("no Project class")
+        with mock.patch.object(git_check, "repo_place", side_effect=AssertionError("walked")):
+            self.assertIs(api_edit._repo_locked(project), False)
+
+
 class History(Base):
     def test_rows_join_the_three_ledgers_newest_first(self):
         world = World(self, user={"model": OPUS, "modelSettings": {OPUS: {"effortLevel": "low"}}},
@@ -1649,6 +2150,43 @@ class EveryFixture(Base):
                 self.assertEqual(rows[ref], 1, "%s %s" % (name, ref))
             self.assertEqual(sum(rows.values()), len(refs), name)
 
+    def test_no_level_row_has_a_target_and_a_preselect_is_always_a_local_row(self):
+        picked = project_only = 0
+        for name, ctx in self.cases.items():
+            body = self.answer(ctx)
+            layers = {t["target"]: t["layer"] for t in body["targets"]}
+            self.assertEqual([f["layer"] for f in body["files"]],
+                             ["local", "project", "user"] if body["files"] else [], name)
+            for row in body["levels"]:
+                self.assertNotIn("target", row, name)
+                self.assertEqual(set(row), {"level", "result", "runs_as", "certain", "limits", "files",
+                                            "preselect", "saveable"}, name)
+                self.assertEqual(row["saveable"], any(f["pickable"] for f in row["files"]), name)
+                if row["result"] == "now":
+                    self.assertEqual((row["files"], row["preselect"], row["saveable"]), ([], None, False), name)
+                    continue
+                self.assertEqual([f["layer"] for f in row["files"]], [f["layer"] for f in body["files"]], name)
+                for f in row["files"]:
+                    if f["target"] is not None:
+                        self.assertEqual(layers[f["target"]], f["layer"], name)
+                    self.assertEqual(f["pickable"], f["lock_reason"] is None
+                                     and f["effect"] in ("applies", "lowered", "unknown"), name)
+                if row["preselect"] is None:
+                    if any(f["layer"] != "local" and f["pickable"] for f in row["files"]):
+                        project_only += 1
+                else:
+                    picked += 1
+                    self.assertEqual(layers[row["preselect"]], "local", name)
+                    local = file_of(row, "local")
+                    self.assertEqual((local["target"], local["effect"], local["pickable"]),
+                                     (row["preselect"], "applies", True), name)
+                    for f in row["files"]:
+                        if f["layer"] != "local":
+                            self.assertNotEqual(f["target"], row["preselect"], name)
+            self.assertEqual(body["saveable"], any(r["saveable"] for r in body["levels"]), name)
+        self.assertGreater(picked, 0)
+        self.assertGreater(project_only, 0)
+
     def test_reachable_levels_preview_to_that_result_and_stopped_levels_list_every_cap(self):
         reached = stopped = 0
         for name, ctx in self.cases.items():
@@ -1666,17 +2204,21 @@ class EveryFixture(Base):
                     self.assertEqual((row["runs_as"], body["runs_as"]), (level, level), name)
                 elif row["result"] == "reachable":
                     reached += 1
-                    self.assertIn(row["target"], ids, name)
-                    status, pv = api_edit.preview(ctx, {"target": row["target"], "value": level})
-                    self.assertEqual(status, 200, name)
-                    winner = api_edit._winner(api_edit._effort_row(pv["after"]["entries"]))
-                    self.assertEqual(api_edit.ref_of(winner), ids[row["target"]]["ref"], name)
-                    self.assertEqual((winner["status"], winner["value"]), ("in_effect", level), name)
-                    self.assertIsNone(pv["warning"], "%s %s" % (name, level))
+                    applies = [f for f in row["files"] if f["effect"] == "applies"]
+                    self.assertTrue(applies, name)
+                    for item in applies:
+                        self.assertIn(item["target"], ids, name)
+                        status, pv = api_edit.preview(ctx, {"target": item["target"], "value": level})
+                        self.assertEqual(status, 200, name)
+                        winner = api_edit._winner(api_edit._effort_row(pv["after"]["entries"]))
+                        self.assertEqual(api_edit.ref_of(winner), ids[item["target"]]["ref"], name)
+                        self.assertEqual((winner["status"], winner["value"]), ("in_effect", level), name)
+                        self.assertIsNone(pv["warning"], "%s %s" % (name, level))
+                        self.assertEqual(item["runs_as"], level)
                     self.assertEqual(row["runs_as"], level)
                 else:
                     stopped += 1
-                    self.assertEqual((row["result"], row["target"]), ("stopped", None), name)
+                    self.assertEqual(row["result"], "stopped", name)
                     expected = sorted(
                         (e.get("file"), e["value"]) for e in entries
                         if e["key"] == "maxEffortLevel" and e.get("scope") == "main" and not e.get("agent")
@@ -1710,6 +2252,135 @@ class FlagOff(Base):
                             (api_edit.save, {"target": "t", "value": "low"}),
                             (api_edit.undo, {"edit": "x"})):
             self.assertEqual(route(world.ctx, body), (400, {"error": "not_editable"}))
+
+
+class ReadOnlyTargets(Base):
+    """With edits off, targets answers the read-only form: today's level, the level names and the file rows."""
+
+    KEYS = {"enabled", "project", "state", "agent", "setting", "runs_as", "model", "levels_state",
+            "project_lock", "files", "levels"}
+
+    def world(self, **kwargs):
+        return World(self, edit=False, **kwargs)
+
+    def test_the_answer_holds_the_level_picker_and_the_file_rows_only(self):
+        world = self.world(user={"model": SONNET}, project={"effortLevel": "high"})
+        body = world.targets()
+        self.assertEqual(set(body), self.KEYS)
+        self.assertEqual((body["enabled"], body["project"], body["state"], body["agent"], body["setting"]),
+                         (False, "project", "ok", "@main", "effortLevel"))
+        self.assertEqual((body["runs_as"], body["model"], body["levels_state"], body["project_lock"]),
+                         ("high", SONNET, "ok", None))
+        self.assertEqual(body["levels"], [{"level": "low", "result": "offered"},
+                                          {"level": "medium", "result": "offered"},
+                                          {"level": "high", "result": "now"},
+                                          {"level": "xhigh", "result": "offered"}])
+        self.assertEqual([row["layer"] for row in body["files"]], ["local", "project", "user"])
+        project = file_of(body["files"], "project")
+        self.assertEqual((project["state"], project["line"], project["value"], project["shared"]),
+                         ("has_line", 2, "high", True))
+        self.assertEqual(project["file_display"], "project/.claude/settings.json")
+
+    def test_it_holds_no_target_and_nothing_to_save(self):
+        world = self.world(user={"model": SONNET, "effortLevel": "low"}, project={"effortLevel": "high"},
+                           local={"effortLevel": "medium"})
+        body = world.targets()
+        text = json.dumps(body)
+        self.assertNotRegex(text, r"\bt-[0-9a-f]{16}\b")
+        for key in ("targets", "blocked", "preselect", "saveable", "target"):
+            self.assertNotIn('"%s"' % key, text, key)
+        for row in body["files"]:
+            self.assertNotIn("target", row)
+        for row in body["levels"]:
+            self.assertEqual(set(row), {"level", "result"})
+        self.assertEqual({row["state"] for row in body["files"]}, {"has_line"})
+
+    def test_the_full_answer_still_has_its_target_ids(self):
+        full = World(self, user={"model": SONNET}, project={"effortLevel": "high"}).targets()
+        self.assertRegex(json.dumps(full), r"t-[0-9a-f]{16}")
+        self.assertTrue(full["enabled"])
+        self.assertTrue(all("target" in row for row in full["files"]))
+
+    def test_the_resolver_runs_once(self):
+        world = self.world(user={"model": SONNET}, project={"effortLevel": "high"})
+        with mock.patch.object(api_settings, "resolved", wraps=api_settings.resolved) as resolved:
+            status, _body = api_edit.targets(world.ctx, {"project": [world.key]})
+        self.assertEqual(status, 200)
+        self.assertEqual(resolved.call_count, 1)
+
+    def test_a_planted_secret_never_reaches_the_answer(self):
+        world = self.world(user={"model": SONNET, "env": {"ANTHROPIC_API_KEY": SECRET}},
+                           project={"effortLevel": SECRET},
+                           local={"apiKeyHelper": SECRET, "modelSettings": {"x": {"token": SECRET}}})
+        body = world.targets()
+        self.assertNotIn(SECRET, json.dumps(body))
+        self.assertEqual(file_of(body["files"], "project")["value"], "hidden")
+
+    def test_a_bad_project_answers_404_and_all_answers_400(self):
+        world = self.world(user={"model": SONNET})
+        self.assertEqual(api_edit.targets(world.ctx, {"project": ["no-such-project"]}),
+                         (404, {"error": "unknown_project"}))
+        self.assertEqual(api_edit.targets(world.ctx, {"project": ["all"]}), (400, {"error": "bad_request"}))
+        self.assertEqual(api_edit.targets(world.ctx, {"project": ["a", "b"]}), (400, {"error": "bad_request"}))
+
+    def test_a_model_without_effort_support_gives_no_levels(self):
+        world = self.world(user={"model": "claude-haiku-4-5"}, project={"effortLevel": "high"})
+        body = world.targets()
+        self.assertEqual((body["levels_state"], body["levels"]), ("no_effort_support", []))
+        self.assertEqual(file_of(body["files"], "project")["state"], "has_line")
+
+    def test_a_missing_folder_gives_no_levels_and_no_files(self):
+        world = self.world(user={"model": SONNET}, listed=[{"name": "Gone", "path": "{root}/no-such-folder"}])
+        body = world.targets()
+        self.assertEqual((body["state"], body["levels_state"], body["files"], body["levels"]),
+                         ("missing_folder", "model_unknown", [], []))
+        self.assertEqual((body["runs_as"], body["model"]), (None, None))
+
+    def test_an_unknown_model_still_lists_the_levels(self):
+        world = self.world(project={"effortLevel": "low"})
+        body = world.targets()
+        self.assertEqual(body["levels_state"], "model_unknown")
+        self.assertEqual([row["level"] for row in body["levels"]], list(LEVELS))
+
+    def test_a_repo_subfolder_sets_the_project_lock_and_locks_the_file_rows(self):
+        for place in ("subfolder", "linked"):
+            with self.subTest(place=place):
+                world = self.world(user={"model": SONNET}, project={"effortLevel": "low"})
+                world.place.stop()
+                world.place = mock.patch.object(git_check, "repo_place", return_value=place)
+                world.place.start()
+                self.addCleanup(world.place.stop)
+                body = world.targets()
+                self.assertEqual(body["project_lock"], "not_repo_root")
+                for row in body["files"]:
+                    self.assertEqual(row["lock_reason"], "not_repo_root")
+                    self.assertNotIn("target", row)
+
+    def test_the_project_lock_matches_the_full_answer(self):
+        for place in ("no_repo", "subfolder"):
+            with self.subTest(place=place):
+                on = World(self, user={"model": SONNET}, project={"effortLevel": "low"})
+                off = self.world(user={"model": SONNET}, project={"effortLevel": "low"})
+                for world in (on, off):
+                    world.place.stop()
+                    world.place = mock.patch.object(git_check, "repo_place", return_value=place)
+                    world.place.start()
+                    self.addCleanup(world.place.stop)
+                on_body, off_body = on.targets(), off.targets()
+                self.assertEqual(on_body["project_lock"], off_body["project_lock"])
+                self.assertEqual([{k: v for k, v in row.items() if k != "target"} for row in on_body["files"]],
+                                 off_body["files"])
+
+    def test_history_still_answers_enabled_false(self):
+        world = self.world(user={"model": SONNET}, project={"effortLevel": "low"})
+        self.assertEqual(api_edit.history(world.ctx, {}), (200, {"enabled": False}))
+        self.assertEqual(api_edit.history(world.ctx, {"project": ["no-such-project"]}), (200, {"enabled": False}))
+
+    def test_the_read_only_path_never_touches_the_edit_state(self):
+        world = self.world(user={"model": SONNET}, project={"effortLevel": "low"})
+        self.assertIsNone(world.ctx.edit)
+        with mock.patch.object(api_edit, "_hmac", side_effect=AssertionError("hmac")):
+            self.assertEqual(api_edit.targets(world.ctx, {})[0], 200)
 
 
 if __name__ == "__main__":

@@ -8,7 +8,7 @@ written by hand in the checks. No browser starts, no socket opens, and every fol
 The test skips when node is not installed, and it tries the --experimental-default-type=module flag like
 tests/test_shell_js.py does.
 
-Two more tests read the card's source. One fails if edit_card.js holds a call that parses text as markup.
+Two more tests read the card's source. One fails if any of the six card files holds a call that parses text as markup.
 The other fails if a class the card uses is missing from app.css.
 """
 import json
@@ -27,7 +27,7 @@ import test_api_edit as tae
 
 TESTS = Path(__file__).resolve().parent
 STATIC = Path(helpers.REPO) / "dashboard" / "static"
-CARD = STATIC / "js" / "edit_card.js"
+CARD_FILES = [STATIC / "js" / name for name in ("edit_card.js", "edit_flow.js", "edit_pick.js", "edit_review.js", "edit_foot.js", "edit_ui.js")]
 CSS = STATIC / "app.css"
 CHECKS = TESTS / "js" / "edit_card_checks.mjs"
 NODE = shutil.which("node")
@@ -71,10 +71,11 @@ def build_all(case, folder):
         step(case, folder)
 
 
-# A project at low, a known model: every level but the current one is reachable.
+# The local file at low, a known model: every level but the current one is reachable, and the local
+# file is the one the page preselects.
 def base(case, folder):
-    world = tae.World(case, user={"model": SONNET}, project={"effortLevel": "low"})
-    tgt = target(world, "project")
+    world = tae.World(case, user={"model": SONNET}, local={"effortLevel": "low"})
+    tgt = target(world, "local")
     out = {"start": state_of(world), "target": tgt,
            "previews": {level: preview(world, tgt, level) for level in ("low", "medium", "high", "xhigh")}}
     status, saved = world.save(out["previews"]["high"], tgt, "high")
@@ -98,7 +99,8 @@ def levels_cases(case, folder):
         "model_limit": dict(user={"model": "claude-opus-4-6"}, project={"effortLevel": "low"}),
         "haiku": dict(user={"model": "claude-haiku-4-5"}, project={"effortLevel": "low"}),
         "user_unknown": dict(user={"effortLevel": "low"}),
-        "nomodel_project": dict(project={"effortLevel": "low"}),
+        "nomodel_project": dict(local={"effortLevel": "low"}),
+        "project_only": dict(user={"model": SONNET}, project={"effortLevel": "low"}),
     }
     for name, kwargs in cases.items():
         world = tae.World(case, **kwargs)
@@ -111,7 +113,7 @@ def levels_cases(case, folder):
             write_json(folder, name, out)
             continue
         for row in out["targets"]["targets"]:
-            if row["layer"] in ("project", "user"):
+            if row["layer"] in ("local", "project", "user"):
                 out["previews"][row["layer"]] = {level: preview(world, row["target"], level)
                                                  for level in ("medium", "high", "xhigh")}
         write_json(folder, name, out)
@@ -202,15 +204,15 @@ def ledger(case, folder):
 
 
 def stale(case, folder):
-    world = tae.World(case, user={"model": SONNET}, project={"effortLevel": "low"})
-    tgt = target(world, "project")
+    world = tae.World(case, user={"model": SONNET}, local={"effortLevel": "low"})
+    tgt = target(world, "local")
     pv = preview(world, tgt, "high")
-    world.write("project", world.read("project").replace(b'"low"', b'"low", "x": 1'))
+    world.write("local", world.read("local").replace(b'"low"', b'"low", "x": 1'))
     status, body = world.save(pv, tgt, "high")
     assert status == 409 and body["changed"] == "file", (status, body)
     out = {"target": tgt, "stale_file": body}
-    world = tae.World(case, user={"model": SONNET}, project={"effortLevel": "low"})
-    tgt = target(world, "project")
+    world = tae.World(case, user={"model": SONNET}, local={"effortLevel": "low"})
+    tgt = target(world, "local")
     pv = preview(world, tgt, "high")
     world.write("user", {"model": SONNET, "alwaysThinkingEnabled": True})
     status, body = world.save(pv, tgt, "high")
@@ -243,20 +245,24 @@ def strip_comments(source):
 
 class CardSource(unittest.TestCase):
     def test_no_call_that_parses_markup(self):
-        source = CARD.read_text(encoding="utf-8")
+        for path in CARD_FILES:
+            self.check_no_markup_parsing(path)
+
+    def check_no_markup_parsing(self, path):
+        source = path.read_text(encoding="utf-8")
         for banned in ("innerHTML", "outerHTML", "insertAdjacentHTML", "document.write", "createContextualFragment",
                        "DOMParser", "eval(", "new Function"):
-            self.assertNotIn(banned, source, banned)
-        self.assertNotRegex(strip_comments(source), r"\.style\b|\bstyle\s*:", "the page's policy forbids a style attribute")
+            self.assertNotIn(banned, source, path.name + " " + banned)
+        self.assertNotRegex(strip_comments(source), r"\.style\b|\bstyle\s*:", path.name + ": the page's policy forbids a style attribute")
 
     def test_every_class_the_card_uses_is_in_app_css(self):
-        source = strip_comments(CARD.read_text(encoding="utf-8"))
+        source = "\n".join(strip_comments(path.read_text(encoding="utf-8")) for path in CARD_FILES)
         used = set()
         for match in re.finditer(r"\bclass:\s*(\[[^\]]*\]|\"[^\"]*\"|'[^']*')", source):
             for literal in re.findall(r"\"([^\"]*)\"|'([^']*)'", match.group(1)):
                 used.update((literal[0] or literal[1]).split())
-        # Maps of class text, such as NT_CLASS and STRIP_CLASS, are literals outside an attribute.
-        for match in re.finditer(r"(?m)^const (?:NT|STRIP)_CLASS = \{(.*?)\};", source, flags=re.S):
+        # Maps of class text, such as NT_CLASS and OK_CLASS, are literals outside an attribute.
+        for match in re.finditer(r"(?m)^const (?:NT|OK)_CLASS = \{(.*?)\};", source, flags=re.S):
             for literal in re.findall(r"\"([^\"]*)\"", match.group(1)):
                 used.update(literal.split())
         self.assertIn("p2-segs", used)

@@ -515,11 +515,72 @@ test("app: with no /api/edit answer the mode stays null, nothing is fetched and 
   assert.equal((await withToken.ctxNow()).edit.mode, null);
 });
 
-test("app: edits off gives mode off and fetches no targets", async () => {
-  const app = await boot({ edit: [200, { enabled: false, launch_id: null }], preset: { mr_edit_token: TOKEN, mr_edit_launch: "L1" } });
-  assert.equal((await app.ctxNow()).edit.mode, "off");
-  assert.equal(app.count("/api/edit/targets", "p1"), 0);
+test("app: edits off gives mode off, fetches targets and no history, and keeps the history null", async () => {
+  const app = await boot({ edit: [200, { enabled: false, launch_id: null }], preset: { mr_edit_token: TOKEN, mr_edit_launch: "L1" },
+    targets: (project) => ({ enabled: false, project, levels: [], files: [] }) });
+  const ctx = await app.ctxNow();
+  assert.equal(ctx.edit.mode, "off");
+  assert.equal(app.count("/api/edit/targets", "p1"), 1);
+  assert.equal(app.count("/api/edit/history", "p1"), 0);
+  assert.equal(ctx.edit.targets.data.enabled, false);
+  assert.equal(ctx.edit.history, null);
   assert.equal(app.store.items.has("mr_edit_token"), false);
+});
+
+test("app: loadEdit fetches targets and history in locked and ready, and targets alone in off", async () => {
+  const preset = { mr_edit_token: TOKEN, mr_edit_launch: "L1" };
+  const locked = await boot({ hash: TRAIL });
+  assert.equal((await locked.ctxNow()).edit.mode, "locked");
+  assert.equal(locked.count("/api/edit/targets", "p1"), 1);
+  assert.equal(locked.count("/api/edit/history", "p1"), 1);
+  const ready = await boot({ hash: TRAIL, preset });
+  assert.equal((await ready.ctxNow()).edit.mode, "ready");
+  assert.equal(ready.count("/api/edit/targets", "p1"), 1);
+  assert.equal(ready.count("/api/edit/history", "p1"), 1);
+  const off = await boot({ hash: TRAIL, edit: [200, { enabled: false, launch_id: null }] });
+  const ctx = await off.ctxNow();
+  assert.equal(ctx.edit.mode, "off");
+  assert.equal(off.count("/api/edit/targets", "p1"), 1);
+  assert.equal(off.count("/api/edit/history", "p1"), 0);
+  assert.notEqual(ctx.edit.targets, null);
+  assert.equal(ctx.edit.history, null);
+  await ctx.edit.reload();
+  assert.equal(off.count("/api/edit/targets", "p1"), 2, "reload asks for targets in off");
+  assert.equal(off.count("/api/edit/history", "p1"), 0, "reload never asks for history in off");
+});
+
+test("app: on All projects loadEdit fetches neither targets nor history, in any mode", async () => {
+  const preset = { mr_edit_token: TOKEN, mr_edit_launch: "L1" };
+  for (const [name, options] of [["off", { edit: [200, { enabled: false, launch_id: null }] }], ["locked", {}], ["ready", { preset }]]) {
+    for (const hash of ["#/settings?project=all", "#/settings/@main/effortLevel?project=all"]) {
+      const app = await boot({ hash, ...options });
+      await tick(30);
+      assert.equal(app.root.getAttribute("data-rendered"), "1", name + " " + hash);
+      if (hash.includes("effortLevel")) {
+        const ctx = await app.ctxNow();
+        assert.equal(ctx.edit.mode, name);
+        await ctx.edit.reload();
+      }
+      for (const project of ["p1", "p2", "all"]) {
+        assert.equal(app.count("/api/edit/targets", project), 0, name + " " + hash + " targets " + project);
+        assert.equal(app.count("/api/edit/history", project), 0, name + " " + hash + " history " + project);
+      }
+    }
+  }
+});
+
+test("app: Settings asks for targets in off, locked and ready, and not before the mode is known", async () => {
+  const off = await boot({ hash: SETTINGS, edit: [200, { enabled: false, launch_id: null }] });
+  assert.equal(off.count("/api/edit/targets", "p1"), 1, "Settings in off asks for targets");
+  assert.equal(off.count("/api/edit/history", "p1"), 0);
+  const locked = await boot({ hash: SETTINGS });
+  assert.equal(locked.count("/api/edit/targets", "p1"), 1, "Settings in locked asks for targets");
+  const ready = await boot({ hash: SETTINGS, preset: { mr_edit_token: TOKEN, mr_edit_launch: "L1" } });
+  assert.equal(ready.count("/api/edit/targets", "p1"), 1, "Settings in ready asks for targets");
+  const none = await boot({ hash: SETTINGS, edit: null });
+  assert.equal(none.count("/api/edit/targets", "p1"), 0, "no mode, no targets");
+  const other = await boot({ hash: "#/agents?project=p1", edit: [200, { enabled: false, launch_id: null }] });
+  assert.equal(other.count("/api/edit/targets", "p1"), 0, "a page that shows no edit data asks for none");
 });
 
 test("app: refresh loads the project data and the edit data again, and does not wait on usage", async () => {
@@ -543,21 +604,47 @@ test("app: refresh loads the project data and the edit data again, and does not 
   await tick(20);
 });
 
-test("app: a mode change draws the open page again, even when no edit data will load", async () => {
+test("app: a mode change draws the open page again and loads the targets that fit the new mode", async () => {
   let answer = [200, { enabled: true, launch_id: "L1" }];
-  const app = await boot({ preset: { mr_edit_token: TOKEN, mr_edit_launch: "L1" }, edit: () => answer });
+  let serverOff = false;
+  const app = await boot({ preset: { mr_edit_token: TOKEN, mr_edit_launch: "L1" }, edit: () => answer,
+    targets: (project) => (serverOff ? { enabled: false, project, levels: [], files: [] } : { enabled: true, project, targets: [], levels: [] }) });
   const ctx = await app.ctxNow();
   assert.equal(ctx.edit.mode, "ready");
-  assert.notEqual(ctx.edit.targets, null);
+  assert.equal(ctx.edit.targets.data.enabled, true);
+  assert.equal(ctx.edit.history.data.enabled, true);
   answer = [200, { enabled: false, launch_id: null }];
+  serverOff = true;
   const drawn = globalThis.__trail.n;
   await app.go(TRAIL + "&edit=" + OTHER);
   await until(() => app.count("/api/edit") === 2, "the second mode answer");
+  await until(() => app.count("/api/edit/targets", "p1") === 2, "the read-only targets");
   await tick(30);
   assert.ok(globalThis.__trail.n > drawn, "the trail was drawn again");
-  assert.equal(globalThis.__trail.ctx.edit.mode, "off");
-  assert.equal(globalThis.__trail.ctx.edit.targets, null);
-  assert.equal(app.count("/api/edit/targets", "p1"), 1, "nothing was fetched for the new mode");
+  const now = globalThis.__trail.ctx;
+  assert.equal(now.edit.mode, "off");
+  assert.equal(now.edit.targets.data.enabled, false, "the write data is gone and the read-only answer is held");
+  assert.equal(now.edit.history, null, "the history was dropped and not asked for");
+  assert.equal(app.count("/api/edit/history", "p1"), 1, "no history was fetched for the new mode");
+});
+
+test("app: a change to a mode with write access drops a held read-only answer and loads the full one", async () => {
+  let answer = [200, { enabled: false, launch_id: null }];
+  let serverOff = true;
+  const app = await boot({ edit: () => answer,
+    targets: (project) => (serverOff ? { enabled: false, project, levels: [], files: [] } : { enabled: true, project, targets: [], levels: [] }) });
+  const ctx = await app.ctxNow();
+  assert.equal(ctx.edit.mode, "off");
+  assert.equal(ctx.edit.targets.data.enabled, false);
+  answer = [200, { enabled: true, launch_id: "L1" }];
+  serverOff = false;
+  await app.go(TRAIL + "&edit=" + TOKEN);
+  await until(() => app.count("/api/edit/history", "p1") === 1, "the history");
+  await tick(30);
+  const now = globalThis.__trail.ctx;
+  assert.equal(now.edit.mode, "ready");
+  assert.equal(now.edit.targets.data.enabled, true, "the read-only answer was replaced");
+  assert.notEqual(now.edit.history, null);
 });
 
 test("app: targets and history load only on the main session's effortLevel trail and on Settings in ready mode", async () => {
@@ -680,63 +767,94 @@ test("app: bad_token on a preview locks the page and clears the token", async ()
   assert.equal((await app.ctxNow()).edit.mode, "locked");
 });
 
-// The quiet line on the Settings page: the trail's own words for Editing off and Locked, above the tiles.
+// The Settings page draws no line about the edit state above its cells. The rail of the Effort cell carries it, and
+// a read-only cell never does. The page asks for the targets in any mode the server answered.
 const SETTINGS = "#/settings?project=p1";
 const stateLine = (app) => app.sections.settings.find((n) => n.getAttribute && n.getAttribute("data-edit") === "state")[0] || null;
-const tilesNode = (app) => app.sections.settings.find((n) => n.getAttribute && /(^| )tiles( |$)/.test(n.getAttribute("class") || ""))[0];
+const bandOf = (app) => app.sections.settings.find((n) => n.getAttribute && n.getAttribute("class") === "s5-a")[0] || null;
 
-test("app: the Settings page shows the edit state above the tiles, in the trail's words, for off and locked only", async () => {
+test("app: the Settings page draws the band and no edit state line, and only the Effort rail says off or locked", async () => {
   const off = await boot({ hash: SETTINGS, edit: [200, { enabled: false, launch_id: null }] });
-  const offLine = stateLine(off);
-  assert.equal(offLine.textContent, STRINGS.ed_off);
-  assert.equal(offLine.getAttribute("class"), "p2-hint");
-  const kids = off.sections.settings.childNodes;
-  assert.equal(kids.indexOf(offLine) + 1, kids.indexOf(tilesNode(off)), "the line sits right above the tiles");
+  assert.equal(stateLine(off), null);
+  assert.ok(bandOf(off), "the band is drawn");
   const none = await boot({ hash: SETTINGS, edit: null });
-  assert.equal(tilesNode(off).childNodes.length, tilesNode(none).childNodes.length, "the tiles are as they were");
-  assert.equal(tilesNode(off).childNodes.length, 2);
+  assert.equal(stateLine(none), null);
+  assert.ok(bandOf(none));
   const locked = await boot({ hash: SETTINGS });
-  assert.equal(stateLine(locked).textContent, STRINGS.ed_locked);
+  assert.equal(stateLine(locked), null);
+  assert.ok(bandOf(locked));
   const ready = await boot({ hash: SETTINGS, preset: { mr_edit_token: TOKEN, mr_edit_launch: "L1" } });
-  await ready.go(TRAIL);
-  assert.equal((await ready.ctxNow()).edit.mode, "ready");
-  await ready.go(SETTINGS);
-  assert.equal(stateLine(ready), null, "targets without a row to edit show nothing");
-  assert.equal(tilesNode(ready).childNodes.length, 2);
-  assert.equal(stateLine(none), null, "no answer from the server, no line");
+  assert.equal(stateLine(ready), null);
+  assert.ok(bandOf(ready));
+  // Effort is the cell that opens by default, so its rail says it.
+  assert.equal(settingsText(off).includes(STRINGS.ed_off), true);
+  assert.equal(settingsText(locked).includes(STRINGS.ed_locked), true);
+  assert.equal(settingsText(ready).includes(STRINGS.ed_off) || settingsText(ready).includes(STRINGS.ed_locked), false);
+  // A read-only cell never promises that --allow-edits or the printed link would make it editable.
+  const offModel = await boot({ hash: SETTINGS + "&setting=model", edit: [200, { enabled: false, launch_id: null }] });
+  assert.equal(settingsText(offModel).includes(STRINGS.ed_off), false);
+  const lockedModel = await boot({ hash: SETTINGS + "&setting=model" });
+  assert.equal(settingsText(lockedModel).includes(STRINGS.ed_locked), false);
 });
 
-test("app: ready says editing is on only when the Effort row has an editable target", async () => {
+test("app: a level chosen on Settings marks its project in the picker and the band, a switch and back keeps it, and Cancel clears it", async () => {
+  const targets = (project) => ({
+    project, enabled: true, levels_state: "ok", saveable: true, project_lock: null, runs_as: "low", blocked: [],
+    levels: [
+      { level: "low", result: "now", saveable: false, limits: [], files: [], certain: true },
+      { level: "high", result: "offered", saveable: true, preselect: null, limits: [], certain: true,
+        files: [{ layer: "project", target: "t1", pickable: true, line: 2, effect: "applies", lock_reason: null, op: "replace" }] },
+    ],
+    files: [{ layer: "project", file_display: "p/.claude/settings.json", state: "has_line", line: 2, value: "low", status: "in_effect", target: "t1", shared: true, lock_reason: null }],
+    targets: [{ target: "t1", ref: "r1", layer: "project", file_display: "p/.claude/settings.json", line: 2 }],
+  });
+  const app = await boot({ hash: SETTINGS, preset: { mr_edit_token: TOKEN, mr_edit_launch: "L1" }, targets });
+  const options = () => app.topbar.find((n) => n.tagName === "option").map((n) => [n.value, n.textContent]);
+  const pending = () => app.sections.settings.find((n) => n.getAttribute && n.getAttribute("class") === "s5-pend").length;
+  const choose = async (level) => {
+    app.sections.settings.find((n) => n.tagName === "input" && n.getAttribute("name") === "p2-level").find((r) => r.value === level)
+      .dispatch("change");
+    await tick(30);
+  };
+  assert.deepEqual(options(), [["p1", "P One"], ["p2", "P Two"], ["all", STRINGS.all_projects]]);
+  assert.equal(pending(), 0);
+  await choose("high");
+  assert.deepEqual(options()[0], ["p1", STRINGS.opt_not_saved.replace("{name}", "P One")], "the option says Not saved");
+  assert.equal(options()[1][1], "P Two");
+  assert.equal(pending(), 1, "and the band's Effort cell says it too, with no page render of its own");
+  // The other project, and back.
+  await app.go("#/settings?project=p2");
+  assert.deepEqual(options()[0], ["p1", "P One, Not saved"], "the project put away still waits");
+  assert.equal(options()[1][1], "P Two");
+  assert.equal(pending(), 0);
+  await app.go(SETTINGS);
+  assert.equal(options()[0][1], "P One, Not saved");
+  assert.equal(pending(), 1);
+  // A page that is not Settings keeps the picker's mark.
+  await app.go("#/agents?project=p1");
+  assert.equal(options()[0][1], "P One, Not saved");
+  await app.go(SETTINGS);
+  const cancel = app.sections.settings.find((n) => n.tagName === "button" && n.textContent === STRINGS.ed_cancel)[0];
+  assert.ok(cancel, "Cancel is in the foot");
+  cancel.click();
+  await tick(30);
+  assert.deepEqual(options()[0], ["p1", "P One"]);
+  assert.equal(pending(), 0);
+});
+
+test("app: Settings in ready mode loads the targets itself, and a dead key still draws the open page again", async () => {
   const preset = { mr_edit_token: TOKEN, mr_edit_launch: "L1" };
-  const withTargets = (list, extra = {}) => () => ({ levels: ["low", "high"], levels_state: "ok", targets: list, blocked: [], ...extra });
-  const editable = await boot({ hash: TRAIL, preset, targets: withTargets([{ target: "t1", ref: "r1" }]) });
-  await editable.go(SETTINGS);
-  const line = stateLine(editable);
-  assert.equal(line.textContent, STRINGS.ed_on);
-  assert.equal(line.getAttribute("class"), "p2-hint");
-  const kids = editable.sections.settings.childNodes;
-  assert.equal(kids.indexOf(line) + 1, kids.indexOf(tilesNode(editable)), "the line sits right above the tiles");
-  const fresh = await boot({ hash: SETTINGS, preset, targets: withTargets([{ target: "t1", ref: "r1" }]) });
-  assert.equal(stateLine(fresh).textContent, STRINGS.ed_on, "a fresh boot on Settings loads the targets itself");
-  const locked = await boot({ hash: TRAIL, preset, targets: withTargets([], { blocked: [{ ref: "r1", reason: "managed" }] }) });
-  await locked.go(SETTINGS);
-  assert.equal(stateLine(locked), null, "a locked row shows nothing");
-  const missing = await boot({ hash: SETTINGS, preset });
-  assert.equal(stateLine(missing), null, "no row loaded shows nothing");
-  const allProjects = await boot({ hash: "#/settings?project=all", preset, targets: withTargets([{ target: "t1", ref: "r1" }]) });
-  assert.equal(stateLine(allProjects), null, "All projects shows nothing");
-});
-
-test("app: the Settings line follows the mode, and a dead key moves it to Locked", async () => {
+  const withTargets = () => ({ levels: ["low", "high"], levels_state: "ok", targets: [{ target: "t1", ref: "r1" }], blocked: [] });
+  const fresh = await boot({ hash: SETTINGS, preset, targets: withTargets });
+  assert.equal(fresh.count("/api/edit/targets", "p1"), 1, "a fresh boot on Settings loads the targets itself");
+  const allProjects = await boot({ hash: "#/settings?project=all", preset, targets: withTargets });
+  assert.equal(allProjects.count("/api/edit/targets", "p1"), 0, "All projects loads none");
   const { app, ctx } = await writeScenario(() => [403, { error: "bad_token" }]);
   await app.go(SETTINGS);
-  assert.equal(stateLine(app), null);
+  const before = bandOf(app);
   assert.equal((await ctx.edit.preview("t", "v")).kind, "locked");
   await tick(30);
-  assert.equal(stateLine(app).textContent, STRINGS.ed_locked, "the open Settings page was drawn again");
-  // A token pasted into the open page unlocks it, and the line goes.
-  await app.go(SETTINGS + "&edit=" + OTHER);
-  await tick(30);
+  assert.notEqual(bandOf(app), before, "the open Settings page was drawn again");
   assert.equal(stateLine(app), null);
 });
 
