@@ -26,8 +26,10 @@ Selectors, from dashboard/static/js/edit_card.js, edit_review.js, edit_foot.js a
 - .s4-rf is the foot. button[data-edit-focus="btn:save"], "btn:undo" and "btn:dismiss-strip" are the buttons,
   .s4-ok is the result line and .s4-hint .pa the backup or restored-from path.
 """
+import filecmp
 import json
 import os
+import shutil
 import unittest
 import urllib.parse
 
@@ -62,6 +64,11 @@ STRIP_LINE = FOOT + " .s4-ok"
 STRIP_PATH = FOOT + " .s4-hint .pa"
 PICK_FILE_LINE = "Pick a file to see the exact change."
 NEW_FILE_TAG = RAIL + " .p2-df-h .p2-tag"
+CANCEL = FOOT + " button[data-edit-focus='btn:cancel']"
+REMOVE_LINK = ROWS + " button[data-edit-focus='remove:%s']"
+ANY_REMOVE_LINK = ROWS + " button[data-edit-focus^='remove:']"
+MARKED_ROW = ROWS + " .s6-r.is-pick"
+DIFF_ADD = DIFF + " li.p2-add"
 
 # Pure page scripts. Each is an expression with no side effect unless its name says it clicks.
 HAS_RADIO = "Boolean(document.querySelector(%s))" % json.dumps(RADIO)
@@ -81,6 +88,24 @@ DIFF_LINES = "(() => { const read = (sel) => [...document.querySelectorAll(%s + 
              ".map((el) => el.textContent.replace(/\\s+/g, ' ').trim()); " \
              "return { del: read('li.p2-del'), add: read('li.p2-add') }; })()" % json.dumps(DIFF)
 ROW_COUNT = "document.querySelectorAll(%s + ' label.s6-r').length" % json.dumps(ROWS)
+ACTIVE_KEY = "(document.activeElement && document.activeElement.getAttribute('data-edit-focus')) || null"
+COUNT = "document.querySelectorAll(%s).length"
+# True when every level radio is there and off (a remove is open) or every one is on (nothing is chosen).
+LEVELS_OFF = "(() => { const r = [...document.querySelectorAll(%s)]; return r.length > 0 && r.every((el) => el.disabled); })()" \
+             % json.dumps(RADIO)
+LEVELS_ON = "(() => { const r = [...document.querySelectorAll(%s)]; return r.length > 0 && r.every((el) => !el.disabled); })()" \
+            % json.dumps(RADIO)
+# The box of an element, as a plain object, or null when it is not there.
+BOX_OF = "(() => { const el = document.querySelector(%s); if (!el) return null; const b = el.getBoundingClientRect(); " \
+         "return { left: b.left, right: b.right, width: b.width, height: b.height }; })()"
+# The contrast of every Remove line link at rest, with the helpers the Settings audits share. Returns { count, bad }.
+REMOVE_LINK_CONTRAST = "(() => {" + settings_e2e.CONTRAST_HELPERS + r"""
+  if (!section) return { count: 0, bad: ['no visible section'] };
+  const bad = [];
+  const links = [...section.querySelectorAll(%s)];
+  links.forEach((el) => report(el, 4.5, bad));
+  return { count: links.length, bad };
+})()""" % json.dumps(ANY_REMOVE_LINK)
 
 
 def js(template, *values):
@@ -111,6 +136,41 @@ class World:
         """True when the project's local settings file is there. The fixture starts without one."""
         return os.path.exists(os.path.join(os.path.dirname(self.settings_path), "settings.local.json"))
 
+    def local_bytes(self):
+        with open(os.path.join(os.path.dirname(self.settings_path), "settings.local.json"), "rb") as fh:
+            return fh.read()
+
+    def project_state(self):
+        """The project folder as it is now: each path under it, with its bytes, or None for a folder."""
+        base = os.path.join(self.folder, "project")
+        out = {}
+        for here, dirs, files in os.walk(base):
+            for name in dirs:
+                out[os.path.relpath(os.path.join(here, name), base)] = None
+            for name in files:
+                with open(os.path.join(here, name), "rb") as fh:
+                    out[os.path.relpath(os.path.join(here, name), base)] = fh.read()
+        return out
+
+    def backups(self):
+        """Every backup file the dashboard has written in this world's config folder."""
+        found = []
+        for here, _dirs, files in os.walk(os.path.join(self.folder, "config")):
+            found += [os.path.join(here, name) for name in files if name.endswith(".bak")]
+        return found
+
+    def copy_settings(self, name):
+        """A copy of the shared file, made before a write, outside the project and the config folder."""
+        copies = os.path.join(self.root, "copies")
+        os.makedirs(copies, exist_ok=True)
+        out = os.path.join(copies, name)
+        shutil.copyfile(self.settings_path, out)
+        return out
+
+    def same_as_copy(self, copy):
+        """True when the shared file equals the copy byte for byte (the cmp of the owner's check)."""
+        return filecmp.cmp(copy, self.settings_path, shallow=False)
+
     def real_path(self, display):
         """The file a displayed path names. The fixture shows paths relative to its folder."""
         if os.path.isabs(display) or display.startswith("~"):
@@ -124,21 +184,27 @@ class World:
             helpers.rmtree_force(self.root)
 
 
-def build_fixture(folder):
-    """Write the made-up fixture: no shell env, no flags, an empty config folder and one project file."""
+def build_fixture(folder, shared=None, claude_dir=True):
+    """Write the made-up fixture: no shell env, no flags, an empty config folder and one project file.
+
+    shared is what the project's settings.json holds (the effort line by default). claude_dir=False leaves the
+    project folder empty, with no .claude folder at all. The path of settings.json comes back either way."""
     ts.write_json(os.path.join(folder, "session.json"), {"shell_env": {}, "flags": [], "cli_settings": None})
     os.makedirs(os.path.join(folder, "config"))
-    ts.write(os.path.join(folder, "project", ".claude", "settings.json"),
-             json.dumps({"effortLevel": START_LEVEL}, indent=2) + "\n")
-    return os.path.join(folder, "project", ".claude", "settings.json")
+    path = os.path.join(folder, "project", ".claude", "settings.json")
+    if claude_dir:
+        ts.write(path, json.dumps({"effortLevel": START_LEVEL} if shared is None else shared, indent=2) + "\n")
+    else:
+        os.makedirs(os.path.join(folder, "project"))
+    return path
 
 
-def build_world(prefix="mr-e2e-edit-"):
+def build_world(prefix="mr-e2e-edit-", shared=None, claude_dir=True):
     """Make the root, the fixture and the server with --allow-edits. Returns a World; the caller closes it."""
     root = ts.make_root(prefix)
     try:
         folder = os.path.join(root, "fixture")
-        settings_path = build_fixture(folder)
+        settings_path = build_fixture(folder, shared, claude_dir)
         env = ts.base_env(root)
         env.pop("CLAUDE_CODE_EFFORT_LEVEL", None)
         srv = ts.start(root, ["--fixture", folder, "--allow-edits"], env=env)
@@ -448,6 +514,244 @@ class EditLook(_ChromeBase):
                 self.click(UNDO)
                 self.page.wait_for("!document.querySelector(%s)" % json.dumps(UNDO))
                 self.assertEqual(w.settings_bytes(), before, tag + ": the undo left the file changed")
+        self.assertEqual(failures, [], "\n".join(failures))
+
+class _WorldPerTest(_ChromeBase):
+    """One Chrome for the class, and a fresh throwaway world for each test (new_world), so a write never leaks."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.world = None
+        cls.chrome = None
+        try:
+            cls.chrome = shell.Chrome(helpers._tmp_base())
+            cls.page = cls.chrome.page
+        except BaseException:
+            cls.tearDownClass()
+            raise
+
+    def new_world(self, **kwargs):
+        self.world = build_world("mr-e2e-edit-write-", **kwargs)
+        self.addCleanup(self.world.close)
+        return self.world
+
+    def count(self, selector):
+        return self.page.eval(js(COUNT, selector))
+
+    def wait_present(self, *selectors):
+        """Wait until every selector matches something."""
+        self.page.wait_for(" && ".join("Boolean(document.querySelector(%s))" % json.dumps(sel) for sel in selectors))
+
+    def wait_gone(self, selector):
+        self.page.wait_for("!document.querySelector(%s)" % json.dumps(selector))
+
+    def wait_saved(self, word="Saved."):
+        """The foot holds the result line with the word, and the Undo button."""
+        self.wait_present(STRIP_LINE, UNDO)
+        self.page.wait_for(js("document.querySelector(%s).textContent.includes(%s)", STRIP_LINE, word))
+
+    def wait_undone(self):
+        self.wait_gone(UNDO)
+        self.wait_present(STRIP_LINE)
+        self.page.wait_for(js("document.querySelector(%s).textContent.includes('Undone.')", STRIP_LINE))
+
+    def wait_focus(self, key):
+        self.page.wait_for("(%s) === %s" % (ACTIVE_KEY, json.dumps(key)))
+
+    def start_remove(self, layer="project"):
+        """Press Remove line on a row at rest and wait for the remove review: the row marked, Cancel and Save there,
+        and a diff that deletes a line."""
+        self.click(REMOVE_LINK % layer)
+        self.wait_present(MARKED_ROW, CANCEL, DIFF_DEL, RAIL_HEAD)
+        self.page.wait_for(js(IS_ON, SAVE))
+        self.page.wait_for(LEVELS_OFF)
+        self.wait_focus("btn:cancel")
+
+
+@unittest.skipUnless(os.environ.get("MR_E2E") == "1", "set MR_E2E=1 to run the headless Chrome checks")
+@unittest.skipIf(shell.CHROME is None, "Chrome was not found (set MR_CHROME to its path)")
+class EditWrites(_WorldPerTest):
+    """Create, Remove and Add (#92), each in its own world. The shared file and the project folder are compared with
+    copies and snapshots made before the write, never with the dashboard's backups."""
+
+    def test_create_local_file_then_undo(self):
+        w = self.new_world()
+        start = w.project_state()
+        shared = w.settings_bytes()
+        shared_copy = w.copy_settings("shared-before.json")
+        self.open_settings()
+        level = OTHER_LEVELS[0]
+        self.pick(level)
+        self.assertEqual(self.count(PICKED_LOCAL), 1, "the local row is the preselected one")
+        self.assertEqual(self.count(NEW_FILE_TAG), 1, "the review tags the file as new")
+        self.assertEqual(w.project_state(), start, "picking a level wrote something")
+
+        self.click(SAVE)
+        self.wait_saved("Created")
+        self.assertTrue(w.local_exists(), "the save did not create the local file")
+        self.assertEqual(w.local_bytes(), (json.dumps({"effortLevel": level}, indent=2) + "\n").encode("utf-8"))
+        self.assertEqual(w.settings_bytes(), shared, "the save touched the shared file")
+        self.assertTrue(w.same_as_copy(shared_copy))
+
+        self.click(UNDO)
+        self.wait_undone()
+        self.assertFalse(w.local_exists(), "the undo left the local file")
+        self.assertEqual(w.project_state(), start, "the project folder is not as it started")
+        self.assertTrue(w.same_as_copy(shared_copy))
+
+    def test_create_with_no_claude_folder_then_undo_removes_both(self):
+        w = self.new_world(claude_dir=False)
+        start = w.project_state()
+        self.assertEqual(start, {}, "the project folder starts empty")
+        self.open_settings()
+        level = OTHER_LEVELS[0]
+        self.pick(level)
+        self.assertEqual(self.count(PICKED_LOCAL), 1)
+        self.assertEqual(self.count(NEW_FILE_TAG), 1)
+        self.assertEqual(w.project_state(), start, "picking a level wrote something")
+
+        self.click(SAVE)
+        self.wait_saved("Created")
+        self.assertTrue(w.local_exists(), "the save did not create the local file")
+        self.assertEqual(w.local_bytes(), (json.dumps({"effortLevel": level}, indent=2) + "\n").encode("utf-8"))
+        self.assertEqual(sorted(w.project_state()), [".claude", ".claude/settings.local.json"])
+
+        self.click(UNDO)
+        self.wait_undone()
+        self.assertFalse(os.path.exists(os.path.join(w.folder, "project", ".claude")), "the undo left the folder")
+        self.assertEqual(w.project_state(), start, "the project folder is not as it started")
+
+    def test_remove_line_then_undo(self):
+        w = self.new_world(shared={"effortLevel": START_LEVEL, "language": "en"})
+        start = w.project_state()
+        before = w.settings_bytes()
+        copy = w.copy_settings("shared-before.json")
+        self.open_settings()
+        self.wait_present(REMOVE_LINK % "project")
+        self.assertEqual(self.count(ANY_REMOVE_LINK), 1, "only the project file has a line")
+
+        self.start_remove("project")
+        self.assertEqual(self.count(MARKED_ROW), 1, "one row wears the picked style")
+        self.assertIn("settings.json", self.text_of(MARKED_ROW))
+        self.assertNotIn("settings.local.json", self.text_of(MARKED_ROW))
+        self.assertEqual(self.count(PICKED_ROWS), 0, "the marked row is a plain row, not a radio")
+        self.assertTrue(self.page.eval(LEVELS_OFF), "a level is still on")
+        self.assertEqual(self.page.eval(ACTIVE_KEY), "btn:cancel")
+        self.assertEqual(self.count(ANY_REMOVE_LINK), 0, "Remove line stays while a change is open")
+        lines = self.page.eval(DIFF_LINES)
+        self.assertTrue(any('"effortLevel"' in line for line in lines["del"]), lines)
+        self.assertEqual(lines["add"], [])
+        self.assertEqual(w.project_state(), start, "the review wrote something")
+
+        self.click(SAVE)
+        self.wait_saved()
+        self.assertEqual(json.loads(w.settings_bytes().decode("utf-8")), {"language": "en"})
+        self.assertNotEqual(w.settings_bytes(), before)
+        self.assertFalse(w.local_exists())
+
+        self.click(UNDO)
+        self.wait_undone()
+        self.assertEqual(w.settings_bytes(), before)
+        self.assertTrue(w.same_as_copy(copy), "cmp finds the file changed from the copy made before the write")
+        self.assertEqual(w.project_state(), start)
+
+    def test_remove_line_then_cancel_writes_nothing(self):
+        w = self.new_world(shared={"effortLevel": START_LEVEL, "language": "en"})
+        start = w.project_state()
+        copy = w.copy_settings("shared-before.json")
+        self.open_settings()
+        self.start_remove("project")
+
+        self.click(CANCEL)
+        self.wait_present(REMOVE_LINK % "project")
+        self.wait_focus("remove:project")
+        self.page.wait_for(LEVELS_ON)
+        self.wait_gone(DIFF)
+        self.wait_gone(MARKED_ROW)
+        self.assertEqual(self.count(STRIP_LINE), 0, "Cancel left a result line")
+        self.assertEqual(w.project_state(), start, "Cancel wrote something")
+        self.assertTrue(w.same_as_copy(copy))
+        self.assertEqual(w.backups(), [], "a backup was cut for a change that was never saved")
+
+    def test_add_line_to_a_file_with_another_key_then_undo(self):
+        w = self.new_world(shared={"language": "en"})
+        start = w.project_state()
+        before = w.settings_bytes()
+        copy = w.copy_settings("shared-before.json")
+        self.open_settings()
+        level = OTHER_LEVELS[0]
+        self.pick(level)
+        self.assertEqual(self.count(PICKED_LOCAL), 1, "a level press preselects the local create first")
+
+        # Press the project row: an add. The review shows no New file tag. The line above the new one gains a comma,
+        # so the diff may show it as deleted, but no deleted line holds the setting.
+        self.click(PROJECT_ROW)
+        self.wait_present(PICKED_PROJECT, DIFF_ADD)
+        self.wait_gone(NEW_FILE_TAG)
+        self.page.wait_for(js(IS_ON, SAVE))
+        lines = self.page.eval(DIFF_LINES)
+        self.assertFalse(any("effortLevel" in line for line in lines["del"]), "an add removed an effort line: %r" % lines)
+        self.assertTrue(any('"effortLevel"' in line and '"%s"' % level in line for line in lines["add"]), lines)
+        self.assertEqual(w.project_state(), start, "the review wrote something")
+
+        self.click(SAVE)
+        self.wait_saved()
+        self.assertEqual(json.loads(w.settings_bytes().decode("utf-8")), {"language": "en", "effortLevel": level})
+        self.assertFalse(w.local_exists(), "the save went to the local file")
+
+        self.click(UNDO)
+        self.wait_undone()
+        self.assertEqual(w.settings_bytes(), before)
+        self.assertTrue(w.same_as_copy(copy), "cmp finds the file changed from the copy made before the write")
+        self.assertEqual(w.project_state(), start)
+
+
+@unittest.skipUnless(os.environ.get("MR_E2E") == "1", "set MR_E2E=1 to run the headless Chrome checks")
+@unittest.skipIf(shell.CHROME is None, "Chrome was not found (set MR_CHROME to its path)")
+class EditRemoveLook(_WorldPerTest):
+    """The Remove line link and its review: AA contrast of the link at rest in both themes (the dark value failed at
+    1.83:1 before its fix), and the review at 375 wide."""
+
+    def test_remove_link_contrast_in_light_and_dark(self):
+        self.new_world()
+        failures = []
+        for width in (1440, 375):
+            for theme in ("light", "dark"):
+                self.open_settings(width, theme)
+                self.wait_present(REMOVE_LINK % "project")
+                result = self.page.eval(REMOVE_LINK_CONTRAST)
+                if result["count"] != 1:
+                    failures.append("%d %s: found %d Remove line links, wanted 1" % (width, theme, result["count"]))
+                failures += ["%d %s: %s" % (width, theme, item) for item in result["bad"]]
+        self.assertEqual(failures, [], "\n".join(failures))
+
+    def test_remove_review_at_375(self):
+        w = self.new_world(shared={"effortLevel": START_LEVEL, "language": "en"})
+        start = w.project_state()
+        failures = []
+        for theme in ("light", "dark"):
+            tag = "375 %s" % theme
+            self.open_settings(375, theme)
+            self.wait_present(REMOVE_LINK % "project")
+            link = self.page.eval(js(BOX_OF, REMOVE_LINK % "project"))
+            if link["height"] < 44:
+                failures.append("%s: the Remove line link is %.0f px tall, wanted 44" % (tag, link["height"]))
+            self.start_remove("project")
+            if self.page.eval(BODY_OVERFLOW) != "0":
+                failures.append("%s: data-ox is not 0, the review scrolls sideways" % tag)
+            width = self.page.eval("innerWidth")
+            for name, selector in (("Save", SAVE), ("Cancel", CANCEL), ("diff", DIFF)):
+                box = self.page.eval(js(BOX_OF, selector))
+                if box is None or box["left"] < 0 or box["right"] > width:
+                    failures.append("%s: %s is outside the %d px window: %r" % (tag, name, width, box))
+            self.page.eval(settings_e2e.OPEN_DETAILS)
+            result = self.page.eval(settings_e2e.TEXT_CONTRAST_BAD)
+            if result["checked"] <= 10:
+                failures.append("%s: checked only %d elements" % (tag, result["checked"]))
+            failures += ["%s: %s" % (tag, item) for item in result["bad"]]
+            self.click(CANCEL)
+            self.wait_focus("remove:project")
+            self.assertEqual(w.project_state(), start, tag + ": the review wrote something")
         self.assertEqual(failures, [], "\n".join(failures))
 
 

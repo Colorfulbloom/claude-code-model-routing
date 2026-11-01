@@ -2,7 +2,7 @@
 
 Owner-approved facts promoted from HiveMind. Only deep-reasoner edits this file, and only after the owner approves a promotion. Limit: 60 lines.
 
-- T-7629 Full suite: from the repo root, `/usr/bin/python3 -m unittest discover -s tests` runs 2364 tests (39 skipped) in 220 to 250 seconds (2026-11-01, on 0a1241f). 37 of the skips need `MR_E2E=1`, and the owner runs those. Run it alone, not beside a harness batch.
+- T-7629 Full suite: from the repo root, `/usr/bin/python3 -m unittest discover -s tests` runs 2609 tests (46 skipped) in about 270 seconds (2026-11-01). 44 of the skips need `MR_E2E=1`, and the owner runs those. Run it alone, not beside a harness batch.
 - T-5589 Test subsets: `discover -s tests -k <pattern>` or `-p test_x.py` works; dotted names such as `tests.test_x` fail with "No module named 'helpers'".
 - T-c826 MR_TEST_TMP is optional: tests/helpers.py creates the directory when it is set and missing; unset means the system temp dir.
 - E-5b16 Write core: `edit_store.py` alone writes settings.
