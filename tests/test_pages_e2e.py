@@ -241,7 +241,7 @@ class PagesE2E(unittest.TestCase):
         if texts:
             shown = self.page.eval("(document.querySelector('main [data-page=%s]') || {}).innerText || ''" % page).casefold()
             for text in texts:
-                # innerText applies CSS text-transform, so .tl-l labels and .dt th come back uppercase.
+                # innerText applies CSS text-transform, so .s4-lab labels and .dt th come back uppercase.
                 if text.casefold() not in shown:
                     bad.append("%s: text %r is not on the page" % (where, text))
         self.save_shot(screenshot_name(page, hash_, width, theme))

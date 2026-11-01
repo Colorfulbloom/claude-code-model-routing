@@ -532,7 +532,9 @@ class ServerClass(unittest.TestCase):
     def test_api_edit_reports_off_without_state(self):
         ctx = server.fixture_context(ts.fixture_copy(self._root()), None, None, RULES, FIELDS)
         self.assertEqual(api_edit.edit_info(ctx, {}), (200, {"enabled": False, "launch_id": None}))
-        self.assertEqual(api_edit.targets(ctx, {}), (200, {"enabled": False}))
+        status, body = api_edit.targets(ctx, {})
+        self.assertEqual((status, body["enabled"]), (200, False))
+        self.assertNotIn("targets", body)
         self.assertEqual(api_edit.history(ctx, {}), (200, {"enabled": False}))
 
     def test_edits_supported_here_and_not_without_the_pieces(self):
@@ -610,9 +612,18 @@ class DefaultLaunch(GateAssertions, unittest.TestCase):
         status, _, data = send(self.port, "GET", "/api/edit")
         self.assertEqual(status, 200)
         self.assertEqual(json.loads(data), {"enabled": False, "launch_id": None})
-        for path in ("/api/edit/targets", "/api/edit/history"):
-            status, _, data = send(self.port, "GET", path)
-            self.assertEqual((status, json.loads(data)), (200, {"enabled": False}), path)
+        status, _, data = send(self.port, "GET", "/api/edit/history")
+        self.assertEqual((status, json.loads(data)), (200, {"enabled": False}))
+        status, _, data = send(self.port, "GET", "/api/edit/targets")
+        body = json.loads(data)
+        self.assertEqual(status, 200)
+        self.assertIs(body["enabled"], False)
+        for key in ("project", "runs_as", "levels_state", "project_lock", "files", "levels"):
+            self.assertIn(key, body)
+        for key in ("targets", "blocked", "saveable", "preselect"):
+            self.assertNotIn(key, body)
+        status, _, data = send(self.port, "GET", "/api/edit/targets?project=no-such-project")
+        self.assertEqual((status, json.loads(data)), (404, {"error": "unknown_project"}))
 
     def test_a_post_to_each_write_path_gets_405_and_the_tree_is_unchanged(self):
         before = ts.hash_tree(self.fixture)
@@ -691,6 +702,24 @@ class FlagOn(GateAssertions, unittest.TestCase):
             self.assertEqual(json.loads(send(proc.port, "GET", "/api/edit")[2]), info)
             ids.append(info["launch_id"])
         self.assertNotEqual(*ids)
+
+    def test_the_targets_answer_has_file_rows_and_no_level_target(self):
+        status, _, data = send(self.port, "GET", "/api/edit/targets")
+        self.assertEqual(status, 200)
+        body = json.loads(data)
+        self.assertIs(body["enabled"], True)
+        self.assertIsInstance(body["saveable"], bool)
+        self.assertEqual([row["layer"] for row in body["files"]], ["local", "project", "user"])
+        for row in body["files"]:
+            self.assertEqual(set(row), {"layer", "file_display", "state", "line", "value", "status", "target",
+                                        "shared", "lock_reason"})
+            self.assertIn(row["state"], ("has_line", "no_line", "absent", "locked"))
+        for level in body["levels"]:
+            self.assertNotIn("target", level)
+            self.assertEqual(set(level), {"level", "result", "runs_as", "certain", "limits", "files",
+                                          "preselect", "saveable"})
+            self.assertTrue(level["preselect"] is None or isinstance(level["preselect"], str))
+        self.assertNotIn(self.token.encode(), data)
 
     def test_no_route_or_static_file_returns_the_token(self):
         paths = ["/", "/nope", "/api/nope"] + sorted(server.ROUTES)

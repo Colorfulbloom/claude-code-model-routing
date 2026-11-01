@@ -8,6 +8,7 @@
 //   #/attention   #/files   #/rules
 //
 // Project, range and theme travel in the query part of the hash: #/agents?project=api&range=7d.
+// The Settings page also reads setting, the cell of the band it shows: #/settings?setting=model.
 // "@main" is the stable key for the main session, so it cannot clash with an agent named main. Every
 // other name is URL-encoded. An unknown route goes to the overview.
 
@@ -22,6 +23,10 @@ export const PAGES = [
 export const MAIN_KEY = "@main";
 export const ALL_KEY = "all";
 const THEMES = ["light", "dark"];
+
+// The settings that have a cell in the Settings band, in the saved order of the cells. pages/settings.js keeps
+// the same keys in TILES, and a check holds the two together. An unknown value of ?setting= reads as null.
+export const BAND_SETTINGS = ["model", "effortLevel", "maxEffortLevel", "autoCompactWindow", "promptCacheTtl"];
 
 const encodeKey = (value) => (value === MAIN_KEY ? MAIN_KEY : encodeURIComponent(value));
 
@@ -43,6 +48,7 @@ export function queryString(query = {}) {
   if (query.project) parts.set("project", query.project);
   if (query.range) parts.set("range", query.range);
   if (query.theme) parts.set("theme", query.theme);
+  if (query.setting) parts.set("setting", query.setting);
   return parts.toString();
 }
 
@@ -62,17 +68,26 @@ function decode(segment) {
 
 // Returns { name, params, query, known }. An unknown route comes back as the overview with known false,
 // so the app can rewrite the hash. query.project is the raw value; the app decides if it is a real project.
+// query.setting belongs to the Settings page alone, so every other route reads it as null.
 export function parseHash(hash) {
+  const parsed = parseRoute(hash);
+  if (parsed.name !== "settings") parsed.query.setting = null;
+  return parsed;
+}
+
+function parseRoute(hash) {
   const raw = String(hash || "").replace(/^#/, "");
   const cut = raw.indexOf("?");
   const path = cut < 0 ? raw : raw.slice(0, cut);
   const search = new URLSearchParams(cut < 0 ? "" : raw.slice(cut + 1));
   const range = search.get("range");
   const theme = search.get("theme");
+  const setting = search.get("setting");
   const query = {
     project: search.get("project") || null,
     range: RANGES.includes(range) ? range : null,
     theme: THEMES.includes(theme) ? theme : null,
+    setting: BAND_SETTINGS.includes(setting) ? setting : null,
   };
   const segments = path.replace(/^\/+/, "").replace(/\/+$/, "").split("/");
   const [first, second, third] = segments;

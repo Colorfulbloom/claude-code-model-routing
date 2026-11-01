@@ -1,187 +1,64 @@
-// The Change effort card (direction B, Pick the result) and the undo strip, on the trail of the main
-// session's effortLevel. pages/trail.js calls begin(ctx) once per render and places what comes back. The card
-// reads ctx.edit (js/edit_session.js through app.js): the mode, the targets and the history, and it sends the
-// preview, the save and the undo. Boards 01 to 05 in the phase 2 design folder are the reference, and
-// app.css holds every class used here (section "Change effort card").
+// The Effort body, its rail and its foot on the Settings page (round 6 design, direction A), and the results in the
+// foot. pages/settings.js calls begin(ctx, { restRail, selected, onNotSaved }) once per render with a payload and
+// places what comes back. The page reads ctx.edit (js/edit_session.js through app.js): the mode, the targets and the history, and
+// it sends the preview, the save and the undo. The boards a-rest, a-norm, a-lock and a-shell in the phase 2
+// design folder (design-settings-6) are the reference, and app.css holds every class used here (section
+// "Settings page, round 6").
+//
+// This file holds the shell, the picker, the rows, the rail, the foot, the drawing and the focus. The rest sits
+// beside it.
+// - edit_pick.js: the pure rules (which radio is checked and off, which rail case, where the picked row lands).
+// - edit_flow.js: the state and the actions. It draws through the redraw() registered here.
+// - edit_review.js and edit_foot.js: the pure builders of the review (rail) with its Save and Cancel (foot), and of
+//   the results (foot).
+// - edit_ui.js: the small shared builders.
 //
 // Rules this file keeps.
 // - Every word comes from strings.json through t(). Nothing here holds copy. The marks are glyphs.
 // - Every value, path and diff line comes from the server, so it goes in as text through h.js. No markup is
 //   parsed anywhere in this file, and tests/test_edit_card_js.py fails on the calls that would parse it.
-// - The flow state lives in this module, keyed by project. A save or an undo awaits the page's reload, so the
-//   page draws again while a press is in flight. The state survives that, and the answer draws into the
+// - The flow state lives in edit_flow.js, one flow for each project. A save or an undo awaits the page's reload,
+//   so the page draws again while a press is in flight. The state survives that, and the answer draws into the
 //   nodes of the newest render.
-// - Picking a radio or pressing a button redraws only the card's own node, or the strip's. A page render
-//   rebuilds both, so focusKey() and restoreFocus() carry an edit control's focus across it.
+// - Choosing a level or a row redraws the body, the rail and the foot without a page render. A page render
+//   rebuilds all three, so focusKey() and done() carry an edit control's focus across it.
+// - A chosen level keeps its review in the rail and its Save and Cancel in the foot on every cell, and the body
+//   of any other cell is its read-only frame. One Save exists in the page, never a copy for a narrow window.
+// - A chosen level that can be saved is Not saved. A choice made with no page render updates the Stat band
+//   (onNotSaved) and the project picker (ctx.edit.syncShell) by the callbacks the page and app.js pass in.
+// - The checked radio always equals the chosen level, and a row that goes grey takes no focus. A handler never
+//   puts a radio back.
 
-import { h, s, clear, frag } from "./h.js";
-import { t, tn, fmtTime } from "./format.js";
+import { h, clear, frag } from "./h.js";
+import { t, tn } from "./format.js";
 import { icon } from "./icons.js";
-import { chip } from "./components.js";
 import { MAIN_KEY } from "./router.js";
-import { editRef } from "./edit_ref.js";
-import { layerText, sourceText, valueString } from "./pages/settings.js";
+import { pickerState, railCase } from "./edit_pick.js";
+import {
+  S, live, setLive, onRedraw, syncFlow, settle, targetsData, historyData, damagedFor, levelFile, isNotSaved, notSavedProjects,
+  cancel, pick, pickRow, doSave, doUndo, dismissStrip, dismissLedger, resetCard,
+} from "./edit_flow.js";
+import { capsOf, limitLine, limitParas, review, reviewFacts, reviewFoot, stopPanel, waitingFoot } from "./edit_review.js";
+import { stripNodes as footNodes } from "./edit_foot.js";
+import {
+  basename, button, checkIcon, draw, filesOf, hint, levelRow, levelsOf, lockIcon, lockLine, lockText, mark, nt,
+  rowLockText, runningOf, text, tokenNt, walk,
+} from "./edit_ui.js";
+import { valueString, valueText } from "./pages/settings.js";
+import { entriesOf, entryRow, rowFor, rowNode, shortFile, whereList } from "./pages/where.js";
+
+export { basename };
 
 const SETTING = "effortLevel";
-const MARKS = { ok: "✓", warn: "▲", err: "✕" };
-// A path slot is written into the text as a marker, then drawn as a .pa element. See draw().
-const MARK = "\u0001";
-
-// ---------------------------------------------------------------- state
-
-function flow() {
-  return {
-    scope: null, // the target id a "Change this value" link fixed the picker to
-    picked: null, // the level the owner picked
-    view: "rest", // rest, or stop for a stopped level
-    pv: null, // { target, value, data } the preview on screen
-    notice: null, // a note over the picker or the review: { kind, heading, paras, dismiss }
-    frame: null, // a result that replaces the review: unverified, raced or ledger
-    failed: false, // a write failed and the review stays
-    failedDir: null, // the config folder a failed write found missing
-    busy: false, // a save is on its way
-    strip: null, // a result of this page's own press, shown in the strip slot
-    stripBusy: false, // an undo is on its way
-    token: null, // { where } a press found no live token
-    want: null, // the control that takes focus on the next draw
-  };
-}
-
-const S = { ...flow(), project: null, mode: undefined, epoch: 0, seq: 0, reloads: 0 };
-let live = null; // { ctx, card, strip, misses } the newest render
-
-function resetFlow() {
-  const fresh = flow();
-  for (const name of Object.keys(fresh)) S[name] = fresh[name];
-  S.epoch += 1;
-  S.seq += 1; // an answer still on its way drops itself
-}
-
-function resetCard() {
-  S.seq += 1;
-  S.scope = null;
-  S.picked = null;
-  S.view = "rest";
-  S.pv = null;
-  S.notice = null;
-  S.frame = null;
-  S.failed = false;
-  S.failedDir = null;
-}
-
-// ---------------------------------------------------------------- helpers
-
-export function basename(path) {
-  if (path === null || path === undefined) return "";
-  const parts = String(path).split(/[\\/]/);
-  return parts[parts.length - 1] || String(path);
-}
-
-const text = (value) => (value === null || value === undefined ? "" : String(value));
-const isString = (value) => typeof value === "string" && value !== "";
-
-// t() puts a marker where a path goes. draw() splits the text there and puts the path in a .pa element, so a
-// long path wraps and a server value is never joined into markup. paths: { name: value }.
-const mark = (name) => MARK + name + MARK;
-
-function draw(line, paths = {}) {
-  const out = [];
-  String(line).split(new RegExp(MARK + "(\\w+)" + MARK)).forEach((piece, i) => {
-    if (i % 2 === 0) {
-      if (piece !== "") out.push(piece);
-    } else {
-      out.push(h("span", { class: "pa" }, text(paths[piece])));
-    }
-  });
-  return out;
-}
-
-// The text of ed_lock_<reason>, or null. A null or empty reason never builds a key, and a reason with no key shows nothing.
-function lockText(reason) {
-  if (!isString(reason)) return null;
-  const line = t("ed_lock_" + reason);
-  return line === "ed_lock_" + reason ? null : line;
-}
-
-// The text for an error answer. A status of 0 or an answer with no code is the network line. A 422 with a
-// blocked reason is that reason's lock line. Any other code is its ed_err_ line.
-function errorText(res) {
-  const status = res && typeof res.status === "number" ? res.status : 0;
-  const code = res && res.data && typeof res.data === "object" && isString(res.data.error) ? res.data.error : "";
-  if (!status || !code) return t("ed_err_network");
-  if (status === 422) {
-    const lock = lockText(code);
-    if (lock) return lock;
-  }
-  const line = t("ed_err_" + code);
-  return line === "ed_err_" + code ? t("ed_err_forbidden") : line;
-}
-
-const bodyOf = (out) => (out && out.res && out.res.data && typeof out.res.data === "object" ? out.res.data : {});
-const codeOf = (out) => text(bodyOf(out).error);
-
-function walk(node, test, out = []) {
-  if (node && node.nodeType === 1 && test(node)) out.push(node);
-  for (const child of Array.from((node && node.childNodes) || [])) walk(child, test, out);
-  return out;
-}
+const FILE_LAYERS = ["local", "project", "user"];
+const NOTE_ID = "p2-levels-note";
+const NBSP = " ";
 
 // ---------------------------------------------------------------- builders
 
-function lockIcon() {
-  return s("svg", {
-    class: "ic sm", viewBox: "0 0 24 24", width: 20, height: 20, fill: "none", stroke: "currentColor",
-    "stroke-width": 1.75, "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true",
-  }, s("rect", { x: 5, y: 11, width: 14, height: 9, rx: 2 }), s("path", { d: "M8 11V8a4 4 0 0 1 8 0v3" }));
-}
-
-function lockLine(line) {
-  return h("p", { class: "p2-lock" }, lockIcon(), h("span", null, line));
-}
-
-function hint(line, id) {
-  return h("p", { class: "p2-hint", id: id || null }, line);
-}
-
-function button(label, { primary = false, focus = null, disabled = false, busy = false, onClick = null } = {}) {
-  return h("button", {
-    type: "button",
-    class: ["btn", primary && "p2-pri"],
-    disabled,
-    "aria-busy": busy ? "true" : null,
-    "data-edit-focus": focus ? "btn:" + focus : null,
-    on: onClick ? { click: onClick } : null,
-  }, label);
-}
-
-const NT_CLASS = { ok: "nt p2-nt p2-nt-ok", warn: "nt p2-nt p2-nt-warn", err: "nt p2-nt p2-nt-err" };
-
-// A notice: the mark and a heading, then paragraphs, then buttons. An error is an alert and the rest are status.
-function nt(kind, heading, paras = [], buttons = []) {
-  return h("div", { class: NT_CLASS[kind], role: kind === "err" ? "alert" : "status" },
-    h("div", { class: "p2-nt-h" }, h("span", { class: "p2-mk", "aria-hidden": "true" }, MARKS[kind]), heading),
-    paras.filter(Boolean).map((p) => h("p", null, p)),
-    buttons.length ? h("div", { class: "p2-btns" }, buttons) : null);
-}
-
-const STRIP_CLASS = {
-  ok: "nt nt-banner p2-strip p2-nt-ok",
-  warn: "nt nt-banner p2-strip p2-nt-warn",
-  quiet: "nt nt-banner p2-strip",
-};
-
-// The strip: one line of text and its buttons. kind quiet has no mark. role is null for a strip that only sits there.
-function strip(kind, line, buttons = [], role = null) {
-  return h("div", { class: STRIP_CLASS[kind], role },
-    h("div", { class: "p2-t" },
-      kind === "quiet" ? null : h("span", { class: "p2-mk", "aria-hidden": "true" }, MARKS[kind]),
-      h("span", null, line)),
-    buttons);
-}
-
-// The card shell: the plain card of the page, with a heading that is plain text.
-function shell(title, body, active) {
-  return h("section", { class: ["cd", active && "p2-on"] },
+// The plain card of the page, with a heading that is plain text. Only a model with no effort levels uses it.
+function shell(title, body) {
+  return h("section", { class: "cd" },
     h("div", { class: "cd-hd" },
       h("div", { class: "cd-t" },
         h("span", { class: "cd-ic" }, icon("sliders")),
@@ -189,374 +66,201 @@ function shell(title, body, active) {
     h("div", { class: "cd-bd" }, body));
 }
 
-// ---------------------------------------------------------------- data
-
-// The targets answer when it is usable: the object, null when it has not loaded, false when it failed.
-function targetsData() {
-  const res = live.ctx.edit.targets;
-  if (!res) return null;
-  const data = res.data;
-  if (!res.ok || !data || typeof data !== "object" || !Array.isArray(data.levels) || !Array.isArray(data.targets)) return false;
-  return data;
-}
-
-function historyData() {
-  const res = live.ctx.edit.history;
-  const data = res && res.ok ? res.data : null;
-  return data && typeof data === "object" ? data : null;
-}
-
-const targetById = (T, id) => T.targets.find((x) => x.target === id) || null;
-const levelRow = (T, value) => T.levels.find((l) => l.level === value) || null;
-
-function scopedTarget(T) {
-  if (!S.scope) return null;
-  const found = targetById(T, S.scope);
-  if (!found) S.scope = null; // the file moved, so the fixed target is gone
-  return found;
-}
-
-// A file whose ledger is damaged takes no save, and the history names it.
-function damagedFor(file, layer) {
-  const history = historyData();
-  const list = history && Array.isArray(history.damaged_ledgers) ? history.damaged_ledgers : [];
-  return list.find((d) => d.file_display === file && (d.layer === layer || !layer)) || null;
-}
-
-// ---------------------------------------------------------------- limits, the stop panel and the warning
-
-// The line that names a cap or a winner, with its file in a .pa. A model limit has no line of its own.
-function limitLine(limit) {
-  if (!isString(limit.file_display)) return null;
-  const hasLine = limit.line !== null && limit.line !== undefined;
-  const slots = { value: text(limit.value), file: mark("file"), line: text(limit.line) };
-  const paths = { file: limit.file_display };
-  if (limit.kind === "cap") return draw(hasLine ? t("ed_limit_cap", slots) : t("ed_limit_cap_noline", slots), paths);
-  if (limit.kind === "winner") return draw(hasLine ? t("ed_limit_winner", slots) : t("ed_limit_winner_noline", slots), paths);
-  return null;
-}
-
-// Each limit's line, then why it can't be changed here. cap_later is left out, because the panel's own text says it.
-function limitParas(limits) {
-  const out = [];
-  for (const limit of limits) {
-    out.push(limitLine(limit));
-    if (limit.lock_reason !== "cap_later") out.push(lockText(limit.lock_reason));
-  }
-  return out.filter(Boolean);
-}
-
-const capsOf = (limits) => limits.filter((l) => l.kind === "cap");
-const allCapLater = (caps) => caps.length > 0 && caps.every((l) => l.lock_reason === "cap_later");
-
-function stopPanel(level, value) {
-  const limits = Array.isArray(level && level.limits) ? level.limits : [];
-  const paras = [];
-  if (allCapLater(capsOf(limits))) paras.push(t("ed_stop_cap_t", { level: value }));
-  if (limits.some((l) => l.kind === "model")) paras.push(t("ed_stop_model_t", { level: value, runs_as: text(level.runs_as) }));
-  if (limits.some((l) => l.kind === "winner")) paras.push(t("ed_stop_winner_t", { level: value }));
-  const unknown = limits.some((l) => l.kind === "model_unknown");
-  if (unknown) paras.push(t("ed_stop_unknown_t", { level: value }));
-  const heading = unknown ? t("ed_stop_unknown_h", { level: value }) : t("ed_stop_h", { level: value });
-  return nt("warn", heading, paras.concat(limitParas(limits)),
-    [button(t("ed_cancel"), { focus: "cancel", onClick: cancel })]);
-}
-
-// One literal t() call per status, so the string checks can see every key.
-function winnerWarning(status) {
-  switch (status) {
-    case "overridden": return t("ed_warn_overridden_t");
-    case "ignored": return t("ed_warn_ignored_t");
-    case "invalid": return t("ed_warn_invalid_t");
-    case "unknown": return t("ed_warn_unknown_t");
-    default: return null;
-  }
-}
-
-function warningParas(warning) {
-  const limits = Array.isArray(warning.limits) ? warning.limits : [];
-  const caps = capsOf(limits);
-  const paras = [];
-  if (caps.length) {
-    if (warning.status === "in_effect") paras.push(t("ed_warn_nomodel_cap_t"));
-    else if (allCapLater(caps)) paras.push(t("ed_warn_cap_t"));
-  }
-  if (limits.some((l) => l.kind === "model")) paras.push(t("ed_warn_model_t"));
-  paras.push(winnerWarning(warning.status));
-  return paras.filter(Boolean).concat(limitParas(limits));
-}
-
-// ---------------------------------------------------------------- the review
-
-function mainEntries(payload) {
-  const rows = payload && Array.isArray(payload.rows) ? payload.rows : [];
-  const row = rows.find((r) => r.agent === MAIN_KEY && r.setting === SETTING);
-  const entries = row && payload.entries ? row.entries.map((i) => payload.entries[i]).filter(Boolean) : [];
-  return entries;
-}
-
-// A value, its status chip and what it runs as, for one cell of the table.
-function cell(value, status, becomes) {
-  return h("span", { class: "p2-cell" },
-    value === "" ? null : h("span", { class: "val mono" }, value),
-    status ? chip(status) : null,
-    becomes === null || becomes === undefined || becomes === "" ? null : h("span", { class: "runs" }, t("runs_as_cell", { becomes })));
-}
-
-function entryCell(entry, payload) {
-  if (!entry) return h("span", { class: "p2-cell" });
-  return cell(valueString(entry, payload), entry.status, entry.becomes);
-}
-
-function changeCell(side) {
-  if (!side) return h("span", { class: "p2-cell" });
-  const runs = side.runs_as !== side.value ? side.runs_as : null;
-  return cell(text(side.value), side.status, runs);
-}
-
-function row(first, nowCell, afterCell, changed) {
-  return h("tr", { class: changed ? "p2-tr-on" : "p2-tr-same" },
-    h("td", { "data-l": t("ed_th_value") }, h("span", null, first)),
-    h("td", { "data-l": t("ed_th_now") }, nowCell),
-    h("td", { "data-l": t("ed_th_after") }, afterCell));
-}
-
-function trailTable(pv, target) {
-  const before = mainEntries(pv.before);
-  const after = mainEntries(pv.after);
-  const nowBy = new Map(before.map((e) => [editRef(e), e]));
-  const afterBy = new Map(after.map((e) => [editRef(e), e]));
-  const refs = Array.from(new Set(before.map(editRef).concat(after.map(editRef))));
-  const body = refs.map((ref) => {
-    const was = nowBy.get(ref) || null;
-    const will = afterBy.get(ref) || null;
-    const changed = Boolean(target) && ref === target.ref;
-    const one = was || will;
-    const payload = was ? pv.before : pv.after;
-    const label = layerText(one, payload) || sourceText(one, payload, true);
-    const first = [h("span", { class: "ly" }, label), changed ? " " : null, changed ? h("span", { class: "p2-tag" }, t("ed_tag_changes")) : null];
-    return row(first, entryCell(was, pv.before), entryCell(will, pv.after), changed);
-  });
-  const also = (Array.isArray(pv.changes) ? pv.changes : []).filter((c) => c.agent !== MAIN_KEY);
-  return h("table", { class: "dt p2-tbl" },
-    h("caption", { class: "sr" }, t("ed_tbl_cap")),
-    h("thead", null, h("tr", null,
-      h("th", { scope: "col" }, t("ed_th_value")), h("th", { scope: "col" }, t("ed_th_now")), h("th", { scope: "col" }, t("ed_th_after")))),
-    h("tbody", null, body),
-    also.length ? h("tbody", null,
-      h("tr", { class: "p2-tr-h" }, h("th", { colspan: 3, scope: "colgroup" }, t("ed_also"))),
-      also.map((c) => row(h("span", { class: "ly" }, t("ed_also_agent", { agent: text(c.agent) })),
-        changeCell(c.before), changeCell(c.after), true))) : null);
-}
-
-// The changed middle of a pair of lines, by their common start and end. Three text parts, or null when there is no middle.
-function middle(a, b) {
-  const max = Math.min(a.length, b.length);
-  let start = 0;
-  while (start < max && a[start] === b[start]) start += 1;
-  let end = 0;
-  while (end < max - start && a[a.length - 1 - end] === b[b.length - 1 - end]) end += 1;
-  if (start === 0 && end === 0) return null; // nothing in common, so a mark would cover the whole line
-  const cut = (line) => ({ pre: line.slice(0, start), mid: line.slice(start, line.length - end), suf: line.slice(line.length - end) });
-  const left = cut(a);
-  const right = cut(b);
-  if (left.mid === "" && right.mid === "") return null;
-  return [left, right];
-}
-
-function codeParts(parts) {
-  if (!parts) return null;
-  return [parts.pre, parts.mid === "" ? null : h("mark", null, parts.mid), parts.suf].filter((p) => p !== "" && p !== null);
-}
-
-// Each del line is paired with the add line at the same place in the run that follows it.
-function pairMarks(lines) {
-  const marks = new Map();
-  let i = 0;
-  while (i < lines.length) {
-    if (lines[i].kind !== "del") {
-      i += 1;
-      continue;
-    }
-    let dels = i;
-    while (dels < lines.length && lines[dels].kind === "del") dels += 1;
-    let adds = dels;
-    while (adds < lines.length && lines[adds].kind === "add") adds += 1;
-    for (let k = 0; k < Math.min(dels - i, adds - dels); k += 1) {
-      const pair = middle(text(lines[i + k].text), text(lines[dels + k].text));
-      if (pair) {
-        marks.set(i + k, codeParts(pair[0]));
-        marks.set(dels + k, codeParts(pair[1]));
-      }
-    }
-    i = adds;
-  }
-  return marks;
-}
-
-function diffLine(line, parts) {
-  const kind = line.kind;
-  const cls = kind === "del" ? "p2-del" : kind === "add" ? "p2-add" : null;
-  const sign = kind === "del" ? "−" : kind === "add" ? "+" : "";
-  const num = kind === "del" ? line.old_line : (line.new_line !== null && line.new_line !== undefined ? line.new_line : line.old_line);
-  return h("li", { class: cls },
-    kind === "del" ? h("span", { class: "sr" }, t("ed_diff_del_sr") + " ") : null,
-    kind === "add" ? h("span", { class: "sr" }, t("ed_diff_add_sr") + " ") : null,
-    h("span", { class: "p2-n" }, text(num)),
-    h("span", { class: "p2-m", "aria-hidden": "true" }, sign),
-    h("code", null, parts || text(line.text)));
-}
-
-function diffFigure(diff, target) {
-  const name = basename(diff.file_display);
-  const layer = target ? layerText({ layer: target.layer }) : "";
-  return h("figure", { class: "p2-df" },
-    h("figcaption", { class: "p2-df-h" }, layer ? h("span", { class: "ly" }, layer) : null, h("span", { class: "pa" }, text(diff.file_display))),
-    (Array.isArray(diff.hunks) ? diff.hunks : []).map((hunk) => {
-      const lines = Array.isArray(hunk.lines) ? hunk.lines : [];
-      const marks = pairMarks(lines);
-      return h("ol", { "aria-label": t("ed_diff_sr", { file: name }) }, lines.map((line, i) => diffLine(line, marks.get(i))));
-    }));
-}
-
-function runsAfter(pv, T) {
-  const change = (Array.isArray(pv.changes) ? pv.changes : []).find((c) => c.agent === MAIN_KEY && c.setting === SETTING);
-  if (change) return change.after && change.after.runs_as !== null && change.after.runs_as !== undefined ? change.after.runs_as : null;
-  return T.runs_as !== null && T.runs_as !== undefined ? T.runs_as : null;
-}
-
-function headline(pv, T, level) {
-  const was = T.runs_as;
-  const next = runsAfter(pv, T);
-  const warning = pv.warning;
-  let note = t("ed_runs");
-  if (warning && warning.status === "unknown") note = t("ed_nochange_unknown");
-  else if (warning && warning.in_effect_changes === false) note = t("ed_nochange");
-  else if (level && level.certain === false) note = t("ed_runs_uncertain", { level: text(pv.new_value) });
-  const hasWas = was !== null && was !== undefined;
-  return h("div", { class: "p2-head" },
-    hasWas ? h("span", { class: "p2-big is-was" }, text(was)) : null,
-    hasWas ? h("span", { class: "p2-big p2-arrow", "aria-hidden": "true" }, "→") : null,
-    hasWas ? h("span", { class: "sr" }, t("ed_to")) : null,
-    h("span", { class: "p2-big" }, text(next !== null ? next : pv.new_value)),
-    h("span", { class: "runs" }, note));
-}
-
-// The buttons under the review. Busy shows Saving, with the buttons off.
-function actions(pv, fileName, ledger) {
-  const busy = S.busy;
-  const save = (label) => button(busy ? t("ed_saving") : label, {
-    primary: !pv.warning, focus: "save", disabled: busy, busy, onClick: doSave,
-  });
-  const cancelButton = button(t("ed_cancel"), { focus: "cancel", disabled: busy, onClick: cancel });
-  const saying = busy ? h("span", { class: "sr", role: "status" }, t("ed_saving_sr", { file: fileName })) : null;
-  if (S.failed) {
-    const why = S.failedDir
-      ? draw(t("ed_fail_config_dir_t", { config_dir: mark("config_dir") }), { config_dir: S.failedDir })
-      : t("ed_fail_t", { file: fileName });
-    return [nt("err", t("ed_fail_h"), [why]),
-      h("div", { class: "p2-ctl" }, button(t("ed_try_again"), { primary: true, focus: "try", onClick: doSave }), cancelButton)];
-  }
-  if (pv.no_change === true) {
-    return h("div", { class: "p2-ctl" }, cancelButton, hint(t("ed_no_change_note")));
-  }
-  const w = pv.warning;
-  let warnHeading = null;
-  if (w) {
-    if (w.status === "unknown") warnHeading = t("ed_warn_unknown_h");
-    else warnHeading = w.in_effect_changes === true ? t("ed_warn_part_h") : t("ed_warn_h");
-  }
-  if (ledger) {
-    // The warning still shows, but this file takes no save, so only Cancel is drawn.
-    return [w ? nt("warn", warnHeading, warningParas(w)) : null,
-      nt("warn", t("ed_ledger_preview_t", { file: fileName }), [], [cancelButton])];
-  }
-  if (w) return nt("warn", warnHeading, warningParas(w), [save(t("ed_save_anyway")), cancelButton, saying]);
-  return h("div", { class: "p2-ctl p2-stick" }, save(t("ed_save_to", { file: fileName })), cancelButton,
-    hint(t("ed_nothing_yet")), saying);
-}
-
-function review(T, state) {
-  const pv = state.data;
-  const target = targetById(T, state.target);
-  const file = target ? target.file_display : (pv.diff ? pv.diff.file_display : "");
-  const fileName = basename(file);
-  const level = levelRow(T, state.value);
-  const ledger = Boolean(damagedFor(file, target ? target.layer : null));
-  const hints = [];
-  if (target && target.shared === true) hints.push(hint(t("ed_shared")));
-  if (level && level.certain === false) hints.push(hint(t("ed_certain_note")));
-  return h("div", { class: "p2-rvw" },
-    headline(pv, T, level),
-    h("div", null, trailTable(pv, target)),
-    h("div", null,
-      h("p", { class: "p2-sub" }, t("ed_file_h", { file: fileName, line: target ? text(target.line) : "" })),
-      pv.diff ? diffFigure(pv.diff, target) : null),
-    hints.length ? h("div", null, hints) : null,
-    actions(pv, fileName, ledger));
-}
-
-// ---------------------------------------------------------------- the card
-
-function levelNote(level, scoped) {
-  if (scoped) return level.level === scoped.current_value ? t("ed_seg_now") : null;
-  if (level.result === "now") return t("ed_seg_now");
-  if (level.result === "stopped") {
-    const limits = Array.isArray(level.limits) ? level.limits : [];
-    return allCapLater(capsOf(limits)) ? t("ed_seg_cap") : t("ed_seg_stopped");
-  }
-  return null;
-}
-
-function picker(T, scoped) {
-  const group = h("div", {
-    class: "segs p2-segs", role: "radiogroup", "aria-label": t("ed_level_group_sr"),
-    "aria-describedby": T.levels_state === "model_unknown" ? "p2-levels-note" : null,
-  });
-  for (const level of T.levels) {
-    const on = S.picked === level.level;
-    const note = levelNote(level, scoped);
-    group.appendChild(h("label", { class: ["seg", "p2-seg", on && "is-active"] },
-      h("input", {
-        class: "sr", type: "radio", name: "p2-level", value: level.level, checked: on, disabled: S.busy,
-        "data-edit-focus": "radio:" + level.level, on: { change: () => pick(level.level) },
-      }),
-      h("span", { class: "p2-sv" }, text(level.level)),
-      note ? h("span", { class: "p2-sn" }, note) : null));
-  }
-  return group;
-}
-
-function mainCard(T) {
-  const scoped = scopedTarget(T);
-  const inner = [];
-  if (S.notice) inner.push(nt(S.notice.kind, S.notice.heading, S.notice.paras || [], S.notice.dismiss ? [dismissButton("card")] : []));
-  if (S.frame) inner.push(frameNodes(S.frame));
-  else if (S.view === "stop") {
-    const level = levelRow(T, S.picked);
-    inner.push(stopPanel(level, S.picked));
-  } else if (S.pv) inner.push(review(T, S.pv));
-  const open = Boolean(S.frame) || S.view === "stop" || Boolean(S.pv); // the hints give way to a review
-  const title = scoped ? t("ed_card_line", { file: basename(scoped.file_display), line: text(scoped.line) }) : t("ed_card");
-  const label = scoped ? t("ed_field") : t("ed_q");
-  const hints = open ? [] : [
-    hint(t("ed_hint")),
-    T.levels_state === "model_unknown" ? hint(t("ed_levels_model_unknown"), "p2-levels-note") : null,
-    hint(t("ed_new_session")),
-  ];
-  const body = h("div", { class: "p2-rvw" },
-    h("div", { class: "p2-field" }, h("span", { class: "p2-lab" }, label), picker(T, scoped), hints),
-    inner);
-  return shell(title, body, open || inner.length > 0);
-}
-
 // A model with no effort levels has nothing to pick. The card says so, and shows what runs.
 function noSupportCard(T) {
   const hasRuns = T.runs_as !== null && T.runs_as !== undefined;
   return shell(t("ed_card"), h("div", { class: "p2-field" },
     hasRuns ? h("div", { class: "p2-head" }, h("span", { class: "p2-big" }, text(T.runs_as))) : null,
-    lockLine(t("ed_levels_no_support"))), false);
+    lockLine(t("ed_levels_no_support"))));
 }
+
+// What the review and its foot need from the flow, read when they are drawn. lead is a list of nodes that go first in
+// the rail. The presses go back through save and cancel.
+function reviewEnv(lead = []) {
+  return { busy: S.busy, failed: S.failed, failedDir: S.failedDir, damaged: damagedFor, save: doSave, cancel, lead, model: modelName() };
+}
+
+// The display name of the model the targets answer is for, by the page's own model lookup (valueString), else null.
+function modelName() {
+  const T = targetsData();
+  if (!T || !T.model) return null;
+  const res = live.ctx.data && live.ctx.data.settings;
+  return valueString({ key: "model", value: T.model }, res && res.data ? res.data : null, true);
+}
+
+// The word under a level. Off-mode levels are offered, so they carry none.
+function levelNote(level) {
+  if (level.result === "now") return t("ed_seg_now");
+  if (level.result === "stopped") {
+    if (capsOf(Array.isArray(level.limits) ? level.limits : []).length > 0) return t("ed_seg_over_cap");
+    if (level.saveable !== true) return t("ed_seg_stopped");
+  }
+  return null;
+}
+
+// The level radios. The state comes from edit_pick.js, so the checked radio is the chosen level and the running
+// level is off once a level is chosen. A level held by a cap is off and says over cap (board a-norm), so it can't be pressed and the arrow keys skip it.
+function picker(T, mode) {
+  const levels = levelsOf(T);
+  const running = runningOf(T);
+  const state = pickerState(levels, running, S.level, mode, { busy: S.busy, projectLock: T.project_lock, saveable: T.saveable });
+  const group = h("div", {
+    class: "segs p2-segs s4-segs", role: "radiogroup", "aria-label": t("ed_level_group_sr"),
+    "aria-describedby": T.levels_state === "model_unknown" ? NOTE_ID : null,
+  });
+  for (const level of levels) {
+    const name = level.level;
+    const off = state.disabled.includes(name);
+    const chosen = S.level === name && state.checked === name;
+    const now = level.result === "now" || name === running;
+    const note = levelNote(level);
+    group.appendChild(h("label", { class: ["seg", "p2-seg", now && "s6-now", chosen && "s6-on", off && !now && !chosen && "is-off"] },
+      h("input", {
+        class: "sr", type: "radio", name: "p2-level", value: name, checked: state.checked === name, disabled: off,
+        "data-edit-focus": "radio:" + name, on: { change: () => pick(name) },
+      }),
+      h("span", { class: "p2-sv" }, text(name)),
+      h("span", { class: "p2-sn" }, note || NBSP)));
+  }
+  return group;
+}
+
+// The first cap limit across the levels, as one line, with the lock line that says why this screen can't change it.
+function capNote(T) {
+  for (const level of levelsOf(T)) {
+    for (const limit of Array.isArray(level.limits) ? level.limits : []) {
+      if (!limit || limit.kind !== "cap") continue;
+      const line = limitLine(limit, modelName());
+      if (!line) continue;
+      const why = lockText(limit.lock_reason);
+      return [h("p", { class: "s4-note" }, line), why ? h("p", { class: "s4-note" }, why) : null];
+    }
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------- the rows
+
+// One literal t() call per layer, so the string checks can see every key.
+function placeOf(layer) {
+  switch (layer) {
+    case "local": return t("place_local");
+    case "project": return t("place_project");
+    case "user": return t("place_user");
+    default: return text(layer);
+  }
+}
+
+// The small line under a file row's name. A locked row with no line shows its file name alone.
+function fileLine(file) {
+  const shown = file.file_display ? shortFile(file.layer, file.file_display) : "";
+  if (file.state === "absent") return t("where_no_file", { file: shown });
+  if (file.state === "no_line") return t("where_no_line", { file: shown });
+  if (!shown) return null;
+  if (file.line !== null && file.line !== undefined) return t("file_line", { path: shown, line: file.line });
+  return shown;
+}
+
+// The third cell of a live row: the lock, the check, or the word for what the file would do. A resting row has none.
+function thirdCell(lf, picked) {
+  if (!lf) return null;
+  if (lf.lock_reason) {
+    const line = rowLockText(lf.lock_reason);
+    return line ? [lockIcon(), h("span", null, line)] : null;
+  }
+  if (picked) return [checkIcon(), h("span", null, t("row_edits", { n: text(lf.line) }))];
+  if (lf.effect === "unknown") return h("span", null, t("ed_unknown_row"));
+  if (lf.effect === "wont_apply") return h("span", null, t("row_wont"));
+  if (lf.pickable === true) return h("span", null, t("row_edits", { n: text(lf.line) }));
+  return null;
+}
+
+// One file row. lv is the chosen level's row when the rows are live, else null.
+function fileRow(file, lv) {
+  const common = { name: placeOf(file.layer), file: fileLine(file) };
+  const hasValue = file.value !== null && file.value !== undefined && file.value !== "";
+  const cells = hasValue
+    ? { value: text(file.value), status: file.status || null }
+    : { none: t("where_not_set") };
+  if (!lv) return rowNode({ ...common, ...cells });
+  const lf = levelFile(lv, file.layer);
+  const can = Boolean(lf) && lf.pickable === true;
+  const picked = can && S.row === file.layer;
+  return rowNode({
+    ...common, ...cells, act: thirdCell(lf, picked), pick: picked, no: !can,
+    radio: {
+      name: "p2-row", value: file.layer, checked: picked, disabled: !can || S.busy,
+      focus: "row:" + file.layer, onChange: () => pickRow(file.layer),
+    },
+  });
+}
+
+const settingsPayload = () => {
+  const res = live.ctx.data && live.ctx.data.settings;
+  return res && res.ok && res.data && typeof res.data === "object" ? res.data : null;
+};
+
+// The entries of the main session's effort row, top wins. Empty when the payload has no such row.
+function mainEntries(payload) {
+  if (!payload || !Array.isArray(payload.entries)) return [];
+  const row = rowFor(payload, MAIN_KEY, SETTING);
+  return row && Array.isArray(row.entries) ? entriesOf(payload, row) : [];
+}
+
+// Claude Code's default, outside the box: the value and its chip when it wins, else the value as not used.
+function defaultRow(entries, payload) {
+  const def = entries.find((e) => e.layer === "default");
+  if (!def) return [];
+  const value = valueText(def, payload, true);
+  if (value === null) return [rowNode({ name: t("place_default"), none: t("band_not_known"), cls: "s6-def" })];
+  if (entries[0] === def) return [rowNode({ name: t("place_default"), value, status: def.status, cls: "s6-def" })];
+  return [rowNode({ name: t("place_default"), none: t("where_not_used", { value: valueString(def, payload, true) }), cls: "s6-def" })];
+}
+
+// The rows below the picker. Live, when a level is chosen and can be saved: the files of that level, labels around
+// a radio, same columns as at rest. Otherwise plain rows from the top-level files.
+function rows(T, lv) {
+  const payload = settingsPayload();
+  const entries = mainEntries(payload);
+  const others = entries
+    .filter((e) => !FILE_LAYERS.includes(e.layer) && e.layer !== "default")
+    .map((e) => entryRow(e, payload));
+  const files = filesOf(T).map((file) => fileRow(file, lv));
+  const tail = defaultRow(entries, payload);
+  return whereList(lv ? t("where_live") : t("where_rest"), others.concat(files), tail, true, Boolean(lv));
+}
+
+// ---------------------------------------------------------------- the body
+
+// Nothing is saved here because the shell sets the value: the lock line sits over the picker, as the board a-shell
+// draws it. There is no change in progress, and the rail is the plain one.
+function shellLock(T) {
+  if (situation().kase !== "nothing_project" || firstLockReason(T) !== "env_shell") return null;
+  return h("p", { class: "s4-lock" }, lockIcon(), h("span", null, lockText("env_shell")));
+}
+
+function bodyFrame(T, mode) {
+  const chosen = S.level !== null && mode === "ready" ? levelRow(T, S.level) : null;
+  const lv = chosen && chosen.saveable === true && T.saveable !== false && !T.project_lock ? chosen : null;
+  return [
+    shellLock(T),
+    h("div", { class: "s4-run" }, h("p", { class: "s4-lab" }, t("run_at")), picker(T, mode)),
+    T.levels_state === "model_unknown" ? h("p", { class: "s4-note", id: NOTE_ID }, t("ed_levels_model_unknown")) : null,
+    capNote(T),
+    rows(T, lv),
+  ];
+}
+
+function bodyNodes() {
+  if (live.selected !== SETTING) return [];
+  const T = targetsData();
+  if (T === null) return [];
+  if (T === false) return [hint(t("ed_err_network"))];
+  if (T.levels_state === "no_effort_support") return [noSupportCard(T)];
+  return bodyFrame(T, live.ctx.edit.mode);
+}
+
+// ---------------------------------------------------------------- the rail
 
 function frameNodes(frame) {
   const done = () => { resetCard(); S.want = "radio"; redraw("card"); };
@@ -576,134 +280,133 @@ function frameNodes(frame) {
     [frame.path ? draw(t("ed_ledger_t", { path: mark("path") }), { path: frame.path }) : null]), ctl("dismiss-ledger")];
 }
 
-function dismissButton(where) {
+function dismissButton() {
   return button(t("ed_dismiss"), {
-    focus: "dismiss-" + where,
+    focus: "dismiss-card",
     onClick: () => {
-      if (where === "card") {
-        S.notice = null;
-        redraw("card");
-      } else {
-        dismissStrip();
-      }
+      S.notice = null;
+      redraw("card");
     },
   });
 }
 
-function tokenNt() {
-  return nt("err", t("ed_token_h"), [t("ed_token_t")]);
+function noticeNode() {
+  if (!S.notice) return null;
+  return nt(S.notice.kind, S.notice.heading, S.notice.paras || [], S.notice.dismiss ? [dismissButton()] : []);
 }
 
-function cardNodes() {
+// The lock reason of the first limit found across the levels that has a lock text, or null.
+function firstLockReason(T) {
+  for (const level of levelsOf(T)) {
+    for (const limit of Array.isArray(level.limits) ? level.limits : []) {
+      if (limit && lockText(limit.lock_reason)) return limit.lock_reason;
+    }
+  }
+  return null;
+}
+
+// The headline of the change in the rail: what runs now and the level picked. lead is the notice over it, if any.
+// Pick a file adds the note that no file is picked yet. While a preview is on its way, or after it failed, the frame
+// is the same with no note. Save and Cancel sit in the foot.
+function pickFileRail(T, lead, withNote) {
+  const was = T.runs_as;
+  const hasWas = was !== null && was !== undefined;
+  return h("div", { class: "s4-rb" },
+    lead,
+    h("h2", { class: "s4-rh" }, t("review_h")),
+    h("div", { class: "s4-chg" },
+      hasWas ? h("span", { class: "s4-was" }, text(was)) : null,
+      hasWas ? h("span", { "aria-hidden": "true" }, "→") : null,
+      hasWas ? h("span", { class: "sr" }, t("ed_to")) : null,
+      h("span", { class: "s4-to" }, text(S.level))),
+    h("p", { class: "s4-runs" }, t("ed_runs")),
+    withNote ? h("p", { class: "s4-note" }, t("ed_pick_file")) : null);
+}
+
+// Nothing can be saved at this level. The winner's own line says what holds it, when there is one.
+function nothingLevelRail(lv) {
+  const limits = Array.isArray(lv && lv.limits) ? lv.limits : [];
+  const winner = limits.find((l) => l && l.kind === "winner");
+  const paras = winner ? limitParas([winner], modelName()) : [];
+  return nt("warn", t("ed_nosave_level", { level: S.level }), paras, [button(t("ed_cancel"), { focus: "cancel", onClick: cancel })]);
+}
+
+// What the page is showing, and the data it draws from. T is a usable ready or locked answer, or null.
+function situation() {
   const mode = live.ctx.edit.mode;
-  if (mode === "off") return [hint(tn("ed_off"))];
-  if (mode === "locked") return [S.token && S.token.where === "card" ? tokenNt() : null, hint(tn("ed_locked"))];
-  if (mode !== "ready") return [];
-  const T = targetsData();
-  if (T === null) return [];
-  if (T === false) return [hint(t("ed_err_network"))];
-  if (T.levels_state === "no_effort_support") return [noSupportCard(T)];
-  return [mainCard(T)];
+  const found = targetsData();
+  const T = found && typeof found === "object" ? found : null;
+  if (mode === "ready" && !T) return { mode, T, kase: "rest" };
+  const noLevels = T !== null && T.levels_state === "no_effort_support";
+  const lv = T !== null && S.level !== null ? levelRow(T, S.level) : null;
+  const kase = railCase({
+    mode,
+    projectLock: T ? T.project_lock : null,
+    saveable: T === null || noLevels ? true : T.saveable,
+    level: lv ? S.level : null,
+    row: S.row,
+    levelRow: lv,
+  });
+  return { mode, T, lv, kase };
 }
 
-// ---------------------------------------------------------------- the strip
+// The cases that hold a chosen level. On a cell that isn't Effort the rail and the foot keep them too, because
+// picking another cell never drops the change.
+const CHANGING = ["review", "pick_file", "stop", "nothing_level"];
+const changing = ({ mode, T, kase }) => mode === "ready" && T !== null && S.level !== null && CHANGING.includes(kase);
+const holding = () => changing(situation());
 
-function lastStrip(row) {
-  const file = basename(row.file_display);
-  const line = t("ed_last_t", { when: fmtTime(row.time), old: text(row.old_value), new: text(row.new_value), file });
-  if (row.kind === "undo") {
-    return strip("quiet", [line, row.restored_from_display ? " " : null,
-      row.restored_from_display ? draw(t("ed_undone_path", { path: mark("path") }), { path: row.restored_from_display }) : null]);
-  }
-  const buttons = row.undoable === true ? [undoButton(row)] : [];
-  return strip("quiet", [line, row.backup_display ? " " : null,
-    row.backup_display ? draw(t("ed_saved_backup", { path: mark("path") }), { path: row.backup_display }) : null], buttons);
-}
-
-function staleUndoLine(file, path) {
-  return [t("ed_undo_stale_h", { file }), path ? " " : null, path ? draw(t("ed_undo_stale_t", { path: mark("path") }), { path }) : null];
-}
-
-function restStrip(row) {
-  const reason = row.not_undoable_reason;
-  if (row.kind !== "undo" && row.undoable !== true) {
-    if (reason === "changed_since_save") return strip("warn", staleUndoLine(basename(row.file_display), row.backup_display), [], "status");
-    if (reason === "backup_damaged") {
-      const line = row.backup_display ? draw(t("ed_backup_damaged_rest", { path: mark("path") }), { path: row.backup_display }) : t("ed_backup_damaged_h");
-      return strip("warn", line);
-    }
-    if (reason === "backup_pruned") return strip("quiet", t("ed_backup_pruned_rest"));
-  }
-  return lastStrip(row);
-}
-
-function undoButton(row) {
-  return button(t("ed_undo"), { focus: "undo", disabled: S.stripBusy, busy: S.stripBusy, onClick: () => doUndo(row) });
-}
-
-// One literal t() call per line, so the string checks can see every key. The warning is the saved preview's.
-function savedLine(warning, slots) {
-  if (!warning) return t("ed_saved_t", slots);
-  if (warning.status === "unknown") return t("ed_saved_unknown_t", slots);
-  if (warning.in_effect_changes === true) return t("ed_saved_part_t", slots);
-  if (warning.in_effect_changes === false) return t("ed_saved_no_effect_t", slots);
-  return t("ed_saved_t", slots);
-}
-
-function stripResult(f) {
-  const dismiss = () => button(t("ed_dismiss"), { focus: "dismiss-strip", onClick: dismissStrip });
-  switch (f.kind) {
-    case "saved": {
-      const file = basename(f.edit.file_display);
-      const line = [savedLine(f.warning, { file, level: text(f.edit.new_value) }),
-        f.edit.backup_display ? " " : null,
-        f.edit.backup_display ? draw(t("ed_saved_backup", { path: mark("path") }), { path: f.edit.backup_display }) : null];
-      return strip("ok", line, f.edit.undoable === true ? [undoButton(f.edit)] : [], "status");
-    }
-    case "undone": {
-      const file = basename(f.edit.file_display);
-      const line = [t("ed_undone_t", { file }), f.restored ? " " : null,
-        f.restored ? draw(t("ed_undone_path", { path: mark("path") }), { path: f.restored }) : null];
-      return strip("ok", line, [dismiss()], "status");
-    }
-    case "stale_undo":
-      return strip("warn", staleUndoLine(f.file, f.path), [dismiss()], "status");
-    case "backup_damaged":
-      return nt("err", t("ed_backup_damaged_h"), [f.path ? draw(t("ed_backup_damaged_t", { path: mark("path") }), { path: f.path }) : null], [dismiss()]);
-    case "not_undoable":
-      return nt("err", t("ed_not_undoable"), [], [dismiss()]);
-    case "write_failed":
-      return nt("err", t("ed_fail_h"), [t("ed_fail_t", { file: f.file })], [dismiss()]);
-    case "config_dir_missing":
-      return nt("err", t("ed_fail_h"), [draw(t("ed_fail_config_dir_t", { config_dir: mark("config_dir") }), { config_dir: f.path })], [dismiss()]);
-    case "unverified": {
-      const fsync = f.stage === "fsync";
-      const slots = { path: mark("path") };
-      const body = fsync ? t("ed_unverified_fsync_t", slots) : t("ed_unverified_reread_t", slots);
-      return nt("err", fsync ? t("ed_unverified_fsync_h") : t("ed_unverified_reread_h"), [f.path ? draw(body, { path: f.path }) : null], [dismiss()]);
-    }
-    case "raced":
-      return nt("warn", t("ed_raced_h", { file: f.file }), [f.path ? draw(t("ed_raced_undo_t", { path: mark("path") }), { path: f.path }) : null], [dismiss()]);
-    case "ledger":
-      return nt("err", t("ed_ledger_h", { file: f.file }), [f.path ? draw(t("ed_ledger_t", { path: mark("path") }), { path: f.path }) : null], [dismiss()]);
-    default:
-      return nt("err", f.text, [], [dismiss()]);
+function railNodes() {
+  const sit = situation();
+  const { mode, T, lv, kase } = sit;
+  if (live.selected !== SETTING && !changing(sit)) return [live.restRail(null)];
+  if (mode === "ready" && S.frame && kase !== "project_lock") return [noticeNode(), frameNodes(S.frame)];
+  const lead = [noticeNode()];
+  switch (kase) {
+    case "project_lock": return [live.restRail([lockText(T.project_lock)].filter(Boolean))];
+    case "off": return [live.restRail([tn("ed_off")])];
+    case "locked": return [S.token && S.token.where === "card" ? tokenNt() : null, live.restRail([tn("ed_locked")])];
+    case "nothing_project":
+      if (firstLockReason(T) === "env_shell") return [noticeNode(), live.restRail(null)];
+      return [noticeNode(), live.restRail([t("ed_nosave_project"), lockText(firstLockReason(T))].filter(Boolean))];
+    case "review": return [S.pv ? review(T, S.pv, reviewEnv(lead)) : pickFileRail(T, lead, false)];
+    case "pick_file": return [pickFileRail(T, lead, true)];
+    case "stop": return [noticeNode(), stopPanel(lv, S.level, { cancel, model: modelName() })];
+    case "nothing_level": return [noticeNode(), nothingLevelRail(lv)];
+    default: return [noticeNode(), live.restRail(null)];
   }
 }
 
+// ---------------------------------------------------------------- the foot
+
+// Save and Cancel, side by side, whatever cell is open. A review draws its own foot. A preview on its way, a failed
+// one and Pick a file keep Save off, as the board a-lock draws it, with Cancel the way back. The stop rows carry
+// their own Cancel in the rail, and a result frame its own Dismiss.
+function changeFootNodes() {
+  const sit = situation();
+  if (!changing(sit) || S.frame) return [];
+  if (sit.kase === "pick_file" || (sit.kase === "review" && !S.pv)) return waitingFoot({ busy: S.busy, cancel });
+  if (sit.kase !== "review") return [];
+  const env = reviewEnv();
+  const facts = reviewFacts(sit.T, S.pv, env);
+  return reviewFoot(facts.pv, facts.fileName, facts.ledger, env);
+}
+
+// What the strip builders need from the flow, read when the strip is drawn.
 function stripNodes() {
+  // A result stays on every cell, because a Save can be pressed on any of them. The last change at rest is Effort's.
+  if (live.selected !== SETTING && !S.strip) return [];
   const mode = live.ctx.edit.mode;
-  if (mode === "locked") return [S.token && S.token.where === "strip" ? tokenNt() : null];
-  if (mode !== "ready") return [];
-  const history = historyData();
-  const out = [];
-  const ledgers = history && Array.isArray(history.damaged_ledgers) ? history.damaged_ledgers : [];
-  for (const d of ledgers) {
-    out.push(strip("warn", draw(t("ed_ledger_rest_t", { file: basename(d.file_display), path: mark("path") }), { path: d.ledger_display })));
-  }
-  if (S.strip) out.push(stripResult(S.strip));
-  else if (history && Array.isArray(history.rows) && history.rows.length) out.push(restStrip(history.rows[0]));
-  return out;
+  return footNodes({
+    mode,
+    token: S.token,
+    strip: S.strip,
+    changing: holding(), // the foot holds Save and Cancel then, and the last change waits
+    stripBusy: S.stripBusy,
+    history: mode === "ready" && live.selected === SETTING ? historyData() : null,
+    doUndo,
+    dismissStrip,
+  });
 }
 
 // ---------------------------------------------------------------- drawing and focus
@@ -714,24 +417,35 @@ function fill(slot, nodes) {
   slot.appendChild(frag(nodes));
 }
 
-function fillCard() {
-  fill(live.card, cardNodes());
+const slotsOf = () => [live.body, live.rail, live.pickSlot, live.stripSlot].filter(Boolean);
+const keyOf = (n) => String(n.getAttribute("data-edit-focus"));
+// A disabled radio or button can't take focus, as in a browser.
+const isOff = (n) => n.hasAttribute("disabled");
+
+// The control that takes focus when the one that held it is gone or off: the checked row, the first enabled row,
+// then the checked level radio, then the first enabled one. Searches the slots given.
+function fallbackFocus(slots, rowsFirst) {
+  const find = (test) => slots.flatMap((slot) => walk(slot, test))[0] || null;
+  const on = (prefix) => (n) => keyOf(n).startsWith(prefix) && !isOff(n);
+  const checked = (prefix) => (n) => on(prefix)(n) && n.hasAttribute("checked");
+  const rowTarget = rowsFirst ? find(checked("row:")) || find(on("row:")) : null;
+  return rowTarget || find(checked("radio:")) || find(on("radio:"));
 }
 
-function fillStrip() {
-  fill(live.strip, stripNodes());
-}
-
-// Gives focus to the control a result asked for. "radio" is the checked level, else the first one. It runs
-// only once the nodes are in the page, because a detached node takes no focus.
+// Gives focus to the control a result asked for. "radio" is the checked level radio. It runs only once the nodes
+// are in the page, because a detached node takes no focus.
 function applyWant() {
   if (!S.want || !live) return false;
-  const slots = [live.card, live.strip].filter(Boolean);
-  const find = (test) => slots.flatMap((slot) => walk(slot, test))[0] || null;
-  const key = (n) => String(n.getAttribute("data-edit-focus"));
-  const target = S.want === "radio"
-    ? find((n) => key(n) === "radio:" + S.picked) || find((n) => key(n).startsWith("radio:"))
-    : find((n) => key(n) === "btn:" + S.want);
+  // The level radios belong to the Effort cell. On another cell there is none to focus, and the wish does not wait
+  // for the day Effort comes back.
+  if (S.want === "radio" && live.selected !== SETTING) {
+    S.want = null;
+    return false;
+  }
+  const slots = slotsOf();
+  let target;
+  if (S.want === "radio") target = fallbackFocus(slots, false);
+  else target = slots.flatMap((slot) => walk(slot, (n) => keyOf(n) === "btn:" + S.want && !isOff(n)))[0] || null;
   if (!target) return false;
   S.want = null;
   target.focus();
@@ -744,340 +458,112 @@ export function focusKey() {
   return key || null;
 }
 
-// Puts focus back on the control with this key, inside root.
+// Puts focus back on the control with this key, inside root. A row that went grey, or a level radio that went off,
+// hands focus to the next control of its group, and a key that isn't there does nothing.
 export function restoreFocus(root, key) {
   if (!key || !root) return;
-  const found = walk(root, (n) => n.getAttribute("data-edit-focus") === key)[0];
+  let found = walk(root, (n) => n.getAttribute("data-edit-focus") === key && !isOff(n))[0] || null;
+  if (!found && key.startsWith("row:")) found = fallbackFocus([root], true);
+  else if (!found && key.startsWith("radio:")) found = fallbackFocus([root], false);
   if (found && found !== document.activeElement) found.focus();
 }
 
-// Called by the trail once its panel is in the page: a pending focus first, else the control that held focus.
-export function settle(root, key) {
-  if (!applyWant()) restoreFocus(root, key);
+// The Set of setting keys that have a change waiting on Save: Effort, while the open project is Not saved.
+const notSavedSet = () => new Set(isNotSaved() ? [SETTING] : []);
+
+// A choice made with no page render changes what the band and the project picker say. The band is told when its
+// Set changes, and app.js is asked to draw the picker again when the list of projects does.
+function syncNotSaved() {
+  const set = notSavedSet();
+  const band = Array.from(set).join(",");
+  if (band !== live.bandSig) {
+    live.bandSig = band;
+    if (typeof live.onNotSaved === "function") live.onNotSaved(set);
+  }
+  const projects = notSavedProjects().join(",");
+  if (projects !== live.shellSig) {
+    live.shellSig = projects;
+    if (typeof live.ctx.edit.syncShell === "function") live.ctx.edit.syncShell();
+  }
 }
 
 function redraw(which) {
   if (!live) return;
   const key = focusKey();
-  if (which !== "strip") fillCard();
-  if (which !== "card") fillStrip();
+  if (which !== "strip") {
+    fill(live.body, bodyNodes());
+    fill(live.rail, railNodes());
+    fill(live.pickSlot, changeFootNodes());
+  }
+  // A chosen level hides the last change, so the slot draws when that flips. Otherwise a "card" redraw leaves its node.
+  const held = holding();
+  if (which !== "card" || live.changing !== held) fill(live.stripSlot, stripNodes());
+  live.changing = held;
+  syncNotSaved();
   if (applyWant()) return;
-  for (const slot of [live.card, live.strip]) if (slot) restoreFocus(slot, key);
+  for (const slot of slotsOf()) restoreFocus(slot, key);
 }
 
-// ---------------------------------------------------------------- actions
+onRedraw(redraw);
 
-function tokenOutcome(where) {
-  S.token = { where };
-  S.busy = false;
-  S.stripBusy = false;
-  redraw();
-}
+// ---------------------------------------------------------------- entry point
 
-function cancel() {
-  resetCard();
-  S.want = "radio";
-  redraw("card");
-}
-
-function openScope(target) {
-  if (S.busy) return;
-  resetCard();
-  S.strip = S.stripBusy ? S.strip : null;
-  S.scope = target.target;
-  S.want = "radio";
-  redraw();
-}
-
-function pick(value) {
-  if (S.busy || !live) return;
-  const T = targetsData();
-  if (!T) return;
-  const scoped = scopedTarget(T);
-  S.seq += 1; // an older preview answer still on its way is dropped
-  S.notice = null;
-  S.frame = null;
-  S.failed = false;
-  S.failedDir = null;
-  S.pv = null;
-  S.view = "rest";
-  S.picked = value;
-  const hadResult = Boolean(S.strip) && !S.stripBusy;
-  if (hadResult) S.strip = null; // a new edit starts
-  const level = levelRow(T, value);
-  if (scoped) {
-    if (value === scoped.current_value) S.picked = null;
-    else startPreview(scoped.target, value);
-  } else if (!level || level.result === "now") {
-    S.picked = null;
-  } else if (level.result === "stopped") {
-    S.view = "stop";
-  } else {
-    startPreview(level.target, value);
-  }
-  redraw(hadResult ? undefined : "card"); // the card's own node, and the strip's only when its result went
-}
-
-async function startPreview(target, value) {
-  const mine = S.seq;
-  const epoch = S.epoch;
-  let out;
-  try {
-    out = await live.ctx.edit.preview(target, value);
-  } catch (err) {
-    out = { kind: "error", res: null };
-  }
-  if (out && out.kind === "locked") {
-    tokenOutcome("card");
-    return;
-  }
-  if (mine !== S.seq || epoch !== S.epoch) return;
-  const data = bodyOf(out);
-  if (out && out.kind === "ok" && data.diff) {
-    S.pv = { target, value, data };
-  } else {
-    S.notice = { kind: "err", heading: errorText(out && out.res), paras: [], dismiss: true };
-  }
-  redraw("card");
-}
-
-function staleNotice(data) {
-  const files = Array.isArray(data.changed_files) ? data.changed_files : [];
-  const names = files.map((f) => basename(f.file_display));
-  const fresh = data.preview && typeof data.preview === "object" ? data.preview : null;
-  let heading;
-  let paras = [];
-  if (data.changed === "trail") {
-    heading = t("ed_stale_trail_h");
-    paras = [names.length ? t("ed_stale_trail_t", { files: names.join(", ") }) : t("ed_stale_trail_general_t")];
-  } else {
-    heading = t("ed_stale_file_h", { file: names[0] || basename(S.pv && S.pv.data.diff ? S.pv.data.diff.file_display : "") });
-    paras = [t("ed_stale_file_t")];
-  }
-  if (!fresh) paras = [t("ed_stale_gone_t")];
-  return { notice: { kind: "warn", heading, paras, dismiss: false }, fresh };
-}
-
-async function doSave() {
-  if (S.busy || !S.pv || !live) return;
-  const epoch = S.epoch;
-  const sent = S.pv;
-  const fileName = basename(sent.data.diff ? sent.data.diff.file_display : "");
-  S.busy = true;
-  S.failed = false;
-  S.failedDir = null;
-  S.notice = null;
-  if (!S.stripBusy) S.strip = null;
-  redraw();
-  let out;
-  try {
-    out = await live.ctx.edit.save(sent.data, sent.target, sent.value);
-  } catch (err) {
-    out = { kind: "error", res: null };
-  }
-  if (out && out.kind === "locked") {
-    tokenOutcome("card");
-    return;
-  }
-  S.busy = false;
-  if (epoch !== S.epoch) return;
-  const data = bodyOf(out);
-  const kind = out ? out.kind : "error";
-  let staleReload = false;
-  if (kind === "ok") {
-    resetCard();
-    S.strip = { kind: "saved", edit: data.edit || {}, warning: sent.data.warning || null };
-    S.want = data.edit && data.edit.undoable === true ? "undo" : "radio";
-  } else if (kind === "stale") {
-    const stale = staleNotice(data);
-    S.notice = stale.notice;
-    S.pv = stale.fresh ? { target: sent.target, value: sent.value, data: stale.fresh } : null;
-    if (!stale.fresh) S.picked = null;
-    staleReload = true;
-  } else if (kind === "raced") {
-    S.pv = null;
-    S.frame = { type: "raced", file: fileName, path: data.backup_display || null };
-    S.want = "dismiss-card";
-  } else if (kind === "unverified") {
-    S.pv = null;
-    S.frame = { type: "unverified", stage: data.stage, path: data.backup_display || null };
-    S.want = "dismiss-card";
-  } else if (codeOf(out) === "ledger_damaged") {
-    S.pv = null;
-    S.frame = { type: "ledger", file: fileName, path: data.ledger_display || null };
-    S.want = "dismiss-ledger";
-  } else if (codeOf(out) === "config_dir_missing" && data.config_dir_display) {
-    S.failed = true;
-    S.failedDir = data.config_dir_display;
-    S.want = "try";
-  } else if (codeOf(out) === "write_failed") {
-    S.failed = true;
-    S.want = "try";
-  } else {
-    S.notice = { kind: "err", heading: errorText(out && out.res), paras: [], dismiss: true };
-  }
-  redraw();
-  if (staleReload) refreshEdit(); // the page data is old now; this never retries the save
-}
-
-async function doUndo(row) {
-  if (S.stripBusy || !live) return;
-  const epoch = S.epoch;
-  const file = basename(row.file_display);
-  S.stripBusy = true;
-  redraw("strip");
-  let out;
-  try {
-    out = await live.ctx.edit.undo(row.id);
-  } catch (err) {
-    out = { kind: "error", res: null };
-  }
-  if (out && out.kind === "locked") {
-    tokenOutcome("strip");
-    return;
-  }
-  S.stripBusy = false;
-  if (epoch !== S.epoch) return;
-  const data = bodyOf(out);
-  const kind = out ? out.kind : "error";
-  const code = codeOf(out);
-  let changed = false;
-  if (kind === "ok" && data.matches_backup === true) {
-    S.strip = { kind: "undone", edit: data.edit || row, restored: data.restored_from_display || null };
-    S.want = "dismiss-strip";
-  } else if (kind === "ok" || kind === "raced") {
-    S.strip = { kind: "raced", file, path: data.restored_from_display || null };
-    S.want = "dismiss-strip";
-  } else if (kind === "unverified") {
-    S.strip = { kind: "unverified", stage: data.stage, path: data.backup_display || null };
-    S.want = "dismiss-strip";
-  } else if (code === "changed_since_save") {
-    S.strip = { kind: "stale_undo", file, path: data.backup_display || null };
-    changed = true;
-  } else if (code === "backup_damaged") {
-    S.strip = { kind: "backup_damaged", path: data.backup_display || null };
-    S.want = "dismiss-strip";
-  } else if (code === "not_undoable") {
-    S.strip = { kind: "not_undoable" };
-    S.want = "dismiss-strip";
-  } else if (code === "config_dir_missing" && data.config_dir_display) {
-    S.strip = { kind: "config_dir_missing", path: data.config_dir_display };
-    S.want = "dismiss-strip";
-  } else if (code === "write_failed") {
-    S.strip = { kind: "write_failed", file };
-    S.want = "dismiss-strip";
-  } else if (code === "ledger_damaged") {
-    S.strip = { kind: "ledger", file, path: data.ledger_display || null };
-    S.want = "dismiss-strip";
-  } else {
-    S.strip = { kind: "error", text: errorText(out && out.res) };
-  }
-  redraw("strip");
-  if (changed) refreshEdit(); // the history still lists an Undo that no longer works, so Dismiss must not bring it back
-}
-
-function dismissStrip() {
-  const wasLedger = S.strip && S.strip.kind === "ledger";
-  S.strip = null;
-  redraw("strip");
-  if (wasLedger) reloadEdit();
-}
-
-function dismissLedger() {
-  resetCard();
-  redraw("card");
-  reloadEdit();
-}
-
-function reloadEdit() {
-  if (live && live.ctx.edit && typeof live.ctx.edit.reload === "function") live.ctx.edit.reload();
-}
-
-// A file changed behind the page's back, so the tiles and the trail are old too, not only the targets and history.
-function refreshEdit() {
-  if (live && live.ctx.edit && typeof live.ctx.edit.refresh === "function") live.ctx.edit.refresh();
-  else reloadEdit();
-}
-
-// ---------------------------------------------------------------- entries on the trail
-
-function entryLink(target) {
-  const edit = live.ctx;
-  const href = edit.hashFor(edit.route.name, edit.route.params);
-  return h("span", { class: "p2-act" },
-    h("a", {
-      class: "lnk", href, "data-edit-focus": "link:" + target.ref,
-      on: { click: (event) => { event.preventDefault(); openScope(target); } },
-    }, t("ed_this")));
-}
-
-// What an entry of the main effort row gets: a Change link when a target matches it, a lock line when a blocked
-// row does. No match after the targets loaded means the files moved, so the page loads them again.
-function extrasFor(entry) {
-  if (!live || live.ctx.edit.mode !== "ready") return {};
-  const T = targetsData();
-  if (!T || T.levels_state === "no_effort_support") return {};
-  const ref = editRef(entry);
-  const target = T.targets.find((x) => x.ref === ref);
-  if (target) return { act: entryLink(target) };
-  const blocked = (Array.isArray(T.blocked) ? T.blocked : []).find((x) => x.ref === ref);
-  if (blocked) {
-    const line = lockText(blocked.reason);
-    return line ? { lock: lockLine(line) } : {};
-  }
-  live.misses += 1;
-  return {};
-}
-
-// ---------------------------------------------------------------- entry points
-
-// Called by the trail of the main session's effortLevel, once per render, before the page head is drawn. It
-// returns the strip slot and the card, and the helpers the entries use. Mode null returns nothing to place.
-export function begin(ctx) {
+// Called by pages/settings.js once per render with a payload, whichever cell is open. restRail(notes) draws the
+// rail at rest for the open cell: notes is a list of lines for under "Why this value", or null. selected is the
+// open cell, and the Effort frame, the notes and the results belong to the effortLevel cell alone, so a read-only cell
+// never shows the editing-is-off line. A change in progress is the exception: its review and its Save and Cancel
+// stay on every cell. onNotSaved(set) redraws the band alone when a choice changes the Set of Not saved settings.
+// It returns the three slots, notSaved (that Set, for the band the page draws) and done(), which the page calls once
+// its nodes are in the document. Mode null returns nothing to place.
+export function begin(ctx, { restRail, selected, onNotSaved }) {
+  const shellBefore = live ? live.shellSig : null; // the project list the picker was last drawn with
   const mode = ctx.edit ? ctx.edit.mode : null;
-  const key = ctx.project ? ctx.project.key : null;
-  if (S.project !== key || S.mode !== mode) {
-    resetFlow();
-    S.project = key;
-    S.mode = mode;
-    S.reloads = 0;
-  }
+  syncFlow(ctx.project ? ctx.project.key : null, mode);
   if (mode !== "off" && mode !== "locked" && mode !== "ready") {
-    live = null;
-    return { strip: null, card: null, extras: () => ({}), done: () => {} };
+    setLive(null);
+    return { body: null, rail: null, foot: null, notSaved: new Set(), done: () => {} };
   }
-  live = {
+  const pickSlot = h("div", { class: "s4-slot", "data-edit": "pick" });
+  const stripSlot = h("div", { class: "s4-slot", "data-edit": "strip" });
+  const mine = {
     ctx,
-    card: h("div", { "data-edit": "card" }),
-    strip: mode === "off" ? null : h("div", { "data-edit": "strip" }),
-    misses: 0,
+    selected,
+    restRail: restRail || (() => h("div", { class: "s4-rb" })),
+    onNotSaved,
+    bandSig: "",
+    shellSig: "",
+    body: h("div", { class: "s4-slot", "data-edit": "body" }),
+    rail: h("div", { class: "s4-slot", "data-edit": "rail" }),
+    pickSlot,
+    stripSlot,
+    foot: h("div", { class: "s4-slot", "data-edit": "foot" }, pickSlot, stripSlot),
   };
-  fillCard();
-  fillStrip();
-  const mine = live;
+  setLive(mine);
+  // Once for each targets object the page draws: the picked row stays valid, and a preview matches it.
+  const T = targetsData();
+  if (T && T !== S.seen && !S.busy) {
+    const first = S.seen !== null; // a flow that just loaded has no seen yet, and its preview is asked for once
+    S.seen = T;
+    settle(first);
+  }
+  const notSaved = notSavedSet();
+  mine.bandSig = Array.from(notSaved).join(",");
+  mine.shellSig = notSavedProjects().join(",");
+  // settle() above can clear a kept flow, and the picker still says Not saved for it.
+  if (shellBefore !== null && shellBefore !== mine.shellSig && typeof ctx.edit.syncShell === "function") ctx.edit.syncShell();
+  fill(mine.body, bodyNodes());
+  fill(mine.rail, railNodes());
+  fill(pickSlot, changeFootNodes());
+  mine.changing = holding();
+  fill(stripSlot, stripNodes());
   return {
-    strip: mine.strip,
-    card: mine.card,
-    extras: extrasFor,
-    // Called when the panel is built. One load per run of misses, so a file that stays missing can't loop.
-    done: () => {
-      if (mine.misses === 0) {
-        S.reloads = 0;
-        return;
-      }
-      if (S.reloads >= 1) return;
-      S.reloads += 1;
-      Promise.resolve().then(reloadEdit);
+    body: mine.body,
+    rail: mine.rail,
+    foot: mine.foot,
+    notSaved,
+    // Called when the nodes are in the page: a pending focus first, else the control that held focus.
+    done: (root, key) => {
+      if (live === mine && !applyWant()) restoreFocus(root, key);
     },
   };
-}
-
-// Called by every other render of the trail page, so a flow left half done is not there on the way back.
-export function leave() {
-  if (S.mode !== undefined || live) {
-    resetFlow();
-    S.mode = undefined;
-  }
-  live = null;
-  return null;
 }

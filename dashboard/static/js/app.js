@@ -28,6 +28,7 @@
 
 import { createApi } from "./api.js";
 import { createEditSession } from "./edit_session.js";
+import { notSavedProjects } from "./edit_flow.js";
 import { setStrings, t, DEFAULT_RANGE } from "./format.js";
 import {
   PAGES, ALL_KEY, MAIN_KEY, parseHash, hashFor, sectionFor, navFor, showSection, onRouteChange,
@@ -95,12 +96,14 @@ const session = createEditSession({
   getHash: () => window.location.hash,
   replaceHash: (hash) => window.history.replaceState(null, "", hash),
   onChange: () => {
-    if (!editing()) {
+    // A mode with no write access drops the write data. So does a mode with it that still holds the read-only
+    // answer of edits off, which has no targets. The reload below then asks for the answer that fits the mode.
+    if (!editing() || readOnlyHeld()) {
       state.editTargets = null;
       state.editHistory = null;
       editSeq += 1;
     }
-    // Draw first: loadEdit does nothing with edits off, and the page still has to show that mode.
+    // Draw first: the targets load below, and the page still has to show the mode at once.
     if (started) renderPages(SETTINGS_PAGES);
     if (started && wantsTargets()) loadEdit();
   },
@@ -115,16 +118,24 @@ window.addEventListener("hashchange", () => {
 
 const editing = () => session.mode() === "locked" || session.mode() === "ready";
 
-// The one route that shows an edit control: the main session's effortLevel trail.
+// True when the targets held are the read-only answer of a server with edits off ({ enabled: false }).
+const readOnlyHeld = () => {
+  const res = state.editTargets;
+  return Boolean(res && res.data && typeof res.data === "object" && res.data.enabled === false);
+};
+
+// The main session's effortLevel trail. It draws no edit control (the Settings page does), and this route only loads
+// the data for them.
 function onEditRoute() {
   const r = state.route;
   return r.name === "trail" && r.params.agent === MAIN_KEY && r.params.setting === "effortLevel";
 }
 
-// Targets load on the edit route, and on Settings in ready mode, where they decide whether the page says editing
-// is on. Settings never waits on them: it draws first and draws again when they land. All projects loads none.
+// Targets load on the edit route, and on Settings in any mode the server answered (off, locked or ready), where they
+// feed the level picker and the file rows and decide whether the page says editing is on. Settings never waits on
+// them: it draws first and draws again when they land. All projects loads none.
 function wantsTargets() {
-  return onEditRoute() || (state.route.name === "settings" && session.mode() === "ready");
+  return onEditRoute() || (state.route.name === "settings" && session.mode() !== null);
 }
 
 // Forgets every project's data, so nothing drawn after a write comes from before it. The generation makes
@@ -147,12 +158,16 @@ async function refreshAll() {
   await Promise.all([api.settings(state.project), loadEdit()]);
 }
 
-// Targets and history for the current project, fetched fresh every time and never cached.
+// Targets for the current project, fetched fresh every time and never cached, and history too when edits can be
+// written. With edits off the server answers the read-only form of targets, and the history stays null.
 async function loadEdit() {
-  if (!editing() || state.project === ALL_KEY) return;
+  if (session.mode() === null || state.project === ALL_KEY) return;
   const project = state.project;
   const mine = ++editSeq;
-  const [targets, history] = await Promise.all([api.editTargets(project), api.editHistory(project)]);
+  const [targets, history] = await Promise.all([
+    api.editTargets(project),
+    editing() ? api.editHistory(project) : Promise.resolve(null),
+  ]);
   if (mine !== editSeq || project !== state.project) return;
   state.editTargets = targets;
   state.editHistory = history;
@@ -166,6 +181,16 @@ function projectInfo() {
   return { key: state.project, name: known ? known.name : t("all_projects"), state: known ? known.state : null };
 }
 
+// Draws the sidebar and the top bar from the current state. notSaved lists the projects with a change waiting on Save.
+function updateShell() {
+  if (!shell) return;
+  shell.update({
+    // The sidebar links leave setting out, because it names a cell of the Settings page only.
+    projects: state.projects, project: state.project, nav: navFor(state.route), query: { ...state.route.query, setting: null },
+    version: state.version, notSaved: notSavedProjects(),
+  });
+}
+
 function go(name, params, patch) {
   const query = Object.assign({}, state.route.query, patch);
   window.location.hash = hashFor(name, params, query);
@@ -176,7 +201,8 @@ function go(name, params, patch) {
 // (a string, or null), and reader is the reader's state ({ readable, warm, files, skipped }, or null), both from /api/projects.
 function context() {
   return {
-    route: { name: state.route.name, params: state.route.params },
+    // query.setting is the cell of the Settings band the address names, or null.
+    route: { name: state.route.name, params: state.route.params, query: state.route.query },
     project: projectInfo(),
     projects: state.projects,
     range: state.range,
@@ -204,6 +230,8 @@ function context() {
       undo: (editId) => session.undo(state.project, editId),
       reload: loadEdit,
       refresh: refreshAll,
+      // A choice on the Settings page changes which projects have a change waiting on Save, so the picker is drawn again.
+      syncShell: updateShell,
     },
   };
 }
@@ -355,9 +383,7 @@ function handle(route, force) {
   state.range = parsed.query.range || DEFAULT_RANGE;
   applyTheme(parsed.query.theme);
   document.title = t("tab_title", { project: projectInfo().name });
-  shell.update({
-    projects: state.projects, project: state.project, nav: navFor(parsed), query: parsed.query, version: state.version,
-  });
+  updateShell();
   showSection(sections, sectionFor(parsed, state.project));
   if (fetches) {
     loadProject(state.project);

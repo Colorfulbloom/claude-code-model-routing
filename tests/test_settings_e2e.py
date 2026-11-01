@@ -30,7 +30,10 @@ COMPACT_TRAIL = "#/settings/builder/autoCompactWindow"
 CAP_TRAIL = "#/settings/@main/maxEffortLevel?project=saltmarsh"
 EFFORT_SOURCE = "projects/tidewater-reporting/.claude/settings.local.json, line 3"
 RULES_REFERENCE = "https://github.com/Colorfulbloom/claude-code-model-routing/blob/main/docs/rules-reference.md#"
-EFFORT_TILE = "[data-page=settings] a.tl[data-setting=effortLevel]"
+BAND = "[data-page=settings] nav.s5-a"
+EFFORT_CELL = BAND + " a.s4-stat[data-setting=effortLevel]"
+CACHE_CELL = BAND + " a.s4-stat[data-setting=promptCacheTtl]"
+RAIL_LINK = "[data-page=settings] aside.s4-rail a.s4-link"
 
 # The pieces both contrast scripts share. They take the one section that is not hidden. A color that is not
 # rgb() or rgba() cannot be read, so it comes back as a bad item with its value, and nothing passes silently.
@@ -206,24 +209,39 @@ class SettingsE2E(unittest.TestCase):
 
     # ------------------------------------------------------------ focus and keys
 
-    def test_click_opens_the_trail_and_escape_returns_to_the_tile(self):
+    def test_rail_link_opens_the_trail_and_escape_returns_to_the_effort_cell(self):
         self.show(SETTINGS, "settings")
-        self.page.wait_for("Boolean(document.querySelector(%s))" % json.dumps(EFFORT_TILE))
-        self.page.eval("document.querySelector(%s).click()" % json.dumps(EFFORT_TILE))
+        self.page.wait_for("Boolean(document.querySelector(%s))" % json.dumps(RAIL_LINK))
+        self.page.eval("document.querySelector(%s).click()" % json.dumps(RAIL_LINK))
         self.wait_visible("trail")
         self.assert_focus("h2.tr-title")
+        self.assertEqual(self.page.eval("location.hash.split('?')[0]"), EFFORT_TRAIL)
         self.page.key("Escape")
         self.wait_visible("settings")
-        self.assert_focus("a.tl[data-setting=effortLevel]")
+        self.assert_focus("a.s4-stat[data-setting=effortLevel]")
 
-    def test_enter_on_a_tile_opens_the_trail(self):
+    def test_the_trail_link_back_opens_settings_on_the_same_setting(self):
+        self.show(EFFORT_TRAIL, "trail")
+        link = "[data-page=trail] a[href*='setting=effortLevel']"
+        self.page.wait_for("Boolean(document.querySelector(%s))" % json.dumps(link))
+        self.assertEqual(self.texts_of(link), ["Make changes on the Settings page"])
+        self.page.eval("document.querySelector(%s).click()" % json.dumps(link))
+        self.wait_visible("settings")
+        self.page.wait_for("Boolean(document.querySelector(%s + '.is-on'))" % json.dumps(EFFORT_CELL))
+
+    def test_enter_on_a_band_cell_selects_it_and_keeps_focus(self):
         self.show(SETTINGS, "settings")
-        self.page.wait_for("Boolean(document.querySelector(%s))" % json.dumps(EFFORT_TILE))
-        self.page.eval("document.querySelector(%s).focus()" % json.dumps(EFFORT_TILE))
-        self.assert_focus("a.tl[data-setting=effortLevel]")
+        self.page.wait_for("Boolean(document.querySelector(%s))" % json.dumps(CACHE_CELL))
+        self.assertEqual(self.page.eval("document.querySelector(%s).getAttribute('aria-current')" % json.dumps(EFFORT_CELL)), "true")
+        self.assertIsNone(self.page.eval("document.querySelector(%s).getAttribute('aria-current')" % json.dumps(CACHE_CELL)))
+        self.page.eval("document.querySelector(%s).focus()" % json.dumps(CACHE_CELL))
+        self.assert_focus("a.s4-stat[data-setting=promptCacheTtl]")
         press_enter(self.page)
-        self.wait_visible("trail")
-        self.assert_focus("h2.tr-title")
+        self.page.wait_for("document.querySelector(%s).getAttribute('aria-current') === 'true'" % json.dumps(CACHE_CELL))
+        self.assertIn("setting=promptCacheTtl", self.page.eval("location.hash"))
+        self.assertIsNone(self.page.eval("document.querySelector(%s).getAttribute('aria-current')" % json.dumps(EFFORT_CELL)))
+        self.wait_visible("settings")
+        self.assert_focus("a.s4-stat[data-setting=promptCacheTtl]")
 
     def test_escape_on_a_row_with_no_card_returns_to_the_heading(self):
         self.show(BUILDER_EFFORT, "trail")
@@ -237,7 +255,7 @@ class SettingsE2E(unittest.TestCase):
     def test_a_row_that_does_not_exist_shows_no_panel(self):
         before = len(self.page.messages())
         self.show("#/settings/nobody/effort", "trail")
-        self.page.wait_for("document.querySelectorAll('[data-page=trail] a.tl').length === 4")
+        self.page.wait_for("Boolean(document.querySelector('[data-page=trail] p.foot'))")
         self.assertIsNone(self.page.eval("document.getElementById('trail') && document.getElementById('trail').id"))
         line = self.page.eval("document.querySelector('[data-page=trail] p.foot').innerText")
         self.assertEqual(line, "This project has no effort for nobody, so there's no trail to show.")
@@ -248,7 +266,7 @@ class SettingsE2E(unittest.TestCase):
         self.show(EFFORT_TRAIL + "?project=all", "trail")
         shown = self.page.eval("document.querySelector('main [data-page=trail]').innerText")
         self.assertIn("Pick a project", shown)
-        self.assertEqual(self.page.eval("document.querySelectorAll('[data-page=trail] a.tl').length"), 0)
+        self.assertEqual(self.page.eval("document.querySelectorAll('[data-page=trail] a.s4-stat').length"), 0)
         self.assertIsNone(self.page.eval("document.getElementById('trail') && document.getElementById('trail').id"))
         self.assertEqual(self.exceptions_since(before), [])
 
@@ -256,8 +274,9 @@ class SettingsE2E(unittest.TestCase):
 
     def test_the_fixes_after_the_chrome_pass(self):
         self.show(SETTINGS, "settings")
-        self.page.wait_for("Boolean(document.querySelector(%s))" % json.dumps(EFFORT_TILE))
-        self.assertEqual(self.texts_of(EFFORT_TILE + " .tl-src"), [EFFORT_SOURCE])
+        self.page.wait_for("Boolean(document.querySelector(%s))" % json.dumps(EFFORT_CELL))
+        self.assertEqual(self.texts_of(EFFORT_CELL + " .s4-sv"), ["xhigh"])
+        self.assertIn("Lowered", self.texts_of(EFFORT_CELL + " .s4-sw")[0])
 
         self.show(EFFORT_TRAIL, "trail")
         self.page.wait_for("Boolean(document.getElementById('trail'))")
@@ -349,12 +368,14 @@ class SettingsE2E(unittest.TestCase):
             self.page.wait_for("document.querySelectorAll('main [data-page=%s] .at li a').length > 0" % section)
             self.assertEqual(self.page.eval(clash % section), [], section)
 
-    def test_the_cache_tile_shows_one_short_line_and_the_trail_keeps_the_reason(self):
-        self.show("#/settings", "settings")
-        tile = "[data-page=settings] a.tl[data-setting=promptCacheTtl]"
-        self.page.wait_for("Boolean(document.querySelector(%s))" % json.dumps(tile + " .en-note"))
-        self.assertEqual(self.texts_of(tile + " .en-note"), ["Open the trail to see why."])
-        self.page.eval("document.querySelector(%s).click()" % json.dumps(tile))
+    def test_the_cache_cell_is_read_only_and_the_trail_keeps_the_reason(self):
+        self.show("#/settings?setting=promptCacheTtl", "settings")
+        self.page.wait_for("Boolean(document.querySelector(%s))" % json.dumps(CACHE_CELL + ".is-on"))
+        self.assertEqual(self.page.eval("document.querySelector(%s).getAttribute('aria-current')" % json.dumps(CACHE_CELL)), "true")
+        self.assertEqual(self.texts_of("[data-page=settings] .s4-body p.s4-lock"), ["You can't change this setting here."])
+        self.assertEqual(self.page.eval("document.querySelectorAll('[data-page=settings] .s4-body input').length"), 0)
+        self.assertGreater(len(self.texts_of("[data-page=settings] aside.s4-rail p.s4-p")[0]), 0)
+        self.page.eval("document.querySelector(%s).click()" % json.dumps(RAIL_LINK))
         self.wait_visible("trail")
         reason = "[data-page=trail] .en-rs"
         self.page.wait_for("[...document.querySelectorAll(%s)].some((p) => p.textContent.includes('so the plan decides it'))"
@@ -395,7 +416,7 @@ class SettingsE2E(unittest.TestCase):
                 if section == "trail":
                     self.page.wait_for("Boolean(document.getElementById('trail'))")
                 else:
-                    self.page.wait_for("Boolean(document.querySelector(%s))" % json.dumps(EFFORT_TILE))
+                    self.page.wait_for("Boolean(document.querySelector(%s))" % json.dumps(EFFORT_CELL))
                 self.page.eval(OPEN_DETAILS)
                 result = self.page.eval(TEXT_CONTRAST_BAD)
                 if result["checked"] <= floor:

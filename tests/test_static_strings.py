@@ -17,7 +17,7 @@ PENDING = Path(__file__).resolve().parent / "strings_pending.txt"
 
 # Keys that code builds at run time, as t("status_" + status). Their members are never listed as
 # unused, and the code may only build keys from these prefixes.
-RUNTIME_PREFIXES = ("status_", "conf_", "layer_", "slot_", "f_action_", "ed_lock_", "ed_err_")
+RUNTIME_PREFIXES = ("status_", "conf_", "layer_", "slot_", "f_action_", "ed_lock_", "ed_row_lock_", "ed_err_")
 
 # A string that breaks a style rule on purpose gets a named allowance with its reason. Empty today.
 STYLE_ALLOWANCES = {

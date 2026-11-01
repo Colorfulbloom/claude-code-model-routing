@@ -405,6 +405,39 @@ test("menu: it opens and closes again, and the second round marks and clears the
   assertClosed(app);
 });
 
+// ---------------------------------------------------------------- shell.js project picker
+
+test("project picker: a project with a change waiting on Save says Not saved, and a missing folder keeps its own words", async () => {
+  const page = createPage();
+  const format = await import(JS + "format.js");
+  format.setStrings(STRINGS);
+  const { createShell } = await import(JS + "shell.js");
+  const shell = createShell({ sidebar: page.sidebar, topbar: page.topbar, onProject() {} });
+  const projects = [
+    { key: "a", name: "Alpha", state: "ok" },
+    { key: "b", name: "Beta", state: "missing_folder" },
+    { key: "c", name: "Gamma", state: "ok" },
+  ];
+  const options = () => page.topbar.find((n) => n.tagName === "option").map((n) => [n.value, n.textContent]);
+  const state = (notSaved) => ({ projects, project: "a", nav: "settings", query: {}, version: null, notSaved });
+  const all = ["all", STRINGS.all_projects];
+  shell.update(state());
+  assert.deepEqual(options(), [["a", "Alpha"], ["b", "Beta, folder not found"], ["c", "Gamma"], all], "no list given, nothing waits");
+  shell.update(state([]));
+  assert.deepEqual(options()[0], ["a", "Alpha"]);
+  shell.update(state(["a", "c"]));
+  assert.deepEqual(options(), [["a", "Alpha, Not saved"], ["b", "Beta, folder not found"], ["c", "Gamma, Not saved"], all]);
+  assert.equal(options()[0][1], STRINGS.opt_not_saved.replace("{name}", "Alpha"));
+  shell.update(state(["b"]));
+  assert.deepEqual(options()[1], ["b", "Beta, folder not found"], "a missing folder keeps opt_missing");
+  assert.deepEqual(options()[0], ["a", "Alpha"], "and the others go back");
+  const select = page.topbar.find((n) => n.tagName === "select")[0];
+  assert.equal(select.value, "a", "the open project stays selected");
+  shell.update(state(["a"]));
+  assert.equal(select.value, "a");
+  assert.equal(options()[0][1], "Alpha, Not saved");
+});
+
 // ---------------------------------------------------------------- run
 
 let failed = 0;

@@ -443,6 +443,50 @@ class AppCss(unittest.TestCase):
         self.assertEqual(titles, ["Shared", "Overview", "Agents", "Agent detail", "Models", "Sessions", "Session detail",
                                   "Settings and trail", "Needs attention", "Installed files", "Rules reference", "All projects"])
 
+    def test_settings_page_layout_stays_inside_its_scope(self):
+        # The white flat page, the locked panes and the Stat band belong to the Settings route alone. Every rule of the
+        # block starts from an s4-, s5- or s6- class, except the two that frame the route, and those name the Settings
+        # section. Nothing in it styles a shared class, a tag, or another page on its own.
+        start = self.text.index("/* Settings page, round 6")
+        end = self.text.index(" * Needs attention")
+        block = parse_css(self.text[start:end])
+        self.assertGreater(len(block), 60)
+        framing = {".content:has(>[data-page=\"settings\"]:not([hidden]))",
+                   ".main:has(>.content>[data-page=\"settings\"]:not([hidden]))>.topbar"}
+        for media, selector, _decls in block:
+            if selector in framing:
+                continue
+            # The leftmost class is the page's own, so a shared class such as .st or .btn is only reached inside it.
+            self.assertRegex(selector, r"^(?:\.s[456]-[a-z]|\.s4(?![\w-]))", "outside the Settings scope: " + selector)
+        self.assertEqual({s for _m, s, _d in block if s in framing}, framing)
+        for media, selector, decls in block:
+            if selector == ".main:has(>.content>[data-page=\"settings\"]:not([hidden]))>.topbar":
+                self.assertEqual(media, "(max-width: 720px)")
+
+    def test_the_rail_foot_docks_by_itself_at_1240_and_the_page_holds_no_second_dock(self):
+        # One DOM, no copies: a second Save or a second radio set would be a safety risk. At 1240 and under the rail
+        # stacks under the body and its own foot is fixed to the window's bottom. At 1241 and up it stays the rail's foot.
+        r = self.rules
+        narrow = "(max-width: 1240px)"
+        for prop, want in (("position", "fixed"), ("display", "grid"), ("bottom", "0"), ("left", "0"), ("right", "0")):
+            self.assertEqual(final_value(r, ".s4-rf", prop, narrow), want, ".s4-rf " + prop)
+        self.assertEqual(final_value(r, ".s4-rf", "grid-template-columns", narrow), "minmax(0,1fr) auto")
+        self.assertEqual(final_value(r, ".s4-rf .s4-hint", "grid-column", narrow), "1/-1")
+        self.assertEqual(final_value(r, ".s4-rf .s4-wide", "width", narrow), "auto")
+        self.assertIsNone(final_value(r, ".s4-rf", "position"), "the foot sits in the rail's flow above 1240")
+        self.assertNotEqual(final_value(r, ".s4-rf", "display", narrow), "none", "the narrow foot is not hidden")
+        self.assertIsNone(final_value(r, ".s4-rf", "padding", "(max-width: 720px)"), "a phone keeps the dock's padding")
+        # The rail takes the bottom padding while the foot holds something, so the dock never covers the last line.
+        padded = [sel for m, sel, d in r if m == narrow and "padding-bottom" in d and sel.startswith(".s4-rail")]
+        self.assertEqual(padded, [".s4-rail:has(.s4-rf:has(:not(.s4-slot)))"])
+        # An empty foot takes no room at any width.
+        self.assertEqual(final_value(r, ".s4-rf:not(:has(:not(.s4-slot)))", "display"), "none")
+        self.assertNotRegex(self.clean, r"\.s5-dock|\.s4-inl|\.s5-pad")
+
+    def test_old_tiles_are_gone_and_the_kpi_label_stays(self):
+        self.assertNotRegex(self.clean, r"(?<![\w-])\.(?:tiles|tl|tl-top|tl-mid|tl-v|tl-src)(?![\w-])")
+        self.assertIsNotNone(final_value(self.rules, ".tl-l", "font-size"))
+
     def test_notes_fixes_are_in(self):
         r = self.rules
         narrow = "(max-width: 720px)"
