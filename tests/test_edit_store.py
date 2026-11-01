@@ -362,6 +362,17 @@ class WalkTests(Base):
         write(self.project_file, b" " * (es.MAX_FILE + 1))
         self.assertEqual("too_large", self.refused(target))
 
+    def test_a_save_that_grows_the_file_past_the_cap_is_too_large(self):
+        target = self.target("project")
+        raw = b" " * es.MAX_FILE
+        write(self.project_file, raw)
+        with self.assertRaises(es.Refused) as ctx:
+            self.store.save(target, lambda r: es.Plan(r + b" " * 25, ["effortLevel"], None, "high"))
+        self.assertEqual("too_large", ctx.exception.code)
+        self.assertEqual(raw, read(self.project_file))
+        self.assertEqual([], self.baks(target))
+        self.assertEqual([], self.store.rows(target))
+
     def test_a_file_that_grows_during_the_read_is_too_large(self):
         target = self.target("project")
         write(self.project_file, b" " * 10)
@@ -479,7 +490,7 @@ class SaveTests(Base):
         row = self.store.save(target, effort_plan("high"))
         doc = json.loads(read(os.path.join(self.store_dir(target), "ledger.json")))
         self.assertEqual({"version": 1, "rows": [row]}, doc)
-        self.assertEqual({"id", "time", "kind", "key_path", "layer", "old_value", "new_value",
+        self.assertEqual({"id", "time", "kind", "op", "key_path", "layer", "old_value", "new_value",
                           "before_sha256", "after_sha256", "backup", "restored_from",
                           "restored_from_backup"}, set(row))
 
@@ -649,10 +660,10 @@ class SaveTests(Base):
             source = fh.read()
         self.assertIsNone(re.search(r"(?<![\w.])open\(", source))
         for banned in (r"\bshutil\b", r"\bpathlib\b", r"\bio\.open\b", r"\bsubprocess\b",
-                       r"\bos\.(replace|remove|makedirs|rmdir|truncate)\(",
+                       r"\bos\.(replace|remove|makedirs|truncate)\(",
                        r"\.writelines?\("):
             self.assertIsNone(re.search(banned, source), banned)
-        for call in re.findall(r"\bos\.(?:unlink|rename|mkdir)\([^)]*\)", source):
+        for call in re.findall(r"\bos\.(?:unlink|rename|mkdir|rmdir)\([^)]*\)", source):
             self.assertIn("dir_fd", call)
 
 
@@ -1363,6 +1374,1028 @@ class ReadOnlyTests(Base):
         name = "000003-" + "c" * 16 + ".bak"
         self.assertEqual(os.path.join(self.store_dir(target), name),
                          self.store.backup_path(target, name))
+
+
+NEW = b'{\n  "effortLevel": "high"\n}\n'
+HEX16 = "0123456789abcdef"
+
+
+def create_plan(raw):
+    """A plan_fn for a file that must not be there yet."""
+    if raw is not None:
+        raise AssertionError("the file should be absent")
+    return es.Plan(NEW, ["effortLevel"], None, "high", "create")
+
+
+def tree_hash(folder):
+    """Names, modes and bytes of everything under folder."""
+    found = []
+    for dirpath, dirnames, filenames in os.walk(folder):
+        dirnames.sort()
+        rel = os.path.relpath(dirpath, folder)
+        found.append((rel, stat.S_IMODE(os.stat(dirpath).st_mode)))
+        for name in sorted(filenames):
+            path = os.path.join(dirpath, name)
+            found.append((os.path.join(rel, name), stat.S_IMODE(os.stat(path).st_mode), read(path)))
+    return found
+
+
+def fail():
+    raise es.WriteFailed("simulated")
+
+
+class CreateBase(Base):
+    def setUp(self):
+        super().setUp()
+        self.claude = os.path.join(self.proj, ".claude")
+
+    def bare(self):
+        """No .claude folder at all."""
+        helpers.rmtree_force(self.claude)
+
+    def no_file(self):
+        """A .claude folder that has no settings.json."""
+        os.unlink(self.project_file)
+
+    def create(self, target=None):
+        return self.store.save(target or self.target("project"), create_plan, allow_absent=True)
+
+    def made(self):
+        """Create the project file in a project with no .claude. Returns (target, row)."""
+        self.bare()
+        target = self.target("project")
+        return target, self.create(target)
+
+    def markers(self, target=None):
+        folder = self.store_dir(target)
+        if not os.path.isdir(folder):
+            return []
+        return sorted(n for n in os.listdir(folder) if n.endswith(".absent"))
+
+    def ledger_rows(self, target=None):
+        return json.loads(read(os.path.join(self.store_dir(target), "ledger.json")))["rows"]
+
+    def rewrite_ledger(self, target, fn):
+        path = os.path.join(self.store_dir(target), "ledger.json")
+        doc = json.loads(read(path))
+        fn(doc["rows"])
+        write(path, json.dumps(doc).encode())
+
+    def crash_create(self, seam_name):
+        self.crash_at(seam_name)
+        with self.assertRaises(Crash):
+            self.create()
+        self.store = es.Store(self.cfg)
+
+
+class ReadOrNoneTests(CreateBase):
+    def test_reads_the_bytes_or_none(self):
+        target = self.target("project")
+        self.assertEqual(SETTINGS, es.read_or_none(target))
+        self.no_file()
+        self.assertIsNone(es.read_or_none(target))
+        self.assertEqual(es.ABSENT, es._file_hash(target))
+        helpers.rmtree_force(self.claude)
+        self.assertIsNone(es.read_or_none(target))
+        self.assertEqual(es.ABSENT, es._file_hash(target))
+
+    def test_read_target_stays_strict(self):
+        target = self.target("project")
+        self.bare()
+        with self.assertRaises(es.Refused) as ctx:
+            es.read_target(target)
+        self.assertEqual("file_missing", ctx.exception.code)
+
+    def test_a_missing_base_is_refused_and_hashes_to_none(self):
+        target = self.target("project")
+        helpers.rmtree_force(self.proj)
+        with self.assertRaises(es.Refused) as ctx:
+            es.read_or_none(target)
+        self.assertEqual("file_missing", ctx.exception.code)
+        self.assertIsNone(es._file_hash(target))
+
+    def test_a_dangling_link_or_a_plain_file_is_still_refused(self):
+        target = self.target("project")
+        nowhere = os.path.join(self.root, "nowhere")
+        self.bare()
+        os.symlink(nowhere, self.claude)
+        with self.assertRaises(es.Refused) as ctx:
+            es.read_or_none(target)
+        self.assertEqual("symlink", ctx.exception.code)
+        self.assertIsNone(es._file_hash(target))
+        os.unlink(self.claude)
+        write(self.claude, b"x")
+        with self.assertRaises(es.Refused) as ctx:
+            es.read_or_none(target)
+        self.assertEqual("not_regular", ctx.exception.code)
+        os.unlink(self.claude)
+        os.makedirs(self.claude)
+        os.symlink(nowhere, self.project_file)
+        with self.assertRaises(es.Refused) as ctx:
+            es.read_or_none(target)
+        self.assertEqual("symlink", ctx.exception.code)
+
+    def test_every_absent_walk_closes_its_descriptors(self):
+        target = self.target("project")
+        before = fd_count()
+        for _ in range(10):
+            es.read_or_none(target)
+            os.unlink(self.project_file)
+            es.read_or_none(target)
+            write(self.project_file, SETTINGS)
+        self.assertEqual(before, fd_count())
+
+
+class CreateTests(CreateBase):
+    def check_created(self, target, row, mode_dir=None):
+        self.assertEqual(NEW, read(target.path))
+        self.assertEqual(0o600, stat.S_IMODE(os.stat(target.path).st_mode))
+        self.assertEqual("absent", row["before_sha256"])
+        self.assertEqual(sha(NEW), row["after_sha256"])
+        self.assertEqual("create", row["op"])
+        self.assertEqual("edit", row["kind"])
+        self.assertTrue(row["backup"].endswith(".absent"))
+        marker = os.path.join(self.store_dir(target), row["backup"])
+        self.assertEqual(b"", read(marker))
+        self.assertIsNone(self.store.backup_path(target, row["backup"]))
+        self.assertNotIn("old_value", row)
+        self.assertEqual("high", row["new_value"])
+        self.assertEqual([row], self.store.rows(target))
+        self.assertEqual([], self.baks(target))
+        self.assertIsNone(self.store.undo_state(target, row))
+
+    def test_a_file_in_an_existing_claude_folder(self):
+        self.no_file()
+        target = self.target("project")
+        row = self.create(target)
+        self.check_created(target, row)
+        self.assertNotIn("made_dir", row)
+        self.assertEqual(["settings.json", "settings.local.json"], sorted(os.listdir(self.claude)))
+        self.assertEqual([], self.leftovers())
+
+    def test_a_file_with_no_claude_folder_makes_it_private(self):
+        self.bare()
+        target = self.target("project")
+        row = self.create(target)
+        self.check_created(target, row)
+        self.assertTrue(row["made_dir"])
+        self.assertEqual(0o700, stat.S_IMODE(os.stat(self.claude).st_mode))
+        self.assertEqual(["settings.json"], os.listdir(self.claude))
+
+    def test_the_user_layer_creates_in_the_config_folder(self):
+        os.unlink(self.user_file)
+        target = self.target("user")
+        row = self.create(target)
+        self.check_created(target, row)
+        self.assertNotIn("made_dir", row)
+        self.assertEqual(self.user_file, target.path)
+
+    def test_a_default_save_on_an_absent_file_is_still_refused_and_makes_no_store(self):
+        self.no_file()
+        with self.assertRaises(es.Refused) as ctx:
+            self.store.save(self.target("project"), effort_plan("high"))
+        self.assertEqual("file_missing", ctx.exception.code)
+        self.assertFalse(os.path.exists(os.path.join(self.cfg, "routing-dashboard")))
+        self.bare()
+        with self.assertRaises(es.Refused) as ctx:
+            self.store.save(self.target("project"), effort_plan("high"))
+        self.assertEqual("file_missing", ctx.exception.code)
+        self.assertFalse(os.path.exists(self.claude))
+
+    def test_a_missing_base_folder_is_refused_and_nothing_is_made(self):
+        target = self.target("project")
+        helpers.rmtree_force(self.proj)
+        with mock.patch.object(es.os, "mkdir", side_effect=AssertionError("mkdir")) as mk:
+            with self.assertRaises(es.Refused) as ctx:
+                self.store.save(target, create_plan, allow_absent=True)
+        self.assertEqual("file_missing", ctx.exception.code)
+        mk.assert_not_called()
+        self.assertFalse(os.path.exists(self.proj))
+        self.assertFalse(os.path.exists(os.path.join(self.cfg, "routing-dashboard")))
+
+    def test_a_dangling_link_at_claude_is_a_symlink_refusal(self):
+        self.bare()
+        os.symlink(os.path.join(self.root, "nowhere"), self.claude)
+        with self.assertRaises(es.Refused) as ctx:
+            self.create()
+        self.assertEqual("symlink", ctx.exception.code)
+        self.assertTrue(os.path.islink(self.claude))
+        self.assertFalse(os.path.exists(os.path.join(self.cfg, "routing-dashboard")))
+
+    def test_a_dangling_link_at_the_file_is_a_symlink_refusal(self):
+        self.no_file()
+        os.symlink(os.path.join(self.root, "nowhere.json"), self.project_file)
+        with self.assertRaises(es.Refused) as ctx:
+            self.create()
+        self.assertEqual("symlink", ctx.exception.code)
+        self.assertTrue(os.path.islink(self.project_file))
+        self.assertFalse(os.path.exists(os.path.join(self.cfg, "routing-dashboard")))
+
+    def test_claude_as_a_regular_file_is_not_regular(self):
+        self.bare()
+        write(self.claude, b"x")
+        with self.assertRaises(es.Refused) as ctx:
+            self.create()
+        self.assertEqual("not_regular", ctx.exception.code)
+        self.assertEqual(b"x", read(self.claude))
+
+    def test_a_plan_may_not_delete_the_file(self):
+        target = self.target("project")
+        with self.assertRaises(ValueError):
+            self.store.save(target, lambda raw: es.Plan(None, ["x"], None, None))
+        self.assertEqual(SETTINGS, read(self.project_file))
+
+    def test_a_create_that_finds_the_file_present_gets_its_bytes(self):
+        seen = []
+
+        def plan(raw):
+            seen.append(raw)
+            return effort_plan("high")(raw)
+        self.store.save(self.target("project"), plan, allow_absent=True)
+        self.assertEqual([SETTINGS], seen)
+
+    def test_a_plan_of_none_for_an_absent_file_is_refused(self):
+        self.no_file()
+        with self.assertRaises(ValueError):
+            self.store.save(self.target("project"), lambda raw: es.Plan(None, [], None, None),
+                            allow_absent=True)
+        self.assertFalse(os.path.exists(self.project_file))
+
+
+class CreateCrashTests(CreateBase):
+    def test_crash_after_the_backup_leaves_an_orphan_marker_the_next_save_removes(self):
+        self.bare()
+        target = self.target("project")
+        self.crash_create("after_backup")
+        self.assertFalse(os.path.exists(self.claude))
+        self.assertEqual(1, len(self.markers(target)))
+        self.assertEqual([], self.store.rows(target))
+        orphan = self.markers(target)[0]
+        row = self.create(target)
+        self.assertEqual([row["backup"]], self.markers(target))
+        self.assertNotEqual(orphan, row["backup"])
+        self.assertEqual([row], self.store.rows(target))
+
+    def test_crash_after_the_ledger_leaves_a_row_that_is_not_shown(self):
+        self.bare()
+        target = self.target("project")
+        self.crash_create("after_ledger")
+        self.assertFalse(os.path.exists(self.claude))
+        self.assertEqual(1, len(self.ledger_rows(target)))
+        self.assertEqual([], self.store.rows(target))
+        row = self.create(target)
+        self.assertEqual([row["backup"]], self.markers(target))
+        self.assertEqual([row], self.store.rows(target))
+        self.assertEqual([row["id"]], [r["id"] for r in self.ledger_rows(target)])
+
+    def test_crash_after_the_mkdir_leaves_an_empty_folder_and_the_next_create_finds_it(self):
+        self.bare()
+        target = self.target("project")
+        self.crash_create("after_mkdir")
+        self.assertEqual([], os.listdir(self.claude))
+        self.assertEqual(1, len(self.ledger_rows(target)))
+        self.assertEqual([], self.store.rows(target))
+        row = self.create(target)
+        self.assertEqual(NEW, read(self.project_file))
+        self.assertNotIn("made_dir", row)
+        self.assertEqual([row], self.store.rows(target))
+        self.assertEqual([row["backup"]], self.markers(target))
+
+    def test_crash_after_the_temp_leaves_a_temp_the_next_save_sweeps(self):
+        self.bare()
+        target = self.target("project")
+        self.crash_create("after_temp")
+        self.assertEqual(1, len(self.leftovers()))
+        self.assertFalse(os.path.exists(self.project_file))
+        self.assertEqual([], self.store.rows(target))
+        row = self.create(target)
+        self.assertEqual([], self.leftovers())
+        self.assertEqual(["settings.json"], os.listdir(self.claude))
+        self.assertEqual([row], self.store.rows(target))
+
+    def test_crash_after_the_rename_leaves_a_row_that_is_newest_and_undoable(self):
+        self.bare()
+        target = self.target("project")
+        self.crash_create("after_rename")
+        self.assertEqual(NEW, read(self.project_file))
+        rows = self.store.rows(target)
+        self.assertEqual(1, len(rows))
+        self.assertTrue(rows[0]["made_dir"])
+        self.assertIsNone(self.store.undo_state(target, rows[0]))
+        result = self.store.restore(target, rows[0]["id"])
+        self.assertTrue(result.removed_file)
+        self.assertTrue(result.removed_dir)
+        self.assertFalse(os.path.exists(self.claude))
+
+    def test_the_file_is_whole_or_absent_at_every_create_crash_point(self):
+        for seam_name in ("before_backup", "after_backup", "after_ledger", "after_mkdir",
+                          "after_temp", "before_recheck", "before_rename", "after_rename",
+                          "dir_fsync", "reread"):
+            self.store = es.Store(self.cfg)
+            helpers.rmtree_force(os.path.join(self.cfg, "routing-dashboard"))
+            helpers.rmtree_force(self.claude)
+            self.crash_create(seam_name)
+            if os.path.exists(self.project_file):
+                self.assertEqual(NEW, read(self.project_file), seam_name)
+
+
+class PruneMarkerTests(CreateBase):
+    def orphan(self, name="000007-" + HEX16 + ".absent", age=0):
+        target = self.target("project")
+        write(os.path.join(self.store_dir(target), name), b"")
+        if age:
+            stamp = time.time() - age
+            os.utime(os.path.join(self.store_dir(target), name), (stamp, stamp))
+        return name
+
+    def test_an_orphan_marker_with_no_rows_at_all_goes(self):
+        target = self.target("project")
+        name = self.orphan()
+        row = self.store.save(target, effort_plan("high"))
+        self.assertNotIn(name, os.listdir(self.store_dir(target)))
+        self.assertTrue(row["backup"].startswith("000008-"))
+
+    def test_an_orphan_marker_older_than_the_floor_goes(self):
+        target = self.target("project")
+        self.store.save(target, effort_plan("v1"))
+        name = self.orphan(age=3600)
+        self.store.save(target, effort_plan("v2"))
+        self.assertNotIn(name, os.listdir(self.store_dir(target)))
+
+    def test_a_marker_only_ledger_has_no_floor_so_a_real_orphan_stays_and_a_marker_goes(self):
+        self.no_file()
+        target = self.target("project")
+        name = self.orphan()
+        real = "000042-" + HEX16 + ".bak"
+        write(os.path.join(self.store_dir(target), real), b"older ledger")
+        row = self.create(target)
+        listing = os.listdir(self.store_dir(target))
+        self.assertNotIn(name, listing)
+        self.assertIn(real, listing)
+        self.assertIn(row["backup"], listing)
+
+    def test_a_real_orphan_older_than_the_floor_stays(self):
+        target = self.target("project")
+        self.store.save(target, effort_plan("v1"))
+        self.store.save(target, effort_plan("v2"))
+        real = "000042-" + HEX16 + ".bak"
+        path = write(os.path.join(self.store_dir(target), real), b"old")
+        stamp = time.time() - 3600
+        os.utime(path, (stamp, stamp))
+        self.store.save(target, effort_plan("v3"))
+        self.assertIn(real, os.listdir(self.store_dir(target)))
+
+    def test_numbers_count_past_a_marker(self):
+        target = self.target("project")
+        self.orphan("000042-" + HEX16 + ".absent")
+        row = self.store.save(target, effort_plan("high"))
+        self.assertTrue(row["backup"].startswith("000043-"))
+
+    def test_a_marker_a_row_names_is_kept_whatever_its_age(self):
+        self.no_file()
+        target = self.target("project")
+        row = self.create(target)
+        stamp = time.time() - 7200
+        os.utime(os.path.join(self.store_dir(target), row["backup"]), (stamp, stamp))
+        self.store.save(target, effort_plan("v2"))
+        self.assertEqual([row["backup"]], self.markers(target))
+
+    def test_a_marker_never_sets_the_floor(self):
+        target = self.target("project")
+        folder = self.store_dir(target)
+        self.no_file()
+        first = self.create(target)
+        stamp = time.time() - 7200
+        os.utime(os.path.join(folder, first["backup"]), (stamp, stamp))
+        self.assertIsNone(self.store._oldest_mtime(self.open_store(target), [first]))
+
+    def open_store(self, target):
+        fd = self.store._open_store(target, create=False)
+        self.addCleanup(os.close, fd)
+        return fd
+
+
+class UndoCreateCrashTests(CreateBase):
+    def crash_restore(self, seam_name, target, row):
+        self.crash_at(seam_name)
+        with self.assertRaises(Crash):
+            self.store.restore(target, row["id"])
+        self.store = es.Store(self.cfg)
+
+    def test_crash_before_the_unlink_keeps_the_file_and_the_create_undoable(self):
+        target, row = self.made()
+        self.crash_restore("before_unlink", target, row)
+        self.assertEqual(NEW, read(self.project_file))
+        self.assertEqual([row], self.store.rows(target))
+        self.assertEqual(2, len(self.ledger_rows(target)))
+        self.assertIsNone(self.store.undo_state(target, row))
+        result = self.store.restore(target, row["id"])
+        self.assertTrue(result.removed_file)
+        self.assertFalse(os.path.exists(self.project_file))
+
+    def test_crash_after_the_unlink_keeps_the_undo_row(self):
+        target, row = self.made()
+        self.crash_restore("after_unlink", target, row)
+        self.assertFalse(os.path.exists(self.project_file))
+        rows = self.store.rows(target)
+        self.assertEqual(2, len(rows))
+        self.assertEqual(row, rows[0])
+        undo = rows[1]
+        self.assertEqual("undo", undo["kind"])
+        self.assertEqual("absent", undo["after_sha256"])
+        self.assertEqual(sha(NEW), undo["before_sha256"])
+        self.assertTrue(os.path.isdir(self.claude))
+
+    def test_crash_before_the_rmdir_leaves_a_harmless_empty_folder(self):
+        target, row = self.made()
+        self.crash_restore("before_rmdir", target, row)
+        self.assertFalse(os.path.exists(self.project_file))
+        self.assertEqual([], os.listdir(self.claude))
+        self.assertEqual(2, len(self.store.rows(target)))
+        again = self.create(target)
+        self.assertEqual(NEW, read(self.project_file))
+        self.assertNotIn("made_dir", again)
+
+
+class UndoCreateTests(CreateBase):
+    def test_the_whole_project_folder_is_back_as_it_was(self):
+        self.bare()
+        before = tree_hash(self.proj)
+        target = self.target("project")
+        row = self.create(target)
+        self.assertNotEqual(before, tree_hash(self.proj))
+        result = self.store.restore(target, row["id"])
+        self.assertTrue(result.removed_file)
+        self.assertTrue(result.removed_dir)
+        self.assertTrue(result.matches_backup)
+        self.assertEqual(before, tree_hash(self.proj))
+        self.assertIsNone(result.restored_from_path)
+
+    def test_the_undo_row_backs_up_the_created_bytes(self):
+        target, row = self.made()
+        result = self.store.restore(target, row["id"])
+        undo = result.row
+        self.assertEqual("undo", undo["kind"])
+        self.assertEqual("create", undo["op"])
+        self.assertEqual(sha(NEW), undo["before_sha256"])
+        self.assertEqual("absent", undo["after_sha256"])
+        self.assertTrue(undo["backup"].endswith(".bak"))
+        self.assertIsNotNone(result.backup_path)
+        self.assertEqual(NEW, read(result.backup_path))
+        self.assertEqual(row["id"], undo["restored_from"])
+        self.assertEqual(row["backup"], undo["restored_from_backup"])
+        self.assertEqual("high", undo["old_value"])
+        self.assertNotIn("new_value", undo)
+        self.assertNotIn("made_dir", undo)
+        self.assertEqual([row, undo], self.store.rows(target))
+
+    def test_a_stray_file_in_claude_keeps_the_folder(self):
+        target, row = self.made()
+        stray = write(os.path.join(self.claude, ".DS_Store"), b"junk")
+        result = self.store.restore(target, row["id"])
+        self.assertTrue(result.removed_file)
+        self.assertFalse(result.removed_dir)
+        self.assertTrue(result.matches_backup)
+        self.assertEqual([".DS_Store"], os.listdir(self.claude))
+        self.assertEqual(b"junk", read(stray))
+        self.assertFalse(os.path.exists(self.project_file))
+
+    def test_a_leftover_temp_does_not_block_the_folder_removal(self):
+        target, row = self.made()
+        write(os.path.join(self.claude, ".routing-dashboard-" + HEX16 + ".tmp"), b"x")
+        result = self.store.restore(target, row["id"])
+        self.assertTrue(result.removed_dir)
+        self.assertFalse(os.path.exists(self.claude))
+
+    def test_a_folder_that_was_already_there_stays(self):
+        self.no_file()
+        target = self.target("project")
+        row = self.create(target)
+        result = self.store.restore(target, row["id"])
+        self.assertTrue(result.removed_file)
+        self.assertFalse(result.removed_dir)
+        self.assertEqual(["settings.local.json"], os.listdir(self.claude))
+
+    def test_the_user_layer_has_no_folder_to_remove(self):
+        os.unlink(self.user_file)
+        target = self.target("user")
+        row = self.create(target)
+        result = self.store.restore(target, row["id"])
+        self.assertTrue(result.removed_file)
+        self.assertFalse(result.removed_dir)
+        self.assertTrue(os.path.isdir(self.cfg))
+        self.assertFalse(os.path.exists(self.user_file))
+
+    def test_a_folder_swapped_for_another_before_the_rmdir_stays(self):
+        target, row = self.made()
+        held = os.path.join(self.root, "held")
+
+        def swap():
+            os.rename(self.claude, held)
+            os.makedirs(self.claude)
+        self.at("before_rmdir", swap)
+        result = self.store.restore(target, row["id"])
+        self.assertTrue(result.removed_file)
+        self.assertFalse(result.removed_dir)
+        self.assertTrue(os.path.isdir(self.claude))
+        self.assertTrue(os.path.isdir(held))
+
+    def test_restoring_the_undo_makes_the_file_again(self):
+        target, row = self.made()
+        undo = self.store.restore(target, row["id"]).row
+        again = self.store.restore(target, undo["id"])
+        self.assertEqual(NEW, read(self.project_file))
+        self.assertFalse(again.removed_file)
+        self.assertEqual("absent", again.row["before_sha256"])
+        self.assertTrue(again.row["backup"].endswith(".absent"))
+        self.assertTrue(again.row["made_dir"])
+        self.assertEqual(0o600, stat.S_IMODE(os.stat(self.project_file).st_mode))
+
+    def test_a_default_undo_works_on_a_hand_deleted_edit(self):
+        target = self.target("project")
+        row = self.store.save(target, effort_plan("high"))
+        os.unlink(self.project_file)
+        self.assertEqual("changed_since_save", self.store.undo_state(target, row))
+        with self.assertRaises(es.ChangedSinceSave):
+            self.store.restore(target, row["id"])
+        self.assertFalse(os.path.exists(self.project_file))
+        self.assertEqual([row], self.store.rows(target))
+
+
+class UndoCreateStateTests(CreateBase):
+    def marker(self, target, row):
+        return os.path.join(self.store_dir(target), row["backup"])
+
+    def assert_blocked(self, target, row, state, error):
+        self.assertEqual(state, self.store.undo_state(target, row))
+        with self.assertRaises(error) as ctx:
+            self.store.restore(target, row["id"])
+        self.assertEqual(NEW, read(self.project_file))
+        self.assertEqual([row], self.store.rows(target))
+        self.assertEqual(1, len(self.ledger_rows(target)))
+        return ctx.exception
+
+    def test_a_good_marker_row_can_be_undone(self):
+        target, row = self.made()
+        self.assertIsNone(self.store.undo_state(target, row))
+
+    def test_a_missing_marker_is_pruned(self):
+        target, row = self.made()
+        os.unlink(self.marker(target, row))
+        exc = self.assert_blocked(target, row, "backup_pruned", es.NotUndoable)
+        self.assertEqual("backup_pruned", exc.reason)
+
+    def test_a_marker_with_bytes_is_damaged(self):
+        target, row = self.made()
+        write(self.marker(target, row), b"x")
+        exc = self.assert_blocked(target, row, "backup_damaged", es.BackupDamaged)
+        self.assertIsNone(exc.backup_path)
+
+    def test_a_marker_replaced_by_a_link_is_damaged(self):
+        target, row = self.made()
+        outside = write(os.path.join(self.root, "empty"), b"")
+        os.unlink(self.marker(target, row))
+        os.symlink(outside, self.marker(target, row))
+        self.assert_blocked(target, row, "backup_damaged", es.BackupDamaged)
+
+    def test_a_marker_replaced_by_a_folder_is_damaged(self):
+        target, row = self.made()
+        os.unlink(self.marker(target, row))
+        os.mkdir(self.marker(target, row))
+        self.assert_blocked(target, row, "backup_damaged", es.BackupDamaged)
+
+    def test_an_absent_name_with_a_real_before_hash_is_damaged(self):
+        target = self.target("project")
+        row = self.store.save(target, effort_plan("high"))
+        name = "000009-" + HEX16 + ".absent"
+        write(os.path.join(self.store_dir(target), name), b"")
+        self.rewrite_ledger(target, lambda rows: rows[0].update(backup=name))
+        row = self.store.rows(target)[0]
+        edited = read(self.project_file)
+        self.assertEqual("backup_damaged", self.store.undo_state(target, row))
+        with self.assertRaises(es.BackupDamaged) as ctx:
+            self.store.restore(target, row["id"])
+        self.assertIsNone(ctx.exception.backup_path)
+        self.assertEqual(edited, read(self.project_file))
+
+    def test_a_real_name_with_an_absent_before_hash_is_damaged(self):
+        target, row = self.made()
+        name = "000009-" + HEX16 + ".bak"
+        write(os.path.join(self.store_dir(target), name), b"")
+        self.rewrite_ledger(target, lambda rows: rows[0].update(backup=name))
+        row = self.store.rows(target)[0]
+        self.assertEqual("backup_damaged", self.store.undo_state(target, row))
+        with self.assertRaises(es.BackupDamaged):
+            self.store.restore(target, row["id"])
+        self.assertEqual(NEW, read(self.project_file))
+
+    def test_a_half_pair_reads_damaged_even_with_no_store_folder(self):
+        target, row = self.made()
+        half = dict(row, backup="000009-" + HEX16 + ".bak")
+        whole = dict(row)
+        helpers.rmtree_force(os.path.join(self.cfg, "routing-dashboard"))
+        self.assertEqual("backup_damaged", self.store.undo_state(target, half))
+        self.assertEqual("backup_pruned", self.store.undo_state(target, whole))
+        self.assertFalse(os.path.exists(os.path.join(self.cfg, "routing-dashboard")))
+
+    def test_a_file_edited_by_hand_is_changed_since_save_and_is_not_deleted(self):
+        target, row = self.made()
+        theirs = b'{"effortLevel": "max"}\n'
+        write(self.project_file, theirs)
+        self.assertEqual("changed_since_save", self.store.undo_state(target, row))
+        with self.assertRaises(es.ChangedSinceSave) as ctx:
+            self.store.restore(target, row["id"])
+        self.assertIsNone(ctx.exception.backup_path)
+        self.assertEqual(theirs, read(self.project_file))
+        self.assertTrue(os.path.isdir(self.claude))
+        self.assertEqual(1, len(self.ledger_rows(target)))
+
+    def test_a_file_deleted_by_hand_trims_the_row(self):
+        target, row = self.made()
+        os.unlink(self.project_file)
+        self.assertEqual([], self.store.rows(target))
+        self.assertIsNone(self.store.find(target, row["id"]))
+        with self.assertRaises(es.UnknownEdit):
+            self.store.restore(target, row["id"])
+        self.assertTrue(os.path.isdir(self.claude))
+
+
+class CreateStaleTests(CreateBase):
+    def clean(self, target):
+        self.assertEqual([], self.markers(target))
+        self.assertEqual([], self.ledger_rows(target))
+        self.assertEqual([], self.store.rows(target))
+
+    def test_claude_swapped_for_another_folder_between_mkdir_and_rename_is_stale(self):
+        self.bare()
+        target = self.target("project")
+        held = os.path.join(self.root, "held")
+
+        def swap():
+            os.rename(self.claude, held)
+            os.makedirs(self.claude)
+        self.at("before_recheck", swap)
+        with self.assertRaises(es.Stale) as ctx:
+            self.create(target)
+        self.assertEqual("file", ctx.exception.changed)
+        self.assertEqual([], os.listdir(self.claude))
+        self.assertEqual([], os.listdir(held))
+        # the folder this save made sits under another name, so it could not be taken away
+        self.assertTrue(ctx.exception.dir_left)
+        self.clean(target)
+
+    def test_claude_removed_between_mkdir_and_rename_is_stale(self):
+        self.bare()
+        target = self.target("project")
+
+        def remove():
+            for name in os.listdir(self.claude):
+                os.unlink(os.path.join(self.claude, name))
+            os.rmdir(self.claude)
+        self.at("before_recheck", remove)
+        with self.assertRaises(es.Stale) as ctx:
+            self.create(target)
+        self.assertEqual("file", ctx.exception.changed)
+        self.assertFalse(os.path.exists(self.claude))
+        self.clean(target)
+
+    def test_a_file_that_appears_before_the_recheck_is_stale_and_survives(self):
+        self.bare()
+        target = self.target("project")
+        theirs = b'{"effortLevel": "max"}\n'
+        self.at("before_recheck", lambda: write(self.project_file, theirs))
+        with self.assertRaises(es.Stale) as ctx:
+            self.create(target)
+        self.assertEqual("file_appeared", ctx.exception.changed)
+        self.assertEqual(theirs, read(self.project_file))
+        self.assertEqual(["settings.json"], os.listdir(self.claude))
+        self.assertTrue(ctx.exception.dir_left)
+        self.clean(target)
+
+    def test_a_file_that_appears_in_an_existing_claude_is_stale_without_dir_left(self):
+        self.no_file()
+        target = self.target("project")
+        theirs = b'{"effortLevel": "max"}\n'
+        self.at("before_recheck", lambda: write(self.project_file, theirs))
+        with self.assertRaises(es.Stale) as ctx:
+            self.create(target)
+        self.assertEqual("file_appeared", ctx.exception.changed)
+        self.assertFalse(ctx.exception.dir_left)
+        self.assertEqual(theirs, read(self.project_file))
+        self.assertEqual([], self.leftovers())
+        self.clean(target)
+
+    def test_a_claude_made_by_someone_else_after_the_read_is_stale(self):
+        self.bare()
+        target = self.target("project")
+        real = es.os.mkdir
+
+        def racing(name, mode=0o777, dir_fd=None):
+            real(name, mode, dir_fd=dir_fd)  # their folder lands first
+            return real(name, mode, dir_fd=dir_fd)  # ours then finds it there
+        with mock.patch.object(es.os, "mkdir", side_effect=racing):
+            with self.assertRaises(es.Stale) as ctx:
+                self.create(target)
+        self.assertEqual("file_appeared", ctx.exception.changed)
+        self.assertTrue(os.path.isdir(self.claude))
+        self.assertFalse(ctx.exception.dir_left)
+        self.clean(target)
+
+    def test_a_replace_whose_file_vanishes_before_the_recheck_is_stale_file_removed(self):
+        target = self.target("project")
+        self.at("before_recheck", lambda: os.unlink(self.project_file))
+        with self.assertRaises(es.Stale) as ctx:
+            self.store.save(target, effort_plan("high"))
+        self.assertEqual("file_removed", ctx.exception.changed)
+        self.assertEqual([], self.leftovers())
+        self.assertEqual([], self.store.rows(target))
+
+    def test_a_delete_whose_file_changes_before_the_recheck_is_stale_and_keeps_their_bytes(self):
+        target, row = self.made()
+        theirs = b'{"effortLevel": "max"}\n'
+        self.at("before_recheck", lambda: write(self.project_file, theirs))
+        with self.assertRaises(es.Stale) as ctx:
+            self.store.restore(target, row["id"])
+        self.assertEqual("file", ctx.exception.changed)
+        self.assertEqual(theirs, read(self.project_file))
+        self.assertEqual([row["id"]], [r["id"] for r in self.ledger_rows(target)])
+        self.assertEqual([], self.baks(target))
+
+    def test_a_delete_whose_file_vanishes_before_the_recheck_is_file_removed(self):
+        target, row = self.made()
+        self.at("before_recheck", lambda: os.unlink(self.project_file))
+        with self.assertRaises(es.Stale) as ctx:
+            self.store.restore(target, row["id"])
+        self.assertEqual("file_removed", ctx.exception.changed)
+
+
+class CreateFailureTests(CreateBase):
+    def test_a_failure_after_the_mkdir_or_the_temp_takes_the_made_folder_away(self):
+        for seam_name in ("after_mkdir", "after_temp", "before_recheck", "before_rename"):
+            self.store = es.Store(self.cfg)
+            helpers.rmtree_force(os.path.join(self.cfg, "routing-dashboard"))
+            helpers.rmtree_force(self.claude)
+            target = self.target("project")
+            self.at(seam_name, fail)
+            with self.assertRaises(es.WriteFailed) as ctx:
+                self.create(target)
+            self.assertFalse(ctx.exception.dir_left, seam_name)
+            self.assertFalse(os.path.exists(self.claude), seam_name)
+            self.assertEqual([], self.markers(target), seam_name)
+            self.assertEqual([], self.ledger_rows(target), seam_name)
+            self.assertEqual([], self.store.rows(target), seam_name)
+
+    def test_a_file_dropped_in_the_made_folder_keeps_it_and_says_so(self):
+        for seam_name in ("after_mkdir", "after_temp"):
+            self.store = es.Store(self.cfg)
+            helpers.rmtree_force(os.path.join(self.cfg, "routing-dashboard"))
+            helpers.rmtree_force(self.claude)
+            target = self.target("project")
+
+            def drop():
+                write(os.path.join(self.claude, "keep.txt"), b"theirs")
+                fail()
+            self.at(seam_name, drop)
+            with self.assertRaises(es.WriteFailed) as ctx:
+                self.create(target)
+            self.assertTrue(ctx.exception.dir_left, seam_name)
+            self.assertEqual(["keep.txt"], os.listdir(self.claude), seam_name)
+            self.assertEqual([], self.markers(target), seam_name)
+            self.assertEqual([], self.ledger_rows(target), seam_name)
+
+    def test_a_folder_made_but_never_opened_is_still_taken_away_when_empty(self):
+        self.bare()
+        target = self.target("project")
+        real_open, real_mkdir = os.open, os.mkdir
+        made = []
+
+        def mkdir(*args, **kwargs):
+            real_mkdir(*args, **kwargs)
+            if args[0] != ".claude":
+                return
+            made.append(args[0])
+
+        def opener(path, flags, *args, **kwargs):
+            if made and path == made[0] and flags == es._SUBDIR_FLAGS:
+                raise OSError(5, "simulated")
+            return real_open(path, flags, *args, **kwargs)
+        with mock.patch.object(os, "mkdir", side_effect=mkdir), mock.patch.object(os, "open", side_effect=opener):
+            with self.assertRaises(es.WriteFailed) as ctx:
+                self.create(target)
+        self.assertEqual([".claude"], made)
+        self.assertFalse(ctx.exception.dir_left)
+        self.assertFalse(os.path.exists(self.claude))
+        self.assertEqual([], self.markers(target))
+        self.assertEqual([], self.ledger_rows(target))
+
+    def test_a_folder_made_but_never_opened_and_not_empty_is_reported_left(self):
+        self.bare()
+        target = self.target("project")
+        real_open, real_mkdir = os.open, os.mkdir
+        made = []
+
+        def mkdir(*args, **kwargs):
+            real_mkdir(*args, **kwargs)
+            if args[0] != ".claude":
+                return
+            made.append(args[0])
+            write(os.path.join(self.claude, "keep.txt"), b"theirs")
+
+        def opener(path, flags, *args, **kwargs):
+            if made and path == made[0] and flags == es._SUBDIR_FLAGS:
+                raise OSError(5, "simulated")
+            return real_open(path, flags, *args, **kwargs)
+        with mock.patch.object(os, "mkdir", side_effect=mkdir), mock.patch.object(os, "open", side_effect=opener):
+            with self.assertRaises(es.WriteFailed) as ctx:
+                self.create(target)
+        self.assertTrue(ctx.exception.dir_left)
+        self.assertEqual(["keep.txt"], os.listdir(self.claude))
+
+    def test_an_os_error_is_wrapped_and_carries_dir_left(self):
+        self.bare()
+        target = self.target("project")
+
+        def drop():
+            write(os.path.join(self.claude, "keep.txt"), b"theirs")
+            raise OSError(5, "simulated")
+        self.at("after_temp", drop)
+        with self.assertRaises(es.WriteFailed) as ctx:
+            self.create(target)
+        self.assertTrue(ctx.exception.dir_left)
+
+    def test_a_failure_in_an_existing_claude_leaves_the_folder_and_no_dir_left(self):
+        self.no_file()
+        target = self.target("project")
+        self.at("after_temp", fail)
+        with self.assertRaises(es.WriteFailed) as ctx:
+            self.create(target)
+        self.assertFalse(ctx.exception.dir_left)
+        self.assertTrue(os.path.isdir(self.claude))
+        self.assertEqual([], self.leftovers())
+        self.assertEqual([], self.markers(target))
+
+    def test_a_failed_marker_read_back_rolls_the_create_back(self):
+        self.bare()
+        target = self.target("project")
+        real = es._read_file
+
+        def wrong(name, dir_fd, cap):
+            data = real(name, dir_fd, cap)
+            return b"x" if name.endswith(".absent") else data
+        with mock.patch.object(es, "_read_file", side_effect=wrong):
+            with self.assertRaises(es.WriteFailed):
+                self.create(target)
+        self.assertEqual([], self.markers(target))
+        self.assertFalse(os.path.exists(self.claude))
+
+    def test_a_failure_before_the_unlink_keeps_the_file_and_rolls_back(self):
+        target, row = self.made()
+        self.at("before_unlink", fail)
+        with self.assertRaises(es.WriteFailed):
+            self.store.restore(target, row["id"])
+        self.assertEqual(NEW, read(self.project_file))
+        self.assertEqual([row["id"]], [r["id"] for r in self.ledger_rows(target)])
+        self.assertEqual([], self.baks(target))
+
+
+class VerifyDeleteTests(CreateBase):
+    def test_a_file_that_comes_back_after_the_unlink_is_raced(self):
+        target, row = self.made()
+        theirs = b'{"effortLevel": "max"}\n'
+        self.at("reread", lambda: write(self.project_file, theirs))
+        with self.assertRaises(es.Raced) as ctx:
+            self.store.restore(target, row["id"])
+        self.assertFalse(ctx.exception.matches_backup)
+        self.assertIsNone(ctx.exception.restored_from_path)
+        self.assertEqual(theirs, read(self.project_file))
+        self.assertTrue(os.path.isdir(self.claude))
+
+    def test_a_refused_reread_is_unverified(self):
+        target, row = self.made()
+        outside = write(os.path.join(self.root, "outside.json"), SETTINGS)
+        self.at("reread", lambda: os.symlink(outside, self.project_file))
+        with self.assertRaises(es.Unverified) as ctx:
+            self.store.restore(target, row["id"])
+        self.assertEqual("reread", ctx.exception.stage)
+        self.assertTrue(os.path.isdir(self.claude))
+
+    def test_a_failed_directory_fsync_is_unverified(self):
+        target, row = self.made()
+        self.at("dir_fsync", lambda: (_ for _ in ()).throw(OSError(5, "simulated")))
+        with self.assertRaises(es.Unverified) as ctx:
+            self.store.restore(target, row["id"])
+        self.assertEqual("fsync", ctx.exception.stage)
+        self.assertFalse(os.path.exists(self.project_file))
+        self.assertTrue(os.path.isdir(self.claude))
+
+    def test_a_create_whose_reread_finds_other_bytes_is_raced(self):
+        self.no_file()
+        target = self.target("project")
+        theirs = b'{"effortLevel": "max"}\n'
+
+        def swap():
+            write(self.project_file + ".new", theirs)
+            os.rename(self.project_file + ".new", self.project_file)
+        self.at("reread", swap)
+        with self.assertRaises(es.Raced) as ctx:
+            self.create(target)
+        self.assertIsNone(ctx.exception.backup_path)
+        self.assertIsNone(ctx.exception.matches_backup)
+
+    def test_a_create_syncs_the_base_folder_too(self):
+        self.bare()
+        synced = []
+        real = es._fullfsync
+
+        def spy(fd):
+            synced.append(os.fstat(fd).st_ino)
+            return real(fd)
+        with mock.patch.object(es, "_fullfsync", side_effect=spy):
+            self.create()
+        self.assertIn(os.stat(self.proj).st_ino, synced)
+        self.assertIn(os.stat(self.claude).st_ino, synced)
+
+
+class RowShapeTests(CreateBase):
+    def test_an_edit_records_replace_by_default_and_the_plans_op(self):
+        target = self.target("project")
+        row = self.store.save(target, effort_plan("high"))
+        self.assertEqual("replace", row["op"])
+        self.assertNotIn("made_dir", row)
+
+        def plan(raw):
+            return es.Plan(raw.replace(b"low", b"mid"), ["effortLevel"], "low", "mid", "insert")
+        write(self.project_file, SETTINGS)
+        second = self.store.save(target, plan)
+        self.assertEqual("insert", second["op"])
+
+    def test_an_old_row_with_no_op_reads_as_replace(self):
+        target = self.target("project")
+        row = self.store.save(target, effort_plan("high"))
+        self.rewrite_ledger(target, lambda rows: rows[0].pop("op"))
+        result = self.store.restore(target, row["id"])
+        self.assertEqual("replace", result.row["op"])
+        self.assertFalse(result.removed_file)
+        self.assertFalse(result.removed_dir)
+        self.assertEqual(SETTINGS, read(self.project_file))
+
+    def test_a_null_value_leaves_its_key_out(self):
+        target = self.target("project")
+        row = self.store.save(target, lambda raw: es.Plan(raw + b" ", ["effortLevel"], None, None))
+        self.assertNotIn("old_value", row)
+        self.assertNotIn("new_value", row)
+        self.assertEqual(row, self.store.rows(target)[0])
+        row2 = self.store.save(target, lambda raw: es.Plan(raw + b" ", ["effortLevel"], "a", None))
+        self.assertEqual("a", row2["old_value"])
+        self.assertNotIn("new_value", row2)
+
+    def test_a_secret_value_is_still_masked(self):
+        target = self.target("project")
+        row = self.store.save(target, lambda raw: es.Plan(raw + b" ", ["env"], "sk-planted-a", "x"))
+        self.assertEqual("hidden", row["old_value"])
+
+    def test_the_ledger_stays_version_one(self):
+        self.no_file()
+        self.create()
+        doc = json.loads(read(os.path.join(self.store_dir(), "ledger.json")))
+        self.assertEqual(1, doc["version"])
+
+
+class CreateDescriptorTests(CreateBase):
+    def test_no_descriptor_leaks_over_a_create_and_an_undo(self):
+        self.bare()
+        target = self.target("project")
+        row = self.create(target)
+        self.store.restore(target, row["id"])
+        before = fd_count()
+        for _ in range(5):
+            row = self.create(target)
+            self.store.restore(target, row["id"])
+            self.store.rows(target)
+        self.assertEqual(before, fd_count())
+
+    def test_no_descriptor_leaks_over_failed_creates(self):
+        self.bare()
+        target = self.target("project")
+        before = fd_count()
+        for seam_name in ("after_mkdir", "after_temp", "before_recheck"):
+            self.at(seam_name, fail)
+            with self.assertRaises(es.WriteFailed):
+                self.create(target)
+        self.store.seam = None
+        with self.assertRaises(es.Refused):
+            self.store.save(target, create_plan)
+        self.assertEqual(before, fd_count())
+
+    def test_no_descriptor_leaks_over_a_stale_create_and_a_blocked_undo(self):
+        self.bare()
+        target = self.target("project")
+        before = fd_count()
+        self.at("before_recheck", lambda: write(self.project_file, b"{}\n"))
+        with self.assertRaises(es.Stale):
+            self.create(target)
+        self.store.seam = None
+        self.assertEqual(before, fd_count())
 
 
 if __name__ == "__main__":

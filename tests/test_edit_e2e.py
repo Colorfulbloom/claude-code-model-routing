@@ -48,6 +48,8 @@ RADIO = RUN + " input[name=p2-level]"
 ROWS = PAGE + " .s6-rows"
 PROJECT_ROW = ROWS + " input[name=p2-row][value=project]"
 PICKED_ROWS = ROWS + " label.s6-r.is-pick"
+PICKED_LOCAL = PICKED_ROWS + " input[name=p2-row][value=local]"
+PICKED_PROJECT = PICKED_ROWS + " input[name=p2-row][value=project]"
 RAIL = PAGE + " aside.s4-rail"
 RAIL_HEAD = RAIL + " .s4-rh"
 RAIL_NOTE = RAIL + " .s4-note"
@@ -59,6 +61,7 @@ UNDO = FOOT + " button[data-edit-focus='btn:undo']"
 STRIP_LINE = FOOT + " .s4-ok"
 STRIP_PATH = FOOT + " .s4-hint .pa"
 PICK_FILE_LINE = "Pick a file to see the exact change."
+NEW_FILE_TAG = RAIL + " .p2-df-h .p2-tag"
 
 # Pure page scripts. Each is an expression with no side effect unless its name says it clicks.
 HAS_RADIO = "Boolean(document.querySelector(%s))" % json.dumps(RADIO)
@@ -73,6 +76,7 @@ PICK_NOTE = "[...document.querySelectorAll(%s)].some((el) => el.textContent.trim
             % (json.dumps(RAIL_NOTE), json.dumps(PICK_FILE_LINE))
 IS_ON = "(() => { const el = document.querySelector(%s); return Boolean(el) && !el.disabled; })()"
 READ_TEXT = "(() => { const el = document.querySelector(%s); return el ? el.textContent.trim() : null; })()"
+DIFF_DEL = DIFF + " li.p2-del"
 DIFF_LINES = "(() => { const read = (sel) => [...document.querySelectorAll(%s + ' ' + sel)]" \
              ".map((el) => el.textContent.replace(/\\s+/g, ' ').trim()); " \
              "return { del: read('li.p2-del'), add: read('li.p2-add') }; })()" % json.dumps(DIFF)
@@ -102,6 +106,10 @@ class World:
     def settings_bytes(self):
         with open(self.settings_path, "rb") as fh:
             return fh.read()
+
+    def local_exists(self):
+        """True when the project's local settings file is there. The fixture starts without one."""
+        return os.path.exists(os.path.join(os.path.dirname(self.settings_path), "settings.local.json"))
 
     def real_path(self, display):
         """The file a displayed path names. The fixture shows paths relative to its folder."""
@@ -202,12 +210,14 @@ class EditApi(unittest.TestCase):
         self.assertEqual(levels[START_LEVEL]["result"], "now")
         level = OTHER_LEVELS[0]
         self.assertEqual(levels[level]["result"], "reachable", levels[level])
-        # The line is in the shared project file, so the level has a project row and preselects nothing.
-        self.assertIsNone(levels[level]["preselect"], levels[level])
+        # The line is in the shared project file. The local file doesn't exist, so the level preselects
+        # creating it, never the shared row.
         rows = {row["layer"]: row for row in levels[level]["files"]}
+        self.assertEqual(levels[level]["preselect"], rows["local"]["target"], levels[level])
+        self.assertEqual(rows["local"]["op"], "create", rows)
         self.assertIs(rows["project"]["pickable"], True, rows)
         self.assertEqual(rows["project"]["target"], target["target"])
-        self.assertEqual([layer for layer, row in rows.items() if row["pickable"]], ["project"], rows)
+        self.assertEqual([layer for layer, row in rows.items() if row["pickable"]], ["local", "project"], rows)
 
         body = {"project": project, "target": target["target"], "value": level}
         preview = self.post("/api/edit/preview", body)
@@ -302,21 +312,28 @@ class _ChromeBase(unittest.TestCase):
             self.page.wait_for("document.documentElement.getAttribute('data-theme') === %s" % json.dumps(theme))
 
     def pick(self, level):
-        """Choose a level. The rail then holds the review heading and, with no file picked, the Pick a file line."""
+        """Choose a level. The local file does not exist, so the page preselects creating it (never the shared file).
+
+        The rail then holds the review heading and the diff of the new file, the local row is the picked one, and
+        Save is on. The Pick a file line belongs to a level with no preselect, so it never shows here."""
         self.page.wait_for(js(CLICK_LEVEL, level))
-        self.page.wait_for(js("Boolean(document.querySelector(%s))", RAIL_HEAD))
-        self.page.wait_for(PICK_NOTE)
+        self.page.wait_for(js("Boolean(document.querySelector(%s)) && Boolean(document.querySelector(%s)) "
+                              "&& Boolean(document.querySelector(%s)) && Boolean(document.querySelector(%s))",
+                              RAIL_HEAD, DIFF, PICKED_LOCAL, NEW_FILE_TAG))
+        self.page.wait_for(js(IS_ON, SAVE))
+        self.page.wait_for("!(" + PICK_NOTE + ")")
 
     def pick_project_row(self):
-        """Press the project row. The preview then draws the exact change in the rail and Save turns on.
+        """Press the project row, which moves the pick off the local create. The preview then draws the exact
+        change in the rail and Save turns on.
 
-        The project file is shared, so the review keeps a rail note of its own (the shared-file line). Only the
-        Pick a file line goes, so the wait is on that line, with the diff, the After list and the picked row as
-        the positive signs that the review drew."""
+        The project file is shared, so the review keeps a rail note of its own (the shared-file line). The waits are
+        on positive signs that the project review drew: the project row is the picked one, the diff holds a deleted
+        line (the create had none) and no New file tag, and the After list is there."""
         self.click(PROJECT_ROW)
         self.page.wait_for(js("Boolean(document.querySelector(%s)) && Boolean(document.querySelector(%s)) "
-                              "&& Boolean(document.querySelector(%s))", DIFF, RAIL_AFTER, PICKED_ROWS))
-        self.page.wait_for("!(" + PICK_NOTE + ")")
+                              "&& Boolean(document.querySelector(%s)) && !document.querySelector(%s)",
+                              PICKED_PROJECT, DIFF_DEL, RAIL_AFTER, NEW_FILE_TAG))
         self.page.wait_for(js(IS_ON, SAVE))
 
 
@@ -342,26 +359,33 @@ class EditPath(_ChromeBase):
         self.assertEqual(self.text_of(RUN + " .s4-lab"), "Run at")
         self.assertEqual(self.page.eval("document.querySelectorAll(%s).length" % json.dumps(PICKED_ROWS)), 0)
 
-        # Pick a level. The line is in the shared project file, so no row is picked and Save is off.
+        # Pick a level. The line is in the shared project file and the local file does not exist, so the page
+        # preselects creating the local file. It never picks the shared file on its own, and a preview writes nothing.
         level = OTHER_LEVELS[0]
         self.pick(level)
-        self.assertEqual(self.text_of(RAIL_NOTE), PICK_FILE_LINE)
+        self.assertFalse(self.page.eval(PICK_NOTE), "the Pick a file line shows with a local preselect")
         self.assertEqual(self.text_of(RAIL + " .s4-chg .s4-to"), level)
         self.assertEqual(self.text_of(RAIL + " .s4-chg .s4-was"), START_LEVEL)
         self.assertGreater(self.page.eval(ROW_COUNT), 0)
-        self.assertEqual(self.page.eval("document.querySelectorAll(%s).length" % json.dumps(PICKED_ROWS)), 0)
-        self.assertTrue(self.page.eval("Boolean(document.querySelector(%s)) && document.querySelector(%s).disabled"
-                                       % (json.dumps(SAVE), json.dumps(SAVE))), "Save is on before a file is picked")
+        self.assertEqual(self.page.eval("document.querySelectorAll(%s).length" % json.dumps(PICKED_ROWS)), 1)
+        self.assertEqual(self.page.eval("document.querySelectorAll(%s).length" % json.dumps(PICKED_PROJECT)), 0,
+                         "the shared project row is picked on its own")
+        self.assertEqual(self.page.eval("document.querySelectorAll(%s).length" % json.dumps(DIFF_DEL)), 0,
+                         "a new file deletes no line")
         self.assertEqual(w.settings_bytes(), before, "picking a level wrote the file")
+        self.assertFalse(w.local_exists(), "picking a level created the local file")
 
         # Press the project row: the rail shows what wins after the change and the diff, with the old and the new value.
         self.pick_project_row()
         self.assertEqual(self.page.eval("document.querySelectorAll(%s).length" % json.dumps(PICKED_ROWS)), 1)
+        self.assertEqual(self.page.eval("document.querySelectorAll(%s).length" % json.dumps(PICKED_LOCAL)), 0,
+                         "the pick stayed on the local create")
         self.assertTrue(self.page.eval("Boolean(document.querySelector(%s))" % json.dumps(RAIL_AFTER)))
         lines = self.page.eval(DIFF_LINES)
         self.assertTrue(any('"%s"' % START_LEVEL in line for line in lines["del"]), lines)
         self.assertTrue(any('"%s"' % level in line for line in lines["add"]), lines)
         self.assertEqual(w.settings_bytes(), before, "a preview wrote the file")
+        self.assertFalse(w.local_exists(), "a preview created the local file")
 
         # Save: the foot names the backup, and the file holds the new level.
         self.click(SAVE)
@@ -369,6 +393,7 @@ class EditPath(_ChromeBase):
                               "&& Boolean(document.querySelector(%s))", STRIP_LINE, STRIP_PATH, UNDO))
         backup_display = self.text_of(STRIP_PATH)
         self.assertEqual(json.loads(w.settings_bytes()), {"effortLevel": level})
+        self.assertFalse(w.local_exists(), "the save went to the local file")
         with open(w.real_path(backup_display), "rb") as fh:
             self.assertEqual(fh.read(), before, "the backup holds the bytes from before the save")
 
@@ -385,6 +410,7 @@ class EditPath(_ChromeBase):
             restored_bytes = fh.read()
         self.assertEqual(w.settings_bytes(), restored_bytes)
         self.assertEqual(w.settings_bytes(), before)
+        self.assertFalse(w.local_exists(), "the local file is there after the undo")
 
 
 @unittest.skipUnless(os.environ.get("MR_E2E") == "1", "set MR_E2E=1 to run the headless Chrome checks")
@@ -413,9 +439,9 @@ class EditLook(_ChromeBase):
                 self.open_settings(width, theme)
                 failures += self.audit(tag + " rest")
                 self.pick(OTHER_LEVELS[0])
-                failures += self.audit(tag + " pick a file")
+                failures += self.audit(tag + " local create preview")
                 self.pick_project_row()
-                failures += self.audit(tag + " preview")
+                failures += self.audit(tag + " project preview")
                 self.click(SAVE)
                 self.page.wait_for(js("Boolean(document.querySelector(%s))", UNDO))
                 failures += self.audit(tag + " saved")

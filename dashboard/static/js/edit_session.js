@@ -8,6 +8,8 @@
 //
 // Modes: null (no answer from the server yet, or it never answered), "off" (edits are not enabled),
 // "locked" (enabled, but this tab holds no valid token) and "ready" (a token that matches this launch).
+//
+// A write is a set (a value for a line, the default) or a remove (action "remove", the line goes and there is no value).
 
 const TOKEN_KEY = "mr_edit_token";
 const LAUNCH_KEY = "mr_edit_launch";
@@ -164,13 +166,15 @@ export function createEditSession({ api, storage, getHash, replaceHash, onChange
     take,
     refresh,
     mode: () => mode,
-    preview: (project, target, value) =>
-      send(api.editPreview, { project, target, value }, false),
-    save: (project, preview, target, value) => {
+    // action "remove" sends the line to take out and no value. Any other action is a set, and sends what it always sent.
+    preview: (project, target, value, action) =>
+      send(api.editPreview, action === "remove" ? { project, target, action } : { project, target, value }, false),
+    save: (project, preview, target, value, action) => {
       const base = preview && typeof preview === "object" ? preview : {};
-      return send(api.editSave, {
-        project, target, value, base_file: base.base_file, base_trail: base.base_trail, base_others: base.base_others,
-      }, true);
+      const hashes = { base_file: base.base_file, base_trail: base.base_trail, base_others: base.base_others };
+      return send(api.editSave, action === "remove"
+        ? { project, target, action, ...hashes }
+        : { project, target, value, ...hashes }, true);
     },
     undo: (project, editId) => send(api.editUndo, { project, edit: editId }, true),
   };

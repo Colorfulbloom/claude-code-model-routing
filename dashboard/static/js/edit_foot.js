@@ -31,9 +31,28 @@ const pathLine = (key, path) => (path ? draw(t(key, { path: mark("path") }), { p
 
 // ---------------------------------------------------------------- the strip
 
-export function lastStrip(row, env) {
+// The line of a history row. One literal t() call for each kind, so the string checks can see every key. A row leaves
+// out the value it never had (a create has no old one, a remove no new one), and only the value a line prints is read.
+function lastLine(row) {
   const file = basename(row.file_display);
-  const line = t("ed_last_t", { when: fmtTime(row.time), old: text(row.old_value), new: text(row.new_value), file });
+  const when = fmtTime(row.time);
+  if (row.kind === "undo" && row.op && row.op !== "replace") return t("ed_last_undone_t", { when, file });
+  // A replace row with no old value (effortLevel was null) has no "from" to print, and its undo has no "to".
+  const has = (v) => v !== undefined && v !== null && v !== "";
+  if (row.kind === "undo" && (!has(row.old_value) || !has(row.new_value))) return t("ed_last_undone_t", { when, file });
+  if (row.kind !== "undo" && (!row.op || row.op === "replace") && !has(row.old_value)) {
+    return t("ed_last_added_t", { when, file, new: text(row.new_value) });
+  }
+  switch (row.kind === "undo" ? "replace" : row.op) {
+    case "insert": return t("ed_last_added_t", { when, file, new: text(row.new_value) });
+    case "create": return t("ed_last_created_t", { when, file, new: text(row.new_value) });
+    case "remove": return t("ed_last_removed_t", { when, file, old: text(row.old_value) });
+    default: return t("ed_last_t", { when, file, old: text(row.old_value), new: text(row.new_value) });
+  }
+}
+
+export function lastStrip(row, env) {
+  const line = lastLine(row);
   if (row.kind === "undo") {
     return strip("quiet", [line, row.restored_from_display ? " " : null,
       row.restored_from_display ? draw(t("ed_undone_path", { path: mark("path") }), { path: row.restored_from_display }) : null]);
@@ -43,14 +62,16 @@ export function lastStrip(row, env) {
     row.backup_display ? draw(t("ed_saved_backup", { path: mark("path") }), { path: row.backup_display }) : null], buttons);
 }
 
-export function staleUndoLine(file, path) {
+// A file the save created has no backup to point at, so the line ends at "delete the file by hand".
+export function staleUndoLine(file, path, op = null) {
+  if (op === "create") return [t("ed_undo_stale_h", { file }), " ", t("ed_undo_stale_created_t")];
   return [t("ed_undo_stale_h", { file }), path ? " " : null, path ? draw(t("ed_undo_stale_t", { path: mark("path") }), { path }) : null];
 }
 
 export function restStrip(row, env) {
   const reason = row.not_undoable_reason;
   if (row.kind !== "undo" && row.undoable !== true) {
-    if (reason === "changed_since_save") return strip("warn", staleUndoLine(basename(row.file_display), row.backup_display), [], "status");
+    if (reason === "changed_since_save") return strip("warn", staleUndoLine(basename(row.file_display), row.backup_display, row.op), [], "status");
     if (reason === "backup_damaged") {
       const line = row.backup_display ? draw(t("ed_backup_damaged_rest", { path: mark("path") }), { path: row.backup_display }) : t("ed_backup_damaged_h");
       return strip("warn", line);
@@ -66,8 +87,21 @@ export function undoButton(row, env) {
   });
 }
 
-// One literal t() call per line, so the string checks can see every key. The warning is the saved preview's.
-export function savedLine(warning, slots) {
+const has = (value) => value !== null && value !== undefined;
+
+// A remove tells what a new session runs now. runsAfter comes from the preview the save was made from.
+function removedLine(f, file) {
+  if (f.noEffect === true) return t("ed_saved_removed_no_effect_t", { file });
+  if (!has(f.runsAfter)) return t("ed_saved_removed_unknown_t", { file });
+  return t("ed_saved_removed_t", { file, level: text(f.runsAfter) });
+}
+
+// One literal t() call per line, so the string checks can see every key. f is the saved result: the edit, the saved
+// preview's warning, and for a remove whether it changed nothing and what runs after.
+export function savedLine(f, slots) {
+  const warning = f.warning;
+  if (f.edit && f.edit.op === "remove") return removedLine(f, slots.file);
+  if (!warning && f.edit && f.edit.op === "create") return t("ed_saved_created_t", slots);
   if (!warning) return t("ed_saved_t", slots);
   if (warning.status === "unknown") return t("ed_saved_unknown_t", slots);
   if (warning.in_effect_changes === true) return t("ed_saved_part_t", slots);
@@ -80,31 +114,40 @@ export function stripResult(f, env) {
   switch (f.kind) {
     case "saved": {
       const file = basename(f.edit.file_display);
-      return strip("ok", savedLine(f.warning, { file, level: text(f.edit.new_value) }),
+      return strip("ok", savedLine(f, { file, level: text(f.edit.new_value) }),
         f.edit.undoable === true ? [undoButton(f.edit, env)] : [], "status", pathLine("ed_saved_backup", f.edit.backup_display));
     }
     case "undone": {
       const file = basename(f.edit.file_display);
-      return strip("ok", t("ed_undone_t", { file }), [dismiss(true)], "status", pathLine("ed_undone_path", f.restored));
+      const line = f.removedDir ? t("ed_undone_removed_both_t", { file })
+        : f.removedFile ? t("ed_undone_removed_file_t", { file }) : t("ed_undone_t", { file });
+      return strip("ok", line, [dismiss(true)], "status", pathLine("ed_undone_path", f.restored));
     }
     case "stale_undo":
-      return strip("warn", staleUndoLine(f.file, f.path), [dismiss(true)], "status");
+      return strip("warn", staleUndoLine(f.file, f.path, f.op), [dismiss(true)], "status");
     case "backup_damaged":
       return nt("err", t("ed_backup_damaged_h"), [f.path ? draw(t("ed_backup_damaged_t", { path: mark("path") }), { path: f.path }) : null], [dismiss()]);
     case "not_undoable":
       return nt("err", t("ed_not_undoable"), [], [dismiss()]);
     case "write_failed":
-      return nt("err", t("ed_fail_h"), [t("ed_fail_t", { file: f.file })], [dismiss()]);
+      return nt("err", t("ed_undo_fail_h"), [t("ed_undo_fail_t", { file: f.file })], [dismiss()]);
     case "config_dir_missing":
-      return nt("err", t("ed_fail_h"), [draw(t("ed_fail_config_dir_t", { config_dir: mark("config_dir") }), { config_dir: f.path })], [dismiss()]);
+      return nt("err", t("ed_undo_fail_h"), [draw(t("ed_undo_fail_config_dir_t", { config_dir: mark("config_dir") }), { config_dir: f.path })], [dismiss()]);
     case "unverified": {
       const fsync = f.stage === "fsync";
       const slots = { path: mark("path") };
+      const heading = fsync ? t("ed_unverified_fsync_h") : t("ed_unverified_reread_h");
+      // An undone create has no backup, so the line says to check the file and names no path.
+      if (!fsync && f.op === "create") return nt("err", heading, [t("ed_unverified_create_t")], [dismiss()]);
       const body = fsync ? t("ed_unverified_fsync_t", slots) : t("ed_unverified_reread_t", slots);
-      return nt("err", fsync ? t("ed_unverified_fsync_h") : t("ed_unverified_reread_h"), [f.path ? draw(body, { path: f.path }) : null], [dismiss()]);
+      return nt("err", heading, [f.path ? draw(body, { path: f.path }) : null], [dismiss()]);
     }
-    case "raced":
-      return nt("warn", t("ed_raced_h", { file: f.file }), [f.path ? draw(t("ed_raced_undo_t", { path: mark("path") }), { path: f.path }) : null], [dismiss()]);
+    case "raced": {
+      // Undoing a create leaves no backup, so the line says to check the file and names no path.
+      const body = f.op === "create" ? t("ed_raced_create_t")
+        : f.path ? draw(t("ed_raced_undo_t", { path: mark("path") }), { path: f.path }) : null;
+      return nt("warn", t("ed_raced_h", { file: f.file }), [body], [dismiss()]);
+    }
     case "ledger":
       return nt("err", t("ed_ledger_h", { file: f.file }), [f.path ? draw(t("ed_ledger_t", { path: mark("path") }), { path: f.path }) : null], [dismiss()]);
     default:

@@ -17,6 +17,7 @@ import collections
 import filecmp
 import json
 import os
+import shutil
 import urllib.parse
 import unittest
 
@@ -545,27 +546,28 @@ class TreeHash(RunCase):
         self.assertFalse(os.path.exists(run.store_folder()))
 
     def test_a_save_and_an_undo_change_only_the_target_and_the_backup_store(self):
+        # The local line wins, so it is the row that takes a pick.
         run = Run(self, project=SIMPLE, local=b'{"effortLevel": "medium"}\n')
         before = run.snap()
-        status, saved = run.save("project", "low")
+        status, saved = run.save("local", "low")
         self.assertEqual(status, 200, saved)
         mid = run.snap()
-        self.assertIn(run.path("project"), run.changed(before, mid))
+        self.assertIn(run.path("local"), run.changed(before, mid))
         self.assertTrue(os.path.isdir(run.store_folder()))
-        run.assert_only(self, before, ["project"])
+        run.assert_only(self, before, ["local"])
         status, undone = run.undo(saved["edit"]["id"])
         self.assertEqual(status, 200, undone)
-        run.assert_only(self, before, ["project"])
+        run.assert_only(self, before, ["local"])
         # The other settings files, the managed folder and the whole server copy, install.py included.
         after = run.snap()
-        for path in (run.path("user"), run.path("local"), os.path.join(run.tree, "install.py"),
+        for path in (run.path("user"), run.path("project"), os.path.join(run.tree, "install.py"),
                      os.path.join(run.tree, "dashboard", "server.py")):
             self.assertEqual(after[path], before[path], path)
         self.assertEqual([p for p in after if p.startswith(run.managed + os.sep)],
                          [p for p in before if p.startswith(run.managed + os.sep)])
 
     def test_a_user_layer_save_changes_only_the_user_file_and_the_store(self):
-        run = Run(self, user=b'{"model": "claude-sonnet-5-5", "effortLevel": "high"}\n')
+        run = Run(self, user=b'{"effortLevel": "high"}\n')  # with no model the line takes a pick
         listing = run.targets()
         layers = [t["layer"] for t in listing["targets"]]
         self.assertIn("user", layers)
@@ -735,6 +737,28 @@ CASES = {
 }
 
 
+# Each layout twice: with an effortLevel line (for a remove) and without it (for an insert).
+ACTION_CASES = {
+    "CRLF": (b'{\r\n  "effortLevel": "high",\r\n  "env": {\r\n    "A": "1"\r\n  }\r\n}\r\n',
+             b'{\r\n  "env": {\r\n    "A": "1"\r\n  }\r\n}\r\n'),
+    "tabs": (b'{\n\t"effortLevel": "high",\n\t"env": {\n\t\t"A": "1"\n\t}\n}\n',
+             b'{\n\t"env": {\n\t\t"A": "1"\n\t}\n}\n'),
+    "no trailing newline": (b'{\n  "env": {"A": "1"},\n  "effortLevel": "high"\n}',
+                            b'{\n  "env": {"A": "1"}\n}'),
+    "minified": (b'{"env":{"A":"1"},"effortLevel":"high","list":[1,2,3]}',
+                 b'{"env":{"A":"1"},"list":[1,2,3]}'),
+    "repeated keys elsewhere": (b'{\n  "env": {"A": "1", "A": "2"},\n  "effortLevel": "high",\n'
+                                b'  "note": "x", "note": "y"\n}\n',
+                                b'{\n  "env": {"A": "1", "A": "2"},\n  "note": "x", "note": "y"\n}\n'),
+    "unicode escapes": (b'{\n  "note": "caf\\u00e9 \\ud83d\\ude00 \\u2028 \\"q\\" \\\\",\n'
+                        b'  "effortLevel": "high",\n  "name\\u00e9": "x"\n}\n',
+                        b'{\n  "note": "caf\\u00e9 \\ud83d\\ude00 \\u2028 \\"q\\" \\\\",\n'
+                        b'  "name\\u00e9": "x"\n}\n'),
+    "raw utf-8": ('{\n  "note": "caf\u00e9 \U0001f600",\n  "effortLevel": "high"\n}\n'.encode("utf-8"),
+                  '{\n  "note": "caf\u00e9 \U0001f600"\n}\n'.encode("utf-8")),
+}
+
+
 def expected_after_save(raw, value):
     """The bytes with only the last effortLevel value swapped. Every other byte stays."""
     start = raw.index(b'"', raw.index(b":", raw.rindex(b'"effortLevel"')))
@@ -759,6 +783,60 @@ class ByteIdentity(RunCase):
                 self.assertEqual(status, 200, (label, undone))
                 self.assertEqual(run.read("project"), original, label)
                 self.assertTrue(filecmp.cmp(run.path("project"), backup, shallow=False), label)
+                self.assertIs(undone["matches_backup"], True, label)
+                run.assert_only(self, before, ["project"])
+
+    def copy_of(self, run, layer):
+        copy = os.path.join(run.root, "copy-of-" + layer)
+        shutil.copyfile(run.path(layer), copy)
+        return copy
+
+    def test_remove_then_undo_gives_back_the_original_bytes_on_every_layout(self):
+        for label, (with_line, _without) in sorted(ACTION_CASES.items()):
+            with self.subTest(label):
+                run = Run(self, project=with_line)
+                copy = self.copy_of(run, "project")
+                before = run.snap()
+                key, target = run.target("project")
+                body = {"project": key, "target": target, "action": "remove"}
+                status, pv = run.post("/api/edit/preview", body)
+                self.assertEqual((status, pv.get("op"), pv.get("new_value")), (200, "remove", None), (label, pv))
+                self.assertTrue(filecmp.cmp(run.path("project"), copy, shallow=False), label)
+                status, saved = run.post("/api/edit/save", dict(
+                    body, base_file=pv["base_file"], base_trail=pv["base_trail"], base_others=pv["base_others"]))
+                self.assertEqual(status, 200, (label, saved))
+                self.assertEqual(saved["edit"]["op"], "remove", label)
+                after = run.read("project")
+                self.assertNotIn(b"effortLevel", after, label)
+                self.assertEqual(json.loads(after.decode("utf-8")),
+                                 {k: v for k, v in json.loads(with_line.decode("utf-8")).items()
+                                  if k != "effortLevel"}, label)
+                status, undone = run.undo(saved["edit"]["id"])
+                self.assertEqual(status, 200, (label, undone))
+                self.assertEqual(undone["edit"]["op"], "remove", label)
+                self.assertTrue(filecmp.cmp(run.path("project"), copy, shallow=False), label)
+                self.assertIs(undone["matches_backup"], True, label)
+                run.assert_only(self, before, ["project"])
+
+    def test_insert_then_undo_gives_back_the_original_bytes_on_every_layout(self):
+        for label, (_with, without) in sorted(ACTION_CASES.items()):
+            with self.subTest(label):
+                run = Run(self, project=without)
+                copy = self.copy_of(run, "project")
+                before = run.snap()
+                listing = run.targets()
+                adds = [a for a in listing["adds"] if a["layer"] == "project" and a["ref"].endswith('"effortLevel"]')]
+                self.assertEqual(len(adds), 1, label)
+                body = {"project": listing["project"], "target": adds[0]["target"], "value": "low"}
+                status, pv = run.post("/api/edit/preview", body)
+                self.assertEqual((status, pv.get("op")), (200, "insert"), (label, pv))
+                status, saved = run.post("/api/edit/save", dict(
+                    body, base_file=pv["base_file"], base_trail=pv["base_trail"], base_others=pv["base_others"]))
+                self.assertEqual(status, 200, (label, saved))
+                self.assertEqual(json.loads(run.read("project").decode("utf-8"))["effortLevel"], "low", label)
+                status, undone = run.undo(saved["edit"]["id"])
+                self.assertEqual(status, 200, (label, undone))
+                self.assertTrue(filecmp.cmp(run.path("project"), copy, shallow=False), label)
                 self.assertIs(undone["matches_backup"], True, label)
                 run.assert_only(self, before, ["project"])
 

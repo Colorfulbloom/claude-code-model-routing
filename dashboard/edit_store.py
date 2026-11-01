@@ -2,8 +2,8 @@
 
 A target is one of three settings files, derived from a project key and a layer
 (user, project or local). No path ever arrives from a client. Every open,
-write, rename, unlink and mkdir on a target or on the backup store goes through
-a directory descriptor, so nothing can be swapped between a check and a use.
+write, rename, unlink, mkdir and rmdir on a target or on the backup store goes
+through a directory descriptor, so nothing can be swapped between a check and a use.
 A symlink, a hard link, a FIFO, a file that is not ours, a file over 1 MiB and
 anything at or under the managed settings folder is refused with a named code.
 
@@ -19,6 +19,16 @@ these steps under a thread lock and an flock on .lock:
 
 Whether a row can be undone is worked out from hashes when it is read, never
 stored. Reads never write. A restore is a save whose bytes are a checked backup.
+
+A save may also create a file that is not there, when the caller asks for it
+(allow_absent). The base folder (the project or the config folder) must exist,
+because a create never makes one. A missing .claude folder is made, 0700, and the
+file is 0600. The backup of a file that was not there is an empty marker,
+NNNNNN-<edit id>.absent, and the row's before hash is the word "absent". An undo
+of that create is a delete: the store backs up the file's bytes, unlinks the file
+by descriptor, and removes .claude only when this save made it and it is empty.
+Nothing here ever empties a folder, so a stray file in .claude keeps it. A folder
+that stays after a failed save is reported with dir_left on the error.
 
 Standard library only, Python 3.9.
 """
@@ -54,7 +64,11 @@ LEDGER_FILE = "ledger.json"
 LOCK_FILE = ".lock"
 MANAGED_FILE = "managed-settings.json"
 MAX_LEDGER = 4 * MAX_FILE
-_BACKUP_RE = re.compile(r"^(\d{6})-[0-9a-f]{16}\.bak$")
+ABSENT = "absent"  # a row's hash for a file that is not there; never 64 hex characters
+# Numbering and prune see both kinds of name. Reading a backup sees real ones only.
+_BACKUP_RE = re.compile(r"^(\d{6})-[0-9a-f]{16}\.(?:bak|absent)$")
+_REAL_BACKUP_RE = re.compile(r"^\d{6}-[0-9a-f]{16}\.bak$")
+_MARKER_RE = re.compile(r"^\d{6}-[0-9a-f]{16}\.absent$")
 _TEMP_RE = re.compile(r"^\.routing-dashboard-[0-9a-f]{16}\.tmp$")
 
 _DIR_FLAGS = os.O_RDONLY | os.O_DIRECTORY
@@ -66,7 +80,8 @@ _NEW_FLAGS = os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW
 # Errors
 
 class StoreError(Exception):
-    pass
+    # True when a save made the .claude folder and could not take it away again
+    dir_left = False
 
 
 class Refused(StoreError):
@@ -148,11 +163,19 @@ class UnknownEdit(StoreError):
     pass
 
 
-Plan = collections.namedtuple("Plan", "new_raw key_path old_value new_value")
-Restored = collections.namedtuple("Restored", "row matches_backup restored_from_path backup_path")
-Snapshot = collections.namedtuple("Snapshot", "dir_fd raw mode dev ino")
+# op is replace, insert, create or remove. The store only records it.
+Plan = collections.namedtuple("Plan", "new_raw key_path old_value new_value op", defaults=("replace",))
+Restored = collections.namedtuple(
+    "Restored", "row matches_backup restored_from_path backup_path removed_file removed_dir",
+    defaults=(False, False))
+# missing_dir: .claude is not there, dir_fd is the base folder. parent_fd: the folder above dir_fd.
+Snapshot = collections.namedtuple(
+    "Snapshot", "dir_fd raw mode dev ino missing_dir parent_fd", defaults=(False, None))
+# new_raw None means delete the file. remove_dir asks for .claude to go too, when empty.
 _Job = collections.namedtuple(
-    "_Job", "new_raw kind key_path layer old_value new_value restored_from restored_from_backup source")
+    "_Job", "new_raw kind key_path layer old_value new_value restored_from restored_from_backup source "
+    "op remove_dir", defaults=("replace", False))
+_Committed = collections.namedtuple("_Committed", "row matches removed_dir")
 
 
 # Targets
@@ -257,18 +280,51 @@ def _read_capped(fd, cap):
     return b"".join(chunks)
 
 
+def _open_or_none(name, flags, dir_fd):
+    """Open name under dir_fd. None only when it is not there; any other failure is a refusal."""
+    try:
+        return os.open(name, flags, dir_fd=dir_fd)
+    except FileNotFoundError:
+        return None
+    except OSError as exc:
+        raise _refusal(exc, name, dir_fd) from None
+
+
 @contextlib.contextmanager
-def _walk(target):
-    """Open the target by descriptors and yield a Snapshot. Closes every descriptor."""
+def _walk(target, absent_ok=False):
+    """Open the target by descriptors and yield a Snapshot. Closes every descriptor.
+
+    With absent_ok a missing .claude folder or a missing file is a normal answer
+    (raw None) instead of file_missing. The base folder stays strict, and so does
+    every other error: a dangling link is still a symlink.
+    """
     _check_managed(target)
     fds = []
     try:
         dir_fd = _open_step(target.base, _DIR_FLAGS, None)
         fds.append(dir_fd)
-        for part in target.rel:
-            dir_fd = _open_step(part, _SUBDIR_FLAGS, dir_fd)
-            fds.append(dir_fd)
-        leaf = _open_step(target.name, _LEAF_FLAGS, dir_fd)
+        parent_fd = None
+        for index, part in enumerate(target.rel):
+            if absent_ok:
+                child = _open_or_none(part, _SUBDIR_FLAGS, dir_fd)
+                if child is None:
+                    if index != len(target.rel) - 1:
+                        raise Refused("file_missing")
+                    folder = os.fstat(dir_fd)
+                    yield Snapshot(dir_fd, None, None, folder.st_dev, folder.st_ino, True, None)
+                    return
+            else:
+                child = _open_step(part, _SUBDIR_FLAGS, dir_fd)
+            fds.append(child)
+            parent_fd, dir_fd = dir_fd, child
+        if absent_ok:
+            leaf = _open_or_none(target.name, _LEAF_FLAGS, dir_fd)
+            if leaf is None:
+                folder = os.fstat(dir_fd)
+                yield Snapshot(dir_fd, None, None, folder.st_dev, folder.st_ino, False, parent_fd)
+                return
+        else:
+            leaf = _open_step(target.name, _LEAF_FLAGS, dir_fd)
         fds.append(leaf)
         info = os.fstat(leaf)
         if not stat.S_ISREG(info.st_mode):
@@ -283,7 +339,8 @@ def _walk(target):
         if len(raw) > MAX_FILE:
             raise Refused("too_large")
         folder = os.fstat(dir_fd)
-        yield Snapshot(dir_fd, raw, stat.S_IMODE(info.st_mode), folder.st_dev, folder.st_ino)
+        yield Snapshot(dir_fd, raw, stat.S_IMODE(info.st_mode), folder.st_dev, folder.st_ino,
+                       False, parent_fd)
     finally:
         for fd in fds:
             try:
@@ -296,6 +353,18 @@ def read_target(target):
     """Return the target file's bytes through the walk, or raise Refused."""
     with _walk(target) as snap:
         return snap.raw
+
+
+def read_or_none(target):
+    """Return the target file's bytes, or None when the file or its .claude folder is not there."""
+    with _walk(target, absent_ok=True) as snap:
+        return snap.raw
+
+
+def folder_missing(target):
+    """True when the target's .claude folder is not there. Raises Refused as the walk does."""
+    with _walk(target, absent_ok=True) as snap:
+        return snap.missing_dir
 
 
 # Small file helpers, all relative to a directory descriptor
@@ -363,7 +432,29 @@ def _backup_number(name):
 
 
 def _valid_backup(name):
-    return isinstance(name, str) and _BACKUP_RE.match(name) is not None
+    """A real backup name. A marker is not one: nothing may read it as bytes."""
+    return isinstance(name, str) and _REAL_BACKUP_RE.match(name) is not None
+
+
+def _valid_marker(name):
+    return isinstance(name, str) and _MARKER_RE.match(name) is not None
+
+
+def _remove_dir(name, parent_fd, expected_id):
+    """Remove the empty folder name under parent_fd if it is still the one at expected_id.
+
+    Never empties a folder. Returns True only when the folder was removed.
+    """
+    if parent_fd is None or expected_id is None:
+        return False
+    try:
+        info = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+        if not stat.S_ISDIR(info.st_mode) or (info.st_dev, info.st_ino) != tuple(expected_id):
+            return False
+        os.rmdir(name, dir_fd=parent_fd)
+    except OSError:
+        return False
+    return True
 
 
 def _trim(rows, current_hash):
@@ -381,11 +472,12 @@ def _trim(rows, current_hash):
 
 
 def _file_hash(target):
-    """Hash of the target file, or None when it cannot be read."""
+    """Hash of the target file, ABSENT when it is not there, None when it cannot be read."""
     try:
-        return _sha(read_target(target))
+        raw = read_or_none(target)
     except (Refused, OSError):
         return None
+    return ABSENT if raw is None else _sha(raw)
 
 
 # The store
@@ -444,36 +536,37 @@ class Store:
         if current is None or current != row.get("after_sha256"):
             return "changed_since_save"
         name = row.get("backup")
-        if not _valid_backup(name):
-            return "backup_pruned"
+        # a half pair ends in a delete, so it reads damaged even with no store folder
+        if (row.get("before_sha256") == ABSENT) != _valid_marker(name):
+            return "backup_damaged"
         store_fd = self._open_store(target, create=False)
         if store_fd is None:
             return "backup_pruned"
         try:
-            try:
-                data = _read_file(name, store_fd, MAX_FILE)
-            except FileNotFoundError:
-                return "backup_pruned"
-            except OSError:
-                return "backup_damaged"
+            return self._backup_state(row, store_fd)[0]
         finally:
             os.close(store_fd)
-        if _sha(data) != row.get("before_sha256"):
-            return "backup_damaged"
-        return None
 
     # Public writes
 
-    def save(self, target, plan_fn):
-        """Apply plan_fn(raw) -> Plan to the target. Returns the new ledger row."""
+    def save(self, target, plan_fn, allow_absent=False):
+        """Apply plan_fn(raw) -> Plan to the target. Returns the new ledger row.
+
+        With allow_absent a file that is not there is created: plan_fn gets None.
+        """
         def produce(raw, rows, current, store_fd):
             plan = plan_fn(raw)
+            if plan.new_raw is None:
+                raise ValueError("a plan needs the new bytes")  # only an undo deletes a file
             return _Job(plan.new_raw, "edit", list(plan.key_path), target.layer,
-                        plan.old_value, plan.new_value, None, None, None)
-        return self._commit(target, produce)[0]
+                        plan.old_value, plan.new_value, None, None, None, op=plan.op)
+        return self._commit(target, produce, allow_absent)[0]
 
     def restore(self, target, edit_id, check=None):
-        """Put a row's backup back as an undo row. Returns Restored."""
+        """Put a row's backup back as an undo row. Returns Restored.
+
+        The undo of a create deletes the file, and the folder too when that save made it.
+        """
         def produce(raw, rows, current, store_fd):
             row = None
             for item in rows:
@@ -487,21 +580,55 @@ class Store:
             name = row.get("backup")
             if current != row.get("after_sha256"):
                 raise ChangedSinceSave(self.backup_path(target, name))
-            if not _valid_backup(name):
+            reason, data = self._backup_state(row, store_fd)
+            if reason == "backup_pruned":
                 raise NotUndoable("backup_pruned")
-            try:
-                data = _read_file(name, store_fd, MAX_FILE)
-            except FileNotFoundError:
-                raise NotUndoable("backup_pruned") from None
-            except OSError:
-                raise BackupDamaged(self.backup_path(target, name)) from None
-            if _sha(data) != row.get("before_sha256"):
+            if reason == "backup_damaged":
                 raise BackupDamaged(self.backup_path(target, name))
+            op = row.get("op", "replace")
+            if _valid_marker(name):
+                return _Job(None, "undo", list(row.get("key_path") or []), row.get("layer"),
+                            row.get("new_value"), row.get("old_value"), row.get("id"), name, name,
+                            op=op, remove_dir=bool(row.get("made_dir")))
             return _Job(data, "undo", list(row.get("key_path") or []), row.get("layer"),
-                        row.get("new_value"), row.get("old_value"), row.get("id"), name, name)
-        row, matches = self._commit(target, produce)
-        return Restored(row, matches, self.backup_path(target, row.get("restored_from_backup")),
-                        self.backup_path(target, row.get("backup")))
+                        row.get("new_value"), row.get("old_value"), row.get("id"), name, name,
+                        op=op, remove_dir=False)
+        done = self._commit(target, produce, True)
+        row = done.row
+        return Restored(row, done.matches, self.backup_path(target, row.get("restored_from_backup")),
+                        self.backup_path(target, row.get("backup")),
+                        row.get("after_sha256") == ABSENT, done.removed_dir)
+
+    def _backup_state(self, row, store_fd):
+        """Check a row's backup. Returns (reason, data): reason None, "backup_pruned" or "backup_damaged".
+
+        A row that had no file pairs with an empty marker, and every other row with a real
+        backup whose bytes hash to the row's before hash. Any other pair is damaged, because
+        a marker ends in a delete.
+        """
+        name = row.get("backup")
+        marker = _valid_marker(name)
+        if (row.get("before_sha256") == ABSENT) != marker:
+            return "backup_damaged", None
+        if marker:
+            try:
+                data = _read_file(name, store_fd, 1)
+            except FileNotFoundError:
+                return "backup_pruned", None
+            except OSError:
+                return "backup_damaged", None
+            return ("backup_damaged", None) if data else (None, None)
+        if not _valid_backup(name):
+            return "backup_pruned", None
+        try:
+            data = _read_file(name, store_fd, MAX_FILE)
+        except FileNotFoundError:
+            return "backup_pruned", None
+        except OSError:
+            return "backup_damaged", None
+        if _sha(data) != row.get("before_sha256"):
+            return "backup_damaged", None
+        return None, data
 
     # Internals
 
@@ -647,33 +774,44 @@ class Store:
             raise WriteFailed("backup numbers are used up")
         return top + 1
 
-    def _make_row(self, job, edit_id, backup, before_raw):
+    def _make_row(self, job, edit_id, backup, before_raw, made_dir=False):
         name = job.key_path[-1] if job.key_path else None
-        return {
+        row = {
             "id": edit_id,
             "time": self._now(),
             "kind": job.kind,
+            "op": job.op,
             "key_path": list(job.key_path),
             "layer": job.layer,
-            "old_value": collect.mask(job.old_value, name),
-            "new_value": collect.mask(job.new_value, name),
-            "before_sha256": _sha(before_raw),
-            "after_sha256": _sha(job.new_raw),
+        }
+        # a null value is left out, so it never reaches the page
+        if job.old_value is not None:
+            row["old_value"] = collect.mask(job.old_value, name)
+        if job.new_value is not None:
+            row["new_value"] = collect.mask(job.new_value, name)
+        row.update({
+            "before_sha256": ABSENT if before_raw is None else _sha(before_raw),
+            "after_sha256": ABSENT if job.new_raw is None else _sha(job.new_raw),
             "backup": backup,
             "restored_from": job.restored_from,
             "restored_from_backup": job.restored_from_backup,
-        }
+        })
+        if made_dir:
+            row["made_dir"] = True
+        return row
 
-    def _commit(self, target, produce):
-        """The save order, shared by save and restore. Returns (row, matches_backup)."""
+    def _commit(self, target, produce, allow_absent=False):
+        """The save order, shared by save and restore. Returns _Committed(row, matches, removed_dir)."""
         try:
-            read_target(target)  # a refused target creates no store folder
+            # a refused target creates no store folder
+            with _walk(target, absent_ok=allow_absent):
+                pass
             with self._lock:
                 store_fd = self._open_store(target, create=True)
                 try:
                     lock_fd = self._acquire_flock(store_fd)
                     try:
-                        return self._commit_locked(target, produce, store_fd)
+                        return self._commit_locked(target, produce, store_fd, allow_absent)
                     finally:
                         os.close(lock_fd)
                 finally:
@@ -681,12 +819,12 @@ class Store:
         except OSError as exc:
             raise WriteFailed(str(exc)) from exc
 
-    def _commit_locked(self, target, produce, store_fd):
+    def _commit_locked(self, target, produce, store_fd, allow_absent):
         try:
-            with _walk(target) as s1:
+            with _walk(target, absent_ok=allow_absent) as s1:
                 self._seam("after_read")
                 raw = s1.raw
-                current = _sha(raw)
+                current = ABSENT if raw is None else _sha(raw)
                 try:
                     all_rows = self._read_ledger(store_fd)
                 except ValueError:
@@ -695,61 +833,145 @@ class Store:
                 job = produce(raw, rows, current, store_fd)
                 if job.new_raw == raw:
                     raise Refused("no_change")
+                if job.new_raw is not None and len(job.new_raw) > MAX_FILE:
+                    raise Refused("too_large")  # an insert can pass the cap that the read enforced
                 return self._apply(target, job, s1, store_fd, raw, all_rows, rows)
         except OSError as exc:
             raise WriteFailed(str(exc)) from exc
 
+    def _sweep_temps(self, folder_fd):
+        for name in os.listdir(folder_fd):
+            if _TEMP_RE.match(name):
+                _unlink(name, folder_fd)
+
     def _apply(self, target, job, s1, store_fd, raw, all_rows, rows):
-        """Steps 3 to 8. Cleans up and raises WriteFailed, Stale or Refused before the rename."""
+        """Steps 3 to 8. Cleans up and raises WriteFailed, Stale or Refused before the rename.
+
+        raw None is a create (a marker backup, and .claude made first when it is missing).
+        job.new_raw None is a delete (the undo of a create).
+        """
         edit_id = secrets.token_hex(8)
-        made = {"backup": None, "ledger": False, "temp": None}
+        made = {"backup": None, "ledger": False, "temp": None, "dir": None, "dir_id": None}
+        creating = raw is None
+        deleting = job.new_raw is None
+        leaf_fd = s1.dir_fd  # the folder that holds the file; the made .claude once it exists
+        new_fd = None
         try:
-            self._seam("before_backup")
-            backup = "%06d-%s.bak" % (self._next_number(store_fd, all_rows), edit_id)
-            made["backup"] = backup
-            _create_file(backup, raw, store_fd)
-            if _read_file(backup, store_fd, MAX_FILE) != raw:
-                raise WriteFailed("the backup does not match what was read")
-            self._seam("after_backup")
+            try:
+                self._seam("before_backup")
+                number = self._next_number(store_fd, all_rows)
+                if creating:
+                    backup = "%06d-%s.absent" % (number, edit_id)
+                    made["backup"] = backup
+                    _create_file(backup, b"", store_fd)
+                    if _read_file(backup, store_fd, 1) != b"":
+                        raise WriteFailed("the backup does not match what was read")
+                else:
+                    backup = "%06d-%s.bak" % (number, edit_id)
+                    made["backup"] = backup
+                    _create_file(backup, raw, store_fd)
+                    if _read_file(backup, store_fd, MAX_FILE) != raw:
+                        raise WriteFailed("the backup does not match what was read")
+                self._seam("after_backup")
 
-            row = self._make_row(job, edit_id, backup, raw)
-            made["ledger"] = True
-            self._write_ledger(store_fd, rows + [row])
-            self._seam("after_ledger")
+                row = self._make_row(job, edit_id, backup, raw, made_dir=s1.missing_dir)
+                made["ledger"] = True
+                self._write_ledger(store_fd, rows + [row])
+                self._seam("after_ledger")
 
-            for name in os.listdir(s1.dir_fd):
-                if _TEMP_RE.match(name):
-                    _unlink(name, s1.dir_fd)
-            temp = ".routing-dashboard-%s.tmp" % secrets.token_hex(8)
-            made["temp"] = temp
-            _create_file(temp, job.new_raw, s1.dir_fd, final_mode=s1.mode)
-            self._seam("after_temp")
+                mkdir_id = None
+                if s1.missing_dir:
+                    if len(target.rel) != 1:
+                        raise WriteFailed("only the .claude folder can be created")
+                    try:
+                        os.mkdir(target.rel[-1], 0o700, dir_fd=s1.dir_fd)
+                    except FileExistsError:
+                        raise Stale("file_appeared") from None
+                    made["dir"] = target.rel[-1]
+                    new_fd = os.open(target.rel[-1], _SUBDIR_FLAGS, dir_fd=s1.dir_fd)
+                    info = os.fstat(new_fd)
+                    mkdir_id = (info.st_dev, info.st_ino)
+                    made["dir_id"] = mkdir_id
+                    leaf_fd = new_fd
+                    self._seam("after_mkdir")
 
-            self._seam("before_recheck")
-            with _walk(target) as s6:
-                if (s6.dev, s6.ino) != (s1.dev, s1.ino) or s6.raw != raw:
-                    raise Stale("file")
-                self._seam("before_rename")
-                os.rename(temp, target.name, src_dir_fd=s1.dir_fd, dst_dir_fd=s6.dir_fd)
-            made["temp"] = None
-        except (StoreError, OSError) as exc:
-            self._cleanup(s1, store_fd, made, all_rows)
-            if isinstance(exc, StoreError):
-                raise
-            raise WriteFailed(str(exc)) from exc
-        self._seam("after_rename")
+                self._sweep_temps(leaf_fd)
+                temp = None
+                if not deleting:
+                    temp = ".routing-dashboard-%s.tmp" % secrets.token_hex(8)
+                    made["temp"] = temp
+                    _create_file(temp, job.new_raw, leaf_fd,
+                                 final_mode=0o600 if s1.mode is None else s1.mode)
+                    self._seam("after_temp")
 
-        matches = self._verify(target, job, s1, store_fd, row)
-        self._prune(store_fd, rows + [row])
-        return row, matches
+                self._seam("before_recheck")
+                with _walk(target, absent_ok=True) as s6:
+                    if s6.missing_dir:
+                        raise Stale("file" if creating else "file_removed")
+                    if (s6.dev, s6.ino) != (mkdir_id if mkdir_id is not None else (s1.dev, s1.ino)):
+                        raise Stale("file")
+                    if creating:
+                        if s6.raw is not None:
+                            raise Stale("file_appeared")
+                    elif s6.raw != raw:
+                        raise Stale("file_removed" if s6.raw is None else "file")
+                    if deleting:
+                        self._seam("before_unlink")
+                        os.unlink(target.name, dir_fd=s6.dir_fd)
+                    else:
+                        self._seam("before_rename")
+                        os.rename(temp, target.name, src_dir_fd=leaf_fd, dst_dir_fd=s6.dir_fd)
+                made["temp"] = None
+            except (StoreError, OSError) as exc:
+                dir_left = self._cleanup(s1, store_fd, made, all_rows, leaf_fd)
+                if isinstance(exc, StoreError):
+                    if dir_left:
+                        exc.dir_left = True
+                    raise
+                failed = WriteFailed(str(exc))
+                if dir_left:
+                    failed.dir_left = True
+                raise failed from exc
+            self._seam("after_unlink" if deleting else "after_rename")
 
-    def _cleanup(self, s1, store_fd, made, old_rows):
-        """Best effort: remove the temp file, roll the ledger back, remove the new backup."""
+            fsync_fds = [leaf_fd] + ([s1.dir_fd] if s1.missing_dir else [])
+            matches = self._verify(target, job, fsync_fds, store_fd, row)
+            removed_dir = False
+            if deleting and job.remove_dir and target.rel:
+                self._seam("before_rmdir")
+                removed_dir = _remove_dir(target.rel[-1], s1.parent_fd, (s1.dev, s1.ino))
+                self._seam("after_rmdir")
+                if removed_dir:
+                    try:
+                        _fullfsync(s1.parent_fd)
+                    except OSError:
+                        pass
+            self._prune(store_fd, rows + [row])
+            return _Committed(row, matches, removed_dir)
+        finally:
+            if new_fd is not None:
+                os.close(new_fd)
+
+    def _cleanup(self, s1, store_fd, made, old_rows, leaf_fd):
+        """Best effort: remove the temp file, the folder this save made if it is empty, roll the
+        ledger back, remove the new backup or marker. Returns True when a made folder stays."""
         if made["temp"] is not None:
             try:
-                os.unlink(made["temp"], dir_fd=s1.dir_fd)
+                os.unlink(made["temp"], dir_fd=leaf_fd)
             except OSError:
                 pass
+        dir_left = False
+        if made["dir"] is not None:
+            if made["dir_id"] is not None:
+                dir_left = not _remove_dir(made["dir"], s1.dir_fd, made["dir_id"])
+            else:
+                # The folder was made but never opened, so its identity is unknown. rmdir only takes an empty one.
+                try:
+                    os.rmdir(made["dir"], dir_fd=s1.dir_fd)
+                except FileNotFoundError:
+                    pass  # already gone, so nothing stays
+                except OSError:
+                    dir_left = True
         if made["ledger"]:
             try:
                 self._write_ledger(store_fd, old_rows)
@@ -760,23 +982,35 @@ class Store:
                 os.unlink(made["backup"], dir_fd=store_fd)
             except OSError:
                 pass
+        return dir_left
 
-    def _verify(self, target, job, s1, store_fd, row):
-        """Step 7. Returns matches_backup (None for a save). Raises Raced or Unverified."""
+    def _verify(self, target, job, folder_fds, store_fd, row):
+        """Step 7. Returns matches_backup (None for a save). Raises Raced or Unverified.
+
+        folder_fds are the folders to fsync: the file's folder, and the base when this save made .claude.
+        """
         backup_path = self.backup_path(target, row["backup"])
         source_path = self.backup_path(target, job.source) if job.source else None
+        deleting = job.new_raw is None
         fsync_error = None
         try:
             self._seam("dir_fsync")
-            _fullfsync(s1.dir_fd)
+            for fd in folder_fds:
+                _fullfsync(fd)
         except OSError as exc:
             fsync_error = exc
         try:
             self._seam("reread")
-            with _walk(target) as s7:
+            with _walk(target, absent_ok=deleting) as s7:
                 got = s7.raw
         except (OSError, Refused):
             raise Unverified("reread", row, backup_path) from None
+        if deleting:
+            if got is not None:
+                raise Raced(row, backup_path, False, None)
+            if fsync_error is not None:
+                raise Unverified("fsync", row, backup_path)
+            return True  # the file is gone, as the marker says it was before
         restoring = job.source is not None
         if got != job.new_raw:
             raise Raced(row, backup_path, False if restoring else None, source_path)
@@ -819,6 +1053,10 @@ class Store:
                 if not _BACKUP_RE.match(name) or name in named:
                     continue
                 if name in dropped:
+                    _unlink(name, store_fd)
+                    continue
+                # A marker holds no bytes, so no age or floor protects an orphan one.
+                if name.endswith(".absent"):
                     _unlink(name, store_fd)
                     continue
                 # A backup no row names is a crash orphan only if it is as new as the

@@ -298,6 +298,48 @@ test("outcomes: the bodies carry the project, target, value and the preview's ba
   assert.ok(box.posts.every((p) => p.token === TOKEN));
 });
 
+test("remove: the bodies carry the action and no value key, and the preview's base values on the save", async () => {
+  const { session, box } = await ready();
+  await session.preview("p1", "tgt", null, "remove");
+  await session.save("p1", { base_file: "F", base_trail: "T", base_others: "O", extra: 1 }, "tgt", null, "remove");
+  assert.deepEqual(box.posts.map((p) => p.body), [
+    { project: "p1", target: "tgt", action: "remove" },
+    { project: "p1", target: "tgt", action: "remove", base_file: "F", base_trail: "T", base_others: "O" },
+  ]);
+  assert.ok(box.posts.every((p) => !("value" in p.body) && p.token === TOKEN), "no value key, and the token travels in the header");
+  // A set sends what it always sent, whether the action is left out or named.
+  const set = await ready();
+  await set.session.preview("p1", "tgt", "high");
+  await set.session.preview("p1", "tgt", "high", "set");
+  await set.session.save("p1", { base_file: "F", base_trail: "T", base_others: "O" }, "tgt", "high", "set");
+  assert.deepEqual(set.box.posts.map((p) => JSON.stringify(p.body)), [
+    '{"project":"p1","target":"tgt","value":"high"}',
+    '{"project":"p1","target":"tgt","value":"high"}',
+    '{"project":"p1","target":"tgt","value":"high","base_file":"F","base_trail":"T","base_others":"O"}',
+  ]);
+});
+
+test("remove: a save goes through the write path, onWrite included, and a preview drops nothing", async () => {
+  for (const [label, fn, kind] of [["ok", undefined, "ok"],
+    ["raced", () => ({ ok: false, status: 409, data: { error: "raced", edit: "e" } }), "raced"],
+    ["unverified", () => ({ ok: false, status: 500, data: { error: "unverified", stage: "x", file_unchanged: false } }), "unverified"]]) {
+    const { session, box } = await ready(fn ? { post: { save: fn } } : {});
+    const out = await session.save("p", {}, "t", null, "remove");
+    assert.equal(out.kind, kind, label);
+    assert.equal(box.writes, 1, label);
+    assert.deepEqual(box.order.slice(-3), ["post save", "write start", "write end"], label + ": onWrite finished before the return");
+  }
+  const stale = await ready({ post: { save: () => ({ ok: false, status: 409, data: { error: "stale", changed: "file_removed", changed_files: [], preview: null } }) } });
+  assert.equal((await stale.session.save("p", {}, "t", null, "remove")).kind, "stale");
+  assert.equal(stale.box.writes, 0, "stale writes nothing");
+  const prev = await ready({ post: { preview: () => ({ ok: true, status: 200, data: { op: "remove" } }) } });
+  assert.equal((await prev.session.preview("p", "t", null, "remove")).kind, "ok");
+  assert.equal(prev.box.writes, 0, "a preview never drops data");
+  const locked = await ready({ post: { preview: () => ({ ok: false, status: 401, data: { error: "bad_token" } }) } });
+  assert.equal((await locked.session.preview("p", "t", null, "remove")).kind, "locked");
+  assert.equal(locked.session.mode(), "locked");
+});
+
 // ---------------------------------------------------------------- unit: postJSON and the api
 
 function fakeFetch(answer) {
@@ -725,6 +767,25 @@ test("app: after an undo the data is dropped the same way", async () => {
   assert.equal(app.count("/api/settings", "p1"), before.s1 + 1);
   assert.equal(app.count("/api/usage", "p1"), before.u1 + 1);
   assert.equal(app.count("/api/edit/targets", "p1"), before.t + 1);
+});
+
+test("app: a remove goes through ctx.edit with no value key, a save drops the data and a preview drops nothing", async () => {
+  const p = await writeScenario(() => [200, { ok: true, base_file: "F" }]);
+  const pv = await p.ctx.edit.preview("tgt", null, "remove");
+  assert.equal(pv.kind, "ok");
+  assert.deepEqual(p.app.posts[0].body, { project: "p1", target: "tgt", action: "remove" });
+  assert.equal(p.app.count("/api/settings", "p1"), p.before.s1);
+  assert.equal(p.app.count("/api/edit/targets", "p1"), p.before.t);
+  const { app, ctx, before } = await writeScenario();
+  const out = await ctx.edit.save({ base_file: "F", base_trail: "T", base_others: "O" }, "tgt", null, "remove");
+  assert.equal(out.kind, "ok");
+  assert.equal(app.posts[0].path, "/api/edit/save");
+  assert.deepEqual(app.posts[0].body, { project: "p1", target: "tgt", action: "remove", base_file: "F", base_trail: "T", base_others: "O" });
+  assert.equal("value" in app.posts[0].body, false);
+  assert.equal(app.count("/api/settings", "p1"), before.s1 + 1);
+  assert.equal(app.count("/api/usage", "p1"), before.u1 + 1);
+  assert.equal(app.count("/api/edit/targets", "p1"), before.t + 1);
+  assert.equal(app.count("/api/edit/history", "p1"), before.h + 1);
 });
 
 test("app: raced and unverified drop the data like a save", async () => {

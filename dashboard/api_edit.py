@@ -1,9 +1,12 @@
-"""The edit routes: what each effort level would do, a preview, a save, an undo and the history.
+"""The edit routes: what each effort level would do, a preview and a save (set a level or remove a line), an undo and the history.
 
 A read route is a function (ctx, query) -> (status, payload), like the routes in
 api_settings. A write route is (ctx, body), where body is the parsed JSON
 object the server's gate already checked. ctx.edit is an EditState when the
 server started with --allow-edits, else None.
+
+A preview or save body holds the opaque target and an action, "set" (the default, with a value)
+or "remove" (no value, a line target only). No path or key name ever comes from a request.
 
 Nothing here writes. Every write goes through edit_store.Store. The answers come
 from the real resolver run over overlays (api_settings.resolved), never from a
@@ -35,9 +38,8 @@ RANKS = rules_schema.EFFORT_LEVELS  # low to max, for comparing levels and caps
 REPLACED_RULE = "max-effort-level-replaced-in-file"
 LAYER_REASONS = {"managed": "managed", "flag": "flag", "cli": "cli", "default": "default"}
 LAYER_ORDER = {"local": 0, "project": 1, "user": 2}  # the order other targets are tried in
-# The lock reason a file row carries when the file holds no line to change. One entry per state, so
-# a later ticket that makes the state editable deletes its entry here and nothing else.
-ROW_LOCKS = {"no_line": "add_later", "absent": "create_later"}
+# What a preview hashes as base_file when the settings file is not there (a create).
+NO_FILE = b"\0no-file"
 EFFECT_RANK = ("applies", "lowered", "unknown", "wont_apply")  # best first
 _SEQ_RE = re.compile(r"^(\d{6})-")
 
@@ -182,22 +184,43 @@ def _runs_as(view, entries):
 # ---------------------------------------------------------------- one reading of a project
 
 class _Target:
-    """One value on the main effort trail that can be edited."""
+    """One value that can be edited: a line on the main effort trail, or an add (entry None).
 
-    __slots__ = ("id", "ref", "layer", "key_path", "store_target", "raw", "entry")
+    An add is a key the file doesn't hold yet (op insert), one that holds null (op replace), or a
+    whole file that isn't there (op create, raw None).
+    Its ref is built from the display path of its file, so it matches the trail entry the
+    resolver shows once the line is there.
+    """
 
-    def __init__(self, layer, key_path, store_target, raw, entry):
+    __slots__ = ("id", "ref", "layer", "key_path", "store_target", "raw", "entry", "op", "file_display")
+
+    def __init__(self, layer, key_path, store_target, raw, entry, op="replace", file_display=None):
         self.id = _target_id(layer, key_path)
-        self.ref = ref_of(entry)
         self.layer = layer
         self.key_path = tuple(key_path)
         self.store_target = store_target
         self.raw = raw
         self.entry = entry
+        self.op = op
+        if entry is not None:
+            self.file_display = entry.get("file")
+            self.ref = ref_of(entry)
+        else:
+            self.file_display = file_display
+            self.ref = ref_of({"key": SETTING, "layer": layer, "file": file_display,
+                               "path": None if len(self.key_path) == 1 else ".".join(self.key_path)})
 
     @property
     def path(self):
         return self.store_target.path
+
+    @property
+    def line(self):
+        return None if self.entry is None else self.entry.get("line")
+
+    @property
+    def old_value(self):
+        return None if self.entry is None else self.entry.get("value")
 
 
 class _View:
@@ -218,14 +241,17 @@ class _View:
         self.levels_state = "model_unknown"
         self.runs_as = None
         self.targets = []
+        self.adds = []
+        self.files = []
+        self.refused = {}  # (target id, level) -> the json_edit code of a simulation it refused
         self.blocked = []
         self.blocked_refs = {}
         self.blocked_ids = {}
         self.sims = {}
 
     def find(self, target_id):
-        """Return the target with this id, or raise 422 (it is blocked now) or 400 not_editable."""
-        for target in self.targets:
+        """Return the target or add with this id, or raise 422 (it is blocked now) or 400 not_editable."""
+        for target in self.targets + self.adds:
             if target.id == target_id:
                 return target
         reason = self.blocked_ids.get(target_id)
@@ -335,6 +361,9 @@ def _view(ctx, listing, project, overlay=None):
     view.runs_as = _runs_as(view, view.entries)
     for entry in view.effort:
         _classify(view, entry)
+    view.files = _file_states(view)
+    if ctx.edit is not None:
+        view.adds = _make_adds(view)
     return view
 
 
@@ -400,13 +429,27 @@ def limits_for(view, level, entries):
 
 # ---------------------------------------------------------------- levels
 
-def _simulate(view, target, level):
-    """Return the entries with the target set to level, or None when the edit is refused."""
-    key = (target.id, level)
+def _new_raw(target, value):
+    """Return the bytes of the target's file with the value set: a new file, an insert for a new key, else a replace."""
+    if target.op == "create":
+        return json_edit.new_file(target.key_path, value)
+    if target.op == "insert":
+        return json_edit.insert_value(target.raw, target.key_path, value)
+    return json_edit.replace_value(target.raw, target.key_path, value)
+
+
+def _removed_raw(target):
+    """Return the bytes of the target's file with its line cut out. Only a line target can be removed."""
+    return json_edit.remove_key(target.raw, target.key_path)
+
+
+def _simulation(view, target, key, make_raw):
+    """Return the entries after make_raw(target), or None when json_edit refuses it. Kept in view.sims under key."""
     if key not in view.sims:
         try:
-            new_raw = json_edit.replace_value(target.raw, target.key_path, level)
-        except json_edit.Refused:
+            new_raw = make_raw()
+        except json_edit.Refused as exc:
+            view.refused[key] = exc.code
             view.sims[key] = None
         else:
             overlay = dict(view.overlay or {})
@@ -415,6 +458,16 @@ def _simulate(view, target, level):
                 view.ctx, view.project, overlay=overlay, listing=view.listing, reuse=view.collected)
             view.sims[key] = entries
     return view.sims[key]
+
+
+def _simulate(view, target, level):
+    """Return the entries with the target set to level, or None when the edit is refused."""
+    return _simulation(view, target, (target.id, level), lambda: _new_raw(target, level))
+
+
+def _simulate_remove(view, target):
+    """Return the entries with the target's line removed, or None when the removal is refused."""
+    return _simulation(view, target, (target.id, "remove"), lambda: _removed_raw(target))
 
 
 def _order(view, winner):
@@ -428,7 +481,7 @@ def _order(view, winner):
 def _file_row(layer, file_display, state, line=None, value=None, status=None, target=None, lock_reason=None):
     return {"layer": layer, "file_display": file_display, "state": state, "line": line, "value": value,
             "status": status, "target": target, "shared": layer == "project",
-            "lock_reason": ROW_LOCKS.get(state, lock_reason)}
+            "lock_reason": lock_reason}
 
 
 def _modelsettings_locked(view, data):
@@ -505,16 +558,87 @@ def _file_states(view):
     return rows
 
 
-def _effect(view, target, level):
-    """Return (effect, runs_as, lock_reason) of setting one target to a level, from the real resolver run.
+def _add_op(data, key_path):
+    """Return "replace" when the key is in the parsed file (as null), else "insert".
 
-    effect is applies, lowered, unknown or wont_apply, and None when the edit is refused.
+    A parent that is not an object reads as insert: the simulation reports it.
+    """
+    node = data
+    for step in key_path[:-1]:
+        node = node.get(step) if isinstance(node, dict) else None
+    return "replace" if isinstance(node, dict) and key_path[-1] in node else "insert"
+
+
+def _model_name(view, data):
+    """Return the modelSettings name an add uses: an existing name of the model, else the catalog id.
+
+    With several names for the model, the best form wins (rules_schema.NAME_FORMS order).
+    """
+    table = data.get("modelSettings")
+    if isinstance(table, dict):
+        catalog = view.ctx.rules.get("models", [])
+        found = []
+        for name in table:
+            model, form = resolve.normalize_model(name, catalog)
+            if model == view.model:
+                found.append((rules_schema.NAME_FORMS.index(form), name))
+        if found:
+            return min(found, key=lambda item: item[0])[1]
+    return view.model
+
+
+def _make_adds(view):
+    """Return the adds: a line to put in a file that holds none, tried at the top level, then under the model.
+
+    The file is read again from the overlay or the disk. An absent file (raw None) gives creates.
+    Nothing is added to a locked row or in a repo subfolder, and a file that no longer parses gives none.
+    """
+    if view.repo_locked or view.missing:
+        return []
+    ctx = view.ctx
+    out = []
+    for row in view.files:
+        if row["state"] not in ("no_line", "has_line", "absent") or row["lock_reason"]:
+            continue
+        layer = row["layer"]
+        try:
+            target = edit_store.target_for(ctx, view.project.key, layer)
+            if view.overlay is not None and target.path in view.overlay:
+                raw = view.overlay[target.path]
+            else:
+                raw = edit_store.read_or_none(target)
+            data = {} if raw is None else json_edit.parse_strict(raw)[1]
+        except (edit_store.Refused, json_edit.Refused, OSError):
+            continue
+        have = {t.key_path for t in view.targets if t.layer == layer}
+        display = _display(ctx, target.path)
+        wanted = []
+        if (SETTING,) not in have:
+            wanted.append((SETTING,))
+        if view.model is not None and not any(len(path) == 3 for path in have):
+            wanted.append(("modelSettings", _model_name(view, data), SETTING))
+        for key_path in wanted:
+            op = "create" if raw is None else _add_op(data, key_path)
+            out.append(_Target(layer, key_path, target, raw, None, op=op, file_display=display))
+    out.sort(key=lambda t: (LAYER_ORDER.get(t.layer, 3), 0 if len(t.key_path) == 1 else 1))
+    return out
+
+
+def _effect(view, target, level):
+    """Return (effect, runs_as, lock_reason, line) of setting one target to a level, from the real resolver run.
+
+    effect is applies, lowered, unknown or wont_apply, and None when the edit is refused or an add
+    would land where the trail can't see it (not_on_trail). line is the line the trail gives the
+    target after the edit.
     """
     entries = _simulate(view, target, level)
     if entries is None:
-        return None, None, "not_editable"
+        code = view.refused.get((target.id, level))
+        return None, None, ("parent_not_object" if code == "parent_not_object" else "not_editable"), None
     row = _effort_row(entries)
     mine = next((e for e in row if ref_of(e) == target.ref), None)
+    if mine is None and target.entry is None:
+        return None, None, "not_on_trail", None
     winner = _winner(row)
     runs = _runs_as(view, entries)
     if mine is None:
@@ -530,29 +654,46 @@ def _effect(view, target, level):
         effect = "lowered"
     if effect != "unknown" and runs == view.runs_as:
         effect = "wont_apply"  # a file change that leaves the level where it is today
-    return effect, _masked(runs), None
+    return effect, _masked(runs), None, None if mine is None else mine.get("line")
 
 
 def _level_file(view, file_row, level, order):
-    """Return the row of one file under one level."""
+    """Return the row of one file under one level.
+
+    Every item of the order on this layer is a candidate, a line or an add. The best effect wins,
+    the first on a tie, so a working replace beats an add and a top add beats a model add.
+    """
     layer = file_row["layer"]
     out = {"layer": layer, "target": None, "op": None, "line": file_row["line"], "runs_as": None,
            "effect": None, "lock_reason": file_row["lock_reason"], "pickable": False}
-    if file_row["state"] != "has_line":
+    candidates = [target for target in order if target.layer == layer]
+    if not candidates:
+        if out["lock_reason"] is None:
+            out["lock_reason"] = "not_editable"  # a file with no line and nothing to add
         return out
     best = None
-    for target in order:
-        if target.layer != layer:
-            continue
-        effect, runs, lock = _effect(view, target, level)
+    hidden = False
+    for target in candidates:
+        effect, runs, lock, line = _effect(view, target, level)
+        hidden = hidden or lock == "not_on_trail"
         rank = EFFECT_RANK.index(effect) if effect is not None else len(EFFECT_RANK)
         if best is None or rank < best[0]:
-            best = (rank, target, effect, runs, lock)
-    if best is None:
-        return out
-    _rank, target, effect, runs, lock = best
-    out.update(target=target.id, op="replace", line=target.entry.get("line"), runs_as=runs, effect=effect,
+            best = (rank, target, effect, runs, lock, line)
+        if rank == 0:
+            break
+    _rank, target, effect, runs, lock, line = best
+    if target.entry is not None:
+        line = target.line
+    out.update(target=target.id, op=target.op, line=line, runs_as=runs, effect=effect,
                lock_reason=lock, pickable=lock is None and effect in EFFECT_RANK[:3])
+    if effect == "wont_apply" and file_row["line"] is None:
+        # A file with no line, whose candidates can't be written (a parent that is not an object) or can't
+        # be seen on the trail, says why it can't take the level, whatever the best working candidate shows.
+        # A file that holds a line keeps its own label, Won't change what runs.
+        if any(view.refused.get((t.id, level)) == "parent_not_object" for t in candidates):
+            out.update(lock_reason="parent_not_object", pickable=False)
+        elif hidden:
+            out.update(lock_reason="not_on_trail", pickable=False)
     return out
 
 
@@ -575,7 +716,7 @@ def _levels(view, file_rows):
         return []
     certain = view.model is not None
     today = view.runs_as
-    order = _order(view, _winner(view.effort))
+    order = _order(view, _winner(view.effort)) + view.adds
     out = []
     for level in LEVELS:
         if level == today:
@@ -688,6 +829,8 @@ def _warning(view, edited, value, before, after):
             entry = item
             break
     if entry is None:
+        if edited.entry is None:  # an add that lands where the trail can't see it
+            raise _Answer(422, {"error": "not_on_trail"})
         raise _Answer(400, {"error": "not_editable"})
     limits = limits_for(view, value, entries)
     status = entry["status"]
@@ -715,43 +858,90 @@ def _warning(view, edited, value, before, after):
             "limits": limits}
 
 
-def _preview(ctx, view, edited, value):
-    """Return the _Preview of setting the target to value. Reads, writes nothing."""
-    new_raw = json_edit.replace_value(edited.raw, edited.key_path, value)
-    no_change = new_raw == edited.raw
+def _base_file(ctx, raw):
+    """Return the HMAC that stands for a file's bytes, or for no file when raw is None."""
+    return _hmac(ctx, NO_FILE if raw is None else raw)
+
+
+def _folder_missing(target):
+    """True when the file's .claude folder isn't there. A refused or failed walk counts as no."""
+    try:
+        return edit_store.folder_missing(target)
+    except (edit_store.Refused, OSError):
+        return False
+
+
+def _require_pickable(view, edited, value):
+    """Raise unless this target at this level is a pickable file row.
+
+    The page only sends the target of a pickable row, one whose effect is applies, lowered or unknown
+    and that has no lock. A forged preview or save for a change that wouldn't apply, or for a file the
+    trail can't see or the dashboard can't write into, is refused with 400 not_editable, or 422 with
+    the lock (not_on_trail, parent_not_object). A value the file already holds is left to no_change,
+    which writes nothing.
+    """
+    if _new_raw(edited, value) == edited.raw:
+        return
+    effect, _runs, lock, _line = _effect(view, edited, value)
+    if lock in ("not_on_trail", "parent_not_object"):
+        raise _Answer(422, {"error": lock})
+    if lock is not None or effect not in EFFECT_RANK[:3]:
+        raise _Answer(400, {"error": "not_editable"})
+
+
+def _preview(ctx, view, edited, value, action="set"):
+    """Return the _Preview of setting the target to value, or of removing its line. Reads, writes nothing.
+
+    A remove has no value and no warning. no_effect says the level would not move, and last_line says
+    the file would be left with nothing in it.
+    """
+    remove = action == "remove"
+    if remove and edited.entry is None:
+        raise _Answer(400, {"error": "not_editable"})
+    new_raw = _removed_raw(edited) if remove else _new_raw(edited, value)
+    no_change = new_raw == edited.raw  # a create has no raw, so it is never no change
     before = api_settings.answer(ctx, view.listing, view.project, overlay=view.overlay,
                                  reuse=view.collected)
     overlay = dict(view.overlay or {})
     overlay[edited.path] = new_raw
     after = api_settings.answer(ctx, view.listing, view.project, overlay=overlay, reuse=view.collected)
-    warning = _warning(view, edited, value, before, after)
-    diff = json_edit.structured_diff(edited.raw.decode("utf-8"), new_raw.decode("utf-8"),
-                                     edited.entry.get("file"))
+    warning = None if remove else _warning(view, edited, value, before, after)
+    runs_before = _masked(_runs_as(view, before["entries"]))
+    runs_after = _masked(_runs_as(view, after["entries"]))
+    diff = json_edit.structured_diff(None if edited.raw is None else edited.raw.decode("utf-8"),
+                                     new_raw.decode("utf-8"), edited.file_display)
+    line = edited.line
+    if line is None:  # an add: the line the trail gives it after the edit
+        line = next((item.get("line") for item in _effort_row(after["entries"])
+                     if ref_of(item) == edited.ref), None)
     trail = json.dumps({"before": before["entries"], "after": after["entries"]}, sort_keys=True)
     others, layers = _others(ctx, view.project, edited)
     payload = {
         "target": edited.id,
-        "old_value": _masked(edited.entry.get("value")),
-        "new_value": value,
+        "old_value": _masked(edited.old_value),
+        "new_value": None if remove else value,
         "no_change": no_change,
+        "no_effect": remove and runs_before is not None and runs_after == runs_before,
+        "last_line": remove and json_edit.parse_strict(new_raw)[1] == {},
         "before": before,
         "after": after,
         "changes": _changes(view, before, after),
         "warning": warning,
         "diff": diff,
-        "base_file": _hmac(ctx, edited.raw),
+        "base_file": _base_file(ctx, edited.raw),
         "base_trail": _hmac(ctx, trail.encode("utf-8")),
         "base_others": others,
-        "op": "replace",
+        "op": "remove" if remove else edited.op,
         "layer": edited.layer,
         "shared": edited.layer == "project",
-        "line": edited.entry.get("line"),
+        "line": line,
         "ref": edited.ref,
-        "new_file": False,
-        "creates_dir": False,
+        "git_ignore": None,  # filled by _with_git, outside the store's lock
+        "new_file": edited.op == "create",
+        "creates_dir": edited.op == "create" and _folder_missing(edited.store_target),
         "ledger_damaged": _ledger_damaged(ctx.edit.store, edited.store_target),
-        "runs_before": _masked(_runs_as(view, before["entries"])),
-        "runs_after": _masked(_runs_as(view, after["entries"])),
+        "runs_before": runs_before,
+        "runs_after": runs_after,
     }
     return _Preview(payload, new_raw, layers)
 
@@ -774,8 +964,27 @@ def _targets_out(view):
             "shared": target.layer == "project",
             "in_effect": (winner is not None and target.ref == ref_of(winner)
                           and entry["status"] in ("in_effect", "lowered")),
+            "remove": _remove_out(view, target),
         })
     return rows
+
+
+def _remove_out(view, target):
+    """Return what removing a target's line would do: the level it runs at after, and why it can't be removed."""
+    entries = _simulate_remove(view, target)
+    if entries is None:
+        code = view.refused.get((target.id, "remove"))
+        return {"runs_as": None, "no_effect": False,
+                "lock_reason": "repeated_key" if code == "repeated_key" else "not_editable"}
+    runs = _runs_as(view, entries)
+    # With no level known either side, the dashboard can't say the line does nothing.
+    return {"runs_as": _masked(runs), "no_effect": runs is not None and runs == view.runs_as, "lock_reason": None}
+
+
+def _adds_out(view):
+    """Return the adds for the page: the lines it could put in a file that holds none."""
+    return [{"target": add.id, "ref": add.ref, "layer": add.layer, "file_display": add.file_display,
+             "op": add.op, "shared": add.layer == "project"} for add in view.adds]
 
 
 def _seq(name):
@@ -819,11 +1028,13 @@ def _row_out(ctx, target, rows, row):
         "time": row.get("time"),
         "layer": target.layer,
         "file_display": _display(ctx, target.path),
+        "op": row.get("op", "replace"),
         "key_path": key_path,
-        "old_value": _masked(row.get("old_value"), name),
-        "new_value": _masked(row.get("new_value"), name),
         "backup_display": _display_or_none(ctx, store.backup_path(target, row.get("backup"))),
     }
+    for field in ("old_value", "new_value"):  # a null value is left out, so it never reaches the page
+        if row.get(field) is not None:
+            out[field] = _masked(row[field], name)
     if row.get("kind") == "undo":
         out["restored_from_display"] = _display_or_none(
             ctx, store.backup_path(target, row.get("restored_from_backup")))
@@ -843,13 +1054,14 @@ def _edit_out(ctx, target, row):
 class _Request:
     """What an answer for a store exception needs to know about its request."""
 
-    def __init__(self, ctx, listing, project, target=None, value=None, undo=False):
+    def __init__(self, ctx, listing, project, target=None, value=None, undo=False, action="set"):
         self.ctx = ctx
         self.listing = listing
         self.project = project
         self.target = target  # the first view's _Target for a save, the store Target for an undo
         self.value = value
         self.undo = undo
+        self.action = action
 
 
 def _store_target(req):
@@ -857,13 +1069,29 @@ def _store_target(req):
     return req.target.store_target if isinstance(req.target, _Target) else req.target
 
 
+def _with_git(ctx, project, payload):
+    """Add the git-ignore result to a preview of the local file, and return it.
+
+    It starts a child process, so a route calls it, never _preview: _preview also runs inside
+    save's plan, under the store's lock. It stays out of the base hashes, because it is advice.
+    """
+    if payload is not None and payload.get("layer") == "local":
+        payload["git_ignore"] = git_check.ignore_state(project.path, ctx.path_env, ctx.home,
+                                                       ctx.shell_env.get("XDG_CONFIG_HOME"))
+    return payload
+
+
 def _fresh_preview(req):
     """Return the preview of the request from a new view, or None when the target is gone."""
-    if req.value is None or req.undo:
+    remove = req.action == "remove"
+    if req.undo or (req.value is None and not remove):
         return None
     try:
         view = _view(req.ctx, req.listing, req.project)
-        return _preview(req.ctx, view, view.find(req.target.id), req.value).payload
+        found = view.find(req.target.id)
+        if remove and found.entry is None:
+            return None  # the line went, so there is nothing left to remove
+        return _with_git(req.ctx, req.project, _preview(req.ctx, view, found, req.value, req.action).payload)
     except (_Answer, json_edit.Refused, edit_store.StoreError):
         return None
 
@@ -873,7 +1101,7 @@ def _store_answer(req, exc):
     ctx = req.ctx
     if isinstance(exc, _StaleSignal):
         return 409, {"error": "stale", "changed": exc.changed, "changed_files": exc.files,
-                     "preview": exc.preview}
+                     "preview": _with_git(ctx, req.project, exc.preview)}
     if isinstance(exc, json_edit.Refused):
         if exc.code == "oracle_failed":
             return 500, {"error": "write_failed", "file_unchanged": True}
@@ -884,10 +1112,11 @@ def _store_answer(req, exc):
     if isinstance(exc, edit_store.Stale):
         store_target = _store_target(req)
         files = [{"layer": store_target.layer, "file_display": _display(ctx, store_target.path)}]
-        return 409, {"error": "stale", "changed": "file", "changed_files": files,
+        return 409, {"error": "stale", "changed": exc.changed, "changed_files": files,
                      "preview": _fresh_preview(req)}
     if isinstance(exc, edit_store.Unverified):
         return 500, {"error": "unverified", "stage": exc.stage, "file_unchanged": False,
+                     "edit": _edit_out(ctx, _store_target(req), exc.row),
                      "backup_display": _display_or_none(ctx, exc.backup_path)}
     if isinstance(exc, edit_store.Raced):
         store_target = _store_target(req)
@@ -913,7 +1142,10 @@ def _store_answer(req, exc):
     if isinstance(exc, edit_store.LedgerDamaged):
         return 500, {"error": "ledger_damaged", "file_unchanged": True,
                      "ledger_display": _display_or_none(ctx, exc.path)}
-    return 500, {"error": "write_failed", "file_unchanged": True}  # WriteFailed, or a store error with no name
+    body = {"error": "write_failed", "file_unchanged": True}  # WriteFailed, or a store error with no name
+    if exc.dir_left:
+        body["dir_left"] = True  # a save made .claude and could not take it away again
+    return 500, body
 
 
 _CAUGHT = (_Answer, _StaleSignal, json_edit.Refused, edit_store.StoreError)
@@ -947,6 +1179,24 @@ def _body_value(body):
     return value
 
 
+def _body_action(body):
+    """Return "set" or "remove". A missing action is set, anything else is a bad request."""
+    action = body.get("action", "set") if "action" in body else "set"
+    if not isinstance(action, str) or action not in ("set", "remove"):
+        raise _Answer(400, {"error": "bad_request"})
+    return action
+
+
+def _body_edit(body):
+    """Return (action, value) of a preview or save body. A remove carries no value, a set needs a level."""
+    action = _body_action(body)
+    if action == "remove":
+        if "value" in body:
+            raise _Answer(400, {"error": "bad_request"})
+        return action, None
+    return action, _body_value(body)
+
+
 def _body_target(body):
     target = body.get("target")
     if not isinstance(target, str):
@@ -957,9 +1207,17 @@ def _body_target(body):
 def _editable_view(ctx, listing, project, target_id):
     """Return (view, target) for a preview or a save, or raise the answer."""
     view = _view(ctx, listing, project)
+    if view.missing:
+        raise _Answer(422, {"error": "file_missing"})
     if view.levels_state == "no_effort_support":
         raise _Answer(400, {"error": "not_editable"})
-    return view, view.find(target_id)
+    try:
+        return view, view.find(target_id)
+    except _Answer as answer:
+        # A base folder that went since the page loaded (a config folder, say) leaves no target at all.
+        if answer.status == 400 and any(row["lock_reason"] == "file_missing" for row in view.files):
+            raise _Answer(422, {"error": "file_missing"}) from None
+        raise
 
 
 # ---------------------------------------------------------------- routes
@@ -991,7 +1249,7 @@ def targets(ctx, query):
     try:
         listing, project = _pick(ctx, query.get("project") or [])
         view = _view(ctx, listing, project)
-        files = _file_states(view)
+        files = view.files
         if ctx.edit is None:
             return 200, _read_only(view, project, files)
         levels = _levels(view, files)
@@ -999,22 +1257,25 @@ def targets(ctx, query):
                      "agent": MAIN_AGENT, "setting": SETTING, "runs_as": view.runs_as,
                      "model": view.model, "levels_state": view.levels_state,
                      "project_lock": _project_lock(view),
-                     "targets": _targets_out(view), "blocked": view.blocked, "files": files,
+                     "targets": _targets_out(view), "adds": _adds_out(view),
+                     "blocked": view.blocked, "files": files,
                      "levels": levels, "saveable": any(row["saveable"] for row in levels)}
     except _Answer as answer:
         return answer.status, answer.body
 
 
 def preview(ctx, body):
-    """POST /api/edit/preview: what setting a target to a level would change. Writes nothing."""
+    """POST /api/edit/preview: what setting a target to a level, or removing its line, would change. Writes nothing."""
     if ctx.edit is None:
         return 400, {"error": "not_editable"}
     try:
         listing, project = _pick_body(ctx, body)
-        value = _body_value(body)
+        action, value = _body_edit(body)
         target_id = _body_target(body)
         view, edited = _editable_view(ctx, listing, project, target_id)
-        return 200, _preview(ctx, view, edited, value).payload
+        if action == "set":
+            _require_pickable(view, edited, value)
+        return 200, _with_git(ctx, project, _preview(ctx, view, edited, value, action).payload)
     except _CAUGHT as exc:
         if isinstance(exc, _Answer):
             return exc.status, exc.body
@@ -1028,13 +1289,13 @@ def _stale_files(fresh, client, layers):
 
 
 def save(ctx, body):
-    """POST /api/edit/save: set a target to a level, backed up first. Recomputes under the lock."""
+    """POST /api/edit/save: set a target to a level, or remove its line, backed up first. Recomputes under the lock."""
     if ctx.edit is None:
         return 400, {"error": "not_editable"}
     req = _Request(ctx, None, None)
     try:
         listing, project = _pick_body(ctx, body)
-        value = _body_value(body)
+        action, value = _body_edit(body)
         target_id = _body_target(body)
         base_file, base_trail, base_others = (body.get("base_file"), body.get("base_trail"),
                                               body.get("base_others"))
@@ -1042,16 +1303,36 @@ def save(ctx, body):
                 or not isinstance(base_others, dict)):
             raise _Answer(400, {"error": "bad_request"})
         view, edited = _editable_view(ctx, listing, project, target_id)
-        req = _Request(ctx, listing, project, edited, value)
+        if action == "remove" and edited.entry is None:
+            raise _Answer(400, {"error": "not_editable"})  # an add has no line to remove
+        req = _Request(ctx, listing, project, edited, value, action=action)
 
         def plan(raw):
-            fresh_view = _view(ctx, listing, project, overlay={edited.path: raw})
-            fresh = fresh_view.find(target_id)
-            made = _preview(ctx, fresh_view, fresh, value)
+            # An absent file has no bytes to overlay, so its path is left out and reads as absent.
+            fresh_view = _view(ctx, listing, project, overlay={} if raw is None else {edited.path: raw})
+            try:
+                fresh = fresh_view.find(target_id)
+            except _Answer:
+                if raw is None and base_file != _base_file(ctx, None):
+                    # The file went, and the target it held (an alias name, say) is not offered for a create.
+                    raise _StaleSignal("file_removed", [{"layer": edited.layer, "file_display": _display(
+                        ctx, edited.store_target.path)}], None) from None
+                raise
+            if action == "remove" and fresh.entry is None:
+                # The line went since the preview: the file changed, or it is not there at all.
+                raise _StaleSignal("file_removed" if raw is None else "file",
+                                   [{"layer": edited.layer,
+                                     "file_display": _display(ctx, edited.store_target.path)}], None)
+            if action == "set":
+                _require_pickable(fresh_view, fresh, value)  # the row, as the file is now, must take the level
+            made = _preview(ctx, fresh_view, fresh, value, action)
             payload = made.payload
             if payload["base_file"] != base_file:
-                changed, files = "file", [{"layer": fresh.layer,
-                                           "file_display": _display(ctx, fresh.store_target.path)}]
+                if base_file == _base_file(ctx, None):
+                    changed = "file_appeared"
+                else:
+                    changed = "file_removed" if raw is None else "file"
+                files = [{"layer": fresh.layer, "file_display": _display(ctx, fresh.store_target.path)}]
             elif payload["base_trail"] != base_trail or payload["base_others"] != base_others:
                 changed, files = "trail", _stale_files(payload["base_others"], base_others, made.layers)
             else:
@@ -1060,9 +1341,11 @@ def save(ctx, body):
                 raise _StaleSignal(changed, files, payload)
             if payload["no_change"]:
                 raise edit_store.Refused("no_change")
-            return edit_store.Plan(made.new_raw, fresh.key_path, fresh.entry.get("value"), value)
+            if action == "remove":
+                return edit_store.Plan(made.new_raw, fresh.key_path, fresh.old_value, None, op="remove")
+            return edit_store.Plan(made.new_raw, fresh.key_path, fresh.old_value, value, op=fresh.op)
 
-        row = ctx.edit.store.save(edited.store_target, plan)
+        row = ctx.edit.store.save(edited.store_target, plan, allow_absent=True)
         return 200, {"edit": _edit_out(ctx, edited.store_target, row),
                      "settings": api_settings.answer(ctx, listing, project)}
     except _CAUGHT as exc:
@@ -1110,7 +1393,8 @@ def undo(ctx, body):
         return 200, {"edit": _edit_out(ctx, found, restored.row),
                      "settings": api_settings.answer(ctx, listing, project),
                      "matches_backup": restored.matches_backup,
-                     "restored_from_display": _display_or_none(ctx, restored.restored_from_path)}
+                     "restored_from_display": _display_or_none(ctx, restored.restored_from_path),
+                     "removed_file": restored.removed_file, "removed_dir": restored.removed_dir}
     except _CAUGHT as exc:
         if isinstance(exc, _Answer):
             return exc.status, exc.body

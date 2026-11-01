@@ -15,7 +15,7 @@ import { MAIN_KEY } from "./router.js";
 import { editRef } from "./edit_ref.js";
 import { layerText, valueString, valueText } from "./pages/settings.js";
 import { placeName, shortFile } from "./pages/where.js";
-import { basename, button, draw, isString, levelRow, lockText, mark, nt, targetById, text } from "./edit_ui.js";
+import { basename, button, draw, isString, levelRow, lockText, mark, nt, text } from "./edit_ui.js";
 
 const SETTING = "effortLevel";
 
@@ -70,8 +70,8 @@ export function stopPanel(level, value, { cancel, model = null }) {
   const unknown = limits.some((l) => l.kind === "model_unknown");
   if (unknown) paras.push(t("ed_stop_unknown_t", { level: value }));
   const heading = unknown ? t("ed_stop_unknown_h", { level: value }) : t("ed_stop_h", { level: value });
-  return nt("warn", heading, paras.concat(limitParas(limits, model)),
-    [button(t("ed_cancel"), { focus: "cancel", onClick: cancel })]);
+  return h("div", { class: "s4-rb" }, nt("warn", heading, paras.concat(limitParas(limits, model)),
+    [button(t("ed_cancel"), { focus: "cancel", onClick: cancel })]));
 }
 
 // One literal t() call per status, so the string checks can see every key.
@@ -165,11 +165,15 @@ function diffLine(line, parts) {
     h("code", null, parts || text(line.text)));
 }
 
-function diffFigure(diff, target) {
+// newFile adds the New file tag to the caption, as board a-new of design-settings-6 draws it.
+function diffFigure(diff, target, newFile = false) {
   const name = basename(diff.file_display);
   const layer = target ? layerText({ layer: target.layer }) : "";
   return h("figure", { class: "p2-df" },
-    h("figcaption", { class: "p2-df-h" }, layer ? h("span", { class: "ly" }, layer) : null, h("span", { class: "pa" }, text(diff.file_display))),
+    h("figcaption", { class: "p2-df-h" },
+      layer ? h("span", { class: "ly" }, layer) : null,
+      h("span", { class: "pa" }, text(diff.file_display)),
+      newFile ? h("span", { class: "p2-tag" }, t("ed_diff_new_tag")) : null),
     (Array.isArray(diff.hunks) ? diff.hunks : []).map((hunk) => {
       const lines = Array.isArray(hunk.lines) ? hunk.lines : [];
       const marks = pairMarks(lines);
@@ -182,12 +186,29 @@ const FILE_LAYERS = ["local", "project", "user"];
 // The statuses a line in another file keeps after the change, so the review says so.
 const STILL = ["overridden", "ignored", "invalid"];
 
+const soleValue = (value) => h("div", { class: "s4-chg" }, h("span", { class: "s4-to" }, text(value)));
+
+// A removal's change line. A line that changes nothing shows the one value that runs. When the value after is not
+// known, the value before stands alone. With neither there is no value to show, and no empty one is drawn.
+function removeLine(pv) {
+  const before = has(pv.runs_before) ? pv.runs_before : null;
+  const after = has(pv.runs_after) ? pv.runs_after : null;
+  if (pv.no_effect === true || after === null) return before === null ? null : soleValue(before);
+  if (before === null || before === after) return soleValue(after);
+  return h("div", { class: "s4-chg" },
+    h("span", { class: "s4-was" }, text(before)),
+    h("span", { "aria-hidden": "true" }, "→"),
+    h("span", { class: "sr" }, t("ed_to")),
+    h("span", { class: "s4-to" }, text(after)));
+}
+
 // The change that runs: what ran before, an arrow, what runs after. A change that leaves what runs as it was, and
 // a change with no known before, shows one value.
 function changeLine(pv) {
+  if (pv.op === "remove") return removeLine(pv);
   const before = has(pv.runs_before) ? pv.runs_before : null;
   const after = has(pv.runs_after) ? pv.runs_after : pv.new_value;
-  if (before === null || before === after) return h("div", { class: "s4-chg" }, h("span", { class: "s4-to" }, text(after)));
+  if (before === null || before === after) return soleValue(after);
   return h("div", { class: "s4-chg" },
     h("span", { class: "s4-was" }, text(before)),
     h("span", { "aria-hidden": "true" }, "→"),
@@ -197,6 +218,10 @@ function changeLine(pv) {
 
 // The line under the change. A warning that says nothing moves, or that the dashboard can't tell, comes first.
 function runsNote(pv, level) {
+  if (pv.op === "remove") {
+    if (pv.no_effect === true) return t("ed_nochange");
+    return has(pv.runs_after) ? t("ed_runs") : t("ed_nochange_unknown");
+  }
   const warning = pv.warning;
   if (warning && warning.status === "unknown") return t("ed_nochange_unknown");
   if (warning && warning.in_effect_changes === false) return t("ed_nochange");
@@ -258,18 +283,60 @@ function warningHeading(w) {
   return w.in_effect_changes === true ? t("ed_warn_part_h") : t("ed_warn_h");
 }
 
-// What the review and its foot both need, read from the preview and the targets answer.
+// What the review and its foot both need, read from the preview and the targets answer. The preview stands in for the
+// target, because an add has no entry in the targets list.
 export function reviewFacts(T, state, env) {
   const pv = state.data;
-  const target = targetById(T, state.target);
-  const file = target ? target.file_display : (pv.diff ? pv.diff.file_display : "");
+  const target = { layer: pv.layer, ref: pv.ref, line: pv.line, shared: pv.shared };
+  const file = pv.diff ? pv.diff.file_display : "";
   return {
     pv,
     target,
     fileName: basename(file),
     level: levelRow(T, state.value),
-    ledger: Boolean(env.damaged(file, target ? target.layer : null)) || pv.ledger_damaged === true,
+    ledger: Boolean(env.damaged(file, target.layer)) || pv.ledger_damaged === true,
   };
+}
+
+// One literal t() call for each op, so the string checks can see every key.
+function subLine(pv, fileName) {
+  const slots = { line: text(pv.line), file: fileName };
+  switch (pv.op) {
+    case "insert": return t("ed_card_add", slots);
+    case "create": return t("ed_card_new", slots);
+    case "remove": return t("ed_card_remove", slots);
+    default: return t("ed_card_line", slots);
+  }
+}
+
+// The notes under the diff about the file itself: it is new (and its folder with it), or the line is its last.
+function fileNotes(pv, fileName, failedLeft) {
+  // A failed save that left the .claude folder behind makes the folder note untrue, so it goes.
+  const dirNote = failedLeft === true ? null : h("p", { class: "s4-note" }, t("ed_new_dir_note", { file: fileName }));
+  return [
+    pv.creates_dir === true ? dirNote
+      : pv.new_file === true ? h("p", { class: "s4-note" }, t("ed_new_file_note", { file: fileName })) : null,
+    pv.last_line === true ? h("p", { class: "s4-note" }, t("ed_remove_last_note", { file: fileName })) : null,
+  ];
+}
+
+// The folder a file lives in, from its display path.
+const parentOf = (path) => {
+  const parts = text(path).split(/[\\/]/);
+  parts.pop();
+  return parts.join("/");
+};
+
+// The notices that close a review whose write did not fail: the warning, the damaged record, a removal that changes
+// nothing, and what git does with the file. A file in git is a warning, and the dashboard not knowing is a quiet line.
+function closingNotes(pv, w, ledger, fileName, model) {
+  const out = [];
+  if (w) out.push(nt("warn", warningHeading(w), warningParas(w, model)));
+  if (ledger) out.push(nt("warn", t("ed_ledger_preview_t", { file: fileName }), []));
+  if (pv.op === "remove" && pv.no_effect === true) out.push(nt("warn", t("ed_remove_noeffect_h"), [t("ed_remove_noeffect_t")]));
+  if (pv.op !== "remove" && pv.git_ignore === "not_ignored") out.push(nt("warn", t("ed_git_warn_h"), [t("ed_git_warn_t", { file: fileName })]));
+  if (pv.git_ignore === "unknown") out.push(h("p", { class: "s4-note" }, t("ed_git_unknown", { file: fileName })));
+  return out;
 }
 
 // The review in the rail: the change, what runs, the winner after saving, the exact line and the notes. env.lead is
@@ -279,14 +346,19 @@ export function review(T, state, env) {
   const { pv, target, fileName, level, ledger } = reviewFacts(T, state, env);
   const w = pv.warning;
   const closing = [];
-  if (env.failed) {
+  if (env.failed && pv.op === "create" && !env.failedDir) {
+    const folder = parentOf(pv.diff ? pv.diff.file_display : "");
+    closing.push(nt("err", t("ed_fail_create_h"), [
+      draw(t("ed_fail_create_t", { folder: mark("folder") }), { folder }),
+      env.failedLeft ? t("ed_fail_dir_left") : null,
+    ]));
+  } else if (env.failed) {
     const why = env.failedDir
       ? draw(t("ed_fail_config_dir_t", { config_dir: mark("config_dir") }), { config_dir: env.failedDir })
       : t("ed_fail_t", { file: fileName });
     closing.push(nt("err", t("ed_fail_h"), [why]));
   } else if (pv.no_change !== true) {
-    if (w) closing.push(nt("warn", warningHeading(w), warningParas(w, env.model)));
-    if (ledger) closing.push(nt("warn", t("ed_ledger_preview_t", { file: fileName }), []));
+    closing.push(...closingNotes(pv, w, ledger, fileName, env.model));
   }
   return h("div", { class: "s4-rb" },
     env.lead || [],
@@ -294,10 +366,11 @@ export function review(T, state, env) {
     changeLine(pv),
     h("p", { class: "s4-runs" }, runsNote(pv, level)),
     afterList(pv),
-    h("p", { class: "s4-sub" }, t("ed_card_line", { line: target ? text(target.line) : "", file: fileName })),
-    pv.diff ? diffFigure(pv.diff, target) : null,
+    h("p", { class: "s4-sub" }, subLine(pv, fileName)),
+    pv.diff ? diffFigure(pv.diff, target, pv.new_file === true) : null,
+    fileNotes(pv, fileName, env.failedLeft),
     stillNotes(pv, target),
-    target && target.shared === true ? h("p", { class: "s4-note" }, t("ed_shared")) : null,
+    target.shared === true ? h("p", { class: "s4-note" }, t("ed_shared")) : null,
     level && level.certain === false ? h("p", { class: "s4-note" }, t("ed_certain_note")) : null,
     alsoChanges(pv),
     closing);
@@ -316,8 +389,10 @@ export function waitingFoot({ busy = false, cancel }) {
 // Save and Cancel, side by side, in the rail's foot. Busy shows Saving with both buttons off.
 export function reviewFoot(pv, fileName, ledger, env) {
   const { busy, failed, save: doSave, cancel } = env;
+  // A removal that changes nothing is a warned save: Remove anyway, and not the primary button.
+  const anyway = pv.op === "remove" && pv.no_effect === true;
   const save = (label) => button(busy ? t("ed_saving") : label, {
-    primary: !pv.warning, wide: true, focus: "save", disabled: busy, busy, onClick: doSave,
+    primary: !pv.warning && !anyway, wide: true, focus: "save", disabled: busy, busy, onClick: doSave,
   });
   const cancelButton = button(t("ed_cancel"), { wide: true, focus: "cancel", disabled: busy, onClick: cancel });
   const saying = busy ? h("span", { class: "sr", role: "status" }, t("ed_saving_sr", { file: fileName })) : null;
@@ -326,5 +401,13 @@ export function reviewFoot(pv, fileName, ledger, env) {
   // This file takes no save, so only Cancel is drawn.
   if (ledger) return [cancelButton];
   if (pv.warning) return [save(t("ed_save_anyway")), cancelButton, saying];
-  return [save(t("ed_save_to", { file: fileName })), cancelButton, h("p", { class: "s4-hint" }, t("ed_nothing_yet")), saying];
+  if (anyway) return [save(t("ed_remove_anyway")), cancelButton, saying];
+  return [save(saveLabel(pv, fileName)), cancelButton, h("p", { class: "s4-hint" }, t("ed_nothing_yet")), saying];
+}
+
+// The words of Save. One literal t() call for each op, so the string checks can see every key.
+function saveLabel(pv, fileName) {
+  if (pv.op === "create") return t("ed_save_create", { file: fileName });
+  if (pv.op === "remove") return t("ed_save_remove", { line: text(pv.line), file: fileName });
+  return t("ed_save_to", { file: fileName });
 }

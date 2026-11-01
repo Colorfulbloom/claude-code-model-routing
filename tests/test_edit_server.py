@@ -543,7 +543,7 @@ class ServerClass(unittest.TestCase):
             self.assertFalse(server.edits_supported())
         with mock.patch.object(os, "supports_dir_fd", set()):
             self.assertFalse(server.edits_supported())
-        for missing in (os.open, os.rename, os.stat, os.mkdir, os.unlink):
+        for missing in (os.open, os.rename, os.stat, os.mkdir, os.unlink, os.rmdir):
             kept = set(os.supports_dir_fd) - {missing}
             with mock.patch.object(os, "supports_dir_fd", kept):
                 self.assertFalse(server.edits_supported(), missing)

@@ -24,7 +24,9 @@
 //   rebuilds all three, so focusKey() and done() carry an edit control's focus across it.
 // - A chosen level keeps its review in the rail and its Save and Cancel in the foot on every cell, and the body
 //   of any other cell is its read-only frame. One Save exists in the page, never a copy for a narrow window.
-// - A chosen level that can be saved is Not saved. A choice made with no page render updates the Stat band
+// - One change at a time. A chosen level or a line chosen for removal holds the page: the picker is off, the rows
+//   lose their Remove line links, and the review and its Save and Cancel take the rail and the foot.
+// - A chosen level that can be saved, or a line to remove that nothing blocks, is Not saved. A choice made with no page render updates the Stat band
 //   (onNotSaved) and the project picker (ctx.edit.syncShell) by the callbacks the page and app.js pass in.
 // - The checked radio always equals the chosen level, and a row that goes grey takes no focus. A handler never
 //   puts a radio back.
@@ -36,13 +38,13 @@ import { MAIN_KEY } from "./router.js";
 import { pickerState, railCase } from "./edit_pick.js";
 import {
   S, live, setLive, onRedraw, syncFlow, settle, targetsData, historyData, damagedFor, levelFile, isNotSaved, notSavedProjects,
-  cancel, pick, pickRow, doSave, doUndo, dismissStrip, dismissLedger, resetCard,
+  cancel, pick, pickRow, startRemove, doSave, doUndo, dismissStrip, dismissLedger, resetCard,
 } from "./edit_flow.js";
 import { capsOf, limitLine, limitParas, review, reviewFacts, reviewFoot, stopPanel, waitingFoot } from "./edit_review.js";
 import { stripNodes as footNodes } from "./edit_foot.js";
 import {
   basename, button, checkIcon, draw, filesOf, hint, levelRow, levelsOf, lockIcon, lockLine, lockText, mark, nt,
-  rowLockText, runningOf, text, tokenNt, walk,
+  rowLockText, runningOf, targetById, text, tokenNt, walk,
 } from "./edit_ui.js";
 import { valueString, valueText } from "./pages/settings.js";
 import { entriesOf, entryRow, rowFor, rowNode, shortFile, whereList } from "./pages/where.js";
@@ -77,7 +79,10 @@ function noSupportCard(T) {
 // What the review and its foot need from the flow, read when they are drawn. lead is a list of nodes that go first in
 // the rail. The presses go back through save and cancel.
 function reviewEnv(lead = []) {
-  return { busy: S.busy, failed: S.failed, failedDir: S.failedDir, damaged: damagedFor, save: doSave, cancel, lead, model: modelName() };
+  return {
+    busy: S.busy, failed: S.failed, failedDir: S.failedDir, failedLeft: S.failedLeft, damaged: damagedFor, save: doSave, cancel, lead,
+    model: modelName(),
+  };
 }
 
 // The display name of the model the targets answer is for, by the page's own model lookup (valueString), else null.
@@ -103,7 +108,8 @@ function levelNote(level) {
 function picker(T, mode) {
   const levels = levelsOf(T);
   const running = runningOf(T);
-  const state = pickerState(levels, running, S.level, mode, { busy: S.busy, projectLock: T.project_lock, saveable: T.saveable });
+  // A line chosen for removal is a change in progress, so every radio is off and the running level stays checked.
+  const state = pickerState(levels, running, S.level, mode, { busy: S.busy || S.remove !== null, projectLock: T.project_lock, saveable: T.saveable });
   const group = h("div", {
     class: "segs p2-segs s4-segs", role: "radiogroup", "aria-label": t("ed_level_group_sr"),
     "aria-describedby": T.levels_state === "model_unknown" ? NOTE_ID : null,
@@ -161,6 +167,16 @@ function fileLine(file) {
   return shown;
 }
 
+// What the file would do with the level: change its line, add a line, or create the file. One literal t() call for
+// each op, so the string checks can see every key.
+function doesWord(lf) {
+  switch (lf.op) {
+    case "insert": return t("row_adds");
+    case "create": return t("row_creates");
+    default: return t("row_edits", { n: text(lf.line) });
+  }
+}
+
 // The third cell of a live row: the lock, the check, or the word for what the file would do. A resting row has none.
 function thirdCell(lf, picked) {
   if (!lf) return null;
@@ -168,21 +184,46 @@ function thirdCell(lf, picked) {
     const line = rowLockText(lf.lock_reason);
     return line ? [lockIcon(), h("span", null, line)] : null;
   }
-  if (picked) return [checkIcon(), h("span", null, t("row_edits", { n: text(lf.line) }))];
+  if (picked) return [checkIcon(), h("span", null, doesWord(lf))];
   if (lf.effect === "unknown") return h("span", null, t("ed_unknown_row"));
   if (lf.effect === "wont_apply") return h("span", null, t("row_wont"));
-  if (lf.pickable === true) return h("span", null, t("row_edits", { n: text(lf.line) }));
+  if (lf.pickable === true) return h("span", null, doesWord(lf));
   return null;
 }
 
+// The Remove line link of a row at rest. Its focus key names the layer, so a draw from new data keeps focus on it.
+function removeLink(file) {
+  return h("button", {
+    type: "button",
+    class: "s4-link",
+    "aria-label": t("row_remove_sr", { line: text(file.line), file: basename(file.file_display) }),
+    "data-edit-focus": "remove:" + file.layer,
+    on: { click: () => startRemove(file) },
+  }, t("row_remove"));
+}
+
+// True when a row at rest offers Remove line: edits are on, the project takes a save, nothing else is chosen, the row
+// has a line with a target, and the server doesn't lock that removal (a repeated key still opens, to say why not).
+function canRemove(T, file) {
+  if (live.ctx.edit.mode !== "ready" || T.enabled === false || T.saveable === false || T.project_lock) return false;
+  if (S.level !== null || S.remove !== null || !file.target) return false;
+  const entry = targetById(T, file.target);
+  const lock = entry && entry.remove ? entry.remove.lock_reason : undefined;
+  return Boolean(entry && entry.remove) && (lock === null || lock === undefined || lock === "repeated_key");
+}
+
 // One file row. lv is the chosen level's row when the rows are live, else null.
-function fileRow(file, lv) {
+function fileRow(T, file, lv) {
   const common = { name: placeOf(file.layer), file: fileLine(file) };
   const hasValue = file.value !== null && file.value !== undefined && file.value !== "";
   const cells = hasValue
     ? { value: text(file.value), status: file.status || null }
     : { none: t("where_not_set") };
-  if (!lv) return rowNode({ ...common, ...cells });
+  if (!lv) {
+    // In a remove's review the row whose line goes wears the picked style
+    const going = S.remove !== null && S.remove.layer === file.layer;
+    return rowNode({ ...common, ...cells, act: canRemove(T, file) ? removeLink(file) : null, cls: going ? "is-pick" : null });
+  }
   const lf = levelFile(lv, file.layer);
   const can = Boolean(lf) && lf.pickable === true;
   const picked = can && S.row === file.layer;
@@ -225,7 +266,7 @@ function rows(T, lv) {
   const others = entries
     .filter((e) => !FILE_LAYERS.includes(e.layer) && e.layer !== "default")
     .map((e) => entryRow(e, payload));
-  const files = filesOf(T).map((file) => fileRow(file, lv));
+  const files = filesOf(T).map((file) => fileRow(T, file, lv));
   const tail = defaultRow(entries, payload);
   return whereList(lv ? t("where_live") : t("where_rest"), others.concat(files), tail, true, Boolean(lv));
 }
@@ -264,20 +305,25 @@ function bodyNodes() {
 
 function frameNodes(frame) {
   const done = () => { resetCard(); S.want = "radio"; redraw("card"); };
-  const ctl = (focus) => h("div", { class: "p2-ctl" }, button(t("ed_dismiss"), { focus, onClick: focus === "dismiss-ledger" ? dismissLedger : done }));
+  const dismiss = (focus) => button(t("ed_dismiss"), { focus, onClick: focus === "dismiss-ledger" ? dismissLedger : done });
   if (frame.type === "raced") {
-    return [nt("warn", t("ed_raced_h", { file: frame.file }), [frame.path ? draw(t("ed_raced_t", { path: mark("path") }), { path: frame.path }) : null]),
-      ctl("dismiss-card")];
+    // A created file has no backup, so the body says that instead of pointing at one.
+    const body = frame.path ? draw(t("ed_raced_t", { path: mark("path") }), { path: frame.path })
+      : frame.op === "create" ? t("ed_raced_new_t") : null;
+    return [h("div", { class: "s4-rb" }, nt("warn", t("ed_raced_h", { file: frame.file }), [body], [dismiss("dismiss-card")]))];
   }
   if (frame.type === "unverified") {
     const fsync = frame.stage === "fsync";
     const heading = fsync ? t("ed_unverified_fsync_h") : t("ed_unverified_reread_h");
     const slots = { path: mark("path") };
     const body = fsync ? t("ed_unverified_fsync_t", slots) : t("ed_unverified_reread_t", slots);
-    return [nt("err", heading, [frame.path ? draw(body, { path: frame.path }) : null]), ctl("dismiss-card")];
+    // A created file has no backup, so the body says that instead of pointing at one.
+    const newBody = fsync ? t("ed_unverified_fsync_new_t") : t("ed_unverified_new_t");
+    const note = frame.path ? draw(body, { path: frame.path }) : frame.op === "create" ? newBody : null;
+    return [h("div", { class: "s4-rb" }, nt("err", heading, [note], [dismiss("dismiss-card")]))];
   }
-  return [nt("err", t("ed_ledger_h", { file: frame.file }),
-    [frame.path ? draw(t("ed_ledger_t", { path: mark("path") }), { path: frame.path }) : null]), ctl("dismiss-ledger")];
+  return [h("div", { class: "s4-rb" }, nt("err", t("ed_ledger_h", { file: frame.file }),
+    [frame.path ? draw(t("ed_ledger_t", { path: mark("path") }), { path: frame.path }) : null], [dismiss("dismiss-ledger")]))];
 }
 
 function dismissButton() {
@@ -328,7 +374,23 @@ function nothingLevelRail(lv) {
   const limits = Array.isArray(lv && lv.limits) ? lv.limits : [];
   const winner = limits.find((l) => l && l.kind === "winner");
   const paras = winner ? limitParas([winner], modelName()) : [];
-  return nt("warn", t("ed_nosave_level", { level: S.level }), paras, [button(t("ed_cancel"), { focus: "cancel", onClick: cancel })]);
+  // When every file is locked, the first file's lock says why, under the Can't save line.
+  const files = Array.isArray(lv && lv.files) ? lv.files.filter((f) => f && typeof f === "object") : [];
+  if (files.length > 0 && files.every((f) => f.lock_reason !== null && f.lock_reason !== undefined)) paras.push(lockText(files[0].lock_reason));
+  return h("div", { class: "s4-rb" }, nt("warn", t("ed_nosave_level", { level: S.level }), paras,
+    [button(t("ed_cancel"), { focus: "cancel", onClick: cancel })]));
+}
+
+// The frame of a removal's review while its preview is on its way or failed: the heading alone. Save and Cancel sit in
+// the foot, and a failed preview leaves its notice over this.
+function removeFrame(lead) {
+  return h("div", { class: "s4-rb" }, lead, h("h2", { class: "s4-rh" }, t("review_h")));
+}
+
+// The line can't be removed here, because the setting is in the file more than once. Cancel is the way back.
+function removeBlockedRail() {
+  return h("div", { class: "s4-rb" }, nt("warn", t("ed_remove_blocked_h", { line: text(S.remove.line) }), [t("ed_remove_blocked_t")],
+    [button(t("ed_cancel"), { focus: "cancel", onClick: cancel })]));
 }
 
 // What the page is showing, and the data it draws from. T is a usable ready or locked answer, or null.
@@ -346,14 +408,16 @@ function situation() {
     level: lv ? S.level : null,
     row: S.row,
     levelRow: lv,
+    remove: S.remove,
   });
   return { mode, T, lv, kase };
 }
 
 // The cases that hold a chosen level. On a cell that isn't Effort the rail and the foot keep them too, because
 // picking another cell never drops the change.
-const CHANGING = ["review", "pick_file", "stop", "nothing_level"];
-const changing = ({ mode, T, kase }) => mode === "ready" && T !== null && S.level !== null && CHANGING.includes(kase);
+const CHANGING = ["review", "pick_file", "stop", "nothing_level", "remove", "remove_blocked"];
+const changing = ({ mode, T, kase }) => mode === "ready" && T !== null && (S.level !== null || S.remove !== null)
+  && CHANGING.includes(kase);
 const holding = () => changing(situation());
 
 function railNodes() {
@@ -370,6 +434,8 @@ function railNodes() {
       if (firstLockReason(T) === "env_shell") return [noticeNode(), live.restRail(null)];
       return [noticeNode(), live.restRail([t("ed_nosave_project"), lockText(firstLockReason(T))].filter(Boolean))];
     case "review": return [S.pv ? review(T, S.pv, reviewEnv(lead)) : pickFileRail(T, lead, false)];
+    case "remove": return [S.pv ? review(T, S.pv, reviewEnv(lead)) : removeFrame(lead)];
+    case "remove_blocked": return [noticeNode(), removeBlockedRail()];
     case "pick_file": return [pickFileRail(T, lead, true)];
     case "stop": return [noticeNode(), stopPanel(lv, S.level, { cancel, model: modelName() })];
     case "nothing_level": return [noticeNode(), nothingLevelRail(lv)];
@@ -385,8 +451,8 @@ function railNodes() {
 function changeFootNodes() {
   const sit = situation();
   if (!changing(sit) || S.frame) return [];
-  if (sit.kase === "pick_file" || (sit.kase === "review" && !S.pv)) return waitingFoot({ busy: S.busy, cancel });
-  if (sit.kase !== "review") return [];
+  if (sit.kase === "pick_file" || ((sit.kase === "review" || sit.kase === "remove") && !S.pv)) return waitingFoot({ busy: S.busy, cancel });
+  if (sit.kase !== "review" && sit.kase !== "remove") return [];
   const env = reviewEnv();
   const facts = reviewFacts(sit.T, S.pv, env);
   return reviewFoot(facts.pv, facts.fileName, facts.ledger, env);
@@ -445,7 +511,11 @@ function applyWant() {
   const slots = slotsOf();
   let target;
   if (S.want === "radio") target = fallbackFocus(slots, false);
-  else target = slots.flatMap((slot) => walk(slot, (n) => keyOf(n) === "btn:" + S.want && !isOff(n)))[0] || null;
+  else {
+    // A remove link keeps its own key, "remove:<layer>". Every other wish names a button.
+    const key = S.want.startsWith("remove:") ? S.want : "btn:" + S.want;
+    target = slots.flatMap((slot) => walk(slot, (n) => keyOf(n) === key && !isOff(n)))[0] || null;
+  }
   if (!target) return false;
   S.want = null;
   target.focus();

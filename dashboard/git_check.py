@@ -1,15 +1,22 @@
-"""Where a project folder sits in a git checkout, found with lstat alone.
+"""Where a project folder sits in a git checkout, and whether git ignores its local settings.
 
 Claude Code reads settings.local.json at the repo root. When the project is not
 that root, a root file the dashboard can't see can beat any line it writes, so
 the edit routes lock. repo_place answers the one question: root, linked,
 subfolder or no_repo.
 
-The walk uses os.lstat only. It reads no file a repo controls, starts no process
-and opens nothing. A later ticket adds a git call to this module, which is why it
-lives apart from api_edit.py (that file may start no process).
+repo_place uses os.lstat alone. It reads no file a repo controls, starts no
+process and opens nothing. ignore_state is the one call here that starts a
+process, a single `git check-ignore`. It builds its environment from nothing and
+turns off the two git settings that can run a program a repo names (see the
+comment at the command). It lives in this module, apart from api_edit.py, so
+that file keeps starting no process of its own.
 """
 import os
+import shutil
+import subprocess
+
+_SETTINGS_LOCAL = ".claude/settings.local.json"
 
 
 def _git_kind(folder):
@@ -48,3 +55,47 @@ def repo_place(path):
         here = parent
         if _git_kind(here) is not None:
             return "subfolder"
+
+
+def ignore_state(project_path, path_env, home, xdg_config_home=None):
+    """Return "no_repo", "ignored", "not_ignored" or "unknown" for .claude/settings.local.json.
+
+    Asks git whether it ignores the file, and never raises. Git is found with
+    shutil.which on path_env (None under --fixture), so the caller's own
+    environment is never read. The child gets a new environment holding only what
+    the caller passed.
+    """
+    if repo_place(project_path) == "no_repo":
+        return "no_repo"
+    if not path_env:
+        return "unknown"
+    try:
+        git = shutil.which("git", path=path_env)
+    except (OSError, ValueError, TypeError):
+        return "unknown"
+    if not git or not os.path.isabs(git):
+        return "unknown"
+    # Two settings keep a repo from running a program through this call:
+    # - core.fsmonitor=false stops check-ignore running a program named in the
+    #   project's .git/config, including one that arrives through include.path.
+    # - --no-lazy-fetch and GIT_NO_LAZY_FETCH=1 stop a partial clone fetching a
+    #   missing .gitignore blob, which runs core.sshCommand. Both are set, so one
+    #   still holds if the other is dropped.
+    command = [git, "--no-lazy-fetch", "-c", "core.fsmonitor=false", "-C", project_path,
+               "check-ignore", "-q", "--", _SETTINGS_LOCAL]
+    env = {key: value for key, value in (
+        ("PATH", path_env),
+        ("HOME", home),
+        ("GIT_NO_LAZY_FETCH", "1"),
+        ("XDG_CONFIG_HOME", xdg_config_home),
+    ) if value is not None}
+    try:
+        done = subprocess.run(command, env=env, timeout=2, stdin=subprocess.DEVNULL,
+                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except (subprocess.SubprocessError, OSError, ValueError):
+        return "unknown"
+    if done.returncode == 0:
+        return "ignored"
+    if done.returncode == 1:
+        return "not_ignored"
+    return "unknown"
