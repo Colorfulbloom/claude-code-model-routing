@@ -11,6 +11,7 @@ dirty the repo's tests/fixtures.
 import collections
 import dataclasses
 import datetime
+import filecmp
 import json
 import os
 import re
@@ -168,6 +169,14 @@ class World:
         return body
 
 
+def lock_repo(case, world, place="subfolder"):
+    """Make the world's project a repo subfolder (or "linked"), so every write locks."""
+    world.place.stop()
+    world.place = mock.patch.object(git_check, "repo_place", return_value=place)
+    world.place.start()
+    case.addCleanup(world.place.stop)
+
+
 def target_of(body, layer, ends=None):
     """Return the one target row of a layer, optionally the one whose ref ends with `ends`."""
     found = [t for t in body["targets"] if t["layer"] == layer and (ends is None or ends in t["ref"])]
@@ -307,14 +316,14 @@ class TargetsShape(Base):
         world = World(self, user={"model": SONNET}, project={"effortLevel": "high"})
         body = world.targets()
         self.assertEqual(set(body), {"enabled", "project", "state", "agent", "setting", "runs_as", "model",
-                                     "levels_state", "project_lock", "targets", "blocked", "files", "levels",
-                                     "saveable"})
+                                     "levels_state", "project_lock", "targets", "adds", "blocked", "files",
+                                     "levels", "saveable"})
         self.assertEqual((body["enabled"], body["project"], body["state"], body["agent"], body["setting"]),
                          (True, "project", "ok", "@main", "effortLevel"))
         self.assertEqual((body["runs_as"], body["model"], body["levels_state"]), ("high", SONNET, "ok"))
         row = target_of(body, "project")
         self.assertEqual(set(row), {"target", "ref", "layer", "file_display", "line", "current_value",
-                                    "status", "shared", "in_effect"})
+                                    "status", "shared", "in_effect", "remove"})
         self.assertEqual((row["file_display"], row["line"], row["current_value"], row["status"]),
                          ("project/.claude/settings.json", 2, "high", "in_effect"))
         self.assertIs(row["shared"], True)
@@ -354,8 +363,7 @@ class TargetsShape(Base):
         self.assertEqual(by_name[dotted].entry["value"], "low")
         self.assertEqual(by_name[OPUS].entry["value"], "medium")
         # An edit through the dotted target changes only that line.
-        status, pv = world.preview(by_name[dotted].id, "high")
-        self.assertEqual(status, 200)
+        pv = inner_preview(world, by_name[dotted].id, "high")  # the Opus entry wins, so the route refuses it
         changed = [line["text"] for hunk in pv["diff"]["hunks"] for line in hunk["lines"]
                    if line["kind"] in ("add", "del")]
         self.assertEqual(changed, ['      "effortLevel": "low"', '      "effortLevel": "high"'])
@@ -414,7 +422,7 @@ class TargetsShape(Base):
                          ("missing_folder", "model_unknown", [], [], []))
         self.assertEqual((body["runs_as"], body["model"]), (None, None))
         status, pv = world.preview(api_edit._target_id("user", ("effortLevel",)), "low")
-        self.assertEqual((status, pv), (400, {"error": "not_editable"}))
+        self.assertEqual((status, pv), (422, {"error": "file_missing"}))  # was 400 not_editable before creates
 
 
 class BlockedRows(Base):
@@ -477,6 +485,12 @@ class BlockedRows(Base):
         world.write("project", json.dumps({"effortLevel": "high", "pad": pad}))
         self.assertEqual(self.blocked(world)["too_large"]["layer"], "project")
 
+    def test_a_walk_that_fails_does_not_count_as_a_missing_folder(self):
+        target = mock.Mock()
+        for exc in (edit_store.Refused("not_owner"), OSError(5, "simulated")):
+            with mock.patch.object(edit_store, "folder_missing", side_effect=exc):
+                self.assertFalse(api_edit._folder_missing(target))
+
     def test_a_file_that_just_went_is_unparsed(self):
         world = World(self, user={"model": SONNET}, project={"effortLevel": "high"})
         with mock.patch.object(edit_store, "read_target", side_effect=edit_store.Refused("file_missing")):
@@ -528,8 +542,11 @@ class Levels(Base):
                                                   "preselect": None, "saveable": False})
         for name in ("low", "medium", "xhigh"):
             row = level_of(body, name)
+            # The absent local file is a create that applies, so it is the preselect.
             self.assertEqual((row["result"], row["runs_as"], row["certain"], row["limits"], row["preselect"],
-                              row["saveable"]), ("reachable", name, True, [], None, True))
+                              row["saveable"]),
+                             ("reachable", name, True, [], file_of(row, "local")["target"], True))
+            self.assertEqual(file_of(row, "local")["op"], "create")
             self.assertEqual([f["layer"] for f in row["files"]], ["local", "project", "user"])
             self.assertEqual(row["files"][1], {"layer": "project", "target": project, "op": "replace", "line": 2,
                                                "runs_as": name, "effect": "applies", "lock_reason": None,
@@ -546,7 +563,9 @@ class Levels(Base):
         project = target_of(body, "project")["target"]
         for name in LEVELS:
             row = level_of(body, name)
-            self.assertEqual((row["result"], row["certain"], row["preselect"]), ("reachable", False, None))
+            # The absent local file is a create that applies, so it is the preselect.
+            self.assertEqual((row["result"], row["certain"], row["preselect"]),
+                             ("reachable", False, file_of(row, "local")["target"]))
             self.assertEqual(project_row(row)["target"], project)
 
     def test_the_order_is_winner_then_local_project_user_and_a_model_path_first(self):
@@ -669,6 +688,7 @@ class WinnersThatCannotBeEdited(Base):
 
     def test_a_default_winner_gives_no_key_in_file(self):
         world = World(self, user={"model": OPUS})
+        lock_repo(self, world)  # without the lock the user file could take a new line
         body = world.targets()
         self.assertEqual(body["targets"], [])
         self.assertEqual(body["levels_state"], "ok")
@@ -731,7 +751,7 @@ class NoModelTable(Base):
             self.assertEqual((row["result"], row["certain"]), (result, False), name)
         low = level_of(body, "low")
         self.assertEqual(project_row(low)["target"], project)
-        self.assertIsNone(low["preselect"])
+        self.assertEqual(low["preselect"], file_of(low, "local")["target"])  # the absent local create, never the project
 
     def test_a_per_model_cap_with_no_model_is_not_a_limit(self):
         world = World(self, user={"modelSettings": {OPUS: {"maxEffortLevel": "low"}}},
@@ -744,7 +764,8 @@ class NoModelTable(Base):
         self.assertEqual(level_of(body, "high")["result"], "now")
 
     def test_the_user_file_effort_level_as_the_only_target_gives_model_unknown(self):
-        world = World(self, user={"effortLevel": "high"})
+        world = World(self, user={"effortLevel": "high"}, project="{ not json",
+                      local="{ not json")  # both locked, so only the user file offers a line
         body = world.targets()
         self.assertEqual((body["levels_state"], body["runs_as"]), ("model_unknown", None))
         self.assertEqual(target_of(body, "user")["status"], "unknown")
@@ -771,7 +792,8 @@ class NoModelTable(Base):
         self.assertEqual(api_edit._lock_reason(view, winner), "no_effort_support")
 
     def test_a_no_model_default_winner_is_not_a_no_key_in_file(self):
-        world = World(self, user={"maxEffortLevel": "high"})
+        world = World(self, user={"maxEffortLevel": "high"}, project="{ not json",
+                      local="{ not json")  # both locked, so they offer nothing
         body = world.targets()
         self.assertEqual(body["levels_state"], "model_unknown")
         for name in ("low", "medium", "high"):
@@ -786,6 +808,17 @@ class NoModelTable(Base):
 def view_of(world):
     listing = projects.load(world.ctx)
     return api_edit._view(world.ctx, listing, listing.find(world.key))
+
+def inner_preview(world, target, value):
+    """Return the payload _preview builds for a target, skipping the route's pickable check.
+
+    The preview and save routes refuse a row the file list marks not pickable. A few tests read a
+    payload that only such a row gives (a change that leaves the level where it is, a winner that
+    overrides it), so they build it here.
+    """
+    listing = projects.load(world.ctx)
+    view = api_edit._view(world.ctx, listing, listing.find(world.key))
+    return api_edit._preview(world.ctx, view, view.find(target), value).payload
 
 
 class FileStates(Base):
@@ -816,21 +849,21 @@ class FileStates(Base):
         row = file_of(self.files(world), "user")
         self.assertEqual((row["state"], row["lock_reason"], row["line"], row["value"], row["status"],
                           row["target"], row["file_display"]),
-                         ("no_line", "add_later", None, None, None, None, "config/settings.json"))
+                         ("no_line", None, None, None, None, None, "config/settings.json"))
 
     def test_absent_when_the_leaf_is_gone(self):
         world = World(self, user={"model": SONNET}, project={"effortLevel": "high"})
         row = file_of(self.files(world), "local")
         self.assertEqual((row["state"], row["lock_reason"], row["target"], row["file_display"]),
-                         ("absent", "create_later", None, "project/.claude/settings.local.json"))
+                         ("absent", None, None, "project/.claude/settings.local.json"))
 
     def test_absent_when_the_claude_folder_is_gone(self):
         world = World(self, user={"model": SONNET})
         shutil.rmtree(os.path.join(world.proj, ".claude"))
         files = self.files(world)
         self.assertEqual([(f["layer"], f["state"], f["lock_reason"]) for f in files],
-                         [("local", "absent", "create_later"), ("project", "absent", "create_later"),
-                          ("user", "no_line", "add_later")])
+                         [("local", "absent", None), ("project", "absent", None),
+                          ("user", "no_line", None)])
 
     def test_locked_by_a_symlink_at_the_leaf(self):
         world = World(self, user={"model": SONNET}, project={"effortLevel": "high"})
@@ -868,7 +901,7 @@ class FileStates(Base):
         rows = api_edit._file_states(view)
         self.assertEqual([(f["layer"], f["state"], f["lock_reason"]) for f in rows],
                          [("local", "locked", "file_missing"), ("project", "locked", "file_missing"),
-                          ("user", "no_line", "add_later")])
+                          ("user", "no_line", None)])
 
     def test_file_missing_when_the_config_folder_is_gone(self):
         world = World(self, project={"effortLevel": "high"})
@@ -926,13 +959,13 @@ class FileStates(Base):
         row = file_of(body["files"], "local")
         self.assertEqual((row["state"], row["value"]), ("locked", "hidden"))
 
-    def test_the_row_locks_table_names_the_two_states(self):
-        self.assertEqual(api_edit.ROW_LOCKS, {"no_line": "add_later", "absent": "create_later"})
+    def test_the_row_locks_table_is_gone(self):
+        self.assertFalse(hasattr(api_edit, "ROW_LOCKS"))
 
-    def test_a_preview_and_a_save_do_not_read_the_file_rows(self):
+    def test_a_preview_and_a_save_do_not_build_the_level_answers(self):
         world = World(self, user={"model": SONNET}, project={"effortLevel": "low"})
         target = target_of(world.targets(), "project")["target"]
-        with mock.patch.object(api_edit, "_file_states", side_effect=AssertionError("called")):
+        with mock.patch.object(api_edit, "_levels", side_effect=AssertionError("called")):
             world.edit(target, "high")
 
 
@@ -950,13 +983,16 @@ class LevelFiles(Base):
             for row in level["files"]:
                 self.assertEqual(set(row), self.ROW_KEYS)
 
-    def test_a_row_without_a_line_carries_the_file_lock_and_nothing_else(self):
+    def test_an_absent_file_is_a_create_row_with_no_lock(self):
         world = World(self, user={"model": SONNET}, project={"effortLevel": "high"})
-        row = level_of(world.targets(), "low")
-        self.assertEqual(file_of(row, "local"), {"layer": "local", "target": None, "op": None, "line": None,
-                                                 "runs_as": None, "effect": None, "lock_reason": "create_later",
-                                                 "pickable": False})
-        self.assertEqual(file_of(row, "user")["lock_reason"], "add_later")
+        body = world.targets()
+        row = level_of(body, "low")
+        self.assertEqual(file_of(row, "local"), {"layer": "local", "target": add_of(body, "local", TOP)["target"],
+                                                 "op": "create", "line": 2, "runs_as": "low",
+                                                 "effect": "applies", "lock_reason": None, "pickable": True})
+        user = file_of(row, "user")
+        self.assertEqual((user["op"], user["lock_reason"], user["effect"], user["pickable"]),
+                         ("insert", None, "wont_apply", False))  # the project line outranks the user file
 
     def test_applies_in_local_is_preselected(self):
         world = World(self, user={"model": SONNET}, local={"effortLevel": "high"})
@@ -995,7 +1031,8 @@ class LevelFiles(Base):
         self.assertEqual((local["effect"], local["pickable"]), ("applies", True))
 
     def test_unknown_with_no_model_is_pickable_and_not_preselected(self):
-        world = World(self, user={"effortLevel": "high"})
+        # Local is locked, so the user file is the only row (a local create would apply with no model).
+        world = World(self, user={"effortLevel": "high"}, local="{ not json")
         body = world.targets()
         for level in body["levels"]:
             user = file_of(level, "user")
@@ -1027,13 +1064,14 @@ class LevelFiles(Base):
 
     def test_a_level_where_every_row_is_grey_is_not_saveable(self):
         world = World(self, user={"model": OPUS})  # a default wins and no file holds a line
+        lock_repo(self, world)  # the repo lock greys every row
         body = world.targets()
         self.assertIs(body["saveable"], False)
         for level in body["levels"]:
             self.assertEqual((level["preselect"], level["saveable"]), (None, False))
             for row in level["files"]:
-                self.assertIn(row["lock_reason"], ("add_later", "create_later"))
-                self.assertEqual((row["pickable"], row["target"], row["effect"]), (False, None, None))
+                self.assertEqual((row["lock_reason"], row["pickable"], row["target"], row["effect"]),
+                                 ("not_repo_root", False, None, None))
 
     def test_a_project_where_only_local_has_a_line_and_it_is_locked(self):
         world = World(self, user={"model": SONNET})
@@ -1050,7 +1088,8 @@ class LevelFiles(Base):
             self.assertEqual((local["lock_reason"], local["line"], local["pickable"]), ("symlink", 2, False))
 
     def test_a_line_only_in_the_project_file_is_pickable_and_never_preselected(self):
-        world = World(self, user={"model": SONNET}, project={"effortLevel": "high"})
+        # Local is locked, so the shared file is the only row (an absent local would be a create).
+        world = World(self, user={"model": SONNET}, project={"effortLevel": "high"}, local="{ not json")
         body = world.targets()
         for name in ("low", "medium", "xhigh"):
             row = level_of(body, name)
@@ -1089,10 +1128,10 @@ class Preview(Base):
         target = target_of(world.targets(), "project")["target"]
         status, pv = world.preview(target, "high")
         self.assertEqual(status, 200)
-        self.assertEqual(set(pv), {"target", "old_value", "new_value", "no_change", "before", "after",
+        self.assertEqual(set(pv), {"git_ignore", "target", "old_value", "new_value", "no_change", "before", "after",
                                    "changes", "warning", "diff", "base_file", "base_trail", "base_others",
                                    "op", "layer", "shared", "line", "ref", "new_file", "creates_dir",
-                                   "ledger_damaged", "runs_before", "runs_after"})
+                                   "ledger_damaged", "runs_before", "runs_after", "no_effect", "last_line"})
         self.assertEqual((pv["target"], pv["old_value"], pv["new_value"], pv["no_change"]),
                          (target, "low", "high", False))
         self.assertNotIn("new_raw", pv)
@@ -1115,7 +1154,7 @@ class Preview(Base):
         self.assertEqual((pv["runs_before"], pv["runs_after"]), ("low", "medium"))
 
     def test_a_user_edit_is_not_shared(self):
-        world = self.world(user={"model": SONNET, "effortLevel": "low"}, project={})
+        world = self.world(user={"effortLevel": "low"}, project={})
         status, pv = world.preview(target_of(world.targets(), "user")["target"], "high")
         self.assertEqual((status, pv["layer"], pv["shared"]), (200, "user", False))
 
@@ -1158,10 +1197,13 @@ class Preview(Base):
         world = self.world(managed={"maxEffortLevel": "high"}, local={"effortLevel": "medium"})
         body = world.targets()
         before = world.snapshot()
+        answers = []
         for row in body["targets"]:
             for value in LEVELS:
                 status, _pv = world.preview(row["target"], value)
-                self.assertEqual(status, 200)
+                self.assertIn(status, (200, 400), (row["target"], value))  # 400: a row the list marks not pickable
+                answers.append(status)
+        self.assertIn(200, answers)
         self.assertEqual(world.snapshot(), before)
         self.assertFalse(os.path.exists(os.path.join(world.cfg, edit_store.STORE_DIR)))
 
@@ -1287,7 +1329,7 @@ class Preview(Base):
         # the file value moves, and the run-as value stays at the cap.
         world = World(self, user={"maxEffortLevel": "low"}, project={"effortLevel": "medium"})
         target = target_of(world.targets(), "project")["target"]
-        _status, pv = world.preview(target, "high")
+        pv = inner_preview(world, target, "high")  # the row leaves what runs alone, so the route refuses it
         change = pv["changes"][0]
         self.assertEqual((change["before"]["value"], change["after"]["value"]), ("medium", "high"))
         self.assertEqual((change["before"]["runs_as"], change["after"]["runs_as"]), ("low", "low"))
@@ -1297,7 +1339,7 @@ class Preview(Base):
         os.makedirs(os.path.join(world.managed, "managed-settings.d"))
         world.put(os.path.join(world.managed, "managed-settings.d", "10-extra.json"), {"a": 1})
         target = target_of(world.targets(), "project")["target"]
-        _status, pv = world.preview(target, "high")
+        pv = inner_preview(world, target, "high")  # the local line wins, so the route refuses this row
         self.assertEqual(sorted(pv["base_others"]), [
             "config/settings.json", "managed/managed-settings.d/10-extra.json", "managed/managed-settings.json",
             "project/.claude/settings.local.json"])
@@ -1306,7 +1348,7 @@ class Preview(Base):
             self.assertRegex(value, r"^[0-9a-f]{64}$")
         os.chmod(world.path("local"), 0)
         try:
-            _status, again = world.preview(target, "high")
+            again = inner_preview(world, target, "high")
             if os.access(world.path("local"), os.R_OK):  # running as root reads it anyway
                 self.skipTest("the file stays readable")
             self.assertEqual(again["base_others"]["project/.claude/settings.local.json"], "unreadable")
@@ -1316,10 +1358,15 @@ class Preview(Base):
 
 class Warnings(Base):
     def preview(self, world, layer, value, ends=None):
+        """Return the preview payload of a target's edit, built by _preview.
+
+        The route refuses a row the file list marks not pickable, and several warnings (overridden,
+        ignored, a level the winner already holds) only appear on such a row. So this helper skips the route.
+        """
         target = target_of(world.targets(), layer, ends)["target"]
-        status, pv = world.preview(target, value)
-        self.assertEqual(status, 200, pv)
-        return pv
+        listing = projects.load(world.ctx)
+        view = api_edit._view(world.ctx, listing, listing.find(world.key))
+        return api_edit._preview(world.ctx, view, view.find(target), value).payload
 
     def test_in_effect_with_no_limit_is_null(self):
         world = World(self, user={"model": SONNET}, project={"effortLevel": "low"})
@@ -1421,13 +1468,14 @@ class Warnings(Base):
                                               "target": None, "lock_reason": "model_unknown"}])
 
     def test_a_warning_does_not_block_a_save(self):
-        world = World(self, user={"model": OPUS, "effortLevel": "xhigh"})
-        target = target_of(world.targets(), "user")["target"]
-        status, pv = world.preview(target, "low")
-        self.assertIsNotNone(pv["warning"])
-        status, saved = world.save(pv, target, "low")
+        world = World(self, user={"model": SONNET, "maxEffortLevel": "medium"}, project={"effortLevel": "low"})
+        target = target_of(world.targets(), "project")["target"]
+        status, pv = world.preview(target, "xhigh")
+        self.assertEqual(status, 200, pv)
+        self.assertEqual(pv["warning"]["status"], "lowered")
+        status, saved = world.save(pv, target, "xhigh")
         self.assertEqual(status, 200, saved)
-        self.assertIn(b'"low"', world.read("user"))
+        self.assertIn(b'"xhigh"', world.read("project"))
 
     def test_a_target_gone_from_the_after_answer_is_not_editable(self):
         world = World(self, user={"model": SONNET}, project={"effortLevel": "low"})
@@ -1469,7 +1517,7 @@ class Save(Base):
         self.assertEqual(set(body), {"edit", "settings"})
         self.assertEqual(world.read("project"), old.replace(b'"low"', b'"high"'))
         edit = body["edit"]
-        self.assertEqual(set(edit), {"id", "kind", "time", "layer", "file_display", "key_path", "old_value",
+        self.assertEqual(set(edit), {"id", "kind", "time", "layer", "file_display", "op", "key_path", "old_value",
                                      "new_value", "backup_display", "undoable", "not_undoable_reason"})
         self.assertEqual((edit["kind"], edit["layer"], edit["file_display"], edit["key_path"], edit["old_value"],
                           edit["new_value"], edit["time"]),
@@ -1485,18 +1533,20 @@ class Save(Base):
     def test_a_save_in_every_layer_and_a_model_path_changes_only_that_value(self):
         raw = ('{"model": "%s", "modelSettings": {"%s": {"effortLevel": "low"}}, "effortLevel": "low"}\n'
                % (OPUS, OPUS))
-        world = World(self, user=raw, project={"effortLevel": "low"}, local={"effortLevel": "low"})
-        body = world.targets()
-        for layer, ends in (("local", None), ("project", None), ("user", "modelSettings.claude-opus-5-5.effortLevel")):
-            before = {name: world.read(name) for name in ("user", "project", "local")}
-            target = target_of(body, layer, ends)["target"]
+        # Only the layer that wins takes a pick, so each world drops the layers above the one it edits.
+        worlds = (("local", None, dict(user=raw, project={"effortLevel": "low"}, local={"effortLevel": "low"})),
+                  ("project", None, dict(user=raw, project={"effortLevel": "low"})),
+                  ("user", "modelSettings.claude-opus-5-5.effortLevel", dict(user=raw)))
+        for layer, ends, files in worlds:
+            world = World(self, **files)
+            before = {name: world.read(name) for name in files}
+            target = target_of(world.targets(), layer, ends)["target"]
             world.edit(target, "medium")
             for name, data in before.items():
                 if name == layer:
                     self.assertEqual(world.read(name), data.replace(b'"low"', b'"medium"', 1), name)
                 else:
                     self.assertEqual(world.read(name), data, name)
-            body = world.targets()
 
     def test_missing_bases_answer_bad_request_and_write_nothing(self):
         world = self.world()
@@ -1549,13 +1599,13 @@ class Save(Base):
     def test_a_changed_other_layer_is_stale_with_changed_trail(self):
         world = self.world(user={"model": OPUS, "modelSettings": {OPUS: {"effortLevel": "low"}}},
                            project={"effortLevel": "high"})
-        target, pv = self.ready(world, "user", "medium")
-        world.write("project", {"effortLevel": "high", "unrelated": True})
-        user_bytes = world.read("user")
+        target, pv = self.ready(world, "project", "medium")
+        world.write("user", {"model": OPUS, "modelSettings": {OPUS: {"effortLevel": "low"}}, "unrelated": True})
+        project_bytes = world.read("project")
         status, body = world.save(pv, target, "medium")
         self.assertEqual((status, body["error"], body["changed"]), (409, "stale", "trail"))
-        self.assertEqual(body["changed_files"], [{"layer": "project", "file_display": "project/.claude/settings.json"}])
-        self.assertEqual(world.read("user"), user_bytes)
+        self.assertEqual(body["changed_files"], [{"layer": "user", "file_display": "config/settings.json"}])
+        self.assertEqual(world.read("project"), project_bytes)
         self.assertEqual(self.backups(world), [])
         status, again = world.save(body["preview"], target, "medium")
         self.assertEqual(status, 200, again)
@@ -1569,8 +1619,8 @@ class Save(Base):
 
     def test_each_other_file_is_named_with_its_layer(self):
         world = self.world(local={"effortLevel": "medium"}, managed={"maxEffortLevel": "xhigh"})
-        target, pv = self.ready(world)
-        for layer, display in (("local", "project/.claude/settings.local.json"), ("user", "config/settings.json"),
+        target, pv = self.ready(world, "local")  # the local line wins, so it is the row that takes a pick
+        for layer, display in (("project", "project/.claude/settings.json"), ("user", "config/settings.json"),
                                ("managed", "managed/managed-settings.json")):
             original = world.read(layer)
             world.write(layer, original + b"\n")
@@ -1610,10 +1660,18 @@ class Save(Base):
         self.assertEqual((status, body["error"]), (409, "stale"))
         self.assertEqual(self.backups(world), [])
 
-    def test_a_target_that_stopped_being_valid_is_not_editable(self):
+    def test_a_target_whose_line_went_is_stale_and_its_id_now_names_an_add(self):
         world = self.world()
         target, pv = self.ready(world)
         world.write("project", {"model": "x"})  # the key is gone
+        status, body = world.save(pv, target, "high")
+        self.assertEqual((status, body["error"]), (409, "stale"))
+        self.assertEqual((body["preview"]["target"], body["preview"]["op"]), (target, "insert"))
+
+    def test_a_target_in_a_file_that_stopped_parsing_is_not_editable(self):
+        world = self.world()
+        target, pv = self.ready(world)
+        world.write("project", "{not json")
         status, body = world.save(pv, target, "high")
         self.assertEqual(status, 400)
         self.assertEqual(body, {"error": "not_editable"})
@@ -1719,7 +1777,7 @@ class StoreFailures(Base):
     def test_a_fresh_preview_that_fails_falls_back_to_null(self):
         def vanish():
             with open(self.world.path("project"), "wb") as fh:
-                fh.write(dumps({"model": "x"}).encode())
+                fh.write(b"{not json")
         status, body = self.attempt("before_recheck", vanish)
         self.assertEqual((status, body["error"], body["preview"]), (409, "stale", None))
 
@@ -1743,8 +1801,9 @@ class StoreFailures(Base):
             raise OSError(5, "io error")
         status, body = self.attempt("reread", fail)
         self.assertEqual(status, 500)
-        self.assertEqual(set(body), {"error", "stage", "file_unchanged", "backup_display"})
+        self.assertEqual(set(body), {"error", "stage", "file_unchanged", "edit", "backup_display"})
         self.assertEqual((body["error"], body["stage"], body["file_unchanged"]), ("unverified", "reread", False))
+        self.assertEqual((body["edit"]["op"], body["edit"]["kind"]), ("replace", "edit"))
         self.assertRegex(body["backup_display"], r"\.bak$")
         self.assertEqual(self.world.read("project"), self.original.replace(b'"low"', b'"high"'))
 
@@ -1765,14 +1824,21 @@ class StoreFailures(Base):
             (edit_store.BackupDamaged(None), 409, {"error": "backup_damaged", "backup_display": None}),
             (edit_store.NotUndoable("not_newest"), 409, {"error": "not_undoable", "reason": "not_newest"}),
             (edit_store.UnknownEdit("x"), 404, {"error": "unknown_edit"}),
-            (edit_store.Unverified("fsync", {}, None), 500, {"error": "unverified", "stage": "fsync",
-                                                             "file_unchanged": False, "backup_display": None}),
             (json_edit.Refused("key_missing"), 422, {"error": "key_missing"}),
             (json_edit.Refused("unparsed"), 422, {"error": "unparsed"}),
             (json_edit.Refused("oracle_failed"), 500, {"error": "write_failed", "file_unchanged": True}),
         )
         for exc, status, body in cases:
             self.assertEqual(api_edit._store_answer(req, exc), (status, body), repr(exc))
+        # Unverified carries the edit row, so its answer needs a real target and a real ledger row.
+        saved = self.world.edit(self.target, "medium")["edit"]
+        store_target = edit_store.target_for(ctx, self.world.key, "project")
+        row = self.world.store.find(store_target, saved["id"])
+        status, body = api_edit._store_answer(api_edit._Request(ctx, None, None, store_target, undo=True),
+                                              edit_store.Unverified("fsync", row, None))
+        self.assertEqual((status, set(body)), (500, {"error", "stage", "file_unchanged", "edit", "backup_display"}))
+        self.assertEqual((body["error"], body["stage"], body["file_unchanged"], body["backup_display"], body["edit"]["id"]),
+                         ("unverified", "fsync", False, None, saved["id"]))
         path = os.path.join(self.world.cfg, "x.bak")
         status, body = api_edit._store_answer(req, edit_store.ChangedSinceSave(path))
         self.assertEqual(body["backup_display"], "config/x.bak")
@@ -1791,7 +1857,9 @@ class Undo(Base):
         saved = self.world.edit(self.target, "high")
         status, body = self.world.undo(saved["edit"]["id"])
         self.assertEqual(status, 200)
-        self.assertEqual(set(body), {"edit", "settings", "matches_backup", "restored_from_display"})
+        self.assertEqual(set(body), {"edit", "settings", "matches_backup", "restored_from_display",
+                                     "removed_file", "removed_dir"})
+        self.assertEqual((body["removed_file"], body["removed_dir"]), (False, False))
         self.assertIs(body["matches_backup"], True)
         self.assertEqual(body["restored_from_display"], saved["edit"]["backup_display"])
         self.assertEqual(self.world.read("project"), self.original)
@@ -1987,7 +2055,7 @@ class RepoLock(Base):
                 self.assertEqual(body["blocked"], [])
                 self.assertEqual(len(body["targets"]), 3)
                 self.assertNotIn("not_repo_root", {f["lock_reason"] for f in body["files"]})
-                target = target_of(body, "user")["target"]
+                target = target_of(body, "local")["target"]  # the local line wins, so it takes a pick
                 self.assertEqual(world.preview(target, "low")[0], 200)
 
     def test_an_unexpanded_project_is_not_walked(self):
@@ -2002,10 +2070,14 @@ class History(Base):
     def test_rows_join_the_three_ledgers_newest_first(self):
         world = World(self, user={"model": OPUS, "modelSettings": {OPUS: {"effortLevel": "low"}}},
                       project={"effortLevel": "low"}, local={"effortLevel": "low"})
-        body = world.targets()
         ids = {}
+        # Only the layer that wins takes a pick, so each step first leaves the layers above it empty.
+        arrange = ({"project": {}, "local": {}}, {"local": {"effortLevel": "low"}},
+                   {"project": {"effortLevel": "low"}, "local": {}}, {"project": {}})
         for step, (layer, ends) in enumerate((("user", "claude-opus-5-5.effortLevel"), ("local", None),
                                               ("project", None), ("user", "claude-opus-5-5.effortLevel"))):
+            for name, content in arrange[step].items():
+                world.write(name, content)
             world.store.fixed_now = FIXED + datetime.timedelta(minutes=step)
             value = "medium" if step < 3 else "high"
             target = target_of(world.targets(), layer, ends)["target"]
@@ -2032,7 +2104,7 @@ class History(Base):
         undone = world.undo(saved["id"])[1]["edit"]
         rows = world.history()["rows"]
         self.assertEqual(rows[0], undone)
-        self.assertEqual(set(rows[0]), {"id", "kind", "time", "layer", "file_display", "key_path", "old_value",
+        self.assertEqual(set(rows[0]), {"id", "kind", "time", "layer", "file_display", "op", "key_path", "old_value",
                                         "new_value", "backup_display", "restored_from_display", "undoable",
                                         "not_undoable_reason"})
         self.assertNotIn("restored_from_display", rows[1])
@@ -2040,7 +2112,6 @@ class History(Base):
 
     def test_a_user_file_edit_appears_under_every_project(self):
         world = World(self, user={"model": OPUS, "modelSettings": {OPUS: {"effortLevel": "low"}}},
-                      project={"effortLevel": "low"},
                       listed=[{"name": "Main", "path": "{proj}"}, {"name": "Second", "path": "{root}/second"}])
         os.makedirs(os.path.join(world.root, "second", ".claude"))
         self.assertEqual(world.key, "main")
@@ -2105,6 +2176,716 @@ class History(Base):
 
 
 # --------------------------------------------------------------------------
+# Adds: a new effort line in a file that exists (T11b)
+
+def add_of(body, layer, ends=None):
+    """Return the one add row of a layer, optionally the one whose ref ends with `ends`."""
+    found = [a for a in body["adds"] if a["layer"] == layer and (ends is None or a["ref"].endswith(ends))]
+    assert len(found) == 1, (layer, ends, body["adds"])
+    return found[0]
+
+
+MODEL_REF = 'modelSettings.%s.effortLevel"]'  # the end of a ref through modelSettings
+TOP = '"effortLevel"]'  # the end of a ref for the top-level line
+
+
+class Adds(Base):
+    def test_a_project_file_with_no_line_takes_an_insert_and_local_is_the_preselect(self):
+        world = World(self, user={"model": OPUS}, project={"language": "en"}, local={"language": "en"})
+        body = world.targets()
+        local = add_of(body, "local", TOP)
+        project = add_of(body, "project", TOP)
+        self.assertEqual((local["op"], project["op"], project["shared"], local["shared"]),
+                         ("insert", "insert", True, False))
+        self.assertEqual(set(local), {"target", "ref", "layer", "file_display", "op", "shared"})
+        todays = body["runs_as"]
+        for row in body["levels"]:
+            if row["level"] == todays:
+                continue
+            rows = file_of(row, "project")
+            self.assertEqual((rows["op"], rows["effect"], rows["target"], rows["pickable"]),
+                             ("insert", "applies", project["target"], True), row["level"])
+            self.assertEqual(row["preselect"], local["target"], row["level"])
+            self.assertEqual(file_of(row, "local")["effect"], "applies")
+
+    def test_a_level_with_only_a_shared_row_reachable_has_no_preselect(self):
+        world = World(self, user={"model": OPUS}, project={"language": "en"}, local="{ not json")  # local locked
+        body = world.targets()
+        self.assertEqual(file_of(body["files"], "local")["state"], "locked")
+        for row in body["levels"]:
+            if row["result"] == "now":
+                continue
+            self.assertEqual(file_of(row, "project")["effect"], "applies")
+            self.assertIsNone(row["preselect"], row["level"])
+            self.assertIs(row["saveable"], True)
+
+    def test_every_preselect_in_these_worlds_is_a_local_target_or_null(self):
+        worlds = [
+            World(self, user={"model": OPUS}, project={"language": "en"}, local={"language": "en"}),
+            World(self, user={"model": OPUS}, project={"language": "en"}),
+            World(self, user={"model": OPUS, "effortLevel": "high"}, project={"effortLevel": "low"}),
+            World(self, user={"model": SONNET}, project={"effortLevel": "high"}, local={"language": "en"}),
+            World(self, user={"x": 1}, project={"x": 1}, local={"x": 1}),
+            World(self, user={"model": SONNET, "maxEffortLevel": "medium"}, local={"x": 1}),
+        ]
+        seen = 0
+        for index, world in enumerate(worlds):
+            body = world.targets()
+            local_ids = {t["target"] for t in body["targets"] + body["adds"] if t["layer"] == "local"}
+            for row in body["levels"]:
+                if row["preselect"] is not None:
+                    seen += 1
+                    self.assertIn(row["preselect"], local_ids, index)
+        self.assertGreater(seen, 0)
+
+    def test_an_ignored_top_line_stays_and_the_new_line_goes_beside_it(self):
+        world = World(self, user={"model": OPUS, "effortLevel": "high"})
+        body = world.targets()
+        top = file_of(body["files"], "user")
+        self.assertEqual((top["state"], top["status"], top["value"]), ("has_line", "ignored", "high"))
+        add = add_of(body, "user", MODEL_REF % OPUS)
+        self.assertEqual(add["op"], "insert")
+        self.assertEqual(body["runs_as"], "medium")
+        row = file_of(level_of(body, "low"), "user")
+        self.assertEqual((row["target"], row["op"], row["effect"], row["pickable"]),
+                         (add["target"], "insert", "applies", True))
+        self.assertIsInstance(row["line"], int)
+        before = world.read("user")
+        saved = world.edit(add["target"], "low")
+        data = json.loads(world.read("user"))
+        self.assertEqual(data["effortLevel"], "high")
+        self.assertEqual(data["modelSettings"], {OPUS: {"effortLevel": "low"}})
+        self.assertTrue(world.read("user").startswith(before.rstrip()[:-1].rstrip()))  # one added span
+        self.assertEqual(saved["edit"]["op"], "insert")
+        self.assertEqual(saved["edit"]["key_path"], ["modelSettings", OPUS, "effortLevel"])
+        self.assertEqual(world.targets()["runs_as"], "low")
+
+    def test_an_existing_alias_entry_gets_the_line_and_no_entry_is_added(self):
+        world = World(self, user={"model": OPUS, "modelSettings": {"opus": {"thinking": 1}}})
+        body = world.targets()
+        add = add_of(body, "user", MODEL_REF % "opus")
+        world.edit(add["target"], "low")
+        data = json.loads(world.read("user"))
+        self.assertEqual(data["modelSettings"], {"opus": {"thinking": 1, "effortLevel": "low"}})
+
+    def test_with_two_matching_names_the_best_form_takes_the_line(self):
+        for names, expected in ((["opus", OPUS], OPUS), (["opus[1m]", "opus"], "opus"),
+                                ([OPUS + "[1m]", OPUS + "-20260101"], OPUS + "-20260101")):
+            with self.subTest(names=names):
+                world = World(self, user={"model": OPUS, "modelSettings": {n: {"thinking": 1} for n in names}})
+                view = view_of(world)
+                keys = [a.key_path for a in view.adds if a.layer == "user" and len(a.key_path) == 3]
+                self.assertEqual(keys, [("modelSettings", expected, "effortLevel")])
+
+    def test_with_no_entry_for_the_model_the_catalog_id_is_used(self):
+        world = World(self, user={"model": OPUS, "modelSettings": {"sonnet": {"thinking": 1}}})
+        view = view_of(world)
+        keys = [a.key_path for a in view.adds if a.layer == "user" and len(a.key_path) == 3]
+        self.assertEqual(keys, [("modelSettings", OPUS, "effortLevel")])
+        add = add_of(world.targets(), "user", MODEL_REF % OPUS)
+        world.edit(add["target"], "low")
+        self.assertEqual(json.loads(world.read("user"))["modelSettings"],
+                         {"sonnet": {"thinking": 1}, OPUS: {"effortLevel": "low"}})
+
+    def test_an_unknown_model_offers_only_a_top_level_add_with_an_unknown_effect(self):
+        world = World(self, user={"x": 1}, project={"x": 1}, local={"x": 1})
+        body = world.targets()
+        self.assertIsNone(body["model"])
+        self.assertEqual(sorted(a["layer"] for a in body["adds"]), ["local", "project", "user"])
+        for add in body["adds"]:
+            self.assertTrue(add["ref"].endswith(TOP), add["ref"])
+        user_only = World(self, user={"x": 1}, local="{ not json")  # local locked, so the user file is alone
+        for row in user_only.targets()["levels"]:
+            f = file_of(row, "user")
+            self.assertEqual((f["op"], f["effect"], f["runs_as"], f["pickable"]),
+                             ("insert", "unknown", None, True), row["level"])
+            self.assertIsNone(row["preselect"])
+            self.assertIs(row["saveable"], True)
+
+    def test_a_null_key_is_a_replace_and_the_save_has_a_real_value(self):
+        world = World(self, user={"model": SONNET}, project={"effortLevel": None})
+        body = world.targets()
+        self.assertEqual(file_of(body["files"], "project")["state"], "no_line")
+        add = add_of(body, "project", '"effortLevel"]')
+        self.assertEqual(add["op"], "replace")
+        saved = world.edit(add["target"], "high")["edit"]
+        self.assertEqual((saved["op"], saved["new_value"]), ("replace", "high"))
+        self.assertNotIn("old_value", saved)
+        self.assertEqual(json.loads(world.read("project")), {"effortLevel": "high"})
+
+    def test_a_model_settings_that_is_not_an_object_keeps_the_wont_apply_label_on_a_row_with_a_line(self):
+        for table, label in (("x", "table"), ({OPUS: "x"}, "entry")):
+            with self.subTest(label):
+                world = World(self, user={"model": OPUS, "effortLevel": "high", "modelSettings": table})
+                body = world.targets()
+                self.assertEqual(file_of(body["files"], "user")["state"], "has_line")
+                for row in body["levels"]:
+                    if row["result"] == "now":
+                        continue
+                    f = file_of(row, "user")
+                    self.assertEqual((f["effect"], f["lock_reason"], f["pickable"]),
+                                     ("wont_apply", None, False), label)
+
+    def test_a_model_settings_that_is_not_an_object_locks_a_row_with_no_line(self):
+        for table, label in (("x", "table"), ({OPUS: "x"}, "entry")):
+            with self.subTest(label):
+                world = World(self, user={"model": OPUS, "modelSettings": table})
+                body = world.targets()
+                self.assertEqual(file_of(body["files"], "user")["state"], "locked")
+                for row in body["levels"]:
+                    if row["result"] == "now":
+                        continue
+                    f = file_of(row, "user")
+                    self.assertEqual((f["lock_reason"], f["pickable"]), ("parent_not_object", False), label)
+
+    def test_a_name_the_trail_hides_is_not_on_the_trail_and_refuses_with_422(self):
+        name = "auth.anthropic.claude-opus-5-5-v1:0"  # normalizes to Opus 5.5, but AUTH hides the name
+        self.assertEqual(resolve.normalize_model(name, RULES["models"]), (OPUS, "provider"))
+        world = World(self, user={"model": OPUS, "modelSettings": {name: {}}})
+        body = world.targets()
+        add = add_of(body, "user", "modelSettings.%s.effortLevel\"]" % name)
+        view = view_of(world)
+        hidden = [a for a in view.adds if a.id == add["target"]][0]
+        self.assertEqual(api_edit._effect(view, hidden, "low")[:3], (None, None, "not_on_trail"))
+        for row in body["levels"]:
+            if row["result"] == "now":
+                continue
+            f = file_of(row, "user")
+            self.assertEqual((f["lock_reason"], f["pickable"]), ("not_on_trail", False), row["level"])
+        # a preview of the top add gives hashes a forced request can borrow
+        top = add_of(body, "user", '"effortLevel"]')
+        pv = inner_preview(world, top["target"], "low")  # a payload whose hashes a forced save can borrow
+        before = world.read("user")
+        self.assertEqual(world.preview(add["target"], "low"), (422, {"error": "not_on_trail"}))
+        self.assertEqual(world.save(pv, add["target"], "low"), (422, {"error": "not_on_trail"}))
+        self.assertEqual(world.read("user"), before)
+        self.assertEqual(world.history()["rows"], [])
+
+    def test_a_repo_lock_builds_no_adds_and_refuses_a_forced_request(self):
+        world = World(self, user={"model": SONNET}, project={"language": "en"})
+        add = add_of(world.targets(), "project", TOP)
+        status, pv = world.preview(add["target"], "high")
+        self.assertEqual(status, 200)
+        lock_repo(self, world)
+        body = world.targets()
+        self.assertEqual(body["adds"], [])
+        for f in body["files"]:
+            self.assertEqual(f["lock_reason"], "not_repo_root")
+        for row in body["levels"]:
+            for f in row["files"]:
+                self.assertEqual((f["lock_reason"], f["pickable"]), ("not_repo_root", False))
+        before = world.snapshot()
+        status, _body = world.preview(add["target"], "high")
+        self.assertNotEqual(status, 200)
+        status, _body = world.save(pv, add["target"], "high")
+        self.assertNotEqual(status, 200)
+        self.assertEqual(world.snapshot(), before)
+
+    def test_the_preview_of_an_insert_then_a_save_and_an_undo_restore_the_bytes(self):
+        world = World(self, user={"model": SONNET, "maxEffortLevel": "high"}, project={"language": "en"})
+        original = world.read("project")
+        add = add_of(world.targets(), "project", TOP)
+        status, pv = world.preview(add["target"], "xhigh")
+        self.assertEqual(status, 200, pv)
+        self.assertEqual((pv["op"], pv["layer"], pv["shared"], pv["no_change"], pv["new_file"], pv["creates_dir"]),
+                         ("insert", "project", True, False, False, False))
+        self.assertIsNone(pv["old_value"])
+        self.assertIsInstance(pv["line"], int)
+        self.assertEqual(pv["ref"], add["ref"])
+        self.assertEqual(pv["base_file"], api_edit._hmac(world.ctx, original))
+        self.assertEqual(pv["warning"]["status"], "lowered")
+        self.assertEqual(pv["runs_after"], "high")
+        self.assertTrue(pv["diff"])
+        self.assertEqual(world.read("project"), original)
+        status, saved = world.save(pv, add["target"], "xhigh")
+        self.assertEqual(status, 200, saved)
+        self.assertEqual(json.loads(world.read("project")), {"language": "en", "effortLevel": "xhigh"})
+        edit = saved["edit"]
+        self.assertEqual((edit["op"], edit["new_value"], edit["undoable"]), ("insert", "xhigh", True))
+        self.assertNotIn("old_value", edit)
+        status, undone = world.undo(edit["id"])
+        self.assertEqual(status, 200, undone)
+        self.assertEqual(world.read("project"), original)
+        self.assertEqual((undone["edit"]["op"], undone["edit"]["old_value"]), ("insert", "xhigh"))
+        self.assertNotIn("new_value", undone["edit"])
+        for row in world.history()["rows"]:
+            self.assertNotIn(None, [row.get("old_value", 0), row.get("new_value", 0)])
+            self.assertEqual(row["op"], "insert")
+
+    def test_a_line_keeps_its_target_id_after_an_add_is_saved_over_its_place(self):
+        world = World(self, user={"model": SONNET}, project={"language": "en"})
+        body = world.targets()
+        add = add_of(body, "project", TOP)
+        self.assertEqual(add["target"], api_edit._target_id("project", ("effortLevel",)))
+        world.edit(add["target"], "high")
+        after = world.targets()
+        self.assertNotIn(add["target"], [a["target"] for a in after["adds"]])
+        self.assertEqual(target_of(after, "project")["target"], add["target"])
+        self.assertEqual(target_of(after, "project")["ref"], add["ref"])
+        self.assertEqual(world.edit(add["target"], "low")["edit"]["op"], "replace")
+
+    def test_a_file_edited_between_preview_and_save_is_stale_with_a_fresh_insert_preview(self):
+        world = World(self, user={"model": SONNET}, project={"language": "en"})
+        add = add_of(world.targets(), "project", TOP)
+        status, pv = world.preview(add["target"], "high")
+        self.assertEqual(status, 200)
+        world.write("project", {"language": "fr"})
+        status, body = world.save(pv, add["target"], "high")
+        self.assertEqual((status, body["error"], body["changed"]), (409, "stale", "file"))
+        self.assertEqual((body["preview"]["op"], body["preview"]["target"]), ("insert", add["target"]))
+        self.assertEqual(json.loads(world.read("project")), {"language": "fr"})
+
+    def test_a_planted_secret_stays_out_of_every_answer_for_an_insert(self):
+        shapes = {
+            "lines": '{\n  "model": "%s",\n  "apiToken": "%s"\n}\n' % (SONNET, SECRET),
+            "one line": '{"model": "%s","apiToken": "%s"}' % (SONNET, SECRET),
+        }
+        for label, text in shapes.items():
+            with self.subTest(label):
+                world = World(self, user=text)
+                body = world.targets()
+                add = add_of(body, "user", 'claude-sonnet-5-5.effortLevel"]')  # the user top line is not read
+                status, pv = world.preview(add["target"], "high")
+                self.assertEqual(status, 200, pv)
+                status, saved = world.save(pv, add["target"], "high")
+                self.assertEqual(status, 200, saved)
+                self.assertIn(SECRET.encode(), world.read("user"))
+                answers = [body, pv, saved, world.targets(), world.history()]
+                status, undone = world.undo(saved["edit"]["id"])
+                answers += [undone, world.history()]
+                for answer in answers:
+                    self.assertNotIn("sk-planted-", json.dumps(answer))
+
+
+class Crash(BaseException):
+    """Raised by a seam to stop the process at a step. No cleanup handler catches it."""
+
+
+class Creates(Base):
+    """A settings file that is not there: its row is a create, and a save makes the file."""
+
+    def at(self, world, name, fn):
+        """Run fn when the store reaches the seam called name."""
+        def seam(seen):
+            if seen == name:
+                fn()
+        world.store.seam = seam
+
+    def local_create(self, world, level="high"):
+        """Return (target id, preview payload) of the local create at a level."""
+        target = add_of(world.targets(), "local", TOP)["target"]
+        status, pv = world.preview(target, level)
+        self.assertEqual(status, 200, pv)
+        return target, pv
+
+    def test_absent_rows_are_creates_and_only_local_is_preselected(self):
+        world = World(self)  # no settings file at all
+        body = world.targets()
+        self.assertEqual([(f["layer"], f["state"], f["lock_reason"], f["target"]) for f in body["files"]],
+                         [("local", "absent", None, None), ("project", "absent", None, None),
+                          ("user", "absent", None, None)])
+        self.assertEqual(sorted((a["layer"], a["op"]) for a in body["adds"]),
+                         [("local", "create"), ("project", "create"), ("user", "create")])
+        local = add_of(body, "local", TOP)["target"]
+        for row in body["levels"]:
+            files = {f["layer"]: f for f in row["files"]}
+            self.assertEqual({k: (f["op"], f["target"] is not None) for k, f in files.items()},
+                             {"local": ("create", True), "project": ("create", True), "user": ("create", True)})
+            self.assertEqual(files["local"]["target"], local)
+            self.assertEqual((files["local"]["effect"], files["local"]["pickable"]), ("applies", True))
+            self.assertEqual((files["project"]["effect"], files["user"]["effect"]), ("applies", "unknown"))
+            self.assertEqual((files["project"]["pickable"], files["user"]["pickable"]), (True, True))
+            self.assertEqual(row["preselect"], local)
+        self.assertIs(body["saveable"], True)
+
+    def test_a_shared_create_is_never_preselected_and_greys_out_when_it_loses(self):
+        world = World(self, user={"model": SONNET}, local={"effortLevel": "low"})
+        body = world.targets()
+        project = add_of(body, "project", TOP)
+        self.assertEqual((project["op"], project["shared"]), ("create", True))
+        row = level_of(body, "high")
+        grey = file_of(row, "project")
+        self.assertEqual((grey["op"], grey["effect"], grey["pickable"]), ("create", "wont_apply", False))
+        self.assertEqual(row["preselect"], target_of(body, "local")["target"])
+        # With the line out of local, the project create applies and can be picked, still never preselected.
+        quiet = World(self, user={"model": SONNET}, local="{ not json")
+        quiet_row = level_of(quiet.targets(), "high")
+        shared = file_of(quiet_row, "project")
+        self.assertEqual((shared["op"], shared["effect"], shared["pickable"]), ("create", "applies", True))
+        self.assertIsNone(quiet_row["preselect"])
+
+    def test_a_preview_of_a_create_in_a_project_with_no_claude_folder(self):
+        world = World(self, user={"model": SONNET})
+        shutil.rmtree(os.path.join(world.proj, ".claude"))
+        target, pv = self.local_create(world)
+        self.assertEqual((pv["op"], pv["new_file"], pv["creates_dir"], pv["no_change"]), ("create", True, True, False))
+        self.assertEqual((pv["layer"], pv["shared"], pv["line"], pv["old_value"], pv["new_value"]),
+                         ("local", False, 2, None, "high"))
+        self.assertEqual(pv["base_file"], api_edit._base_file(world.ctx, None))
+        self.assertNotEqual(pv["base_file"], api_edit._hmac(world.ctx, b""))
+        lines = [line for hunk in pv["diff"]["hunks"] for line in hunk["lines"]]
+        self.assertEqual([(l["kind"], l["old_line"], l["new_line"], l["text"]) for l in lines],
+                         [("add", None, 1, "{"), ("add", None, 2, '  "effortLevel": "high"'),
+                          ("add", None, 3, "}")])
+        self.assertEqual(pv["diff"]["file_display"], "project/.claude/settings.local.json")
+        self.assertIs(pv["ledger_damaged"], False)
+        self.assertFalse(os.path.exists(os.path.join(world.proj, ".claude")), "a preview writes nothing")
+
+    def test_a_preview_with_the_folder_there_does_not_create_it(self):
+        world = World(self, user={"model": SONNET})
+        _target, pv = self.local_create(world)
+        self.assertEqual((pv["new_file"], pv["creates_dir"]), (True, False))
+
+    def test_a_save_makes_the_file_and_the_folder(self):
+        world = World(self, user={"model": SONNET})
+        shutil.rmtree(os.path.join(world.proj, ".claude"))
+        target, pv = self.local_create(world)
+        status, body = world.save(pv, target, "high")
+        self.assertEqual(status, 200, body)
+        self.assertEqual(world.read("local"), json_edit.new_file(("effortLevel",), "high"))
+        self.assertEqual(os.stat(world.path("local")).st_mode & 0o777, 0o600)
+        self.assertEqual(os.stat(os.path.join(world.proj, ".claude")).st_mode & 0o777, 0o700)
+        edit = body["edit"]
+        self.assertEqual((edit["kind"], edit["op"], edit["layer"], edit["new_value"], edit["backup_display"]),
+                         ("edit", "create", "local", "high", None))
+        self.assertNotIn("old_value", edit)
+        self.assertEqual(main_effort(body["settings"])["value"], "high")
+        row = world.history()["rows"][0]
+        self.assertEqual({k: row[k] for k in ("id", "kind", "op", "layer", "new_value", "backup_display")},
+                         {k: edit[k] for k in ("id", "kind", "op", "layer", "new_value", "backup_display")})
+        self.assertNotIn("old_value", row)
+        self.assertIs(row["undoable"], True)
+
+    def test_a_save_into_an_existing_folder_leaves_the_folder_mode_alone(self):
+        world = World(self, user={"model": SONNET})
+        mode = os.stat(os.path.join(world.proj, ".claude")).st_mode & 0o777
+        target, pv = self.local_create(world)
+        status, body = world.save(pv, target, "high")
+        self.assertEqual(status, 200, body)
+        self.assertEqual(os.stat(os.path.join(world.proj, ".claude")).st_mode & 0o777, mode)
+        self.assertEqual(os.stat(world.path("local")).st_mode & 0o777, 0o600)
+
+    def test_undo_removes_the_file_and_the_folder_this_save_made(self):
+        world = World(self, user={"model": SONNET})
+        shutil.rmtree(os.path.join(world.proj, ".claude"))
+        before = helpers.tree_snapshot(world.proj)
+        target, pv = self.local_create(world)
+        status, saved = world.save(pv, target, "high")
+        self.assertEqual(status, 200, saved)
+        status, body = world.undo(saved["edit"]["id"])
+        self.assertEqual(status, 200, body)
+        self.assertEqual((body["removed_file"], body["removed_dir"]), (True, True))
+        self.assertEqual(helpers.tree_snapshot(world.proj), before)
+        self.assertEqual(body["edit"]["kind"], "undo")
+        self.assertEqual(main_effort(body["settings"])["layer"], "default")
+
+    def test_undo_keeps_a_folder_that_was_already_there(self):
+        world = World(self, user={"model": SONNET})
+        before = helpers.tree_snapshot(world.proj)
+        target, pv = self.local_create(world)
+        status, saved = world.save(pv, target, "high")
+        self.assertEqual(status, 200, saved)
+        status, body = world.undo(saved["edit"]["id"])
+        self.assertEqual(status, 200, body)
+        self.assertEqual((body["removed_file"], body["removed_dir"]), (True, False))
+        self.assertEqual(helpers.tree_snapshot(world.proj), before)
+        self.assertTrue(os.path.isdir(os.path.join(world.proj, ".claude")))
+
+    def test_undo_keeps_a_made_folder_that_holds_another_file(self):
+        world = World(self, user={"model": SONNET})
+        shutil.rmtree(os.path.join(world.proj, ".claude"))
+        target, pv = self.local_create(world)
+        status, saved = world.save(pv, target, "high")
+        self.assertEqual(status, 200, saved)
+        stray = os.path.join(world.proj, ".claude", "notes.txt")
+        world.put(stray, "keep me")
+        status, body = world.undo(saved["edit"]["id"])
+        self.assertEqual(status, 200, body)
+        self.assertEqual((body["removed_file"], body["removed_dir"]), (True, False))
+        self.assertFalse(os.path.exists(world.path("local")))
+        with open(stray) as fh:
+            self.assertEqual(fh.read(), "keep me")
+
+    def test_a_nested_create_on_a_user_file_for_opus(self):
+        world = World(self, project={"model": OPUS})  # no user file, no local file
+        body = world.targets()
+        self.assertEqual(body["model"], OPUS)
+        nested = add_of(body, "user", MODEL_REF % OPUS)
+        self.assertEqual(nested["op"], "create")
+        today = body["runs_as"]
+        level = [l for l in LEVELS if l != today][0]
+        row = level_of(body, level)
+        user = file_of(row, "user")
+        self.assertEqual((user["op"], user["target"], user["effect"], user["pickable"]),
+                         ("create", nested["target"], "applies", True))
+        status, pv = world.preview(nested["target"], level)
+        self.assertEqual(status, 200, pv)
+        self.assertEqual((pv["op"], pv["new_file"], pv["creates_dir"]), ("create", True, False))
+        status, saved = world.save(pv, nested["target"], level)
+        self.assertEqual(status, 200, saved)
+        self.assertEqual(world.read("user"), json_edit.new_file(("modelSettings", OPUS, "effortLevel"), level))
+        self.assertEqual(saved["edit"]["key_path"], ["modelSettings", OPUS, "effortLevel"])
+        self.assertEqual(world.targets()["runs_as"], level)
+        status, undone = world.undo(saved["edit"]["id"])
+        self.assertEqual(status, 200, undone)
+        self.assertEqual((undone["removed_file"], undone["removed_dir"]), (True, False))
+        self.assertFalse(os.path.exists(world.path("user")))
+        self.assertTrue(os.path.isdir(world.cfg))
+        self.assertEqual(world.targets()["runs_as"], today)
+
+    def test_undo_is_refused_when_the_created_file_was_edited_by_hand(self):
+        world = World(self, user={"model": SONNET})
+        target, pv = self.local_create(world)
+        status, saved = world.save(pv, target, "high")
+        self.assertEqual(status, 200, saved)
+        world.write("local", {"effortLevel": "high", "by_hand": True})
+        kept = world.read("local")
+        self.assertEqual(world.undo(saved["edit"]["id"]),
+                         (409, {"error": "changed_since_save", "backup_display": None}))
+        self.assertEqual(world.read("local"), kept)
+        row = world.history()["rows"][0]
+        self.assertEqual((row["undoable"], row["not_undoable_reason"]), (False, "changed_since_save"))
+
+    # stale
+
+    def test_a_file_that_appears_after_a_create_preview_is_stale_file_appeared(self):
+        world = World(self, user={"model": SONNET})
+        target, pv = self.local_create(world)
+        world.write("local", {"language": "en"})
+        other = world.read("local")
+        status, body = world.save(pv, target, "high")
+        self.assertEqual((status, body["error"], body["changed"]), (409, "stale", "file_appeared"))
+        self.assertEqual(body["changed_files"], [{"layer": "local", "file_display": "project/.claude/settings.local.json"}])
+        self.assertEqual((body["preview"]["target"], body["preview"]["op"], body["preview"]["new_file"]),
+                         (target, "insert", False))
+        self.assertEqual(world.read("local"), other)
+        self.assertEqual(world.history()["rows"], [])
+
+    def test_a_file_that_goes_after_an_insert_preview_is_stale_file_removed(self):
+        world = World(self, user={"model": SONNET}, local={"language": "en"})
+        target = add_of(world.targets(), "local", TOP)["target"]
+        status, pv = world.preview(target, "high")
+        self.assertEqual((status, pv["op"]), (200, "insert"))
+        os.remove(world.path("local"))
+        status, body = world.save(pv, target, "high")
+        self.assertEqual((status, body["error"], body["changed"]), (409, "stale", "file_removed"))
+        self.assertEqual((body["preview"]["target"], body["preview"]["op"]), (target, "create"))
+        self.assertFalse(os.path.exists(world.path("local")))
+
+    def test_a_file_that_goes_after_a_replace_preview_is_stale_file_removed(self):
+        world = World(self, user={"model": SONNET}, local={"effortLevel": "low"})
+        target = target_of(world.targets(), "local")["target"]
+        status, pv = world.preview(target, "high")
+        self.assertEqual((status, pv["op"]), (200, "replace"))
+        os.remove(world.path("local"))
+        status, body = world.save(pv, target, "high")
+        self.assertEqual((status, body["error"], body["changed"]), (409, "stale", "file_removed"))
+        self.assertEqual((body["preview"]["target"], body["preview"]["op"]), (target, "create"))
+        self.assertFalse(os.path.exists(world.path("local")))
+        # The fresh preview saves.
+        status, saved = world.save(body["preview"], target, "high")
+        self.assertEqual(status, 200, saved)
+        self.assertEqual(saved["edit"]["op"], "create")
+
+    def test_a_file_that_changes_after_a_replace_preview_stays_stale_file(self):
+        world = World(self, user={"model": SONNET}, local={"effortLevel": "low"})
+        target = target_of(world.targets(), "local")["target"]
+        status, pv = world.preview(target, "high")
+        world.write("local", {"effortLevel": "medium"})
+        status, body = world.save(pv, target, "high")
+        self.assertEqual((status, body["changed"]), (409, "file"))
+
+    def test_the_store_reports_a_file_that_appears_just_before_the_rename(self):
+        world = World(self, user={"model": SONNET})
+        target, pv = self.local_create(world)
+        self.at(world, "before_recheck", lambda: world.write("local", {"language": "en"}))
+        status, body = world.save(pv, target, "high")
+        self.assertEqual((status, body["error"], body["changed"]), (409, "stale", "file_appeared"))
+        self.assertEqual(body["changed_files"], [{"layer": "local", "file_display": "project/.claude/settings.local.json"}])
+        self.assertEqual((body["preview"]["target"], body["preview"]["op"]), (target, "insert"))
+        self.assertEqual(json.loads(world.read("local")), {"language": "en"})
+        self.assertEqual(world.history()["rows"], [])
+
+    def test_another_file_that_changed_is_still_a_trail_change_on_a_create(self):
+        world = World(self, user={"model": SONNET})
+        target, pv = self.local_create(world)
+        world.write("user", {"model": SONNET, "alwaysThinkingEnabled": True})
+        status, body = world.save(pv, target, "high")
+        self.assertEqual((status, body["error"], body["changed"]), (409, "stale", "trail"))
+        self.assertEqual(body["changed_files"], [{"layer": "user", "file_display": "config/settings.json"}])
+        self.assertEqual((body["preview"]["op"], body["preview"]["new_file"]), ("create", True))
+        self.assertFalse(os.path.exists(world.path("local")))
+
+    # folders that went
+
+    def test_a_project_folder_that_goes_between_preview_and_save_is_file_missing(self):
+        world = World(self, user={"model": SONNET}, listed=[{"name": "Elsewhere", "path": "{root}/elsewhere"}])
+        folder = os.path.join(world.root, "elsewhere")
+        os.makedirs(os.path.join(folder, ".claude"))
+        world.key = "elsewhere"
+        target, pv = self.local_create(world)
+        shutil.rmtree(folder)
+        before = world.snapshot()
+        status, body = world.save(pv, target, "high")
+        self.assertEqual((status, body), (422, {"error": "file_missing"}))
+        self.assertEqual(world.preview(target, "high"), (422, {"error": "file_missing"}))
+        self.assertFalse(os.path.exists(folder))
+        self.assertEqual(world.snapshot(), before)
+
+    def test_a_config_folder_that_goes_is_file_missing_and_is_not_made_again(self):
+        world = World(self, project={"model": SONNET})
+        target = add_of(world.targets(), "user", 'claude-sonnet-5-5.effortLevel"]')["target"]
+        status, pv = world.preview(target, "high")
+        self.assertEqual((status, pv["op"]), (200, "create"))
+        shutil.rmtree(world.cfg)
+        status, body = world.save(pv, target, "high")
+        self.assertEqual((status, body), (422, {"error": "file_missing"}))
+        self.assertFalse(os.path.exists(world.cfg))
+        self.assertEqual(world.preview(target, "high"), (422, {"error": "file_missing"}))
+
+    # links and locks
+
+    def test_a_dangling_link_at_the_file_is_locked_symlink(self):
+        world = World(self, user={"model": SONNET})
+        os.symlink(os.path.join(world.root, "nowhere.json"), world.path("local"))
+        body = world.targets()
+        row = file_of(body["files"], "local")
+        self.assertEqual((row["state"], row["lock_reason"], row["target"]), ("locked", "symlink", None))
+        self.assertEqual([a["layer"] for a in body["adds"] if a["layer"] == "local"], [])
+        forced = api_edit._target_id("local", ("effortLevel",))
+        status, answer = world.preview(forced, "high")
+        self.assertIn(status, (400, 422))
+        self.assertIn("error", answer)
+        status, answer = world.save({"base_file": "x", "base_trail": "x", "base_others": {}}, forced, "high")
+        self.assertIn(status, (400, 422))
+        self.assertTrue(os.path.islink(world.path("local")))
+        self.assertFalse(os.path.exists(world.path("local")))
+
+    def test_a_dangling_link_at_the_claude_folder_is_locked_symlink(self):
+        world = World(self, user={"model": SONNET})
+        shutil.rmtree(os.path.join(world.proj, ".claude"))
+        os.symlink(os.path.join(world.root, "nowhere"), os.path.join(world.proj, ".claude"))
+        body = world.targets()
+        for layer in ("local", "project"):
+            row = file_of(body["files"], layer)
+            self.assertEqual((row["state"], row["lock_reason"], row["target"]), ("locked", "symlink", None), layer)
+        self.assertEqual({a["layer"] for a in body["adds"]}, {"user"})
+        forced = api_edit._target_id("local", ("effortLevel",))
+        status, answer = world.preview(forced, "high")
+        self.assertIn(status, (400, 422))
+        self.assertTrue(os.path.islink(os.path.join(world.proj, ".claude")))
+        self.assertFalse(os.path.exists(os.path.join(world.proj, ".claude")))
+
+    def test_a_repo_lock_locks_the_absent_rows_and_offers_no_adds(self):
+        world = World(self, user={"model": SONNET})
+        lock_repo(self, world)
+        body = world.targets()
+        self.assertEqual(body["adds"], [])
+        self.assertEqual([(f["layer"], f["state"], f["lock_reason"], f["target"]) for f in body["files"]],
+                         [("local", "absent", "not_repo_root", None), ("project", "absent", "not_repo_root", None),
+                          ("user", "no_line", "not_repo_root", None)])
+        self.assertIs(body["saveable"], False)
+
+    # failures
+
+    def test_a_failed_read_back_of_a_create_carries_the_edit_with_its_op(self):
+        world = World(self, user={"model": SONNET})
+        target, pv = self.local_create(world)
+
+        def fail():
+            raise OSError(5, "io error")
+        self.at(world, "reread", fail)
+        status, body = world.save(pv, target, "high")
+        self.assertEqual((status, body["error"], body["stage"]), (500, "unverified", "reread"))
+        self.assertEqual((body["edit"]["op"], body["edit"]["kind"], body["edit"]["backup_display"]),
+                         ("create", "edit", None))
+        self.assertIsNone(body["backup_display"])
+        self.assertTrue(os.path.exists(world.path("local")))
+
+    def test_a_writer_after_the_rename_of_a_create_is_raced_with_the_op(self):
+        world = World(self, user={"model": SONNET})
+        target, pv = self.local_create(world)
+        self.at(world, "after_rename", lambda: world.write("local", {"effortLevel": "xhigh"}))
+        status, body = world.save(pv, target, "high")
+        self.assertEqual((status, body["error"], body["edit"]["op"]), (409, "raced", "create"))
+        self.assertIsNone(body["backup_display"])
+        self.assertIs(body["edit"]["undoable"], False)
+
+    def test_the_undo_of_a_create_is_raced_when_a_file_is_put_back(self):
+        world = World(self, user={"model": SONNET})
+        target, pv = self.local_create(world)
+        status, saved = world.save(pv, target, "high")
+        self.assertEqual(status, 200, saved)
+        self.at(world, "after_unlink", lambda: world.write("local", {"language": "en"}))
+        status, body = world.undo(saved["edit"]["id"])
+        self.assertEqual((status, body["error"], body["matches_backup"]), (409, "raced", False))
+        self.assertEqual(body["edit"]["kind"], "undo")
+        self.assertEqual(json.loads(world.read("local")), {"language": "en"})
+
+    def test_the_undo_of_a_create_is_unverified_when_the_read_back_fails(self):
+        world = World(self, user={"model": SONNET})
+        target, pv = self.local_create(world)
+        status, saved = world.save(pv, target, "high")
+        self.assertEqual(status, 200, saved)
+
+        def fail():
+            raise OSError(5, "io error")
+        self.at(world, "reread", fail)
+        status, body = world.undo(saved["edit"]["id"])
+        self.assertEqual((status, body["error"], body["stage"]), (500, "unverified", "reread"))
+        self.assertEqual(body["edit"]["kind"], "undo")
+        self.assertFalse(os.path.exists(world.path("local")))
+
+    def test_write_failed_says_dir_left_when_the_made_folder_could_not_go(self):
+        world = World(self, user={"model": SONNET})
+        shutil.rmtree(os.path.join(world.proj, ".claude"))
+        target, pv = self.local_create(world)
+
+        def fail():
+            world.put(os.path.join(world.proj, ".claude", "other.txt"), "x")
+            raise edit_store.WriteFailed("no space")
+        self.at(world, "after_mkdir", fail)
+        status, body = world.save(pv, target, "high")
+        self.assertEqual((status, body), (500, {"error": "write_failed", "file_unchanged": True, "dir_left": True}))
+        self.assertTrue(os.path.isdir(os.path.join(world.proj, ".claude")))
+        self.assertFalse(os.path.exists(world.path("local")))
+
+    def test_write_failed_has_no_dir_left_key_when_the_made_folder_went(self):
+        world = World(self, user={"model": SONNET})
+        shutil.rmtree(os.path.join(world.proj, ".claude"))
+        before = helpers.tree_snapshot(world.proj)
+        target, pv = self.local_create(world)
+
+        def fail():
+            raise edit_store.WriteFailed("no space")
+        self.at(world, "after_mkdir", fail)
+        status, body = world.save(pv, target, "high")
+        self.assertEqual((status, body), (500, {"error": "write_failed", "file_unchanged": True}))
+        self.assertEqual(helpers.tree_snapshot(world.proj), before)
+
+    def test_a_crash_after_the_ledger_leaves_the_row_absent_and_the_history_empty(self):
+        world = World(self, user={"model": SONNET})
+        target, pv = self.local_create(world)
+
+        def crash():
+            raise Crash("after_ledger")
+        self.at(world, "after_ledger", crash)
+        with self.assertRaises(Crash):
+            world.save(pv, target, "high")
+        world.store.seam = None
+        body = world.targets()
+        self.assertEqual(file_of(body["files"], "local")["state"], "absent")
+        self.assertEqual(add_of(body, "local", TOP)["op"], "create")
+        self.assertEqual(world.history()["rows"], [])
+        self.assertFalse(os.path.exists(world.path("local")))
+        # Saving again from a fresh preview works.
+        status, fresh = world.preview(target, "high")
+        self.assertEqual(status, 200, fresh)
+        status, saved = world.save(fresh, target, "high")
+        self.assertEqual(status, 200, saved)
+
+
+# --------------------------------------------------------------------------
 # Every fixture
 
 class EveryFixture(Base):
@@ -2154,7 +2935,7 @@ class EveryFixture(Base):
         picked = project_only = 0
         for name, ctx in self.cases.items():
             body = self.answer(ctx)
-            layers = {t["target"]: t["layer"] for t in body["targets"]}
+            layers = {t["target"]: t["layer"] for t in body["targets"] + body["adds"]}
             self.assertEqual([f["layer"] for f in body["files"]],
                              ["local", "project", "user"] if body["files"] else [], name)
             for row in body["levels"]:
@@ -2192,7 +2973,7 @@ class EveryFixture(Base):
         for name, ctx in self.cases.items():
             body = self.answer(ctx)
             entries = self.plain_entries(ctx)
-            ids = {t["target"]: t for t in body["targets"]}
+            ids = {t["target"]: t for t in body["targets"] + body["adds"]}
             if body["levels_state"] == "no_effort_support":
                 self.assertEqual(body["levels"], [], name)
             else:
@@ -2240,6 +3021,476 @@ class EveryFixture(Base):
         for ctx in self.cases.values():
             self.answer(ctx)
         self.assertEqual(helpers.tree_snapshot(self.root), self.before)
+
+
+# --------------------------------------------------------------------------
+# Remove: action "remove" on preview and save (T13)
+
+def remove_body(world, target, **extra):
+    out = {"project": world.key, "target": target, "action": "remove"}
+    out.update(extra)
+    return out
+
+
+def remove_preview(world, target, **extra):
+    return api_edit.preview(world.ctx, remove_body(world, target, **extra))
+
+
+def remove_save(world, pv, target, **extra):
+    return api_edit.save(world.ctx, remove_body(
+        world, target, base_file=pv["base_file"], base_trail=pv["base_trail"], base_others=pv["base_others"],
+        **extra))
+
+
+def plain_dumps(obj):
+    return json.dumps(obj, indent=2) + "\n"
+
+
+class ForgedRows(Base):
+    """A preview or save for a row the file list marks not pickable is refused, and nothing is written."""
+
+    def refused(self, world, layer, value, ends=None):
+        """Assert the row is listed not pickable, then force a preview and a save for it. Returns the target."""
+        body = world.targets()
+        if ends is None:
+            self.assertIs(file_of(level_of(body, value), layer)["pickable"], False)
+        # An add can sit beside a pickable one in its file: the file's row takes the other, and this one is forced.
+        target = (add_of(body, layer, ends) if ends else target_of(body, layer))["target"]
+        before = self.files(world)
+        self.assertEqual(world.preview(target, value), (400, {"error": "not_editable"}))
+        # a save with the hashes of a real payload, so only the pickable check stands in the way
+        pv = inner_preview(world, target, value)
+        self.assertEqual(world.save(pv, target, value), (400, {"error": "not_editable"}))
+        self.assertEqual(self.files(world), before)
+        self.assertEqual(world.history()["rows"], [])
+        return target
+
+    @staticmethod
+    def files(world):
+        return {k: v for k, v in world.snapshot().items() if not k.startswith("config/routing-dashboard")}
+
+    def test_a_line_that_a_higher_layer_overrides_is_refused_in_preview_and_save(self):
+        world = World(self, user={"model": SONNET}, project={"effortLevel": "low"}, local={"effortLevel": "medium"})
+        self.refused(world, "project", "high")
+
+    def test_an_add_that_would_not_apply_is_refused_in_preview_and_save(self):
+        # Sonnet reads no top-level line in the user file, so that add changes nothing.
+        world = World(self, user={"model": SONNET})
+        self.refused(world, "user", "high", ends=TOP)
+
+    def test_a_save_is_refused_inside_the_plan_when_the_row_stops_being_pickable(self):
+        world = World(self, user={"model": SONNET}, project={"effortLevel": "low"})
+        target = target_of(world.targets(), "project")["target"]
+        status, pv = world.preview(target, "high")
+        self.assertEqual(status, 200, pv)
+        world.write("local", {"effortLevel": "medium"})  # a higher layer now wins, so the row can't take it
+        before = self.files(world)
+        status, body = world.save(pv, target, "high")
+        self.assertEqual((status, body), (400, {"error": "not_editable"}))
+        self.assertEqual(self.files(world), before)
+
+    def test_a_pickable_row_still_previews_and_saves(self):
+        world = World(self, user={"model": SONNET}, project={"effortLevel": "low"}, local={"effortLevel": "medium"})
+        body = world.targets()
+        self.assertIs(file_of(level_of(body, "high"), "local")["pickable"], True)
+        saved = world.edit(target_of(body, "local")["target"], "high")["edit"]
+        self.assertEqual(saved["new_value"], "high")
+
+    def test_a_remove_of_a_line_that_would_not_apply_still_goes_through(self):
+        world = World(self, user={"model": SONNET}, project={"effortLevel": "low"}, local={"effortLevel": "medium"})
+        target = target_of(world.targets(), "project")["target"]
+        status, pv = remove_preview(world, target)
+        self.assertEqual(status, 200, pv)
+        status, saved = remove_save(world, pv, target)
+        self.assertEqual(status, 200, saved)
+        self.assertEqual(json.loads(world.read("project")), {})
+
+
+class Removes(Base):
+    def test_a_remove_with_no_level_known_is_never_called_no_effect(self):
+        world = World(self, user={"effortLevel": "high"}, project="{ not json", local="{ not json")
+        body = world.targets()
+        self.assertEqual((body["levels_state"], body["runs_as"]), ("model_unknown", None))
+        entry = target_of(body, "user")
+        self.assertIsNone(entry["remove"]["runs_as"])
+        self.assertFalse(entry["remove"]["no_effect"])
+        status, pv = remove_preview(world, entry["target"])
+        self.assertEqual(200, status, pv)
+        self.assertEqual((pv["runs_before"], pv["runs_after"], pv["no_effect"]), (None, None, False))
+
+    def world(self, **kwargs):
+        defaults = {"user": {"model": SONNET}, "project": {"effortLevel": "low"},
+                    "local": {"effortLevel": "high", "language": "en"}}
+        defaults.update(kwargs)
+        return World(self, **defaults)
+
+    def line(self, world, layer="local", ends=None):
+        return target_of(world.targets(), layer, ends)["target"]
+
+    def copy_of(self, world, layer):
+        copy = os.path.join(world.root, "copy-of-" + layer)
+        shutil.copyfile(world.path(layer), copy)
+        return copy
+
+    def ledger_files(self, world):
+        """Backups and ledgers in the store. A save opens the store folder under its lock, so a .lock is no write."""
+        return [f for _d, _s, files in os.walk(os.path.join(world.cfg, edit_store.STORE_DIR)) for f in files
+                if f.endswith((".bak", ".json"))]
+
+    def settings(self, world):
+        """The bytes of every settings file in the world, to show a refused request wrote nothing."""
+        return {layer: world.read(layer) for layer in ("user", "project", "local") if os.path.lexists(world.path(layer))}
+
+    def raced(self, change):
+        """Run change after a save's first view and before its locked recheck, as a second writer would."""
+        real = api_edit._editable_view
+
+        def late(ctx, listing, project, target_id):
+            found = real(ctx, listing, project, target_id)
+            change()
+            return found
+        return mock.patch.object(api_edit, "_editable_view", late)
+
+    # the winning line
+
+    def test_targets_say_what_runs_after_a_removal(self):
+        world = self.world()
+        body = world.targets()
+        local = target_of(body, "local")
+        project = target_of(body, "project")
+        self.assertEqual(body["runs_as"], "high")
+        self.assertEqual(local["remove"], {"runs_as": "low", "no_effect": False, "lock_reason": None})
+        self.assertEqual(project["remove"], {"runs_as": "high", "no_effect": True, "lock_reason": None})
+
+    def test_removing_the_winning_line_previews_saves_and_undoes(self):
+        world = self.world()
+        target = self.line(world)
+        original = world.read("local")
+        copy = self.copy_of(world, "local")
+        status, pv = remove_preview(world, target)
+        self.assertEqual(status, 200, pv)
+        self.assertEqual((pv["op"], pv["new_value"], pv["old_value"], pv["warning"], pv["no_effect"],
+                          pv["last_line"], pv["no_change"]), ("remove", None, "high", None, False, False, False))
+        self.assertEqual((pv["runs_before"], pv["runs_after"], pv["line"]), ("high", "low", 2))
+        lines = [(l["kind"], l["text"]) for h in pv["diff"]["hunks"] for l in h["lines"] if l["kind"] != "context"]
+        self.assertEqual(lines, [("del", '  "effortLevel": "high",')])
+        self.assertEqual(world.read("local"), original)  # a preview writes nothing
+        status, saved = remove_save(world, pv, target)
+        self.assertEqual(status, 200, saved)
+        self.assertEqual(world.read("local"), json_edit.remove_key(original, ("effortLevel",)))
+        edit = saved["edit"]
+        self.assertEqual((edit["op"], edit["old_value"], edit["key_path"]), ("remove", "high", ["effortLevel"]))
+        self.assertNotIn("new_value", edit)
+        self.assertEqual(world.history()["rows"][0]["op"], "remove")
+        self.assertNotIn("new_value", world.history()["rows"][0])
+        status, undone = world.undo(edit["id"])
+        self.assertEqual(status, 200, undone)
+        self.assertTrue(filecmp.cmp(world.path("local"), copy, shallow=False))
+        self.assertEqual(undone["edit"]["op"], "remove")
+        self.assertEqual(undone["edit"]["kind"], "undo")
+        self.assertIs(undone["matches_backup"], True)
+
+    def test_a_line_that_does_not_win_is_no_effect(self):
+        world = self.world()
+        project = self.line(world, "project")
+        status, pv = remove_preview(world, project)
+        self.assertEqual((status, pv["no_effect"], pv["runs_before"], pv["runs_after"]), (200, True, "high", "high"))
+
+    def test_a_set_preview_says_no_effect_and_last_line_false(self):
+        world = self.world()
+        status, pv = world.preview(self.line(world), "xhigh")
+        self.assertEqual((status, pv["no_effect"], pv["last_line"]), (200, False, False))
+
+    def test_an_explicit_set_action_is_a_set(self):
+        world = self.world()
+        status, pv = world.preview(self.line(world), "xhigh", action="set")
+        self.assertEqual((status, pv["op"], pv["new_value"]), (200, "replace", "xhigh"))
+
+    def test_the_files_last_line_leaves_the_file_with_its_braces(self):
+        world = self.world(local=None)
+        target = self.line(world, "project")
+        status, pv = remove_preview(world, target)
+        self.assertEqual((status, pv["last_line"], pv["no_effect"]), (200, True, False))
+        status, saved = remove_save(world, pv, target)
+        self.assertEqual(status, 200, saved)
+        self.assertEqual(world.read("project"), b"{\n}\n")
+        self.assertEqual(json.loads(world.read("project")), {})
+        bare = World(self, user={"model": SONNET})
+        self.assertEqual(pv["runs_after"], bare.targets()["runs_as"])
+        self.assertNotEqual(pv["runs_after"], "low")
+        self.assertEqual(world.targets()["runs_as"], bare.targets()["runs_as"])
+
+    def test_a_nested_line_leaves_an_empty_object_and_is_not_the_last_line(self):
+        world = World(self, user={"model": OPUS, "modelSettings": {OPUS: {"effortLevel": "low"}}})
+        target = self.line(world, "user", "claude-opus-5-5.effortLevel")
+        status, pv = remove_preview(world, target)
+        self.assertEqual((status, pv["op"], pv["last_line"]), (200, "remove", False))
+        status, saved = remove_save(world, pv, target)
+        self.assertEqual(status, 200, saved)
+        self.assertEqual(json.loads(world.read("user")), {"model": OPUS, "modelSettings": {OPUS: {}}})
+        self.assertEqual(saved["edit"]["key_path"], ["modelSettings", OPUS, "effortLevel"])
+
+    # repeated keys
+
+    def test_a_repeated_key_cannot_be_removed(self):
+        repeated = b'{\n  "effortLevel": "low",\n  "effortLevel": "high"\n}\n'
+        world = self.world(local=repeated)
+        body = world.targets()
+        local = target_of(body, "local")
+        self.assertEqual(local["remove"], {"runs_as": None, "no_effect": False, "lock_reason": "repeated_key"})
+        target = local["target"]
+        status, other = world.preview(target, "medium")
+        self.assertEqual(status, 200, other)
+        before = self.settings(world)
+        self.assertEqual(remove_preview(world, target), (422, {"error": "repeated_key"}))
+        self.assertEqual(remove_save(world, other, target), (422, {"error": "repeated_key"}))
+        self.assertEqual(self.settings(world), before)
+        self.assertEqual(world.read("local"), repeated)
+        self.assertEqual(self.ledger_files(world), [])
+
+    # bad requests
+
+    def test_an_add_cannot_be_removed(self):
+        world = self.world(project={"language": "en"}, local=None)
+        add = add_of(world.targets(), "project", TOP)["target"]
+        status, pv = world.preview(add, "low")
+        self.assertEqual(status, 200, pv)
+        before = self.settings(world)
+        self.assertEqual(remove_preview(world, add), (400, {"error": "not_editable"}))
+        self.assertEqual(remove_save(world, pv, add), (400, {"error": "not_editable"}))
+        self.assertEqual(self.settings(world), before)
+        self.assertEqual(self.ledger_files(world), [])
+
+    def test_a_bad_action_is_a_bad_request(self):
+        world = self.world()
+        target = self.line(world)
+        status, pv = world.preview(target, "xhigh")
+        for bad in ("delete", "", "REMOVE", None, 5, ["remove"], {"a": 1}):
+            with self.subTest(action=bad):
+                self.assertEqual(api_edit.preview(world.ctx, world.body(target, "xhigh", action=bad)),
+                                 (400, {"error": "bad_request"}))
+                self.assertEqual(world.save(pv, target, "xhigh", action=bad), (400, {"error": "bad_request"}))
+        self.assertEqual(world.read("local"), plain_dumps({"effortLevel": "high", "language": "en"}).encode())
+
+    def test_a_remove_with_a_value_is_a_bad_request(self):
+        world = self.world()
+        target = self.line(world)
+        status, pv = remove_preview(world, target)
+        for value in ("low", None, "", 3):
+            with self.subTest(value=value):
+                self.assertEqual(remove_preview(world, target, value=value), (400, {"error": "bad_request"}))
+                self.assertEqual(remove_save(world, pv, target, value=value), (400, {"error": "bad_request"}))
+        self.assertEqual(self.ledger_files(world), [])
+
+    def test_a_set_without_a_value_is_still_bad_value(self):
+        world = self.world()
+        target = self.line(world)
+        body = {"project": world.key, "target": target}
+        self.assertEqual(api_edit.preview(world.ctx, body), (400, {"error": "bad_value"}))
+        self.assertEqual(api_edit.preview(world.ctx, dict(body, action="set")), (400, {"error": "bad_value"}))
+        self.assertEqual(api_edit.preview(world.ctx, dict(body, value="max")), (400, {"error": "bad_value"}))
+
+    def test_no_path_or_key_field_changes_what_a_remove_touches(self):
+        world = self.world()
+        target = self.line(world)
+        status, pv = remove_preview(world, target, key_path=["language"], path="x", key="language")
+        self.assertEqual((status, pv["target"], pv["old_value"]), (200, target, "high"))
+
+    # blocked
+
+    def test_a_file_that_became_a_symlink_answers_with_its_reason(self):
+        world = self.world()
+        target = self.line(world)
+        status, pv = remove_preview(world, target)
+        real = os.path.join(world.root, "elsewhere.json")
+        os.replace(world.path("local"), real)
+        os.symlink(real, world.path("local"))
+        before = self.settings(world)
+        self.assertEqual(remove_preview(world, target), (422, {"error": "symlink"}))
+        self.assertEqual(remove_save(world, pv, target), (422, {"error": "symlink"}))
+        self.assertEqual(self.settings(world), before)
+        self.assertEqual(self.ledger_files(world), [])
+
+    def test_a_repo_locked_project_answers_not_repo_root(self):
+        world = self.world()
+        target = self.line(world)
+        status, pv = remove_preview(world, target)
+        lock_repo(self, world)
+        before = self.settings(world)
+        self.assertEqual(remove_preview(world, target), (422, {"error": "not_repo_root"}))
+        self.assertEqual(remove_save(world, pv, target), (422, {"error": "not_repo_root"}))
+        self.assertEqual(self.settings(world), before)
+        self.assertEqual(self.ledger_files(world), [])
+
+    # stale
+
+    def test_a_file_edited_with_the_line_kept_is_stale_with_a_fresh_remove_preview(self):
+        world = self.world()
+        target = self.line(world)
+        status, pv = remove_preview(world, target)
+        moved = plain_dumps({"effortLevel": "high", "language": "en", "added": True}).encode()
+        world.write("local", moved)
+        status, body = remove_save(world, pv, target)
+        self.assertEqual((status, body["error"], body["changed"]), (409, "stale", "file"))
+        self.assertEqual(body["changed_files"], [{"layer": "local", "file_display": "project/.claude/settings.local.json"}])
+        fresh = body["preview"]
+        self.assertEqual((fresh["target"], fresh["op"], fresh["new_value"], fresh["old_value"]),
+                         (target, "remove", None, "high"))
+        self.assertEqual(fresh["base_file"], api_edit._hmac(world.ctx, moved))
+        self.assertEqual(world.read("local"), moved)
+        self.assertEqual(self.ledger_files(world), [])
+        # The fresh preview saves.
+        status, saved = remove_save(world, fresh, target)
+        self.assertEqual(status, 200, saved)
+        self.assertEqual(json.loads(world.read("local")), {"language": "en", "added": True})
+
+    def test_a_line_deleted_before_the_request_is_not_editable(self):
+        world = self.world()
+        target = self.line(world)
+        status, pv = remove_preview(world, target)
+        gone = plain_dumps({"language": "en"}).encode()
+        world.write("local", gone)
+        self.assertEqual(remove_preview(world, target), (400, {"error": "not_editable"}))
+        self.assertEqual(remove_save(world, pv, target), (400, {"error": "not_editable"}))
+        self.assertEqual(world.read("local"), gone)
+
+    def test_a_line_deleted_by_hand_during_the_save_is_stale_with_no_preview(self):
+        world = self.world()
+        target = self.line(world)
+        status, pv = remove_preview(world, target)
+        gone = plain_dumps({"language": "en"}).encode()
+        with self.raced(lambda: world.write("local", gone)):
+            status, body = remove_save(world, pv, target)
+        self.assertEqual((status, body["error"], body["changed"], body["preview"]), (409, "stale", "file", None))
+        self.assertEqual(body["changed_files"], [{"layer": "local", "file_display": "project/.claude/settings.local.json"}])
+        self.assertEqual(world.read("local"), gone)
+        self.assertEqual(self.ledger_files(world), [])
+
+    def test_a_file_deleted_during_the_save_is_stale_file_removed(self):
+        world = self.world()
+        target = self.line(world)
+        status, pv = remove_preview(world, target)
+        with self.raced(lambda: os.remove(world.path("local"))):
+            status, body = remove_save(world, pv, target)
+        self.assertEqual((status, body["error"], body["changed"], body["preview"]), (409, "stale", "file_removed", None))
+        self.assertEqual(body["changed_files"], [{"layer": "local", "file_display": "project/.claude/settings.local.json"}])
+        self.assertFalse(os.path.exists(world.path("local")))
+        self.assertEqual(self.ledger_files(world), [])
+
+    def alias_world(self):
+        return World(self, user={"model": OPUS, "modelSettings": {"opus": {"effortLevel": "low"}}})
+
+    def test_a_file_that_goes_with_its_alias_target_is_file_removed_for_a_set(self):
+        # The alias name is not offered for a create, so the fresh view cannot find the target at all.
+        world = self.alias_world()
+        target = self.line(world, "user", ".opus.effortLevel")
+        status, pv = world.preview(target, "high")
+        self.assertEqual(status, 200, pv)
+        with self.raced(lambda: os.remove(world.path("user"))):
+            status, body = world.save(pv, target, "high")
+        self.assertEqual((status, body["error"], body["changed"], body["preview"]), (409, "stale", "file_removed", None))
+        self.assertEqual(body["changed_files"], [{"layer": "user", "file_display": "config/settings.json"}])
+        self.assertFalse(os.path.exists(world.path("user")))
+
+    def test_a_file_that_goes_with_its_alias_target_is_file_removed_for_a_remove(self):
+        world = self.alias_world()
+        target = self.line(world, "user", ".opus.effortLevel")
+        status, pv = remove_preview(world, target)
+        self.assertEqual(status, 200, pv)
+        with self.raced(lambda: os.remove(world.path("user"))):
+            status, body = remove_save(world, pv, target)
+        self.assertEqual((status, body["error"], body["changed"], body["preview"]), (409, "stale", "file_removed", None))
+        self.assertEqual(body["changed_files"], [{"layer": "user", "file_display": "config/settings.json"}])
+        self.assertFalse(os.path.exists(world.path("user")))
+
+    def seam_remove(self, world, target, change):
+        status, pv = remove_preview(world, target)
+        self.assertEqual(status, 200, pv)
+
+        def seam(seen):
+            if seen == "before_recheck":
+                change()
+        world.store.seam = seam
+        return remove_save(world, pv, target)
+
+    def test_the_store_going_stale_hands_back_a_fresh_remove_preview(self):
+        world = self.world()
+        target = self.line(world)
+        moved = plain_dumps({"effortLevel": "high", "language": "fr"}).encode()
+        status, body = self.seam_remove(world, target, lambda: world.write("local", moved))
+        self.assertEqual((status, body["error"], body["changed"]), (409, "stale", "file"))
+        fresh = body["preview"]
+        self.assertEqual((fresh["op"], fresh["new_value"], fresh["target"]), ("remove", None, target))
+        self.assertEqual(fresh["base_file"], api_edit._hmac(world.ctx, moved))
+        self.assertEqual(world.read("local"), moved)
+
+    def test_the_store_going_stale_after_the_line_went_hands_back_no_preview(self):
+        world = self.world()
+        target = self.line(world)
+        status, body = self.seam_remove(world, target, lambda: world.write("local", {"language": "fr"}))
+        self.assertEqual((status, body["error"], body["preview"]), (409, "stale", None))
+
+    # read-only
+
+    def test_the_read_only_answer_holds_no_remove_field(self):
+        world = World(self, edit=False, user={"model": SONNET}, project={"effortLevel": "high"})
+        self.assertNotIn("remove", json.dumps(world.targets()))
+
+    def test_remove_with_edits_off_is_refused(self):
+        world = World(self, edit=False, user={"model": SONNET}, project={"effortLevel": "high"})
+        self.assertEqual(api_edit.preview(world.ctx, {"target": "t", "action": "remove"}),
+                         (400, {"error": "not_editable"}))
+        self.assertEqual(api_edit.save(world.ctx, {"target": "t", "action": "remove"}),
+                         (400, {"error": "not_editable"}))
+
+    # masking
+
+    LAYOUTS = {
+        "one line, secret before": b'{"apiKey": "%s", "effortLevel": "high"}\n',
+        "one line, secret after": b'{"effortLevel": "high", "apiKey": "%s"}\n',
+        "lines, secret before": b'{\n  "apiKey": "%s",\n  "effortLevel": "high"\n}\n',
+        "lines, secret after": b'{\n  "effortLevel": "high",\n  "apiKey": "%s"\n}\n',
+        "repeated secret key": b'{\n  "token": "%s",\n  "effortLevel": "high",\n  "token": "%s"\n}\n',
+    }
+
+    def test_a_removal_beside_a_secret_leaks_no_secret_byte(self):
+        for label, template in sorted(self.LAYOUTS.items()):
+            with self.subTest(label):
+                secret = SECRET.encode()
+                raw = template.replace(b"%s", secret)
+                world = self.world(project=raw, local=None)
+                target = self.line(world, "project")
+                seen = [json.dumps(world.targets())]
+                status, pv = remove_preview(world, target)
+                self.assertEqual(status, 200, pv)
+                seen.append(json.dumps(pv))
+                status, saved = remove_save(world, pv, target)
+                self.assertEqual(status, 200, saved)
+                seen.append(json.dumps(saved))
+                seen.append(json.dumps(world.history()))
+                status, undone = world.undo(saved["edit"]["id"])
+                self.assertEqual(status, 200, undone)
+                seen.append(json.dumps(undone))
+                seen.append(json.dumps(world.history()))
+                self.assertEqual(world.read("project"), raw)
+                for text in seen:
+                    self.assertNotIn("sk-planted-", text)
+
+    def test_the_old_value_of_a_secret_looking_effort_value_is_hidden(self):
+        world = self.world(project=plain_dumps({"effortLevel": SECRET}), local=None)
+        target = self.line(world, "project")
+        seen = [json.dumps(world.targets())]
+        status, pv = remove_preview(world, target)
+        self.assertEqual(status, 200, pv)
+        self.assertNotEqual(pv["old_value"], SECRET)
+        seen.append(json.dumps(pv))
+        status, saved = remove_save(world, pv, target)
+        self.assertEqual(status, 200, saved)
+        seen.append(json.dumps(saved))
+        seen.append(json.dumps(world.history()))
+        for text in seen:
+            self.assertNotIn("sk-planted-", text)
+        self.assertEqual(world.read("project"), b"{\n}\n")
 
 
 # --------------------------------------------------------------------------
@@ -2381,6 +3632,76 @@ class ReadOnlyTargets(Base):
         self.assertIsNone(world.ctx.edit)
         with mock.patch.object(api_edit, "_hmac", side_effect=AssertionError("hmac")):
             self.assertEqual(api_edit.targets(world.ctx, {})[0], 200)
+
+
+class GitIgnore(unittest.TestCase):
+    """Every local preview says whether git ignores the file. The call runs in the route, never under the lock."""
+
+    def world(self, **files):
+        world = World(self, **files)
+        patcher = mock.patch.object(git_check, "ignore_state", return_value="not_ignored")
+        self.state = patcher.start()
+        self.addCleanup(patcher.stop)
+        return world
+
+    @staticmethod
+    def level_row(world, layer, value):
+        level = next(row for row in world.targets()["levels"] if row["level"] == value)
+        return next(row for row in level["files"] if row["layer"] == layer)
+
+    def test_a_local_preview_of_any_op_carries_the_result(self):
+        world = self.world(local={"effortLevel": "low"})
+        status, body = api_edit.preview(world.ctx, world.body(self.level_row(world, "local", "high")["target"], "high"))
+        self.assertEqual(200, status)
+        self.assertEqual("replace", body["op"])
+        self.assertEqual("not_ignored", body["git_ignore"])
+        self.state.assert_called_once_with(world.proj, world.ctx.path_env, world.ctx.home,
+                                           world.ctx.shell_env.get("XDG_CONFIG_HOME"))
+
+    def test_a_preview_of_a_file_that_does_not_exist_carries_it_too(self):
+        world = self.world()
+        row = self.level_row(world, "local", "high")
+        self.assertEqual("create", row["op"])
+        _status, body = api_edit.preview(world.ctx, world.body(row["target"], "high"))
+        self.assertEqual("not_ignored", body["git_ignore"])
+
+    def test_a_shared_file_never_runs_git(self):
+        world = self.world(project={"effortLevel": "low"})
+        row = self.level_row(world, "project", "high")
+        _status, body = api_edit.preview(world.ctx, world.body(row["target"], "high"))
+        self.assertIsNone(body["git_ignore"])
+        self.state.assert_not_called()
+
+    def test_a_save_never_runs_git_under_the_lock(self):
+        world = self.world(local={"effortLevel": "low"})
+        row = self.level_row(world, "local", "high")
+        _status, preview = api_edit.preview(world.ctx, world.body(row["target"], "high"))
+        self.state.reset_mock()
+        status, _body = api_edit.save(world.ctx, world.save_body(preview, row["target"], "high"))
+        self.assertEqual(200, status)
+        self.state.assert_not_called()
+
+    def test_a_stale_save_carries_the_result_on_the_fresh_preview_outside_the_lock(self):
+        world = self.world(local={"effortLevel": "low"})
+        row = self.level_row(world, "local", "high")
+        _status, preview = api_edit.preview(world.ctx, world.body(row["target"], "high"))
+        world.write("local", '{ "effortLevel": "medium" }\n')
+        self.state.reset_mock()
+        held = []
+        self.state.side_effect = lambda *args: held.append(world.store._lock.locked()) or "ignored"
+        status, body = api_edit.save(world.ctx, world.save_body(preview, row["target"], "high"))
+        self.assertEqual(409, status)
+        self.assertEqual("ignored", body["preview"]["git_ignore"])
+        self.assertEqual([False], held)
+
+    def test_the_result_stays_out_of_the_base_hashes(self):
+        world = self.world(local={"effortLevel": "low"})
+        row = self.level_row(world, "local", "high")
+        _status, one = api_edit.preview(world.ctx, world.body(row["target"], "high"))
+        self.state.return_value = "ignored"
+        _status, two = api_edit.preview(world.ctx, world.body(row["target"], "high"))
+        for key in ("base_file", "base_trail", "base_others"):
+            self.assertEqual(one[key], two[key])
 
 
 if __name__ == "__main__":

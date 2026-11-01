@@ -165,7 +165,7 @@ def edits_supported():
         return False
     if not (hasattr(os, "O_NOFOLLOW") and hasattr(os, "O_DIRECTORY")):
         return False
-    needs_dir_fd = (os.open, os.rename, os.stat, os.mkdir, os.unlink)
+    needs_dir_fd = (os.open, os.rename, os.stat, os.mkdir, os.unlink, os.rmdir)
     if not all(fn in os.supports_dir_fd for fn in needs_dir_fd):
         return False
     return os.stat in os.supports_follow_symlinks and os.listdir in os.supports_fd

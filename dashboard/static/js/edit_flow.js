@@ -13,10 +13,12 @@
 //   is in flight. The state survives that, and the answer draws into the nodes of the newest render.
 // - A row is named by its layer, because one file can hold two targets. The target id comes from the chosen
 //   level's row each time. Nothing moves to a shared file on its own, and nothing saves until Save.
+// - One change at a time. A level (with a row) or a line to remove is chosen, never both. A remove is a set with no
+//   value: its preview and save carry action "remove", and its flow field holds the line's target, layer and line.
 
 import { t } from "./format.js";
 import { overCap, settleRow } from "./edit_pick.js";
-import { basename, bodyOf, codeOf, errorText, levelRow, runningOf } from "./edit_ui.js";
+import { basename, bodyOf, codeOf, errorText, levelRow, lockText, runningOf, targetById, walk } from "./edit_ui.js";
 
 // ---------------------------------------------------------------- state
 
@@ -24,12 +26,14 @@ export function flow() {
   return {
     level: null, // the level the owner picked, or null at rest
     row: null, // the layer of the file row picked for that level, or null
-    pv: null, // { target, value, data } the preview on screen
-    pending: null, // { target, value } a preview on its way
+    remove: null, // { target, layer, line, blocked } a line the owner chose to remove, or null. It excludes level
+    pv: null, // { target, value, action, data } the preview on screen. A remove has value null
+    pending: null, // { target, value, action } a preview on its way
     notice: null, // a note over the review: { kind, heading, paras, dismiss }
     frame: null, // a result that replaces the review: unverified, raced or ledger
     failed: false, // a write failed and the review stays
     failedDir: null, // the config folder a failed write found missing
+    failedLeft: false, // a failed create left the folder it made
     busy: false, // a save is on its way
     strip: null, // a result of this page's own press, shown in the foot
     stripBusy: false, // an undo is on its way
@@ -86,11 +90,13 @@ export function resetCard() {
   bump();
   S.level = null;
   S.row = null;
+  S.remove = null;
   S.pv = null;
   S.notice = null;
   S.frame = null;
   S.failed = false;
   S.failedDir = null;
+  S.failedLeft = false;
   S.reloaded = null;
 }
 
@@ -127,14 +133,17 @@ export function syncFlow(key, mode) {
 
 // ---------------------------------------------------------------- not saved
 
-// True when a change waits on Save in the flow S holds: a level is chosen and that level can be saved somewhere.
-// The two stop rows (a cap or the model holds the level, or nothing can be saved at it) have nothing to save, and
-// a project that takes no save has no change at all. The picker and the rows are not part of it.
+// True when a change waits on Save in the flow S holds: a level is chosen and that level can be saved somewhere, or
+// a line to remove is chosen and nothing blocks it. The two stop rows (a cap or the model holds the level, or nothing
+// can be saved at it) have nothing to save, a blocked remove has nothing to save either, and a project that takes no
+// save has no change at all. The picker and the rows are not part of it.
 export function isNotSaved() {
-  if (!live || S.level === null || live.ctx.edit.mode !== "ready") return false;
+  if (!live || (S.level === null && S.remove === null) || live.ctx.edit.mode !== "ready") return false;
+  if (S.frame && S.frame.type !== "ledger") return false; // a raced or unverified save wrote the file
   const T = targetsData();
   if (!T || T.enabled === false || T.levels_state === "no_effort_support") return false;
   if (T.project_lock || T.saveable === false) return false;
+  if (S.remove !== null) return S.remove.blocked !== true;
   const lv = levelRow(T, S.level);
   return Boolean(lv) && lv.saveable === true;
 }
@@ -189,9 +198,12 @@ export function tokenOutcome(where) {
   redraw();
 }
 
+// Cancel puts focus on the level radio. After a remove it goes back to that row's Remove line link, which the
+// remove replaced.
 export function cancel() {
+  const back = S.remove !== null ? "remove:" + S.remove.layer : "radio";
   resetCard();
-  S.want = "radio";
+  S.want = back;
   redraw("card");
 }
 
@@ -199,7 +211,12 @@ export function cancel() {
 // pick, a refused save, and once for each new targets object the page draws. The running level chosen after a
 // refresh clears the flow. A row that went grey lands on the local file or on nothing, never on another file.
 export function settle(fresh = false) {
-  if (!live || S.busy || live.ctx.edit.mode !== "ready" || S.level === null) return;
+  if (!live || S.busy || live.ctx.edit.mode !== "ready") return;
+  if (S.level === null && S.remove !== null) {
+    settleRemove(fresh);
+    return;
+  }
+  if (S.level === null) return;
   const T = targetsData();
   if (!T || T.enabled === false) return;
   if (T.project_lock || T.saveable === false) {
@@ -227,6 +244,37 @@ export function settle(fresh = false) {
   startPreview(file.target, S.level);
 }
 
+// The remove path of settle(): the chosen line is still in the targets answer, and the preview matches it. A line that
+// is gone, or locked for any reason but a repeated key, ends the remove. A repeated key blocks it and draws no preview.
+function settleRemove(fresh) {
+  const T = targetsData();
+  if (!T || T.enabled === false) return;
+  if (T.project_lock || T.saveable === false) {
+    resetCard();
+    return;
+  }
+  const entry = targetById(T, S.remove.target);
+  const lock = entry && entry.remove ? entry.remove.lock_reason : undefined;
+  if (!entry || !entry.remove || (lock !== null && lock !== undefined && lock !== "repeated_key")) {
+    resetCard();
+    return;
+  }
+  S.remove.layer = entry.layer;
+  S.remove.line = entry.line;
+  if (lock === "repeated_key") {
+    if (S.pv !== null || S.pending !== null) bump();
+    S.remove.blocked = true;
+    S.pv = null;
+    return;
+  }
+  S.remove.blocked = false;
+  if (S.frame) return;
+  const same = (x) => x && x.target === S.remove.target && x.action === "remove";
+  if ((!fresh && same(S.pv)) || same(S.pending)) return;
+  S.pv = null;
+  startPreview(S.remove.target, null, "remove");
+}
+
 // True when the page can take a pick: edits are on, the project takes a save and a level can be saved somewhere.
 function pickable(T) {
   return Boolean(T) && T.enabled !== false && live.ctx.edit.mode === "ready" && !T.project_lock && T.saveable !== false;
@@ -234,7 +282,7 @@ function pickable(T) {
 
 // The owner picked a level. Pressing the running level, or any level while a save is on its way, does nothing.
 export function pick(value) {
-  if (S.busy || !live) return;
+  if (S.busy || !live || S.remove !== null) return;
   const T = targetsData();
   if (!pickable(T)) return;
   const lv = levelRow(T, value);
@@ -244,6 +292,7 @@ export function pick(value) {
   S.frame = null;
   S.failed = false;
   S.failedDir = null;
+  S.failedLeft = false;
   S.pv = null;
   S.reloaded = null;
   S.level = value;
@@ -255,7 +304,7 @@ export function pick(value) {
 
 // The owner picked a file row for the chosen level. Only that row's target is previewed.
 export function pickRow(layer) {
-  if (S.busy || !live || S.level === null) return;
+  if (S.busy || !live || S.level === null || S.remove !== null) return;
   const T = targetsData();
   if (!pickable(T)) return;
   const file = levelFile(levelRow(T, S.level), layer);
@@ -265,11 +314,40 @@ export function pickRow(layer) {
   S.frame = null;
   S.failed = false;
   S.failedDir = null;
+  S.failedLeft = false;
   S.pv = null;
   S.reloaded = null;
   S.row = layer;
   startPreview(file.target, S.level);
   redraw("card");
+}
+
+// The owner pressed Remove line on a file row at rest. file is the row of the targets answer's files list. One change
+// at a time, so it does nothing while a level or another remove is chosen or a save is on its way. A line with no
+// target, or one the server locks for any reason but a repeated key, does nothing. A repeated key opens the blocked
+// rail and asks for no preview. Cancel is where focus goes, because the pressed link goes away.
+export function startRemove(file) {
+  if (S.busy || !live || S.level !== null || S.remove !== null) return;
+  const T = targetsData();
+  if (!pickable(T) || !file || !file.target) return;
+  const entry = targetById(T, file.target);
+  if (!entry || !entry.remove) return;
+  const lock = entry.remove.lock_reason;
+  if (lock !== null && lock !== undefined && lock !== "repeated_key") return;
+  bump();
+  S.notice = null;
+  S.frame = null;
+  S.failed = false;
+  S.failedDir = null;
+  S.failedLeft = false;
+  S.pv = null;
+  S.reloaded = null;
+  S.remove = { target: entry.target, layer: entry.layer, line: entry.line, blocked: lock === "repeated_key" };
+  const hadResult = Boolean(S.strip) && !S.stripBusy;
+  if (hadResult) S.strip = null; // a new edit starts
+  if (!S.remove.blocked) startPreview(entry.target, null, "remove");
+  S.want = "cancel";
+  redraw(hadResult ? undefined : "card");
 }
 
 // True when the preview's op isn't the op the targets answer gave for the file row of that target.
@@ -280,13 +358,24 @@ function opDiffers(target, value, data) {
   return Boolean(file) && file.op !== data.op;
 }
 
-export async function startPreview(target, value) {
+// The heading of a refused answer. The project folder going away says so for the two files inside it. Any other
+// answer is worded by its code.
+function failHeading(out, layer) {
+  if (codeOf(out) === "file_missing") {
+    if (layer === "local" || layer === "project") return t("ed_fail_project_gone");
+    return lockText("file_missing") || errorText(out && out.res);
+  }
+  return errorText(out && out.res);
+}
+
+export async function startPreview(target, value, action = "set") {
   const mine = S.seq;
   const epoch = S.epoch;
-  S.pending = { target, value };
+  const layer = action === "remove" && S.remove ? S.remove.layer : S.row;
+  S.pending = { target, value, action };
   let out;
   try {
-    out = await live.ctx.edit.preview(target, value);
+    out = await live.ctx.edit.preview(target, value, action);
   } catch (err) {
     out = { kind: "error", res: null };
   }
@@ -299,16 +388,24 @@ export async function startPreview(target, value) {
   const data = bodyOf(out);
   if (out && out.kind === "ok" && data.diff) {
     // A preview whose op isn't its row's op means the targets are old. They load once for this preview, and Save
-    // doesn't show until a preview is drawn from the new ones. The server reports replace alone for now.
-    if (opDiffers(target, value, data) && S.reloaded !== target + "|" + value) {
-      S.reloaded = target + "|" + value;
+    // doesn't show until a preview is drawn from the new ones. A second mismatch for the same target and value
+    // never shows Save: the owner picks a file again.
+    if (opDiffers(target, value, data)) {
+      if (S.reloaded !== target + "|" + value) {
+        S.reloaded = target + "|" + value;
+        redraw("card");
+        refreshEdit();
+        return;
+      }
+      S.pv = null;
+      S.row = null;
+      S.notice = { kind: "err", heading: t("ed_op_mismatch"), paras: [], dismiss: true };
       redraw("card");
-      refreshEdit();
       return;
     }
-    S.pv = { target, value, data };
+    S.pv = { target, value, action, data };
   } else {
-    S.notice = { kind: "err", heading: errorText(out && out.res), paras: [], dismiss: true };
+    S.notice = { kind: "err", heading: failHeading(out, layer), paras: [], dismiss: true };
   }
   redraw("card");
 }
@@ -323,11 +420,21 @@ export function staleNotice(data) {
     heading = t("ed_stale_trail_h");
     paras = [names.length ? t("ed_stale_trail_t", { files: names.join(", ") }) : t("ed_stale_trail_general_t")];
   } else {
-    heading = t("ed_stale_file_h", { file: names[0] || basename(S.pv && S.pv.data.diff ? S.pv.data.diff.file_display : "") });
-    paras = [t("ed_stale_file_t")];
+    const file = names[0] || basename(S.pv && S.pv.data.diff ? S.pv.data.diff.file_display : "");
+    if (data.changed === "file_appeared") {
+      heading = t("ed_stale_appeared_h", { file });
+      paras = [t("ed_stale_appeared_t")];
+    } else if (data.changed === "file_removed") {
+      heading = t("ed_stale_removed_h", { file });
+      paras = [t("ed_stale_removed_t")];
+    } else {
+      heading = t("ed_stale_file_h", { file });
+      paras = [t("ed_stale_file_t")];
+    }
   }
   if (!fresh) paras = [t("ed_stale_gone_t")];
-  return { notice: { kind: "warn", heading, paras, dismiss: false }, fresh };
+  // With no fresh preview the notice sits alone over the rest rail, so it needs a Dismiss.
+  return { notice: { kind: "warn", heading, paras, dismiss: !fresh }, fresh };
 }
 
 // A save the server refused for what the file is now: not editable (400) or locked by a reason (422). The review
@@ -348,17 +455,20 @@ function landLate(key, out, sent) {
     const data = bodyOf(out);
     holder.level = null;
     holder.row = null;
+    holder.remove = null;
     holder.pv = null;
     holder.notice = null;
     holder.frame = null;
     holder.failed = false;
     holder.failedDir = null;
+    holder.failedLeft = false;
     holder.reloaded = null;
     holder.notSaved = false;
-    holder.strip = { kind: "saved", edit: data.edit || {}, warning: sent.data.warning || null };
+    holder.strip = savedStrip(data, sent);
   } else if (kind === "stale" || refused(out)) {
     holder.pv = null;
     holder.row = null;
+    if (kind !== "stale") holder.remove = null; // a refused remove is over, a stale one asks for its preview again
   } else {
     return;
   }
@@ -371,6 +481,17 @@ function syncShellList() {
   if (live && typeof live.ctx.edit.syncShell === "function") live.ctx.edit.syncShell();
 }
 
+// The result a save leaves in the foot. The preview it was made from says what the change did to what runs.
+function savedStrip(data, sent) {
+  return {
+    kind: "saved",
+    edit: data.edit || {},
+    warning: sent.data.warning || null,
+    noEffect: sent.data.no_effect === true,
+    runsAfter: sent.data.runs_after,
+  };
+}
+
 export async function doSave() {
   if (S.busy || !S.pv || !live) return;
   const epoch = S.epoch;
@@ -380,12 +501,13 @@ export async function doSave() {
   S.busy = true;
   S.failed = false;
   S.failedDir = null;
+  S.failedLeft = false;
   S.notice = null;
   if (!S.stripBusy) S.strip = null;
   redraw();
   let out;
   try {
-    out = await live.ctx.edit.save(sent.data, sent.target, sent.value);
+    out = await live.ctx.edit.save(sent.data, sent.target, sent.value, sent.action);
   } catch (err) {
     out = { kind: "error", res: null };
   }
@@ -404,21 +526,24 @@ export async function doSave() {
   let reload = false;
   if (kind === "ok") {
     resetCard();
-    S.strip = { kind: "saved", edit: data.edit || {}, warning: sent.data.warning || null };
+    S.strip = savedStrip(data, sent);
     S.want = data.edit && data.edit.undoable === true ? "undo" : "radio";
   } else if (kind === "stale") {
     const stale = staleNotice(data);
     S.notice = stale.notice;
-    S.pv = stale.fresh ? { target: sent.target, value: sent.value, data: stale.fresh } : null;
-    if (!stale.fresh) S.row = null;
+    S.pv = stale.fresh ? { target: sent.target, value: sent.value, action: sent.action, data: stale.fresh } : null;
+    if (!stale.fresh) {
+      S.row = null;
+      S.remove = null; // the line to remove is gone, so the notice stays over the rest rail
+    }
     reload = true;
   } else if (kind === "raced") {
     S.pv = null;
-    S.frame = { type: "raced", file: fileName, path: data.backup_display || null };
+    S.frame = { type: "raced", file: fileName, path: data.backup_display || null, op: sent.data.op };
     S.want = "dismiss-card";
   } else if (kind === "unverified") {
     S.pv = null;
-    S.frame = { type: "unverified", stage: data.stage, path: data.backup_display || null };
+    S.frame = { type: "unverified", stage: data.stage, path: data.backup_display || null, op: sent.data.op };
     S.want = "dismiss-card";
   } else if (codeOf(out) === "ledger_damaged") {
     S.pv = null;
@@ -430,16 +555,28 @@ export async function doSave() {
     S.want = "try";
   } else if (codeOf(out) === "write_failed") {
     S.failed = true;
+    S.failedLeft = data.dir_left === true;
     S.want = "try";
   } else if (refused(out)) {
     S.pv = null;
-    S.notice = { kind: "err", heading: errorText(out && out.res), paras: [], dismiss: true };
+    S.remove = null;
+    S.notice = { kind: "err", heading: failHeading(out, sent.data.layer), paras: [], dismiss: true };
     reload = true;
   } else {
     S.notice = { kind: "err", heading: errorText(out && out.res), paras: [], dismiss: true };
   }
   redraw();
+  if (S.failed) showFailure();
   if (reload) refreshEdit(); // the page data is old now; this never retries the save
+}
+
+// The failed-write notice closes the review, so on a short rail it can sit below the fold. It scrolls into view and
+// focus stays on Try again. A node with no scrollIntoView (an old browser, the test dom) is left alone.
+function showFailure() {
+  if (!live || !live.rail) return;
+  const isNote = (n) => String(n.getAttribute("class") || "").split(/\s+/).includes("p2-nt-err");
+  const note = walk(live.rail, isNote)[0];
+  if (note && typeof note.scrollIntoView === "function") note.scrollIntoView({ block: "nearest" });
 }
 
 // The strip an undo answer leaves, and whether the page must load the history again.
@@ -449,16 +586,32 @@ function undoOutcome(out, row) {
   const code = codeOf(out);
   const file = basename(row.file_display);
   if (kind === "ok" && data.matches_backup === true) {
-    return { strip: { kind: "undone", edit: data.edit || row, restored: data.restored_from_display || null }, want: "dismiss-strip" };
+    return {
+      strip: {
+        kind: "undone",
+        edit: data.edit || row,
+        restored: data.restored_from_display || null,
+        removedFile: data.removed_file === true,
+        removedDir: data.removed_dir === true,
+      },
+      want: "dismiss-strip",
+    };
   }
   if (kind === "ok" || kind === "raced") {
-    return { strip: { kind: "raced", file, path: data.restored_from_display || null }, want: "dismiss-strip" };
+    return { strip: { kind: "raced", file, path: data.restored_from_display || null, op: row.op }, want: "dismiss-strip" };
   }
   if (kind === "unverified") {
-    return { strip: { kind: "unverified", stage: data.stage, path: data.backup_display || null }, want: "dismiss-strip" };
+    return { strip: { kind: "unverified", stage: data.stage, path: data.backup_display || null, op: row.op }, want: "dismiss-strip" };
+  }
+  if (kind === "stale" || code === "stale") {
+    return { strip: { kind: "stale_undo", file, path: data.backup_display || null, op: row.op }, changed: true };
+  }
+  if (code === "unknown_edit") {
+    // The history row is gone (a created file deleted by hand trims it), so the page loads the history again.
+    return { strip: { kind: "error", text: errorText(out && out.res) }, changed: true };
   }
   if (code === "changed_since_save") {
-    return { strip: { kind: "stale_undo", file, path: data.backup_display || null }, changed: true };
+    return { strip: { kind: "stale_undo", file, path: data.backup_display || null, op: row.op }, changed: true };
   }
   if (code === "backup_damaged") return { strip: { kind: "backup_damaged", path: data.backup_display || null }, want: "dismiss-strip" };
   if (code === "not_undoable") return { strip: { kind: "not_undoable" }, want: "dismiss-strip" };

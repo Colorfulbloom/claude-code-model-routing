@@ -1,9 +1,14 @@
-"""Pure JSON edits for settings files: find a value's bytes, splice one value, mask, diff.
+"""Pure JSON edits for settings files: find a value's bytes, splice, mask, diff.
 
 A write must never rebuild a whole file. This module finds the byte span of one
-value, replaces only that span, and checks the result with an oracle before it
-hands the bytes back. It also masks secret-looking values in text, so a diff
-never shows what collect.py hides. Standard library only, Python 3.9.
+value, replaces only that span (replace_value), adds a missing key with any
+missing parents inside one span (insert_value), or cuts one key out of an
+object (remove_key). Each edit is prefix, span, suffix, and every byte outside
+the span stays put. One oracle checks the result before the bytes go back.
+new_file builds the bytes of a brand-new file. The module also masks
+secret-looking values in text, so a diff never shows what collect.py hides.
+structured_diff accepts None as the before text, for a file that does not exist
+yet. Standard library only, Python 3.9.
 
 The module opens no file, writes nothing and keeps no state. Callers pass bytes
 or text in and get bytes or text back.
@@ -28,7 +33,13 @@ _CONTEXT = 3
 
 
 class Refused(ValueError):
-    """An edit that must not happen. .code is unparsed, key_missing or oracle_failed."""
+    """An edit that must not happen.
+
+    .code is unparsed, key_missing, oracle_failed, key_present (insert found the
+    key, so the caller should replace), parent_not_object (a parent on the path
+    exists but is not an object) or repeated_key (remove found the key more than
+    once in one object).
+    """
 
     def __init__(self, code, message=None):
         super().__init__(message or code)
@@ -165,8 +176,13 @@ def _same(a, b):
     return a == b
 
 
-def _oracle(old_raw, new_raw, start, end, key_path, value):
-    """Raise Refused("oracle_failed") unless new_raw is old_raw with one value changed."""
+def _oracle(old_raw, new_raw, start, end, key_path, value, edit=None):
+    """Raise Refused("oracle_failed") unless new_raw is old_raw with one span changed.
+
+    Without edit, the expected data is the old data with the value at key_path
+    replaced (a strict walk). With edit, a function that mutates the expected
+    parsed copy, insert and remove share the same prefix, tail and equality checks.
+    """
     try:
         tail = len(old_raw) - end
         if new_raw[:start] != old_raw[:start]:
@@ -176,7 +192,9 @@ def _oracle(old_raw, new_raw, start, end, key_path, value):
         if new_raw[len(new_raw) - tail:] != old_raw[end:]:
             raise Refused("oracle_failed")
         expected = copy.deepcopy(json.loads(bytes(old_raw).decode("utf-8")))
-        if key_path:
+        if edit is not None:
+            edit(expected)
+        elif key_path:
             node = expected
             for step in key_path[:-1]:
                 node = node[step]
@@ -201,6 +219,212 @@ def replace_value(raw, key_path, value):
     new_raw = bytes(raw[:start]) + span + bytes(raw[end:])
     _oracle(bytes(raw), new_raw, start, end, key_path, value)
     return new_raw
+
+
+# Insert and remove
+
+def _skip(text, i):
+    while i < len(text) and text[i] in _JSON_SPACE:
+        i += 1
+    return i
+
+
+def _bytes_at(text, i):
+    return len(text[:i].encode("utf-8"))
+
+
+def _members(text, start):
+    """Return (key, key_start, key_end, value_start, value_end) per member of the object at start.
+
+    Offsets are str offsets and repeated keys are all listed, in file order.
+    Call it only on text json.loads accepted, with text[start] == "{".
+    """
+    decoder = json.JSONDecoder()
+    scanstring = json.decoder.scanstring
+    i = _skip(text, start + 1)
+    found = []
+    if text[i] == "}":
+        return found
+    while True:
+        key_start = i
+        key, key_end = scanstring(text, i + 1)
+        i = _skip(text, _skip(text, key_end) + 1)  # past the colon
+        value_end = decoder.raw_decode(text, i)[1]
+        found.append((key, key_start, key_end, i, value_end))
+        i = _skip(text, value_end)
+        if text[i] == ",":
+            i = _skip(text, i + 1)
+            continue
+        return found
+
+
+def _render(chain, value, multi, base, unit, nl, sep):
+    """Text for value wrapped in one object per key in chain."""
+    if not chain:
+        return json.dumps(value)
+    key = json.dumps(chain[0])
+    if not multi:
+        return "{" + key + sep + _render(chain[1:], value, False, base, unit, nl, sep) + "}"
+    inner = base + unit
+    return ("{" + nl + inner + key + sep
+            + _render(chain[1:], value, True, inner, unit, nl, sep) + nl + base + "}")
+
+
+def _check_path(key_path):
+    if not isinstance(key_path, tuple) or not key_path:
+        raise Refused("key_missing")
+    for step in key_path:
+        if not isinstance(step, str):
+            raise Refused("key_missing")
+
+
+def insert_value(raw, key_path, value):
+    """Return raw with key_path added as json.dumps(value), parents created as needed.
+
+    Refuses key_present when the final key exists (even as null) and
+    parent_not_object when a parent exists but is not an object. The whole
+    addition is one span, so every other byte stays as written.
+    """
+    _check_path(key_path)
+    text, _ = parse_strict(raw)
+    obj_start = _skip(text, 0)
+    missing_from = None
+    for index, step in enumerate(key_path[:-1]):
+        found = [m for m in _members(text, obj_start) if m[0] == step]
+        if not found:
+            missing_from = index
+            break
+        value_start = found[-1][3]
+        if text[value_start] != "{":
+            raise Refused("parent_not_object")
+        obj_start = value_start
+    members = _members(text, obj_start)
+    if missing_from is None:
+        if any(m[0] == key_path[-1] for m in members):
+            raise Refused("key_present")
+        remaining = key_path[-1:]
+    else:
+        remaining = key_path[missing_from:]
+    try:
+        key_text = json.dumps(remaining[0])
+        if members:
+            last = members[-1]
+            sep = text[last[2]:last[3]]
+            before = members[-2][4] if len(members) > 1 else obj_start + 1
+            gap = text[before:last[1]]
+            lead = gap[gap.rfind(",") + 1:]
+            multi = bool(_LINE_BREAK_RE.search(lead))
+            nl = member_indent = ""
+            unit = "  "
+            if multi:
+                nl = _LINE_BREAK_RE.findall(lead)[-1]
+                member_indent = _LINE_BREAK_RE.split(lead)[-1]
+                close = _skip(text, last[4])
+                tail_gap = text[last[4]:close]
+                if _LINE_BREAK_RE.search(tail_gap):
+                    close_indent = _LINE_BREAK_RE.split(tail_gap)[-1]
+                    if (member_indent.startswith(close_indent)
+                            and len(member_indent) > len(close_indent)):
+                        unit = member_indent[len(close_indent):]
+            body = _render(remaining[1:], value, multi, member_indent, unit, nl, sep)
+            add = "," + lead + key_text + sep + body
+            start = end = _bytes_at(text, last[4])
+        else:
+            top = _members(text, _skip(text, 0))
+            sep = text[top[0][2]:top[0][3]] if top else ": "
+            close = _skip(text, obj_start + 1)
+            first_break = _LINE_BREAK_RE.search(text)
+            if first_break is None:
+                add = key_text + sep + _render(remaining[1:], value, False, "", "  ", "", sep)
+            else:
+                nl = first_break.group(0)
+                breaks = list(_LINE_BREAK_RE.finditer(text[:obj_start]))
+                line_start = breaks[-1].end() if breaks else 0
+                line = text[line_start:obj_start]
+                base = line[:len(line) - len(line.lstrip(" \t"))]
+                indent = base + "  "
+                add = (nl + indent + key_text + sep
+                       + _render(remaining[1:], value, True, indent, "  ", nl, sep)
+                       + nl + base)
+            start = _bytes_at(text, obj_start + 1)
+            end = _bytes_at(text, close)
+        span = add.encode("ascii")
+    except (TypeError, ValueError, RecursionError):
+        raise Refused("oracle_failed")
+    old = bytes(raw)
+    new_raw = old[:start] + span + old[end:]
+
+    def edit(expected):
+        node = expected
+        for step in key_path[:-1]:
+            if step not in node:
+                node[step] = {}
+            node = node[step]
+        node[key_path[-1]] = copy.deepcopy(value)
+
+    _oracle(old, new_raw, start, end, key_path, value, edit=edit)
+    return new_raw
+
+
+def remove_key(raw, key_path):
+    """Return raw with the key at key_path cut out of its object.
+
+    Parents are strict: a missing or non-object parent is key_missing. A final
+    key that appears more than once in its object is repeated_key. Removing the
+    only member of a nested object leaves {}, and of the file leaves its braces on their own lines.
+    """
+    _check_path(key_path)
+    text, _ = parse_strict(raw)
+    obj_start = _skip(text, 0)
+    for step in key_path[:-1]:
+        found = [m for m in _members(text, obj_start) if m[0] == step]
+        if not found or text[found[-1][3]] != "{":
+            raise Refused("key_missing")
+        obj_start = found[-1][3]
+    members = _members(text, obj_start)
+    hits = [i for i, m in enumerate(members) if m[0] == key_path[-1]]
+    if not hits:
+        raise Refused("key_missing")
+    if len(hits) > 1:
+        raise Refused("repeated_key")
+    i = hits[0]
+    if i < len(members) - 1:
+        s_off, e_off = members[i][1], members[i + 1][1]
+    elif i > 0:
+        s_off, e_off = members[i - 1][4], members[i][4]
+    elif obj_start == _skip(text, 0):  # the file's last key: the closing brace keeps its own line
+        s_off, e_off = obj_start + 1, members[i][4]
+    else:
+        s_off, e_off = obj_start + 1, _skip(text, members[i][4])
+    start, end = _bytes_at(text, s_off), _bytes_at(text, e_off)
+    old = bytes(raw)
+    new_raw = old[:start] + old[end:]
+
+    def edit(expected):
+        node = expected
+        for step in key_path[:-1]:
+            node = node[step]
+        del node[key_path[-1]]
+
+    _oracle(old, new_raw, start, end, key_path, None, edit=edit)
+    return new_raw
+
+
+def new_file(key_path, value):
+    """Return the bytes of a new file holding only key_path: two-space indent, LF, final newline."""
+    _check_path(key_path)
+    try:
+        data = value
+        for step in reversed(key_path):
+            data = {step: data}
+        raw = (json.dumps(data, indent=2) + "\n").encode("ascii")
+        if not _same(json.loads(raw.decode("utf-8")), data):
+            raise Refused("oracle_failed")
+    except Refused:
+        raise
+    except (TypeError, ValueError, RecursionError):
+        raise Refused("oracle_failed")
+    return raw
 
 
 # Masking
@@ -244,8 +468,11 @@ def _lines(text):
 
 
 def structured_diff(before_text, after_text, file_display):
-    """Return {"file_display", "hunks"} for the masked before and after texts."""
-    before = _lines(mask_text(before_text))
+    """Return {"file_display", "hunks"} for the masked before and after texts.
+
+    before_text may be None for a new file, which counts as no lines.
+    """
+    before = [] if before_text is None else _lines(mask_text(before_text))
     after = _lines(mask_text(after_text))
     matcher = difflib.SequenceMatcher(None, before, after, autojunk=False)
     hunks = []

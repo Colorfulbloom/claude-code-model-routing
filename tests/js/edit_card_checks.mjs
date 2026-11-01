@@ -123,13 +123,14 @@ function app({ mode = "ready", data = {}, backend = {}, setting = null, key = "p
       mode: st.mode,
       targets: st.targets,
       history: st.history,
-      preview: async (target, value) => {
-        log.preview.push([target, value]);
-        return backend.preview(target, value, a);
+      // A remove has no value, and its calls carry the action. A set logs what it always logged.
+      preview: async (target, value, action) => {
+        log.preview.push(action === "remove" ? [target, value, action] : [target, value]);
+        return backend.preview(target, value, a, action);
       },
-      save: async (pv, target, value) => {
-        log.save.push({ pv, target, value });
-        return after(await backend.save(pv, target, value, a));
+      save: async (pv, target, value, action) => {
+        log.save.push(action === "remove" ? { pv, target, value, action } : { pv, target, value });
+        return after(await backend.save(pv, target, value, a, action));
       },
       undo: async (id) => {
         log.undo.push(id);
@@ -461,7 +462,7 @@ test("rest: the rail says why, and nothing else, and the foot is empty", () => {
   assert.equal(text(byClass(a.rail(), "s4-rh")[0]), STRINGS.why_h);
   assert.equal(byClass(a.rail(), "s4-note").length, 0);
   assert.equal(byClass(a.rail(), "p2-df").length, 0);
-  assert.equal(buttons(a.root).length, 0);
+  assert.deepEqual(buttons(a.root).map(text), [STRINGS.row_remove], "the only control is the Remove line link of the one row with a line");
   assert.equal(strips(a.root).length, 0, "the history is empty");
 });
 
@@ -717,8 +718,8 @@ test("pick: a level with a local preselect opens the review in the rail and the 
   assert.equal(text(byClass(picked, "s6-act")[0]), T("row_edits", { n: 2 }));
   assert.equal(byClass(picked, "ic").length, 1, "the check mark");
   assert.deepEqual(liveRows(a.root).slice(1).map((r) => hasClass(r, "is-no")), [true, true]);
-  assert.deepEqual(liveRows(a.root).slice(1).map((r) => text(byClass(r, "s6-act")[0])), [STRINGS.ed_row_lock_create_later, STRINGS.ed_row_lock_add_later]);
-  assert.ok(liveRows(a.root).slice(1).every((r) => byClass(r, "ic").length === 1), "a lock icon on a locked row");
+  assert.deepEqual(liveRows(a.root).slice(1).map((r) => text(byClass(r, "s6-act")[0])), [STRINGS.row_wont, STRINGS.row_wont]);
+  assert.ok(liveRows(a.root).slice(1).every((r) => byClass(r, "ic").length === 0), "no lock icon: the project create and the user insert are rows that won't change what runs, not locked rows");
   // the review is in the rail, as the board a-norm draws it
   const rb = byClass(a.rail(), "s4-rb")[0];
   assert.ok(rb, "the review is the rail's body");
@@ -1560,11 +1561,15 @@ test("write_failed: a missing config folder names the folder under the same head
   const u = app({ data: afterSave(), backend: { ...saveFlow(), undo: async () => bad("error", 500, answer) } });
   await u.press(STRINGS.ed_undo);
   const note = byClass(u.root, "p2-nt-err")[0];
-  assert.equal(text(byClass(note, "p2-nt-h")[0]), "✕" + STRINGS.ed_fail_h);
-  assert.equal(text(tag(note, "p")[0]), T("ed_fail_config_dir_t", { config_dir: answer.config_dir_display }));
+  assert.equal(text(byClass(note, "p2-nt-h")[0]), "✕" + STRINGS.ed_undo_fail_h);
+  assert.equal(text(tag(note, "p")[0]), T("ed_undo_fail_config_dir_t", { config_dir: answer.config_dir_display }));
   assert.deepEqual(byClass(note, "pa").map(text), [answer.config_dir_display]);
   assert.deepEqual(tag(note, "button").map(text), [STRINGS.ed_dismiss]);
   assert.equal(anyKey(u.root), false);
+  tag(note, "button")[0].click();
+  await settle();
+  assert.equal(byClass(u.root, "p2-nt-err").length, 0, "Dismiss clears the notice");
+  assert.ok(btn(u.root, STRINGS.ed_undo), "Undo is offered again after Dismiss");
 });
 
 test("stale: a changed file returns to the new preview with a warning, and a changed trail names the files", async () => {
@@ -1734,7 +1739,7 @@ test("errors: any other error is an alert with Dismiss, worded by its code, and 
 });
 
 test("refused save: a 400 not_editable or a 422 clears the review, keeps a notice and loads the files again", async () => {
-  const pvs = real("project_only").previews.project;
+  const pvs = S.previews;
   const flow = (fresh, status, body) => ({
     preview: async (t, v) => ok(pvs[v]),
     save: async () => bad("error", status, body),
@@ -2163,7 +2168,7 @@ test("pick: after a preview that failed, the rail keeps the Pick a file frame wi
   btn(a.root, STRINGS.ed_cancel).click();
   await settle();
   assert.deepEqual(checkedOf(levelInputs(a.root)), ["low"]);
-  assert.equal(buttons(a.root).length, 0);
+  assert.deepEqual(buttons(a.root).map(text), [STRINGS.row_remove], "only the Remove line link of the row with a line is left");
 });
 
 test("focus: a row that goes grey on a refresh leaves focus in its group", async () => {
@@ -2348,8 +2353,8 @@ test("fix: an undo that answers write_failed shows the failed-write strip with D
   });
   await a.press(STRINGS.ed_undo);
   const alert = byClass(a.root, "p2-nt-err")[0];
-  assert.equal(text(byClass(alert, "p2-nt-h")[0]), "✕" + STRINGS.ed_fail_h);
-  assert.equal(text(tag(alert, "p")[0]), T("ed_fail_t", { file: "settings.local.json" }));
+  assert.equal(text(byClass(alert, "p2-nt-h")[0]), "✕" + STRINGS.ed_undo_fail_h);
+  assert.equal(text(tag(alert, "p")[0]), T("ed_undo_fail_t", { file: "settings.local.json" }));
   assert.deepEqual(tag(alert, "button").map(text), [STRINGS.ed_dismiss]);
   assert.equal(btn(a.root, STRINGS.ed_try_again), undefined);
   assert.equal(FElement.focused, tag(alert, "button")[0]);
@@ -2832,6 +2837,1080 @@ test("op guard: a preview whose op is not its row's op loads the targets once, a
   await settle();
   assert.equal(d.log.refresh, 1);
   assert.deepEqual(footTexts(d), [LOCAL_SAVE, STRINGS.ed_cancel]);
+});
+
+test("op guard: a second mismatch for the same target and value never shows Save and says so in an error note", async () => {
+  const odd = (v) => ({ ...clone(S.previews[v]), op: "append" });
+  const a = app({
+    data: baseData(),
+    backend: { preview: async (t, v) => ok(odd(v)), refresh: () => ({ targets: S.start.targets }) },
+  });
+  await a.choose("high");
+  await settle();
+  assert.equal(a.log.refresh, 1, "the first mismatch loads the targets once");
+  assert.equal(a.log.preview.length, 2, "and asks for the preview again");
+  const shown = (x) => x.root.textContent + x.rail().textContent;
+  assert.ok(shown(a).includes(STRINGS.ed_op_mismatch), "the error note says the kinds of change differ");
+  assert.equal(nts(a.rail(), "err").length + nts(a.root, "err").length > 0, true, "it is an error note");
+  assert.equal(byClass(a.root, "p2-df").length, 0, "no review is drawn");
+  assert.equal(saveButtons(a.root).filter((x) => !off(x)).length, 0, "no Save that can be pressed");
+  assert.equal(footTexts(a).includes(LOCAL_SAVE), false, "and no Save to the local file");
+  assert.equal(a.log.refresh, 1, "no third round");
+  assert.equal(a.log.preview.length, 2, "and no third preview");
+});
+
+test("op guard: a first mismatch reloads once and a matching second preview shows Save, with no error note", async () => {
+  const odd = (v) => ({ ...clone(S.previews[v]), op: "append" });
+  let n = 0;
+  const a = app({
+    data: baseData(),
+    backend: { preview: async (t, v) => ok(++n === 1 ? odd(v) : S.previews[v]), refresh: () => ({ targets: S.start.targets }) },
+  });
+  await a.choose("high");
+  await settle();
+  assert.equal(a.log.refresh, 1, "reloaded once");
+  assert.equal(a.log.preview.length, 2, "previewed twice");
+  assert.deepEqual(footTexts(a), [LOCAL_SAVE, STRINGS.ed_cancel]);
+  assert.equal((a.root.textContent + a.rail().textContent).includes(STRINGS.ed_op_mismatch), false, "no mismatch note");
+});
+
+// ---------------------------------------------------------------- add a line, create a file, remove a line
+
+const uiMod = await import(JS + "edit_ui.js");
+const CR = real("create");
+const CRD = real("create_dir");
+const INS = real("insert");
+const RM = real("remove");
+const RMLAST = real("remove_last");
+const RMREP = real("remove_repeated");
+const RMUNK = real("remove_unknown");
+const NST = real("new_stale");
+
+const dataOf = (state, over = {}) => ({ settings: state.settings, targets: state.targets, history: state.history, ...over });
+// The fake server for one recorded world: a set previews what the world recorded for its value, a remove the line it
+// removed, and a save and an undo answer with the recorded answers and the data that comes after them.
+const worldFlow = (m, over = {}) => ({
+  preview: async (target, value, a, action) => {
+    if (action === "remove") return ok(target === m.project_target ? m.project_preview : m.local_preview);
+    return ok(target === m.project_target ? m.project_previews[value] : m.previews[value]);
+  },
+  save: async () => ({ ...ok(m.save), after: m.after_save }),
+  undo: async () => ({ ...ok(m.undo), after: m.after_undo }),
+  ...over,
+});
+const removeLink = (root, layer) => buttons(root).find((b) => b.getAttribute("data-edit-focus") === "remove:" + layer);
+const removeLinks = (root) => buttons(root).filter((b) => text(b) === STRINGS.row_remove);
+const wordsOf = (root) => liveRows(root).map((r) => text(byClass(r, "s6-act")[0]));
+const LOCAL = "settings.local.json";
+// No gap shows on the page: no null or undefined, no slot left open, no space before a full stop or a comma.
+const noGaps = (root, why = "") => assert.doesNotMatch(root.textContent.replace(/\s+/g, " "), /\bnull\b|\bundefined\b|\{\w+\}| [.,](?!\w)/, why);
+const withGit = (pv, state) => ({ ...clone(pv), git_ignore: state });
+const quiet = (root) => text(byClass(stripOf(root), "s4-note")[0]);
+const when = (row) => format.fmtTime(row.time);
+
+test("railCase: a chosen remove is its own case, behind the mode rules and ahead of the save rules", () => {
+  const c = (over) => pickMod.railCase({ ...base_, level: null, row: null, levelRow: null, ...over });
+  assert.equal(c({ remove: { blocked: false } }), "remove");
+  assert.equal(c({ remove: { blocked: true } }), "remove_blocked");
+  assert.equal(c({ remove: null }), "rest");
+  assert.equal(c({}), "rest", "a caller with no remove field is unchanged");
+  assert.equal(c({ remove: { blocked: false }, saveable: false }), "remove", "the remove rule comes before the save rule");
+  assert.equal(c({ remove: { blocked: false }, mode: "off" }), "off");
+  assert.equal(c({ remove: { blocked: false }, mode: "locked" }), "locked");
+  assert.equal(c({ remove: { blocked: true }, projectLock: "not_repo_root" }), "project_lock");
+  assert.equal(c({ remove: { blocked: false }, mode: null }), "rest");
+});
+
+test("pickerState: while a remove is chosen the page asks for busy, so every radio is off and the running level stays checked", () => {
+  assert.deepEqual(pickMod.pickerState(NAMES, "medium", null, "ready", { busy: true }), { checked: "medium", disabled: NAMES.slice() });
+});
+
+test("lockText and rowLockText know a line that may not be read and a repeated setting", () => {
+  assert.equal(uiMod.lockText("not_on_trail"), STRINGS.ed_lock_not_on_trail);
+  assert.equal(uiMod.lockText("repeated_key"), STRINGS.ed_lock_repeated_key);
+  assert.equal(uiMod.rowLockText("not_on_trail"), STRINGS.ed_row_lock_not_on_trail);
+  assert.equal(uiMod.rowLockText("repeated_key"), STRINGS.ed_row_lock_repeated_key);
+  assert.equal(uiMod.lockText("create_later"), null, "the old later reasons are gone");
+  assert.equal(uiMod.rowLockText("add_later"), null);
+  assert.equal(uiMod.rowLockText(null), null);
+});
+
+test("rows: a row that may not be read says so with the lock icon, in place of a word", async () => {
+  const targets = clone(INS.start.targets);
+  for (const name of ["low", "high", "xhigh"]) Object.assign(fileOf(targets, name, "project"), { target: null, op: null, effect: null, lock_reason: "not_on_trail", pickable: false });
+  recount(targets);
+  const a = app({ data: dataOf(INS.start, { targets }), backend: worldFlow(INS) });
+  await a.choose("high");
+  assert.deepEqual(wordsOf(a.root), [STRINGS.row_adds, STRINGS.ed_row_lock_not_on_trail, STRINGS.row_adds]);
+  assert.equal(byClass(liveRows(a.root)[1], "ic").length, 1, "a lock icon on the locked row");
+  assert.ok(hasClass(liveRows(a.root)[1], "is-no"));
+  assert.equal(anyKey(a.root), false);
+});
+
+test("rows: each op has its word, picked and not picked, and Save names the file it creates", async () => {
+  // replace
+  const r = app({ data: baseData(), backend: saveFlow() });
+  await r.choose("high");
+  assert.deepEqual(wordsOf(r.root)[0], T("row_edits", { n: 2 }), "a replace says which line it edits");
+  assert.equal(byClass(liveRows(r.root)[0], "ic").length, 1);
+  // create: the local file is picked, the project file is a create too, the user file takes a line
+  const a = app({ data: dataOf(CR.start), backend: worldFlow(CR) });
+  await a.choose("high");
+  assert.deepEqual(rowInputs(a.root).map((x) => x.value), ["local", "project", "user"], "the board's order");
+  assert.deepEqual(wordsOf(a.root), [STRINGS.row_creates, STRINGS.row_creates, STRINGS.row_adds]);
+  assert.deepEqual(checkedOf(rowInputs(a.root)), ["local"]);
+  assert.deepEqual(liveRows(a.root).map((x) => byClass(x, "ic").length), [1, 0, 0], "only the picked row has the check");
+  assert.deepEqual(footTexts(a), ["Create " + LOCAL, STRINGS.ed_cancel]);
+  assert.equal(footTexts(a)[0], T("ed_save_create", { file: LOCAL }));
+  assert.ok(hasClass(footButtons(a)[0], "p2-pri") && !off(footButtons(a)[0]));
+  await a.pickRow("project");
+  assert.deepEqual(wordsOf(a.root), [STRINGS.row_creates, STRINGS.row_creates, STRINGS.row_adds], "the same words with the check moved");
+  assert.deepEqual(liveRows(a.root).map((x) => byClass(x, "ic").length), [0, 1, 0]);
+  assert.deepEqual(footTexts(a), ["Create settings.json", STRINGS.ed_cancel]);
+  assert.equal(text(byClass(a.rail(), "s4-sub")[0]), T("ed_card_new", { file: "settings.json" }));
+  assert.ok(noteTexts(a.rail()).includes(STRINGS.ed_shared), "the project file is shared");
+  // insert: a line to add, and Save keeps its usual words
+  const b = app({ data: dataOf(INS.start), backend: worldFlow(INS) });
+  await b.choose("high");
+  assert.deepEqual(wordsOf(b.root), [STRINGS.row_adds, STRINGS.row_adds, STRINGS.row_adds]);
+  assert.deepEqual(liveRows(b.root).map((x) => byClass(x, "ic").length), [1, 0, 0]);
+  assert.deepEqual(footTexts(b), [LOCAL_SAVE, STRINGS.ed_cancel]);
+  assert.equal(text(byClass(b.rail(), "s4-sub")[0]), T("ed_card_add", { line: INS.previews.high.line, file: LOCAL }));
+  assert.equal(byClass(b.rail(), "p2-tag").length, 0, "an insert is not a new file");
+  assert.deepEqual(bigs(b.root), ["medium", "→", "high"]);
+  assert.equal(anyKey(b.root) || anyKey(a.root), false);
+});
+
+test("create: a preselected local create shows the New file tag and its note, and the longer note when the folder is new", async () => {
+  const a = app({ data: dataOf(CR.start), backend: worldFlow(CR) });
+  await a.choose("high");
+  assert.equal(text(byClass(a.rail(), "s4-sub")[0]), T("ed_card_new", { file: LOCAL }));
+  const caption = byClass(a.rail(), "p2-df-h")[0];
+  assert.deepEqual(byClass(caption, "p2-tag").map(text), [STRINGS.ed_diff_new_tag]);
+  assert.ok(order(caption, byClass(caption, "p2-tag")[0]) > order(caption, byClass(caption, "pa")[0]), "the tag follows the path");
+  assert.equal(byClass(a.rail(), "p2-add").length, 3);
+  assert.equal(byClass(a.rail(), "p2-del").length, 0);
+  assert.deepEqual(noteTexts(a.rail()), [T("ed_new_file_note", { file: LOCAL })]);
+  assert.deepEqual(bigs(a.root), ["medium", "→", "high"]);
+  const d = app({ data: dataOf(CRD.start), backend: worldFlow(CRD) });
+  await d.choose("high");
+  assert.equal(CRD.previews.high.creates_dir, true);
+  assert.deepEqual(noteTexts(d.rail()), [T("ed_new_dir_note", { file: LOCAL })], "the longer note stands in place of the shorter one");
+  assert.deepEqual(byClass(d.rail(), "p2-tag").map(text), [STRINGS.ed_diff_new_tag]);
+  // a change to a file that exists has no tag and no new-file note
+  const r = app({ data: baseData(), backend: saveFlow() });
+  await r.choose("high");
+  assert.equal(byClass(r.rail(), "p2-tag").length, 0);
+  assert.deepEqual(noteTexts(r.rail()), []);
+});
+
+// The owner's browser run: a project line at high and no local or user file. A level opens straight onto the local
+// create, so the Pick a file line never shows, and a press on the project row moves the pick to it. The browser test
+// waits on these signs, so a change to them fails here first.
+test("owner path: a level opens on the local create with no Pick a file line, and the project row then takes the pick", async () => {
+  const m = real("owner");
+  const level = levelOf(m.start.targets, "medium");
+  assert.equal(level.preselect, m.local_target, "the absent local file is the preselect");
+  assert.equal(fileOf(m.start.targets, "medium", "local").op, "create");
+  assert.equal(fileOf(m.start.targets, "medium", "project").pickable, true);
+  const a = app({ data: dataOf(m.start), backend: worldFlow({ ...m, previews: { medium: m.local_preview }, project_previews: { medium: m.project_preview }, project_target: m.project_target }) });
+  assert.equal(checkedOf(rowInputs(a.root)).length, 0, "nothing is picked at rest");
+  await a.choose("medium");
+  assert.deepEqual(a.log.preview, [[m.local_target, "medium"]], "the local create is previewed on the press");
+  assert.deepEqual(checkedOf(rowInputs(a.root)), ["local"]);
+  assert.equal(liveRows(a.root).filter((r) => hasClass(r, "is-pick")).length, 1);
+  assert.ok(!noteTexts(a.rail()).includes(STRINGS.ed_pick_file), "no Pick a file line once the preselect is previewed");
+  assert.equal(byClass(a.rail(), "p2-df").length, 1, "the diff is drawn");
+  assert.equal(byClass(a.rail(), "p2-del").length, 0, "a create deletes nothing");
+  assert.deepEqual(byClass(byClass(a.rail(), "p2-df-h")[0], "p2-tag").map(text), [STRINGS.ed_diff_new_tag], "the diff caption wears the New file tag");
+  assert.deepEqual(bigs(a.root), ["high", "→", "medium"], "the change line holds what runs now and the level");
+  assert.deepEqual(footTexts(a), [T("ed_save_create", { file: LOCAL }), STRINGS.ed_cancel]);
+  assert.ok(!off(footButtons(a)[0]), "Save is on for the local create");
+  // The project row: the pick moves to it, the diff holds the old and the new value, and Save writes the project file.
+  await a.pickRow("project");
+  assert.deepEqual(a.log.preview[1], [m.project_target, "medium"]);
+  assert.deepEqual(checkedOf(rowInputs(a.root)), ["project"]);
+  assert.equal(liveRows(a.root).filter((r) => hasClass(r, "is-pick")).length, 1);
+  assert.ok(hasClass(rowOf(rowIn(a.root, "project")), "is-pick"));
+  assert.equal(byClass(a.rail(), "p2-tag").length, 0, "the project file is not new");
+  assert.ok(!noteTexts(a.rail()).includes(STRINGS.ed_pick_file));
+  assert.ok(noteTexts(a.rail()).includes(STRINGS.ed_shared), "the project file is shared");
+  assert.ok(byClass(a.rail(), "p2-del").some((n) => text(n).includes('"high"')), "the old value is a deleted line");
+  assert.ok(byClass(a.rail(), "p2-add").some((n) => text(n).includes('"medium"')), "the new value is an added line");
+  assert.equal(byClass(a.rail(), "s4-dl").length, 1, "the After list is drawn");
+  assert.deepEqual(bigs(a.root), ["high", "→", "medium"]);
+  assert.deepEqual(footTexts(a), [T("ed_save_to", { file: "settings.json" }), STRINGS.ed_cancel]);
+  assert.ok(!off(footButtons(a)[0]));
+});
+
+test("remove: Remove line shows at rest on a row with a line, named for the line and the file, and not on a row without one", () => {
+  const a = app({ data: dataOf(RM.start) });
+  const links = removeLinks(a.root);
+  assert.deepEqual(links.map((b) => b.getAttribute("data-edit-focus")), ["remove:local", "remove:project"]);
+  assert.deepEqual(links.map((b) => b.getAttribute("aria-label")), [
+    T("row_remove_sr", { line: 2, file: LOCAL }), T("row_remove_sr", { line: 2, file: "settings.json" })]);
+  assert.ok(links.every((b) => hasClass(b, "s4-link") && b.getAttribute("type") === "button" && hasClass(b.parentNode, "s6-act")));
+  assert.deepEqual(plainRows(a.root).filter((r) => !hasClass(r, "s6-def")).map((r) => tag(r, "button").length), [1, 1, 0], "the user row has no line");
+  assert.equal(removeLinks(app({ data: dataOf(CR.start) }).root).length, 0, "files that don't exist have no line");
+  assert.equal(removeLinks(app({ data: dataOf(INS.start) }).root).length, 0, "files with no effort line have none");
+  assert.equal(a.log.preview.length, 0, "drawing the link asks for nothing");
+});
+
+test("remove: the link is gone during a level change, and in off, locked, a project lock and nothing to save", async () => {
+  const a = app({ data: dataOf(RM.start), backend: { preview: never } });
+  assert.equal(removeLinks(a.root).length, 2);
+  await a.choose("low");
+  assert.equal(removeLinks(a.root).length, 0, "a level is chosen");
+  btn(a.root, STRINGS.ed_cancel).click();
+  await settle();
+  assert.equal(removeLinks(a.root).length, 2, "Cancel brings it back");
+  const targetsOff = offAnswer(RM.start.targets);
+  assert.equal(removeLinks(app({ mode: "off", data: dataOf(RM.start, { targets: targetsOff }) }).root).length, 0, "off");
+  assert.equal(removeLinks(app({ mode: "locked", data: dataOf(RM.start) }).root).length, 0, "locked");
+  const lockedProject = clone(RM.start.targets);
+  lockedProject.project_lock = "not_repo_root";
+  assert.equal(removeLinks(app({ data: dataOf(RM.start, { targets: lockedProject }) }).root).length, 0, "project lock");
+  const nothing = clone(RM.start.targets);
+  nothing.saveable = false;
+  assert.equal(removeLinks(app({ data: dataOf(RM.start, { targets: nothing }) }).root).length, 0, "saveable false");
+  // a line the server won't remove, for any reason but a repeated key, has no link either
+  const locked = clone(RM.start.targets);
+  targetOf(locked, "project").remove.lock_reason = "not_editable";
+  assert.deepEqual(removeLinks(app({ data: dataOf(RM.start, { targets: locked }) }).root).map((b) => b.getAttribute("data-edit-focus")), ["remove:local"]);
+  const b = app({ data: dataOf(RM.start, { targets: locked }), backend: worldFlow(RM) });
+  flowMod.startRemove(rowOfFiles(locked, "project"));
+  await settle();
+  assert.equal(b.log.preview.length, 0, "and pressing it by code does nothing");
+});
+
+test("remove: a press asks for a remove preview with no value, opens the review, and focus goes to Cancel", async () => {
+  fresh();
+  const a = app({ data: dataOf(RM.start), backend: worldFlow(RM) });
+  removeLink(a.root, "local").click();
+  await settle();
+  assert.deepEqual(a.log.preview, [[RM.local_target, null, "remove"]]);
+  const rail = a.rail();
+  assert.equal(text(byClass(rail, "s4-rh")[0]), STRINGS.review_h);
+  assert.equal(text(byClass(rail, "s4-sub")[0]), T("ed_card_remove", { line: 2, file: LOCAL }));
+  assert.deepEqual(bigs(a.root), ["high", "→", "low"]);
+  assert.equal(headNote(rail), STRINGS.ed_runs);
+  assert.equal(byClass(rail, "p2-del").length, 1);
+  assert.equal(byClass(rail, "p2-add").length, 0);
+  assert.equal(byClass(rail, "p2-tag").length, 0);
+  assert.deepEqual(footTexts(a), [T("ed_save_remove", { line: 2, file: LOCAL }), STRINGS.ed_cancel]);
+  assert.equal(footTexts(a)[0], "Remove line 2 from " + LOCAL);
+  assert.ok(hasClass(footButtons(a)[0], "p2-pri") && !off(footButtons(a)[0]));
+  assert.equal(text(byClass(slotOf(a.root, "pick"), "s4-hint")[0]), STRINGS.ed_nothing_yet);
+  assert.equal(FElement.focused, btn(a.root, STRINGS.ed_cancel), "focus is on Cancel, because the pressed link is gone");
+  assert.equal(removeLinks(a.root).length, 0, "Remove line hides while a change is open");
+  assert.equal(noteTexts(rail).includes(STRINGS.ed_shared), false, "the local file is not shared");
+  assert.equal(anyKey(a.root), false);
+  noGaps(a.root);
+});
+
+test("remove: the picker is off while a remove is open, a level press does nothing, and Not saved shows until Cancel", async () => {
+  fresh();
+  const a = app({ data: dataOf(RM.start), backend: worldFlow(RM) });
+  assert.equal(pendOf(a.root).length, 0);
+  removeLink(a.root, "local").click();
+  await settle();
+  assert.ok(levelInputs(a.root).every(off), "every level is off");
+  assert.deepEqual(checkedOf(levelInputs(a.root)), ["high"], "the running level stays checked");
+  assert.equal(pendOf(a.root).length, 1, "Not saved");
+  assert.deepEqual(flowMod.notSavedProjects(), [a.key]);
+  assert.equal(text(byClass(cellOf(a.root, "effortLevel"), "s5-pend")[0]), STRINGS.band_not_saved);
+  lvl(a.root, "low").dispatch("change");
+  await settle();
+  assert.equal(a.log.preview.length, 1, "a level press sends nothing");
+  assert.equal(byClass(a.root, "p2-df").length, 1, "and the remove review stays");
+  assert.equal(liveRows(a.root).length, 0);
+  flowMod.startRemove(rowOfFiles(RM.start.targets, "project"));
+  await settle();
+  assert.equal(a.log.preview.length, 1, "a second remove is not started either");
+  btn(a.root, STRINGS.ed_cancel).click();
+  await settle();
+  assert.equal(pendOf(a.root).length, 0, "Cancel clears Not saved");
+  assert.deepEqual(flowMod.notSavedProjects(), []);
+  assert.ok(levelInputs(a.root).every((r) => !off(r)));
+  assert.equal(removeLinks(a.root).length, 2);
+  assert.equal(byClass(a.root, "p2-df").length, 0);
+  assert.equal(strips(a.root).length, 0);
+});
+
+test("remove: a level change and a remove exclude each other, so a chosen level hides the link and a press by code does nothing", async () => {
+  const a = app({ data: dataOf(RM.start), backend: { preview: never } });
+  await a.choose("low");
+  flowMod.startRemove(rowOfFiles(RM.start.targets, "local"));
+  await settle();
+  assert.deepEqual(a.log.preview.map((x) => x.length), [2], "only the level's preview");
+  assert.equal(byClass(a.rail(), "s4-sub").length, 0);
+});
+
+test("remove: a line that changes nothing warns, offers Remove anyway as a plain button, and notes the last line and the shared file", async () => {
+  const a = app({ data: dataOf(RM.start), backend: worldFlow(RM) });
+  removeLink(a.root, "project").click();
+  await settle();
+  const pv = RM.project_preview;
+  assert.deepEqual([pv.no_effect, pv.last_line, pv.shared], [true, true, true]);
+  assert.deepEqual(bigs(a.root), ["high"], "one value");
+  assert.equal(headNote(a.rail()), STRINGS.ed_nochange);
+  const warn = nts(a.rail(), "warn");
+  assert.equal(warn.length, 1);
+  assert.equal(text(byClass(warn[0], "p2-nt-h")[0]), "▲" + STRINGS.ed_remove_noeffect_h);
+  assert.equal(text(tag(warn[0], "p")[0]), STRINGS.ed_remove_noeffect_t);
+  assert.deepEqual(footTexts(a), [STRINGS.ed_remove_anyway, STRINGS.ed_cancel]);
+  assert.ok(!hasClass(footButtons(a)[0], "p2-pri"), "not the primary button");
+  assert.ok(!off(footButtons(a)[0]), "and not off");
+  assert.equal(byClass(slotOf(a.root, "pick"), "s4-hint").length, 0, "no reassurance line under a warned save");
+  assert.deepEqual(noteTexts(a.rail()), [T("ed_remove_last_note", { file: "settings.json" }), STRINGS.ed_shared], "last line, then shared");
+  assert.ok(order(a.rail(), byClass(a.rail(), "p2-df")[0]) < order(a.rail(), byClass(a.rail(), "s4-note")[0]), "the notes follow the diff");
+  assert.equal(text(byClass(a.rail(), "s4-sub")[0]), T("ed_card_remove", { line: 2, file: "settings.json" }));
+  noGaps(a.root);
+});
+
+test("remove: the last line of a file says the file stays, and an unknown result draws no empty value", async () => {
+  const a = app({ data: dataOf(RMLAST.start), backend: { preview: async () => ok(RMLAST.local_preview) } });
+  removeLink(a.root, "local").click();
+  await settle();
+  assert.deepEqual(noteTexts(a.rail()), [T("ed_remove_last_note", { file: LOCAL })]);
+  assert.deepEqual(bigs(a.root), ["low", "→", "medium"]);
+  assert.equal(nts(a.rail(), "warn").length, 0);
+  assert.deepEqual(footTexts(a), [T("ed_save_remove", { line: RMLAST.local_preview.line, file: LOCAL }), STRINGS.ed_cancel]);
+  // Nothing is known about what runs: no value, and the line says so.
+  const u = app({ data: dataOf(RMUNK.start), backend: { preview: async () => ok(RMUNK.user_preview) } });
+  removeLink(u.root, "user").click();
+  await settle();
+  assert.equal(byClass(u.rail(), "s4-chg").length, 0, "no empty value");
+  assert.equal(headNote(u.rail()), STRINGS.ed_nochange_unknown);
+  assert.equal(footTexts(u).length, 2);
+  noGaps(u.root);
+  // What ran before is known and what runs after is not: the one value and the same line.
+  const half = clone(RMUNK.user_preview);
+  half.runs_before = "high";
+  const h2 = app({ data: dataOf(RMUNK.start), backend: { preview: async () => ok(half) } });
+  removeLink(h2.root, "user").click();
+  await settle();
+  assert.deepEqual(bigs(h2.root), ["high"]);
+  assert.equal(headNote(h2.rail()), STRINGS.ed_nochange_unknown);
+});
+
+test("remove: a setting in the file twice opens the blocked rail with Cancel, asks for no preview, and is not Not saved", async () => {
+  fresh();
+  const a = app({ data: dataOf(RMREP) });
+  const link = removeLink(a.root, "local");
+  assert.ok(link, "the link shows, so the page can say why not");
+  link.click();
+  await settle();
+  assert.equal(a.log.preview.length, 0, "no preview");
+  const note = nts(a.rail(), "warn");
+  assert.equal(note.length, 1);
+  assert.equal(text(byClass(note[0], "p2-nt-h")[0]), "▲" + T("ed_remove_blocked_h", { line: 1 }));
+  assert.equal(text(tag(note[0], "p")[0]), STRINGS.ed_remove_blocked_t);
+  assert.deepEqual(tag(note[0], "button").map(text), [STRINGS.ed_cancel]);
+  assert.equal(saveButtons(a.root).length, 0, "no Save");
+  assert.equal(footButtons(a).length, 0, "and nothing in the foot");
+  assert.equal(pendOf(a.root).length, 0, "nothing waits to be saved");
+  assert.deepEqual(flowMod.notSavedProjects(), []);
+  assert.equal(FElement.focused, tag(note[0], "button")[0]);
+  assert.ok(levelInputs(a.root).every(off), "the picker is off");
+  tag(note[0], "button")[0].click();
+  await settle();
+  assert.equal(nts(a.rail(), "warn").length, 0);
+  assert.equal(removeLinks(a.root).length, 1);
+  assert.ok(levelInputs(a.root).every((r) => !off(r)));
+});
+
+test("remove: a preview that failed keeps the frame, Save off and Cancel, and Dismiss leaves the frame", async () => {
+  const a = app({ data: dataOf(RM.start), backend: { preview: async () => bad("error", 500, { error: "write_failed" }) } });
+  removeLink(a.root, "local").click();
+  await settle();
+  const err = byClass(a.rail(), "p2-nt-err")[0];
+  assert.ok(err);
+  assert.equal(text(byClass(a.rail(), "s4-rh")[0]), STRINGS.review_h);
+  assert.equal(byClass(a.rail(), "s4-chg").length, 0, "no change line without a preview");
+  assert.deepEqual(footTexts(a), [STRINGS.ed_save_plain, STRINGS.ed_cancel]);
+  assert.ok(off(footButtons(a)[0]) && !off(footButtons(a)[1]));
+  tag(err, "button")[0].click();
+  await settle();
+  assert.equal(byClass(a.root, "p2-nt").length, 0);
+  assert.equal(text(byClass(a.rail(), "s4-rh")[0]), STRINGS.review_h);
+  btn(a.root, STRINGS.ed_cancel).click();
+  await settle();
+  assert.equal(removeLinks(a.root).length, 2);
+});
+
+// One round of each op through the fake server: the saved line, the undone line, and the last-change line a reload
+// draws from the history. Nothing shows a null, an undefined or an open slot.
+async function round(m, name, begin, want) {
+  const a = app({ data: dataOf(m.start), backend: worldFlow(m) });
+  await begin(a);
+  btn(a.root, want.save).click();
+  await settle();
+  assert.equal(okMark(a.root), "✓", name);
+  assert.equal(okLine(a.root), want.saved, name);
+  assert.equal(pathLine(a.root), want.backup, name + ": the backup line");
+  noGaps(a.root, name + " after the save");
+  assert.equal(a.log.save.length, 1, name);
+  await a.press(STRINGS.ed_undo);
+  assert.equal(okLine(a.root), want.undone, name);
+  assert.equal(pathLine(a.root), want.restored, name + ": the restored line");
+  noGaps(a.root, name + " after the undo");
+  // After a reload the history draws the last change, from the row alone.
+  const saved = app({ data: dataOf(m.after_save) });
+  assert.equal(quiet(saved.root), want.lastSaved, name);
+  noGaps(saved.root, name + " last change");
+  const undone = app({ data: dataOf(m.after_undo) });
+  assert.equal(quiet(undone.root), want.lastUndone, name);
+  noGaps(undone.root, name + " last undo");
+  return a;
+}
+
+test("round: create a file, save and undo, with no backup line and the words for a file removed", async () => {
+  const edit = CR.save.edit;
+  const row = CR.after_undo.history.rows[0];
+  const a = await round(CR, "create", (x) => x.choose("high"), {
+    save: "Create " + LOCAL,
+    saved: T("ed_saved_created_t", { file: LOCAL, level: "high" }),
+    backup: null,
+    undone: T("ed_undone_removed_file_t", { file: LOCAL }),
+    restored: null,
+    lastSaved: T("ed_last_created_t", { when: when(edit), file: LOCAL, new: "high" }),
+    lastUndone: T("ed_last_undone_t", { when: when(row), file: LOCAL }),
+  });
+  assert.equal(a.log.save[0].value, "high");
+  assert.equal(a.log.save[0].target, CR.target);
+  assert.equal(byClass(stripOf(a.root), "cmp").length + byClass(stripOf(a.root), "pa").length, 0, "no path and no cmp line");
+});
+
+test("round: create a file and its folder, and undo removes both", async () => {
+  const edit = CRD.save.edit;
+  const row = CRD.after_undo.history.rows[0];
+  assert.deepEqual([CRD.undo.removed_file, CRD.undo.removed_dir], [true, true]);
+  await round(CRD, "create_dir", (x) => x.choose("high"), {
+    save: "Create " + LOCAL,
+    saved: T("ed_saved_created_t", { file: LOCAL, level: "high" }),
+    backup: null,
+    undone: T("ed_undone_removed_both_t", { file: LOCAL }),
+    restored: null,
+    lastSaved: T("ed_last_created_t", { when: when(edit), file: LOCAL, new: "high" }),
+    lastUndone: T("ed_last_undone_t", { when: when(row), file: LOCAL }),
+  });
+});
+
+test("round: add a line to a file, save and undo", async () => {
+  const edit = INS.save.edit;
+  const row = INS.after_undo.history.rows[0];
+  await round(INS, "insert", (x) => x.choose("high"), {
+    save: LOCAL_SAVE,
+    saved: T("ed_saved_t", { file: LOCAL, level: "high" }),
+    backup: T("ed_saved_backup", { path: edit.backup_display }),
+    undone: T("ed_undone_t", { file: LOCAL }),
+    restored: T("ed_undone_path", { path: INS.undo.restored_from_display }),
+    lastSaved: T("ed_last_added_t", { when: when(edit), file: LOCAL, new: "high" }) + " " + T("ed_saved_backup", { path: edit.backup_display }),
+    lastUndone: T("ed_last_undone_t", { when: when(row), file: LOCAL }) + " " + T("ed_undone_path", { path: row.restored_from_display }),
+  });
+});
+
+test("round: remove a line, save and undo, and the saved line says what a new session runs", async () => {
+  const edit = RM.save.edit;
+  const row = RM.after_undo.history.rows[0];
+  const a = await round(RM, "remove", async (x) => { removeLink(x.root, "local").click(); await settle(); }, {
+    save: "Remove line 2 from " + LOCAL,
+    saved: T("ed_saved_removed_t", { file: LOCAL, level: "low" }),
+    backup: T("ed_saved_backup", { path: edit.backup_display }),
+    undone: T("ed_undone_t", { file: LOCAL }),
+    restored: T("ed_undone_path", { path: RM.undo.restored_from_display }),
+    lastSaved: T("ed_last_removed_t", { when: when(edit), file: LOCAL, old: "high" }) + " " + T("ed_saved_backup", { path: edit.backup_display }),
+    lastUndone: T("ed_last_undone_t", { when: when(row), file: LOCAL }) + " " + T("ed_undone_path", { path: row.restored_from_display }),
+  });
+  assert.deepEqual(a.log.save[0], { pv: RM.local_preview, target: RM.local_target, value: null, action: "remove" });
+  assert.equal(removeLinks(a.root).length, 2, "the link is back at rest");
+});
+
+test("round: a remove saves with its own words when it changes nothing or the result is not known", async () => {
+  // The line didn't decide what runs.
+  const pv = RM.project_preview;
+  const projectEdit = { ...RM.save.edit, file_display: "project/.claude/settings.json" };
+  const a = app({ data: dataOf(RM.start), backend: worldFlow(RM, { save: async () => ok({ edit: projectEdit }) }) });
+  removeLink(a.root, "project").click();
+  await settle();
+  btn(a.root, STRINGS.ed_remove_anyway).click();
+  await settle();
+  assert.equal(pv.no_effect, true);
+  assert.equal(okLine(a.root), T("ed_saved_removed_no_effect_t", { file: "settings.json" }));
+  // The dashboard can't say what runs after it.
+  const u = app({ data: dataOf(RMUNK.start), backend: { preview: async () => ok(RMUNK.user_preview), save: async () => ok({ edit: { ...RM.save.edit, file_display: "config/settings.json" } }) } });
+  removeLink(u.root, "user").click();
+  await settle();
+  btn(u.root, T("ed_save_remove", { line: 2, file: "settings.json" })).click();
+  await settle();
+  assert.equal(okLine(u.root), T("ed_saved_removed_unknown_t", { file: "settings.json" }));
+  noGaps(u.root);
+});
+
+test("git: a local file git doesn't ignore warns and keeps Save on, an unknown result is a quiet line, and the rest say nothing", async () => {
+  const gitOf = async (state) => {
+    const a = app({ data: baseData(), backend: { preview: async (t, v) => ok(withGit(S.previews[v], state)) } });
+    await a.choose("high");
+    return a;
+  };
+  const warn = await gitOf("not_ignored");
+  const notes_ = nts(warn.rail(), "warn");
+  assert.equal(notes_.length, 1);
+  assert.equal(text(byClass(notes_[0], "p2-nt-h")[0]), "▲" + STRINGS.ed_git_warn_h);
+  assert.equal(text(tag(notes_[0], "p")[0]), T("ed_git_warn_t", { file: LOCAL }));
+  assert.deepEqual(footTexts(warn), [LOCAL_SAVE, STRINGS.ed_cancel], "Save keeps its usual words");
+  assert.ok(hasClass(footButtons(warn)[0], "p2-pri") && !off(footButtons(warn)[0]), "Save stays on and primary");
+  assert.equal(text(byClass(slotOf(warn.root, "pick"), "s4-hint")[0]), STRINGS.ed_nothing_yet);
+  const unknown = await gitOf("unknown");
+  assert.equal(nts(unknown.rail(), "warn").length, 0);
+  assert.deepEqual(noteTexts(unknown.rail()), [T("ed_git_unknown", { file: LOCAL })]);
+  assert.ok(hasClass(footButtons(unknown)[0], "p2-pri"));
+  for (const state of ["ignored", "no_repo", null]) {
+    const quietOne = await gitOf(state);
+    assert.equal(nts(quietOne.rail(), "warn").length, 0, String(state));
+    assert.deepEqual(noteTexts(quietOne.rail()), [], String(state));
+    assert.equal(quietOne.rail().textContent.includes(STRINGS.ed_git_warn_h) || quietOne.rail().textContent.includes("git ignores"), false, String(state));
+  }
+});
+
+test("stale: a file that appeared and a file that went each have their heading, and show the fresh preview", async () => {
+  const a = app({ data: dataOf(CR.start), backend: worldFlow(CR, { save: async () => bad("stale", 409, NST.appeared) }) });
+  await a.choose("high");
+  btn(a.root, "Create " + LOCAL).click();
+  await settle();
+  const warn = byClass(a.rail(), "p2-nt-warn")[0];
+  assert.equal(text(byClass(warn, "p2-nt-h")[0]), "▲" + T("ed_stale_appeared_h", { file: LOCAL }));
+  assert.equal(text(tag(warn, "p")[0]), STRINGS.ed_stale_appeared_t);
+  assert.equal(NST.appeared.preview.op, "insert");
+  assert.equal(text(byClass(a.rail(), "s4-sub")[0]), T("ed_card_add", { line: NST.appeared.preview.line, file: LOCAL }), "the fresh preview is an add");
+  assert.deepEqual(footTexts(a), [LOCAL_SAVE, STRINGS.ed_cancel]);
+  assert.equal(byClass(a.rail(), "p2-tag").length, 0);
+  assert.equal(a.log.refresh, 1);
+  assert.equal(a.log.save.length, 1);
+  const g = app({ data: baseData(), backend: { ...saveFlow(), save: async () => bad("stale", 409, NST.removed) } });
+  await g.choose("high");
+  btn(g.root, LOCAL_SAVE).click();
+  await settle();
+  const gone = byClass(g.rail(), "p2-nt-warn")[0];
+  assert.equal(text(byClass(gone, "p2-nt-h")[0]), "▲" + T("ed_stale_removed_h", { file: LOCAL }));
+  assert.equal(text(tag(gone, "p")[0]), STRINGS.ed_stale_removed_t);
+  assert.equal(NST.removed.preview.op, "create");
+  assert.deepEqual(byClass(g.rail(), "p2-tag").map(text), [STRINGS.ed_diff_new_tag], "the fresh preview is a new file");
+  assert.deepEqual(footTexts(g), ["Create " + LOCAL, STRINGS.ed_cancel]);
+  assert.ok(order(g.root, gone) < order(g.root, byClass(g.root, "p2-df")[0]));
+  noGaps(g.root);
+});
+
+test("stale: a remove with no fresh preview says the line is gone and drops back to rest, with the notice over it", async () => {
+  fresh();
+  const stale = { error: "stale", changed: "file", changed_files: [{ layer: "local", file_display: "project/.claude/settings.local.json" }], preview: null };
+  const a = app({ data: dataOf(RM.start), backend: worldFlow(RM, { save: async () => bad("stale", 409, stale), refresh: () => ({}) }) });
+  removeLink(a.root, "local").click();
+  await settle();
+  btn(a.root, T("ed_save_remove", { line: 2, file: LOCAL })).click();
+  await settle();
+  assert.deepEqual(a.log.save.map((x) => x.action), ["remove"]);
+  const note = byClass(a.rail(), "p2-nt-warn")[0];
+  assert.equal(text(byClass(note, "p2-nt-h")[0]), "▲" + T("ed_stale_file_h", { file: LOCAL }));
+  assert.equal(text(tag(note, "p")[0]), STRINGS.ed_stale_gone_t);
+  assert.equal(byClass(a.root, "p2-df").length, 0);
+  assert.equal(footButtons(a).length, 0);
+  assert.ok(levelInputs(a.root).every((r) => !off(r)), "the picker is back");
+  assert.equal(removeLinks(a.root).length, 2, "and so are the links");
+  assert.equal(pendOf(a.root).length, 0);
+  assert.deepEqual(flowMod.notSavedProjects(), []);
+  assert.equal(a.log.refresh, 1);
+  // With a fresh preview the remove stays, as the fresh remove preview.
+  const kept = clone(RM.local_preview);
+  const b = app({ data: dataOf(RM.start), backend: worldFlow(RM, { save: async () => bad("stale", 409, { ...stale, preview: kept }), refresh: () => ({}) }) });
+  removeLink(b.root, "local").click();
+  await settle();
+  btn(b.root, T("ed_save_remove", { line: 2, file: LOCAL })).click();
+  await settle();
+  assert.equal(text(tag(byClass(b.rail(), "p2-nt-warn")[0], "p")[0]), STRINGS.ed_stale_file_t);
+  assert.deepEqual(footTexts(b), [T("ed_save_remove", { line: 2, file: LOCAL }), STRINGS.ed_cancel]);
+  btn(b.root, T("ed_save_remove", { line: 2, file: LOCAL })).click();
+  await settle();
+  assert.deepEqual(b.log.save.map((x) => x.action), ["remove", "remove"], "the second Save is still a remove");
+});
+
+test("remove: a save the server refuses ends the remove and loads the files again", async () => {
+  const a = app({ data: dataOf(RM.start), backend: worldFlow(RM, { save: async () => bad("error", 400, { error: "not_editable" }) }) });
+  removeLink(a.root, "local").click();
+  await settle();
+  btn(a.root, T("ed_save_remove", { line: 2, file: LOCAL })).click();
+  await settle();
+  assert.equal(a.log.refresh, 1);
+  assert.equal(text(byClass(byClass(a.rail(), "p2-nt-err")[0], "p2-nt-h")[0]), "✕" + STRINGS.ed_err_not_editable);
+  assert.equal(byClass(a.root, "p2-df").length, 0);
+  assert.equal(pendOf(a.root).length, 0);
+  assert.equal(removeLinks(a.root).length, 2);
+});
+
+test("create: a failed write names the folder, and says the dashboard made one when it did", async () => {
+  const folder = "project/.claude";
+  const run = async (body) => {
+    const a = app({ data: dataOf(CR.start), backend: worldFlow(CR, { save: async () => bad("error", 500, body) }) });
+    await a.choose("high");
+    btn(a.root, "Create " + LOCAL).click();
+    await settle();
+    return a;
+  };
+  const left = await run({ error: "write_failed", file_unchanged: true, dir_left: true });
+  const alert = byClass(left.rail(), "p2-nt-err")[0];
+  assert.equal(text(byClass(alert, "p2-nt-h")[0]), "✕" + STRINGS.ed_fail_create_h);
+  assert.deepEqual(tag(alert, "p").map(text), [T("ed_fail_create_t", { folder }), STRINGS.ed_fail_dir_left]);
+  assert.deepEqual(byClass(alert, "pa").map(text), [folder]);
+  assert.equal(byClass(left.root, "p2-df").length, 1, "the review stays");
+  assert.ok(btn(left.root, STRINGS.ed_try_again));
+  assert.equal(FElement.focused, btn(left.root, STRINGS.ed_try_again));
+  noGaps(left.root);
+  const plain = await run({ error: "write_failed", file_unchanged: true });
+  assert.deepEqual(tag(byClass(plain.rail(), "p2-nt-err")[0], "p").map(text), [T("ed_fail_create_t", { folder })], "no left-over line");
+  // the next attempt starts clean
+  const again = app({ data: dataOf(CR.start), backend: worldFlow(CR, { save: async () => bad("error", 500, { error: "write_failed", dir_left: true }) }) });
+  await again.choose("high");
+  btn(again.root, "Create " + LOCAL).click();
+  await settle();
+  assert.equal(tag(byClass(again.rail(), "p2-nt-err")[0], "p").length, 2);
+  btn(again.root, STRINGS.ed_cancel).click();
+  await settle();
+  await again.choose("high");
+  assert.equal(byClass(again.rail(), "p2-nt-err").length, 0, "Cancel and a new pick clear the failure");
+  // a write that fails on an existing file keeps its own words, whatever dir_left says
+  const old = app({ data: baseData(), backend: { ...saveFlow(), save: async () => bad("error", 500, { error: "write_failed", dir_left: true }) } });
+  await old.choose("high");
+  btn(old.root, LOCAL_SAVE).click();
+  await settle();
+  assert.equal(text(byClass(byClass(old.rail(), "p2-nt-err")[0], "p2-nt-h")[0]), "✕" + STRINGS.ed_fail_h);
+});
+
+test("project folder gone: a refused save or preview says so for the two project files and uses the lock line for the user file", async () => {
+  const gone = { error: "file_missing" };
+  const save = async (layer) => {
+    const pv = clone(CR.previews.high);
+    pv.layer = layer;
+    const a = app({ data: dataOf(CR.start), backend: worldFlow(CR, { preview: async () => ok(pv), save: async () => bad("error", 422, gone) }) });
+    await a.choose("high");
+    btn(a.root, "Create " + LOCAL).click();
+    await settle();
+    return text(byClass(byClass(a.rail(), "p2-nt-err")[0], "p2-nt-h")[0]);
+  };
+  assert.equal(await save("local"), "✕" + STRINGS.ed_fail_project_gone);
+  assert.equal(await save("project"), "✕" + STRINGS.ed_fail_project_gone);
+  assert.equal(await save("user"), "✕" + STRINGS.ed_lock_file_missing);
+  // A preview refused the same way, for a pick of the local file and of a remove.
+  const a = app({ data: dataOf(CR.start), backend: { preview: async () => bad("error", 422, gone) } });
+  await a.choose("high");
+  assert.equal(text(byClass(byClass(a.rail(), "p2-nt-err")[0], "p2-nt-h")[0]), "✕" + STRINGS.ed_fail_project_gone);
+  const r = app({ data: dataOf(RM.start), backend: { preview: async () => bad("error", 422, gone) } });
+  removeLink(r.root, "local").click();
+  await settle();
+  assert.equal(text(byClass(byClass(r.rail(), "p2-nt-err")[0], "p2-nt-h")[0]), "✕" + STRINGS.ed_fail_project_gone);
+  // A repeated key refused on save is a lock line like the others.
+  const k = app({ data: dataOf(RM.start), backend: worldFlow(RM, { save: async () => bad("error", 422, { error: "repeated_key" }) }) });
+  removeLink(k.root, "local").click();
+  await settle();
+  btn(k.root, T("ed_save_remove", { line: 2, file: LOCAL })).click();
+  await settle();
+  assert.equal(text(byClass(byClass(k.rail(), "p2-nt-err")[0], "p2-nt-h")[0]), "✕" + STRINGS.ed_lock_repeated_key);
+  assert.equal(removeLinks(k.root).length, 2);
+});
+
+test("undo of a create: a file put back says to check it, with no path, and an unverified reread says the same", async () => {
+  const row = CR.save.edit;
+  const raced = app({ data: dataOf(CR.after_save), backend: { undo: async () => bad("raced", 409, { error: "raced", edit: CR.undo.edit, matches_backup: false, restored_from_display: null, settings: CR.undo.settings }) } });
+  await raced.press(STRINGS.ed_undo);
+  const warn = byClass(stripOf(raced.root), "p2-nt-warn")[0];
+  assert.equal(text(byClass(warn, "p2-nt-h")[0]), "▲" + T("ed_raced_h", { file: LOCAL }));
+  assert.deepEqual(tag(warn, "p").map(text), [STRINGS.ed_raced_create_t]);
+  assert.equal(byClass(warn, "pa").length, 0, "no path");
+  assert.equal(CR.save.edit.backup_display, null);
+  const unverified = app({ data: dataOf(CR.after_save), backend: { undo: async () => bad("unverified", 500, { error: "unverified", stage: "reread", file_unchanged: false, edit: row }) } });
+  await unverified.press(STRINGS.ed_undo);
+  const alert = byClass(stripOf(unverified.root), "p2-nt-err")[0];
+  assert.equal(text(byClass(alert, "p2-nt-h")[0]), "✕" + STRINGS.ed_unverified_reread_h);
+  assert.deepEqual(tag(alert, "p").map(text), [STRINGS.ed_unverified_create_t]);
+  // The other stage and the other ops keep their own words.
+  const fsync = app({ data: dataOf(CR.after_save), backend: { undo: async () => bad("unverified", 500, { error: "unverified", stage: "fsync", file_unchanged: false }) } });
+  await fsync.press(STRINGS.ed_undo);
+  assert.equal(text(byClass(byClass(stripOf(fsync.root), "p2-nt-err")[0], "p2-nt-h")[0]), "✕" + STRINGS.ed_unverified_fsync_h);
+  const path_ = "config/routing-dashboard/backups/x/000001-a.bak";
+  const other = app({ data: afterSave(), backend: { undo: async () => bad("unverified", 500, { error: "unverified", stage: "reread", backup_display: path_ }) } });
+  await other.press(STRINGS.ed_undo);
+  assert.equal(text(tag(byClass(stripOf(other.root), "p2-nt-err")[0], "p")[0]), T("ed_unverified_reread_t", { path: path_ }));
+  noGaps(raced.root);
+});
+
+test("undo of a create: a file that changed after the save leaves no Undo, and the line says to delete it by hand", async () => {
+  const history = clone(CR.after_save.history);
+  Object.assign(history.rows[0], { undoable: false, not_undoable_reason: "changed_since_save" });
+  const a = app({ data: dataOf(CR.after_save, { history }) });
+  assert.ok(hasClass(okRow(a.root), "s4-ok-warn"), "a warning row");
+  const line = text(okRow(a.root));
+  assert.equal(line, "▲" + T("ed_undo_stale_h", { file: LOCAL }) + " " + STRINGS.ed_undo_stale_created_t);
+  assert.equal(byClass(stripOf(a.root), "pa").length, 0, "no path");
+  assert.equal(tag(stripOf(a.root), "button").length, 0);
+  // The press answer says the same, and a file that had a backup still names it.
+  const c = app({ data: dataOf(CR.after_save), backend: { undo: async () => bad("error", 409, { error: "changed_since_save", backup_display: null }), refresh: () => ({}) } });
+  await c.press(STRINGS.ed_undo);
+  assert.equal(okLine(c.root), T("ed_undo_stale_h", { file: LOCAL }) + " " + STRINGS.ed_undo_stale_created_t);
+  assert.equal(pathLine(c.root), null);
+  const r = app({ data: dataOf(RM.after_save) });
+  assert.equal(quiet(r.root).startsWith("Last change"), true);
+  const h2 = clone(RM.after_save.history);
+  Object.assign(h2.rows[0], { undoable: false, not_undoable_reason: "changed_since_save" });
+  const s = app({ data: dataOf(RM.after_save, { history: h2 }) });
+  assert.equal(text(byClass(stripOf(s.root), "s4-ok")[0]), "▲" + T("ed_undo_stale_h", { file: LOCAL }) + " " + T("ed_undo_stale_t", { path: h2.rows[0].backup_display }));
+});
+
+test("settle: a remove asks for its preview again on a new targets answer, blocks on a repeated key, and ends when its line goes", async () => {
+  fresh();
+  const a = app({ data: dataOf(RM.start), backend: worldFlow(RM) });
+  removeLink(a.root, "local").click();
+  await settle();
+  assert.equal(a.log.preview.length, 1);
+  a.draw();
+  assert.equal(a.log.preview.length, 1, "the same answer drawn again asks for nothing");
+  a.st.targets = a.wrapT(clone(RM.start.targets));
+  a.draw();
+  await settle();
+  assert.equal(a.log.preview.length, 2, "a new answer asks again");
+  assert.deepEqual(a.log.preview[1], [RM.local_target, null, "remove"]);
+  assert.equal(byClass(a.root, "p2-df").length, 1);
+  // The server now says the setting is in the file twice.
+  const twice = clone(RM.start.targets);
+  targetOf(twice, "local").remove.lock_reason = "repeated_key";
+  a.st.targets = a.wrapT(twice);
+  a.draw();
+  await settle();
+  assert.equal(a.log.preview.length, 2, "a blocked remove asks for nothing");
+  assert.equal(text(byClass(nts(a.rail(), "warn")[0], "p2-nt-h")[0]), "▲" + T("ed_remove_blocked_h", { line: 2 }));
+  assert.equal(saveButtons(a.root).length, 0);
+  assert.equal(byClass(a.root, "p2-df").length, 0);
+  assert.equal(pendOf(a.root).length, 0);
+  // Back to a line that can go: the preview is asked for again.
+  a.st.targets = a.wrapT(clone(RM.start.targets));
+  a.draw();
+  await settle();
+  assert.equal(a.log.preview.length, 3);
+  assert.deepEqual(footTexts(a), [T("ed_save_remove", { line: 2, file: LOCAL }), STRINGS.ed_cancel]);
+  assert.equal(pendOf(a.root).length, 1);
+  // The line goes: the remove ends, and the rest rail is back.
+  const goneT = clone(RM.start.targets);
+  goneT.targets = goneT.targets.filter((x) => x.layer !== "local");
+  Object.assign(rowOfFiles(goneT, "local"), { state: "no_line", line: null, value: null, status: null, target: null });
+  a.st.targets = a.wrapT(goneT);
+  a.draw();
+  await settle();
+  assert.equal(byClass(a.root, "p2-df").length, 0);
+  assert.equal(text(byClass(a.rail(), "s4-rh")[0]), STRINGS.why_h);
+  assert.deepEqual(removeLinks(a.root).map((b) => b.getAttribute("data-edit-focus")), ["remove:project"]);
+  assert.equal(pendOf(a.root).length, 0);
+  assert.ok(levelInputs(a.root).every((r) => !off(r)));
+  // A project lock ends it too.
+  removeLink(a.root, "project").click();
+  await settle();
+  assert.equal(byClass(a.root, "p2-df").length, 1);
+  const lock = clone(goneT);
+  lock.project_lock = "not_repo_root";
+  a.st.targets = a.wrapT(lock);
+  a.draw();
+  assert.deepEqual(noteTexts(a.rail()), [STRINGS.ed_lock_not_repo_root]);
+  assert.equal(pendOf(a.root).length, 0);
+});
+
+test("flow: a late save answer for a remove lands in its project's flow, clears it and shows the result when the owner comes back", async () => {
+  const gate = {};
+  const a = app({
+    data: dataOf(RM.start),
+    backend: worldFlow(RM, { save: () => new Promise((resolve) => { gate.go = () => resolve(ok(RM.save)); }) }),
+  });
+  const keyA = a.key;
+  removeLink(a.root, "local").click();
+  await settle();
+  btn(a.root, T("ed_save_remove", { line: 2, file: LOCAL })).click();
+  await settle();
+  a.use(keyA + "-b", dataOf(RM.start));
+  assert.equal(byClass(a.root, "p2-df").length, 0, "project B starts at rest");
+  assert.equal(removeLinks(a.root).length, 2, "and has its links");
+  gate.go();
+  await settle();
+  assert.equal(strips(a.root).length, 0, "A's result is not drawn in B");
+  assert.equal(flowMod.notSavedProjects().includes(keyA), false, "A no longer waits on Save");
+  a.use(keyA, dataOf(RM.start));
+  assert.equal(byClass(a.root, "p2-df").length, 0);
+  assert.equal(okLine(a.root), T("ed_saved_removed_t", { file: LOCAL, level: "low" }));
+  assert.equal(removeLinks(a.root).length, 2);
+});
+
+test("text nodes: a hostile path, line and folder in a create, an add and a remove make no element", async () => {
+  const evil = "<img src=x onerror=alert(1)>";
+  parsed.length = 0;
+  const pv = clone(CR.previews.high);
+  pv.diff.file_display = "project/" + evil + "/settings.local.json";
+  pv.diff.hunks[0].lines[1].text = evil;
+  const a = app({ data: dataOf(CR.start), backend: worldFlow(CR, { preview: async () => ok(pv), save: async () => bad("error", 500, { error: "write_failed", dir_left: true }) }) });
+  await a.choose("high");
+  btn(a.root, "Create " + LOCAL).click();
+  await settle();
+  assert.equal(a.root.find((n) => n.tagName === "img").length, 0);
+  assert.ok(a.root.textContent.includes(evil), "shown as text");
+  const rm = clone(RM.local_preview);
+  rm.diff.hunks[0].lines.find((l) => l.kind === "del").text = evil;
+  const b = app({ data: dataOf(RM.start), backend: { preview: async () => ok(rm) } });
+  removeLink(b.root, "local").click();
+  await settle();
+  assert.equal(b.root.find((n) => n.tagName === "img").length, 0);
+  assert.deepEqual(parsed, []);
+});
+
+// ---------------------------------------------------------------- verifier batch
+
+test("undo: an edit the server no longer knows says so and loads the history again", async () => {
+  const a = app({ data: dataOf(CR.after_save), backend: { undo: async () => bad("error", 404, { error: "unknown_edit" }), refresh: () => ({}) } });
+  await a.press(STRINGS.ed_undo);
+  assert.equal(a.log.refresh, 1, "the page refreshes, so Dismiss cannot bring the dead Undo back");
+  assert.match(text(stripOf(a.root)), new RegExp(STRINGS.ed_err_unknown_edit.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+});
+
+test("undo: a stale undo (409 stale) shows the stale-undo line and loads the history again", async () => {
+  const body = { error: "stale", changed: "file", changed_files: [], preview: null };
+  const a = app({ data: afterSave(), backend: { undo: async () => bad("stale", 409, body), refresh: () => ({}) } });
+  await a.press(STRINGS.ed_undo);
+  assert.equal(a.log.refresh, 1);
+  assert.ok(hasClass(okRow(a.root), "s4-ok-warn"));
+  assert.match(text(stripOf(a.root)), new RegExp(T("ed_undo_stale_h", { file: "settings.local.json" })));
+  assert.equal(text(stripOf(a.root)).includes(STRINGS.ed_err_forbidden), false, "not the generic refusal line");
+  assert.deepEqual(tag(stripOf(a.root), "button").map(text), [STRINGS.ed_dismiss]);
+});
+
+test("strip: a replace row with no old value reads as an added line, and its undo as an undone change", () => {
+  const row = clone(S.after_save.history.rows[0]);
+  delete row.old_value;
+  const a = app({ data: { ...afterSave(), history: { ...S.after_save.history, rows: [row] } } });
+  const added = T("ed_last_added_t", { when: format.fmtTime(row.time), new: "high", file: "settings.local.json" });
+  assert.equal(text(byClass(stripOf(a.root), "s4-note")[0]).startsWith(added), true);
+  const undo = { ...row, kind: "undo", old_value: "high" };
+  delete undo.new_value;
+  const b = app({ data: { ...afterSave(), history: { ...S.after_save.history, rows: [undo] } } });
+  const undone = T("ed_last_undone_t", { when: format.fmtTime(undo.time), file: "settings.local.json" });
+  assert.equal(text(byClass(stripOf(b.root), "s4-note")[0]).startsWith(undone), true);
+  assert.equal(text(stripOf(b.root)).includes(" to ."), false);
+});
+
+test("create: a raced or unverified save has a body that says there is no backup", async () => {
+  const run = async (kind, body) => {
+    const a = app({ data: dataOf(CR.start), backend: worldFlow(CR, { save: async () => bad(kind, kind === "raced" ? 409 : 500, body) }) });
+    await a.choose("high");
+    btn(a.root, "Create " + LOCAL).click();
+    await settle();
+    return a;
+  };
+  const raced = await run("raced", { error: "raced", edit: CR.save.edit, backup_display: null, settings: CR.save.settings });
+  assert.deepEqual(tag(byClass(raced.rail(), "p2-nt-warn")[0], "p").map(text), [STRINGS.ed_raced_new_t]);
+  for (const stage of ["reread", "fsync"]) {
+    const un = await run("unverified", { error: "unverified", stage, file_unchanged: false, backup_display: null });
+    const want = stage === "fsync" ? STRINGS.ed_unverified_fsync_new_t : STRINGS.ed_unverified_new_t;
+    assert.deepEqual(tag(byClass(un.rail(), "p2-nt-err")[0], "p").map(text), [want], stage);
+  }
+});
+
+test("create: a failed write with a missing config folder names the folder, not the project folder", async () => {
+  const answer = { error: "config_dir_missing", file_unchanged: true, config_dir_display: "~/gone/.claude" };
+  const a = app({ data: dataOf(CR.start), backend: worldFlow(CR, { save: async () => bad("error", 500, answer) }) });
+  await a.choose("high");
+  btn(a.root, "Create " + LOCAL).click();
+  await settle();
+  const alert = byClass(a.rail(), "p2-nt-err")[0];
+  assert.equal(text(byClass(alert, "p2-nt-h")[0]), "✕" + STRINGS.ed_fail_h);
+  assert.deepEqual(tag(alert, "p").map(text), [T("ed_fail_config_dir_t", { config_dir: answer.config_dir_display })]);
+  assert.deepEqual(byClass(alert, "pa").map(text), [answer.config_dir_display]);
+  assert.ok(btn(a.root, STRINGS.ed_try_again));
+});
+
+test("stale: a remove with no fresh preview leaves a notice with a Dismiss that clears it", async () => {
+  fresh();
+  const stale = { error: "stale", changed: "file", changed_files: [{ layer: "local", file_display: "project/.claude/settings.local.json" }], preview: null };
+  const a = app({ data: dataOf(RM.start), backend: worldFlow(RM, { save: async () => bad("stale", 409, stale), refresh: () => ({}) }) });
+  removeLink(a.root, "local").click();
+  await settle();
+  btn(a.root, T("ed_save_remove", { line: 2, file: LOCAL })).click();
+  await settle();
+  const note = byClass(a.rail(), "p2-nt-warn")[0];
+  assert.deepEqual(tag(note, "button").map(text), [STRINGS.ed_dismiss]);
+  tag(note, "button")[0].click();
+  await settle();
+  assert.equal(byClass(a.rail(), "p2-nt-warn").length, 0);
+});
+
+// ---------------------------------------------------------------- the last review fixes
+
+const inRail = (n) => hasClass(n.parentNode, "s4-rb");
+
+test("frames: raced, unverified and ledger notices sit in the rail body with Dismiss inside them, and Not saved goes after a write", async () => {
+  const path_ = "config/routing-dashboard/backups/x/000001-a.bak";
+  const cases = [
+    ["raced", () => bad("raced", 409, { error: "raced", edit: S.save.edit, backup_display: path_, settings: S.save.settings }), "p2-nt-warn", 0],
+    ["unverified", () => bad("unverified", 500, { error: "unverified", stage: "reread", file_unchanged: false, backup_display: path_ }), "p2-nt-err", 0],
+    ["ledger", () => bad("error", 500, { error: "ledger_damaged", file_unchanged: true, ledger_display: "config/routing-dashboard/backups/x/ledger.json" }), "p2-nt-err", 1],
+  ];
+  for (const [name, answer, cls, pending] of cases) {
+    const a = app({ data: baseData(), backend: { ...saveFlow(), save: async () => answer() } });
+    await a.choose("high");
+    btn(a.root, LOCAL_SAVE).click();
+    await settle();
+    const note = byClass(a.rail(), cls)[0];
+    assert.ok(note, name);
+    assert.ok(inRail(note), name + ": wrapped in the rail body");
+    assert.equal(byClass(a.rail(), "p2-ctl").length, 0, name + ": no loose control row");
+    assert.deepEqual(tag(note, "button").map(text), [STRINGS.ed_dismiss], name);
+    assert.ok(hasClass(tag(note, "button")[0].parentNode, "p2-btns"), name + ": Dismiss is the notice's own button");
+    assert.equal(FElement.focused, tag(note, "button")[0], name);
+    assert.equal(pendOf(a.root).length, pending, name + ": Not saved");
+    assert.deepEqual(flowMod.notSavedProjects(), pending ? [a.key] : [], name);
+  }
+});
+
+test("rail notices: the stop panel, the nothing-to-save rail and the blocked remove sit in the rail body", async () => {
+  const s = real("model_limit");
+  const stopTargets = clone(s.targets);
+  shut(stopTargets, "xhigh");
+  const stop = app({ data: { settings: s.settings, targets: stopTargets, history: s.history } });
+  await stop.choose("xhigh");
+  assert.ok(inRail(nts(stop.rail(), "warn")[0]), "stop panel");
+  const u = real("user_unknown");
+  const targets = clone(u.targets);
+  for (const name of ["low", "medium", "high"]) shut(targets, name);
+  fileOf(targets, "xhigh", "user").pickable = true;
+  recount(targets);
+  const none = app({ data: { settings: u.settings, targets, history: u.history } });
+  await none.choose("high");
+  assert.ok(inRail(nts(none.rail(), "warn")[0]), "nothing to save");
+  fresh();
+  const blocked = app({ data: dataOf(RMREP) });
+  removeLink(blocked.root, "local").click();
+  await settle();
+  assert.ok(inRail(nts(blocked.rail(), "warn")[0]), "blocked remove");
+});
+
+test("nothing to save: when every file is locked, the first file's lock sits under the Can't save line", async () => {
+  const w = worldData("lowered");
+  const targets = clone(w.targets);
+  shut(targets, "high");
+  levelOf(targets, "high").limits = [];
+  levelOf(targets, "high").files.forEach((f, i) => { f.lock_reason = i === 0 ? "not_on_trail" : "symlink"; });
+  const a = app({ data: { ...w, targets }, backend: { preview: never } });
+  await a.choose("high");
+  const warn = nts(a.rail(), "warn")[0];
+  assert.equal(text(byClass(warn, "p2-nt-h")[0]), "▲" + T("ed_nosave_level", { level: "high" }));
+  assert.deepEqual(tag(warn, "p").map(text), [STRINGS.ed_lock_not_on_trail]);
+  // One file without a lock, and the line stays out.
+  const open_ = clone(targets);
+  levelOf(open_, "high").files[1].lock_reason = null;
+  const b = app({ data: { ...w, targets: open_ }, backend: { preview: never } });
+  await b.choose("high");
+  assert.deepEqual(tag(nts(b.rail(), "warn")[0], "p").map(text), []);
+});
+
+test("remove: the row whose line goes wears the picked style, and the others do not", async () => {
+  fresh();
+  const a = app({ data: dataOf(RM.start), backend: worldFlow(RM) });
+  assert.equal(byClass(a.root, "is-pick").length, 0, "none at rest");
+  removeLink(a.root, "local").click();
+  await settle();
+  const picked = byClass(a.root, "is-pick");
+  assert.equal(picked.length, 1);
+  assert.ok(text(picked[0]).includes(LOCAL));
+  assert.ok(plainRows(a.root).includes(picked[0]), "a plain row, not a radio");
+  btn(a.root, STRINGS.ed_cancel).click();
+  await settle();
+  assert.equal(byClass(a.root, "is-pick").length, 0, "gone after Cancel");
+});
+
+test("remove: Cancel puts focus back on that row's Remove line link", async () => {
+  fresh();
+  const a = app({ data: dataOf(RM.start), backend: worldFlow(RM) });
+  removeLink(a.root, "project").click();
+  await settle();
+  assert.equal(FElement.focused, btn(a.root, STRINGS.ed_cancel));
+  btn(a.root, STRINGS.ed_cancel).click();
+  await settle();
+  assert.equal(FElement.focused, removeLink(a.root, "project"));
+  // A level change still hands focus back to the level radio
+  await a.choose("low");
+  btn(a.root, STRINGS.ed_cancel).click();
+  await settle();
+  assert.equal(FElement.focused, lvl(a.root, "high"));
+  // and so does the blocked rail's Cancel
+  const blocked = app({ data: dataOf(RMREP) });
+  removeLink(blocked.root, "local").click();
+  await settle();
+  btn(blocked.root, STRINGS.ed_cancel).click();
+  await settle();
+  assert.equal(FElement.focused, removeLink(blocked.root, "local"));
+});
+
+test("remove: the git warning stays off a removal and shows on a set", async () => {
+  fresh();
+  const pv = clone(RM.local_preview);
+  pv.git_ignore = "not_ignored";
+  const a = app({ data: dataOf(RM.start), backend: worldFlow(RM, { preview: async () => ok(pv) }) });
+  removeLink(a.root, "local").click();
+  await settle();
+  assert.equal(nts(a.rail(), "warn").filter((n) => text(byClass(n, "p2-nt-h")[0]).includes(STRINGS.ed_git_warn_h)).length, 0);
+  const setPv = clone(S.previews.high);
+  setPv.git_ignore = "not_ignored";
+  const b = app({ data: baseData(), backend: { ...saveFlow(), preview: async () => ok(setPv) } });
+  await b.choose("high");
+  assert.equal(nts(b.rail(), "warn").filter((n) => text(byClass(n, "p2-nt-h")[0]).includes(STRINGS.ed_git_warn_h)).length, 1);
+});
+
+test("write_failed: the failed-write notice scrolls into view, nearest, and focus stays on Try again", async () => {
+  const calls = [];
+  const original = FElement.prototype.scrollIntoView;
+  FElement.prototype.scrollIntoView = function scrollIntoView(arg) { calls.push([this, arg]); };
+  try {
+    const a = app({ data: baseData(), backend: { ...saveFlow(), save: async () => bad("error", 500, { error: "write_failed", file_unchanged: true }) } });
+    await a.choose("high");
+    btn(a.root, LOCAL_SAVE).click();
+    await settle();
+    const alert = byClass(a.rail(), "p2-nt-err")[0];
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0][0], alert);
+    assert.deepEqual(calls[0][1], { block: "nearest" });
+    assert.equal(FElement.focused, btn(a.root, STRINGS.ed_try_again));
+    // A save that works scrolls nothing
+    const b = app({ data: baseData(), backend: saveFlow() });
+    await b.choose("high");
+    btn(b.root, LOCAL_SAVE).click();
+    await settle();
+    assert.equal(calls.length, 1);
+  } finally {
+    if (original) FElement.prototype.scrollIntoView = original; else delete FElement.prototype.scrollIntoView;
+  }
+  // With no scrollIntoView on the node the failure still draws
+  const c = app({ data: baseData(), backend: { ...saveFlow(), save: async () => bad("error", 500, { error: "write_failed", file_unchanged: true }) } });
+  await c.choose("high");
+  btn(c.root, LOCAL_SAVE).click();
+  await settle();
+  assert.equal(byClass(c.rail(), "p2-nt-err").length, 1);
+});
+
+test("create: a failed save that left the .claude folder behind drops the folder note", async () => {
+  const run = async (answer) => {
+    const a = app({ data: dataOf(CRD.start), backend: worldFlow(CRD, { save: async () => bad("error", 500, answer) }) });
+    await a.choose("high");
+    assert.deepEqual(noteTexts(a.rail()), [T("ed_new_dir_note", { file: LOCAL })]);
+    btn(a.root, "Create " + LOCAL).click();
+    await settle();
+    return a;
+  };
+  const left = await run({ error: "write_failed", file_unchanged: true, dir_left: true });
+  assert.deepEqual(noteTexts(left.rail()), [], "no note that says the folder isn't there");
+  const plain = await run({ error: "write_failed", file_unchanged: true });
+  assert.deepEqual(noteTexts(plain.rail()), [T("ed_new_dir_note", { file: LOCAL })], "the folder is still not there");
 });
 
 // ---------------------------------------------------------------- run

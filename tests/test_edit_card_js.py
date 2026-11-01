@@ -51,6 +51,10 @@ def target(world, layer):
 
 def preview(world, tgt, value):
     status, body = world.preview(tgt, value)
+    if (status, body) == (400, {"error": "not_editable"}):
+        # The route refuses a row the file list marks not pickable and the page never asks for one, but the
+        # card scripts still read the payload of a change that leaves what runs alone, so build it directly.
+        status, body = 200, tae.inner_preview(world, tgt, value)
     assert status == 200, (status, body)
     return body
 
@@ -67,7 +71,7 @@ def write_json(folder, name, data):
 
 def build_all(case, folder):
     """Builds the payload files. World needs a TestCase for its cleanup, so the test passes itself in."""
-    for step in (base, levels_cases, warnings, undo_cases, ledger, stale):
+    for step in (base, levels_cases, warnings, undo_cases, ledger, stale, creates, inserts, removes, new_stale, owner_world):
         step(case, folder)
 
 
@@ -100,7 +104,8 @@ def levels_cases(case, folder):
         "haiku": dict(user={"model": "claude-haiku-4-5"}, project={"effortLevel": "low"}),
         "user_unknown": dict(user={"effortLevel": "low"}),
         "nomodel_project": dict(local={"effortLevel": "low"}),
-        "project_only": dict(user={"model": SONNET}, project={"effortLevel": "low"}),
+        # local is locked (it doesn't parse), so the shared file is the only row; an absent local would be a create
+        "project_only": dict(user={"model": SONNET}, project={"effortLevel": "low"}, local="{ not json"),
     }
     for name, kwargs in cases.items():
         world = tae.World(case, **kwargs)
@@ -219,6 +224,137 @@ def stale(case, folder):
     assert status == 409 and body["changed"] == "trail", (status, body)
     out["stale_trail"] = body
     write_json(folder, "stale", out)
+
+
+def add_target(world, layer, level="high"):
+    """The target id of the add or create row a level offers for a layer."""
+    row = [f for f in tae.level_of(world.targets(), level)["files"] if f["layer"] == layer][0]
+    assert row["target"] and row["op"] in ("insert", "create"), row
+    return row["target"]
+
+
+def removal(world, tgt):
+    status, body = tae.remove_preview(world, tgt)
+    assert status == 200, (status, body)
+    return body
+
+
+def remove_edit(world, pv, tgt):
+    status, body = tae.remove_save(world, pv, tgt)
+    assert status == 200, (status, body)
+    return body
+
+
+def create_world(case, folder, name, drop_dir=False):
+    """A project with no settings file but the user's, so the local file is a create. drop_dir takes the .claude folder away too."""
+    world = tae.World(case, user={"model": SONNET})
+    if drop_dir:
+        shutil.rmtree(os.path.join(world.proj, ".claude"))
+    tgt = add_target(world, "local")
+    out = {"start": state_of(world), "target": tgt, "project_target": add_target(world, "project"),
+           "previews": {level: preview(world, tgt, level) for level in ("low", "medium", "high", "xhigh")}}
+    out["project_previews"] = {level: preview(world, out["project_target"], level) for level in ("medium", "high")}
+    status, saved = world.save(out["previews"]["high"], tgt, "high")
+    assert status == 200, saved
+    out["save"] = saved
+    out["after_save"] = state_of(world)
+    status, undone = world.undo(saved["edit"]["id"])
+    assert status == 200 and undone["removed_file"] is True, undone
+    assert undone["removed_dir"] is drop_dir, undone
+    out["undo"] = undone
+    out["after_undo"] = state_of(world)
+    write_json(folder, name, out)
+
+
+# The local file is a create. The first world keeps the .claude folder, the second has none.
+def creates(case, folder):
+    create_world(case, folder, "create")
+    create_world(case, folder, "create_dir", drop_dir=True)
+
+
+# Local and project files that hold other keys only: both take an insert, and the local one is preselected.
+def inserts(case, folder):
+    world = tae.World(case, user={"model": SONNET}, project={"language": "en"}, local={"language": "en"})
+    tgt = add_target(world, "local")
+    out = {"start": state_of(world), "target": tgt, "project_target": add_target(world, "project"),
+           "previews": {level: preview(world, tgt, level) for level in ("low", "medium", "high", "xhigh")}}
+    out["project_previews"] = {level: preview(world, out["project_target"], level) for level in ("medium", "high")}
+    status, saved = world.save(out["previews"]["high"], tgt, "high")
+    assert status == 200, saved
+    out["save"] = saved
+    out["after_save"] = state_of(world)
+    status, undone = world.undo(saved["edit"]["id"])
+    assert status == 200, undone
+    out["undo"] = undone
+    out["after_undo"] = state_of(world)
+    write_json(folder, "insert", out)
+
+
+# The local line wins and the project line is under it, so removing the project line changes nothing that runs.
+def removes(case, folder):
+    world = tae.World(case, user={"model": SONNET}, project={"effortLevel": "low"},
+                      local={"effortLevel": "high", "language": "en"})
+    local = target(world, "local")
+    proj = target(world, "project")
+    out = {"start": state_of(world), "local_target": local, "project_target": proj,
+           "local_preview": removal(world, local), "project_preview": removal(world, proj)}
+    saved = remove_edit(world, out["local_preview"], local)
+    out["save"] = saved
+    out["after_save"] = state_of(world)
+    status, undone = world.undo(saved["edit"]["id"])
+    assert status == 200, undone
+    out["undo"] = undone
+    out["after_undo"] = state_of(world)
+    write_json(folder, "remove", out)
+    # The only setting in the file: the file stays with none.
+    world = tae.World(case, user={"model": SONNET}, local={"effortLevel": "low"})
+    local = target(world, "local")
+    out = {"start": state_of(world), "local_target": local, "local_preview": removal(world, local)}
+    assert out["local_preview"]["last_line"] is True
+    write_json(folder, "remove_last", out)
+    # The key twice in one file: the targets lock the removal.
+    world = tae.World(case, user={"model": SONNET}, local='{"effortLevel": "low", "effortLevel": "high"}')
+    out = state_of(world)
+    assert tae.target_of(out["targets"], "local")["remove"]["lock_reason"] == "repeated_key"
+    write_json(folder, "remove_repeated", out)
+    # No model, so the dashboard can't say what runs after the removal.
+    world = tae.World(case, user={"effortLevel": "high"}, project="{ not json", local="{ not json")
+    user = target(world, "user")
+    out = {"start": state_of(world), "user_target": user, "user_preview": removal(world, user)}
+    assert out["user_preview"]["runs_after"] is None
+    write_json(folder, "remove_unknown", out)
+
+
+# Stale saves the new kinds of change meet: a file that appeared and a file that went.
+def new_stale(case, folder):
+    world = tae.World(case, user={"model": SONNET})
+    tgt = add_target(world, "local")
+    pv = preview(world, tgt, "high")
+    world.write("local", {"language": "en"})
+    status, body = world.save(pv, tgt, "high")
+    assert status == 409 and body["changed"] == "file_appeared", (status, body)
+    out = {"target": tgt, "appeared": body}
+    world = tae.World(case, user={"model": SONNET}, local={"effortLevel": "low"})
+    tgt = target(world, "local")
+    pv = preview(world, tgt, "high")
+    os.remove(world.path("local"))
+    status, body = world.save(pv, tgt, "high")
+    assert status == 409 and body["changed"] == "file_removed" and body["preview"]["op"] == "create", (status, body)
+    out["removed"] = body
+    write_json(folder, "new_stale", out)
+
+
+# The world of the owner's browser run (tests/test_edit_e2e.py): the only file is the project's, with the line at
+# high, no model and no local or user file. Medium is reachable, and the absent local file is a create that applies,
+# so the page preselects it. The project row is the one the owner presses.
+def owner_world(case, folder):
+    world = tae.World(case, project={"effortLevel": "high"})
+    local = add_target(world, "local", "medium")
+    proj = target(world, "project")
+    out = {"start": state_of(world), "local_target": local, "project_target": proj,
+           "local_preview": preview(world, local, "medium"), "project_preview": preview(world, proj, "medium")}
+    assert tae.level_of(out["start"]["targets"], "medium")["preselect"] == local
+    write_json(folder, "owner", out)
 
 
 class CardScripts(unittest.TestCase):

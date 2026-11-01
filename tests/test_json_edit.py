@@ -449,6 +449,313 @@ class StructuredDiff(unittest.TestCase):
         self.assertEqual([], json_edit.structured_diff(before, after, "f")["hunks"])
 
 
+class Edits(unittest.TestCase):
+    """Shared helpers: prefix and suffix bytes stay put and json.loads agrees."""
+
+    def check_insert(self, raw, path, value, expected=None, zero_length=True):
+        new = json_edit.insert_value(raw, path, value)
+        node = json.loads(new.decode("utf-8"))
+        for step in path:
+            node = node[step]
+        self.assertEqual(value, node)
+        prefix = len(os.path.commonprefix([raw, new]))
+        suffix = 0
+        while (suffix < len(raw) - prefix and raw[len(raw) - 1 - suffix] == new[len(new) - 1 - suffix]):
+            suffix += 1
+        if zero_length:
+            # Nothing is removed: the old bytes are a prefix plus a suffix of the new ones.
+            self.assertEqual(len(raw), prefix + suffix)
+            self.assertEqual(raw, new[:prefix] + new[len(new) - suffix:])
+        if expected is not None:
+            self.assertEqual(expected, new)
+        return new
+
+
+class InsertValue(Edits):
+    def test_pretty_lf(self):
+        raw = b'{\n  "a": 1,\n  "b": "x"\n}\n'
+        self.check_insert(raw, ("c",), "y", b'{\n  "a": 1,\n  "b": "x",\n  "c": "y"\n}\n')
+
+    def test_crlf(self):
+        raw = b'{\r\n  "a": 1\r\n}\r\n'
+        self.check_insert(raw, ("c",), 2, b'{\r\n  "a": 1,\r\n  "c": 2\r\n}\r\n')
+
+    def test_tabs(self):
+        raw = b'{\n\t"a": 1\n}\n'
+        self.check_insert(raw, ("c",), 2, b'{\n\t"a": 1,\n\t"c": 2\n}\n')
+
+    def test_tabs_nested_create_keeps_the_unit(self):
+        raw = b'{\n\t"a": 1\n}\n'
+        self.check_insert(raw, ("m", "i", "e"), "h",
+                          b'{\n\t"a": 1,\n\t"m": {\n\t\t"i": {\n\t\t\t"e": "h"\n\t\t}\n\t}\n}\n')
+
+    def test_no_trailing_newline(self):
+        raw = b'{\n  "a": 1\n}'
+        self.check_insert(raw, ("c",), 2, b'{\n  "a": 1,\n  "c": 2\n}')
+
+    def test_minified(self):
+        raw = b'{"a":1,"b":"x"}'
+        self.check_insert(raw, ("c",), "y", b'{"a":1,"b":"x","c":"y"}')
+
+    def test_spaced_one_line(self):
+        self.check_insert(b'{ "a": 1 }', ("b",), 2, b'{ "a": 1, "b": 2 }')
+
+    def test_unicode_escapes_elsewhere_stay(self):
+        raw = b'{\n  "a": "\\u00e9\\ud83d\\ude00",\n  "b": "caf\xc3\xa9"\n}\n'
+        new = self.check_insert(raw, ("c",), "\u00e9")
+        self.assertIn(b'"\\u00e9\\ud83d\\ude00"', new)
+        self.assertIn(b'"c": "\\u00e9"', new)
+
+    def test_repeated_keys_elsewhere_stay(self):
+        raw = b'{\n  "a": 1,\n  "a": 2,\n  "b": 3\n}\n'
+        new = self.check_insert(raw, ("c",), 4)
+        self.assertEqual(2, new.count(b'"a"'))
+
+    def test_repeated_parent_takes_the_last(self):
+        raw = b'{"m": {"x": 1}, "m": {"y": 2}}'
+        new = self.check_insert(raw, ("m", "z"), 3, b'{"m": {"x": 1}, "m": {"y": 2,"z": 3}}')
+        self.assertEqual({"y": 2, "z": 3}, json.loads(new)["m"])
+
+    def test_deeper_pretty_member_indent(self):
+        raw = b'{\n  "m": {\n    "x": 1\n  }\n}\n'
+        self.check_insert(raw, ("m", "y"), 2, b'{\n  "m": {\n    "x": 1,\n    "y": 2\n  }\n}\n')
+
+    def test_empty_objects(self):
+        cases = [
+            (b"{}", b'{"k": "v"}'),
+            (b"{}\n", b'{\n  "k": "v"\n}\n'),
+            (b"{ }", b'{"k": "v"}'),
+            (b"{\n}\n", b'{\n  "k": "v"\n}\n'),
+            (b"{\r\n}\r\n", b'{\r\n  "k": "v"\r\n}\r\n'),
+        ]
+        for raw, expected in cases:
+            self.check_insert(raw, ("k",), "v", expected, zero_length=False)
+
+    def test_nested_empty_in_pretty_file(self):
+        raw = b'{\n  "a": 1,\n  "m": {},\n  "b": 2\n}\n'
+        self.check_insert(raw, ("m", "k"), "v",
+                          b'{\n  "a": 1,\n  "m": {\n    "k": "v"\n  },\n  "b": 2\n}\n')
+
+    def test_nested_empty_in_minified_file(self):
+        self.check_insert(b'{"a":1,"m":{},"b":2}', ("m", "k"), "v", b'{"a":1,"m":{"k":"v"},"b":2}')
+
+    def test_nested_create_pretty(self):
+        raw = b'{\n  "a": 1\n}\n'
+        want = (b'{\n  "a": 1,\n  "modelSettings": {\n    "claude-opus-5-5": {\n'
+                b'      "effortLevel": "high"\n    }\n  }\n}\n')
+        self.check_insert(raw, ("modelSettings", "claude-opus-5-5", "effortLevel"), "high", want)
+
+    def test_nested_create_minified(self):
+        raw = b'{"a": 1}'
+        want = b'{"a": 1,"modelSettings": {"claude-opus-5-5": {"effortLevel": "high"}}}'
+        self.check_insert(raw, ("modelSettings", "claude-opus-5-5", "effortLevel"), "high", want)
+
+    def test_nested_create_with_other_names_present(self):
+        raw = b'{\n  "modelSettings": {\n    "other": {\n      "effortLevel": "low"\n    }\n  }\n}\n'
+        want = (b'{\n  "modelSettings": {\n    "other": {\n      "effortLevel": "low"\n    },\n'
+                b'    "new": {\n      "effortLevel": "high"\n    }\n  }\n}\n')
+        self.check_insert(raw, ("modelSettings", "new", "effortLevel"), "high", want)
+
+    def test_nested_create_with_modelsettings_empty(self):
+        for raw, want in (
+            (b'{\n  "modelSettings": {}\n}\n',
+             b'{\n  "modelSettings": {\n    "new": {\n      "effortLevel": "high"\n    }\n  }\n}\n'),
+            (b'{"modelSettings":{}}', b'{"modelSettings":{"new":{"effortLevel":"high"}}}'),
+        ):
+            self.check_insert(raw, ("modelSettings", "new", "effortLevel"), "high", want)
+
+    def test_key_present_even_when_null(self):
+        self.assertEqual("key_present", code_of(self, json_edit.insert_value, b'{"a": 1}', ("a",), 2))
+        self.assertEqual("key_present", code_of(self, json_edit.insert_value, b'{"a": null}', ("a",), 2))
+        self.assertEqual("key_present", code_of(self, json_edit.insert_value,
+                                                b'{"m": {"a": null}}', ("m", "a"), 2))
+
+    def test_parent_not_object(self):
+        for bad in ('"s"', "3", "null", "[1]", "true"):
+            for raw, path in (
+                ('{"m": %s}' % bad, ("m", "k")),
+                ('{"m": %s}' % bad, ("m", "i", "k")),
+                ('{"o": {"m": %s}}' % bad, ("o", "m", "k")),
+                ('{"o": {"m": %s}}' % bad, ("o", "m", "i", "k")),
+            ):
+                self.assertEqual("parent_not_object",
+                                 code_of(self, json_edit.insert_value, raw.encode(), path, 1), raw)
+
+    def test_bad_input(self):
+        self.assertEqual("unparsed", code_of(self, json_edit.insert_value, b"{", ("a",), 1))
+        self.assertEqual("oracle_failed", code_of(self, json_edit.insert_value, b"{}", ("a",), {1, 2}))
+        self.assertEqual("oracle_failed", code_of(self, json_edit.insert_value, b'{"a": 1}', ("b",), float("nan")))
+
+    def test_input_is_not_changed(self):
+        raw = bytearray(b'{"a": 1}')
+        json_edit.insert_value(raw, ("b",), 2)
+        self.assertEqual(b'{"a": 1}', bytes(raw))
+
+
+class RemoveKey(unittest.TestCase):
+    RAW = b'{\n  "a": 1,\n  "b": "sk-keep",\n  "c": 3\n}\n'
+
+    def test_first_middle_last(self):
+        self.assertEqual(b'{\n  "b": "sk-keep",\n  "c": 3\n}\n', json_edit.remove_key(self.RAW, ("a",)))
+        self.assertEqual(b'{\n  "a": 1,\n  "c": 3\n}\n', json_edit.remove_key(self.RAW, ("b",)))
+        self.assertEqual(b'{\n  "a": 1,\n  "b": "sk-keep"\n}\n', json_edit.remove_key(self.RAW, ("c",)))
+
+    def test_only_member_leaves_empty_braces(self):
+        self.assertEqual(b'{\n}', json_edit.remove_key(b'{\n  "a": 1\n}', ("a",)))
+        self.assertEqual(b'{ }\n', json_edit.remove_key(b'{ "a": [1, 2] }\n', ("a",)))
+        self.assertEqual(b'{}', json_edit.remove_key(b'{"a": 1}', ("a",)))
+
+    def test_crlf_and_tabs(self):
+        self.assertEqual(b'{\r\n  "a": 1\r\n}\r\n',
+                         json_edit.remove_key(b'{\r\n  "a": 1,\r\n  "b": 2\r\n}\r\n', ("b",)))
+        self.assertEqual(b'{\n\t"b": 2\n}\n', json_edit.remove_key(b'{\n\t"a": 1,\n\t"b": 2\n}\n', ("a",)))
+
+    def test_minified(self):
+        self.assertEqual(b'{"a":1,"c":3}', json_edit.remove_key(b'{"a":1,"b":2,"c":3}', ("b",)))
+        self.assertEqual(b'{"b":2,"c":3}', json_edit.remove_key(b'{"a":1,"b":2,"c":3}', ("a",)))
+        self.assertEqual(b'{"a":1,"b":2}', json_edit.remove_key(b'{"a":1,"b":2,"c":3}', ("c",)))
+
+    def test_nested_parent_stays_as_empty_object(self):
+        raw = b'{\n  "name": {\n    "only": 1\n  },\n  "z": 2\n}\n'
+        self.assertEqual(b'{\n  "name": {},\n  "z": 2\n}\n', json_edit.remove_key(raw, ("name", "only")))
+
+    def test_removing_a_container_value(self):
+        raw = b'{"a": {"x": [1, {"y": 2}]}, "b": 1}'
+        self.assertEqual(b'{"b": 1}', json_edit.remove_key(raw, ("a",)))
+
+    def test_repeated_key_refuses(self):
+        self.assertEqual("repeated_key", code_of(self, json_edit.remove_key, b'{"a": 1, "a": 2}', ("a",)))
+        self.assertEqual("repeated_key", code_of(self, json_edit.remove_key,
+                                                 b'{"m": {"a": 1, "b": 0, "a": 2}}', ("m", "a")))
+
+    def test_key_missing(self):
+        for raw, path in ((b'{"a": 1}', ("b",)), (b'{"a": 1}', ("a", "b")), (b'{"a": null}', ("a", "b")),
+                          (b'{"a": [1]}', ("a", "b")), (b'{"a": {}}', ("a", "b")), (b'{"a": 1}', ("x", "b")),
+                          (b'{"a": 1}', ())):
+            self.assertEqual("key_missing", code_of(self, json_edit.remove_key, raw, path), (raw, path))
+
+    def test_secret_bytes_elsewhere_stay(self):
+        raw = b'{"API_KEY": "sk-planted-1", "x": 1, "inner": {"TOKEN": "sk-planted-2", "y": 2}}'
+        new = json_edit.remove_key(raw, ("inner", "y"))
+        self.assertIn(b"sk-planted-1", new)
+        self.assertIn(b"sk-planted-2", new)
+        self.assertEqual(b'{"API_KEY": "sk-planted-1", "x": 1, "inner": {"TOKEN": "sk-planted-2"}}', new)
+
+    def test_unparsed_refuses(self):
+        self.assertEqual("unparsed", code_of(self, json_edit.remove_key, b'{"a": 1,}', ("a",)))
+
+
+class SharedOracle(unittest.TestCase):
+    def test_tampered_insert_span_fails(self):
+        old = b'{"a": 1}'
+        new = json_edit.insert_value(old, ("b",), 2)
+
+        def edit(expected):
+            expected["b"] = 2
+
+        json_edit._oracle(old, new, 7, 7, ("b",), 2, edit=edit)
+        for bad in (new.replace(b"2", b"3"), new.replace(b'"a"', b'"q"'), new + b" ", b'[' + new[1:]):
+            self.assertEqual("oracle_failed",
+                             code_of(self, json_edit._oracle, old, bad, 7, 7, ("b",), 2, edit))
+
+    def test_tampered_remove_span_fails(self):
+        old = b'{"a": 1, "b": 2, "c": 3}'
+        new = json_edit.remove_key(old, ("b",))
+
+        def edit(expected):
+            del expected["b"]
+
+        json_edit._oracle(old, new, 8, 16, ("b",), None, edit=edit)
+        for bad in (new.replace(b"3", b"4"), old, new.replace(b'"a"', b'"d"')):
+            self.assertEqual("oracle_failed",
+                             code_of(self, json_edit._oracle, old, bad, 8, 16, ("b",), None, edit))
+
+    def test_edit_that_raises_fails_closed(self):
+        def edit(expected):
+            raise KeyError("x")
+
+        self.assertEqual("oracle_failed",
+                         code_of(self, json_edit._oracle, b'{"a": 1}', b'{"a": 1}', 0, 0, ("a",), 1, edit))
+
+    def test_insert_and_remove_never_fall_back(self):
+        real = json_edit._oracle
+        json_edit._oracle = lambda *a, **k: (_ for _ in ()).throw(json_edit.Refused("oracle_failed"))
+        try:
+            self.assertEqual("oracle_failed", code_of(self, json_edit.insert_value, b"{}", ("a",), 1))
+            self.assertEqual("oracle_failed", code_of(self, json_edit.remove_key, b'{"a": 1}', ("a",)))
+        finally:
+            json_edit._oracle = real
+
+
+class NewFile(unittest.TestCase):
+    def test_flat(self):
+        self.assertEqual(b'{\n  "effortLevel": "high"\n}\n', json_edit.new_file(("effortLevel",), "high"))
+
+    def test_nested(self):
+        want = (b'{\n  "modelSettings": {\n    "claude-opus-5-5": {\n      "effortLevel": "high"\n'
+                b'    }\n  }\n}\n')
+        raw = json_edit.new_file(("modelSettings", "claude-opus-5-5", "effortLevel"), "high")
+        self.assertEqual(want, raw)
+        self.assertEqual({"modelSettings": {"claude-opus-5-5": {"effortLevel": "high"}}},
+                         json.loads(raw.decode("utf-8")))
+
+    def test_bad_input(self):
+        self.assertEqual("oracle_failed", code_of(self, json_edit.new_file, ("a",), {1}))
+        self.assertEqual("oracle_failed", code_of(self, json_edit.new_file, ("a",), float("nan")))
+
+
+class MaskingAfterEdits(unittest.TestCase):
+    def blob(self, before, after):
+        return json.dumps(json_edit.structured_diff(before, after, "f.json"))
+
+    def check(self, before_raw, path, value):
+        after_raw = json_edit.insert_value(before_raw, path, value)
+        blob = self.blob(before_raw.decode(), after_raw.decode())
+        self.assertNotIn("sk-planted-", blob)
+        self.assertIn("hidden", blob)
+        self.assertIn(path[-1], blob)
+
+    def test_secret_as_last_member_one_line(self):
+        self.check(b'{"a": 1, "API_KEY": "sk-planted-1"}', ("effortLevel",), "high")
+
+    def test_secret_as_last_member_across_lines(self):
+        self.check(b'{\n  "a": 1,\n  "API_KEY": "sk-planted-\\n1"\n}\n', ("effortLevel",), "high")
+        self.check(b'{\n  "a": 1,\n  "TOKEN": {\n    "x": "sk-planted-1"\n  }\n}\n', ("effortLevel",), "high")
+
+    def test_secret_valued_string_as_last_member(self):
+        self.check(b'{\n  "a": 1,\n  "plain": "sk-planted-1"\n}\n', ("effortLevel",), "high")
+
+    def test_repeated_secret_key_in_the_parent(self):
+        raw = b'{\n  "m": {\n    "API_KEY": "sk-planted-1",\n    "API_KEY": "sk-planted-2"\n  }\n}\n'
+        self.check(raw, ("m", "effortLevel"), "high")
+
+    def test_nested_create_next_to_a_secret(self):
+        self.check(b'{"API_KEY": "sk-planted-1"}', ("modelSettings", "id", "effortLevel"), "high")
+
+    def test_remove_next_to_a_secret(self):
+        raw = b'{\n  "API_KEY": "sk-planted-1",\n  "effortLevel": "high",\n  "TOKEN": "sk-planted-2"\n}\n'
+        after = json_edit.remove_key(raw, ("effortLevel",))
+        blob = self.blob(raw.decode(), after.decode())
+        self.assertNotIn("sk-planted-", blob)
+        self.assertIn("effortLevel", blob)
+
+
+class NewFileDiff(unittest.TestCase):
+    def test_none_before_gives_only_add_lines(self):
+        text = json_edit.new_file(("effortLevel",), "high").decode()
+        diff = json_edit.structured_diff(None, text, "settings.json")
+        self.assertEqual("settings.json", diff["file_display"])
+        lines = [line for hunk in diff["hunks"] for line in hunk["lines"]]
+        self.assertEqual(3, len(lines))
+        for number, line in enumerate(lines, 1):
+            self.assertEqual({"kind": "add", "old_line": None, "new_line": number, "text": line["text"]}, line)
+        self.assertEqual(['{', '  "effortLevel": "high"', '}'], [line["text"] for line in lines])
+
+    def test_none_before_masks_the_after_text(self):
+        diff = json_edit.structured_diff(None, '{\n  "API_KEY": "sk-planted-1"\n}\n', "f")
+        self.assertNotIn("sk-planted-", json.dumps(diff))
+
+
 class Purity(unittest.TestCase):
     def test_module_source_has_no_file_calls(self):
         with open(json_edit.__file__.replace(".pyc", ".py"), encoding="utf-8") as fh:

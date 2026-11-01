@@ -1,5 +1,5 @@
 // The pure rules of the Effort picker and its rail: which level radio is checked and which are off, which of the
-// nine rail cases the page is in, and where the picked row lands after a refresh. No DOM, no state, no copy. What
+// eleven rail cases the page is in, and where the picked row lands after a refresh. No DOM, no state, no copy. What
 // the flow knows comes in as arguments, and the answers are plain values.
 //
 // Owner rules these functions keep.
@@ -35,20 +35,23 @@ export function pickerState(levels, running, chosen, mode, { busy = false, proje
 
 const limitsOf = (levelRow) => (levelRow && Array.isArray(levelRow.limits) ? levelRow.limits : []);
 
-// The case the rail is in. The first match wins, in this order.
+// The case the rail is in. The first match wins, in this order. remove is the flow's chosen line, { blocked }, or null.
 //   project_lock    the project can't take a save at all (any mode)
 //   off, locked     editing is off, or locked behind the token
+//   remove          a line to remove is chosen and its review is on screen or on its way
+//   remove_blocked  the chosen line can't be removed here (the setting is in the file more than once)
 //   nothing_project nothing can be saved at project level
 //   rest            no level is chosen
 //   review          the chosen level has a row to save to
 //   pick_file       the chosen level can be saved, but no row is picked yet
 //   stop            the chosen level is stopped by a cap or by the model
 //   nothing_level   nothing can be saved at this level
-export function railCase({ mode, projectLock, saveable, level, row, levelRow }) {
+export function railCase({ mode, projectLock, saveable, level, row, levelRow, remove = null }) {
   if (projectLock) return "project_lock";
   if (mode === "off") return "off";
   if (mode === "locked") return "locked";
   if (mode !== "ready") return "rest";
+  if (remove !== null && remove !== undefined) return remove.blocked === true ? "remove_blocked" : "remove";
   if (saveable === false) return "nothing_project";
   if (level === null || level === undefined || level === "") return "rest";
   const can = Boolean(levelRow && levelRow.saveable === true);
