@@ -8,8 +8,8 @@ fp: be3a5991a90c
 as_of: 7da3051 2026-11-01
 author: deep-reasoner
 created: 2026-10-30
-last_used: 2026-10-30
-uses: 4
+last_used: 2026-11-02
+uses: 5
 
 ### W-7178 Browser-free JS checks run under node
 fact: tests/test_shell_js.py runs tests/js/checks.mjs on fakedom.mjs. tests/test_pages_js.py runs the real app.js over pages.mjs and every route in tests/e2e_checks/. Both skip without node. Alone: node --experimental-default-type=module tests/js/checks.mjs, and --check syntax-checks a module. Modules hold state, so each check imports a fresh copy: app.js?run=N or pages/x.js?copy=N. h() sets value as a property, so read o.value.
@@ -19,8 +19,8 @@ fp: 33b0db260eba
 as_of: 0a1241f 2026-11-01
 author: fast-worker
 created: 2026-10-30
-last_used: 2026-11-01
-uses: 10
+last_used: 2026-11-02
+uses: 11
 
 ### W-f6ed macOS traps in server tests: bytecode prefix, second bind
 fact: /usr/bin/python3 3.9.6 sets sys.pycache_prefix under $HOME/Library/Caches, so a no-writes test that hashes source folders passes even with dont_write_bytecode False. Run the child with -X pycache_prefix=, as NoWrites does; -B would defeat it. A second bind to 0.0.0.0 fails even for a loopback-only socket, so check with lsof -nP -a -p <pid> -iTCP -sTCP:LISTEN -Fn.
@@ -41,8 +41,8 @@ fp: 02f79bcf4f0f
 as_of: 0766733 2026-10-31
 author: deep-reasoner
 created: 2026-10-30
-last_used: 2026-10-30
-uses: 1
+last_used: 2026-11-02
+uses: 2
 
 ### W-e6b6 Usage pages draw through fillUsage; checks wait on data-usage
 fact: Only the section sectionFor names draws. Usage pages draw through fillUsage in usage-page.js, which owns the empty, wait, error and unreadable states. data-rendered doesn't wait on /api/usage. app.js sets data-usage="1" once the first answer for the current project is drawn, so a check of usage numbers waits for both. Chrome's innerText applies text-transform, so e2e text compares casefold.

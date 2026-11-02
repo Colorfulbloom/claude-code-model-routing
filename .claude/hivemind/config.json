@@ -37,7 +37,9 @@
     "testing-pages",
     "testing-edit-core",
     "dashboard-page",
-    "testing-edit-undo"
+    "testing-edit-undo",
+    "dashboard-resolver",
+    "testing-node"
   ],
   "id_prefix": {
     "testing": "T",
@@ -49,7 +51,9 @@
     "testing-pages": "P",
     "testing-edit-core": "C",
     "dashboard-page": "K",
-    "testing-edit-undo": "U"
+    "testing-edit-undo": "U",
+    "dashboard-resolver": "R",
+    "testing-node": "N"
   },
   "slices": {
     "deep-reasoner": [
