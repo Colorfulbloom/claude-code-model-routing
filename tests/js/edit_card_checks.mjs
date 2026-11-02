@@ -106,7 +106,7 @@ function app({ mode = "ready", data = {}, backend = {}, setting = null, key = "p
   const page = createPage({ narrow: false });
   const root = page.sections.settings;
   root.hidden = false;
-  const a = { page, root, key, log: { preview: [], save: [], undo: [], backup: [], anyway: [], restore: [], reload: 0, refresh: 0, draws: 0, shell: 0 } };
+  const a = { page, root, key, setting, log: { preview: [], save: [], undo: [], backup: [], anyway: [], restore: [], opened: [], previewSetting: [], saveSetting: [], reload: 0, refresh: 0, draws: 0, shell: 0 } };
   const forKey = (body) => (body && typeof body === "object" && !body.fail ? { ...body, project: a.key } : body);
   const wrapT = (body) => wrap(forKey(body));
   const st = { mode, settings: data.settings, targets: wrapT(data.targets), history: wrap(data.history) };
@@ -118,7 +118,7 @@ function app({ mode = "ready", data = {}, backend = {}, setting = null, key = "p
     if ("history" in fresh) st.history = wrap(fresh.history);
   };
   const makeCtx = () => ({
-    route: { name: "settings", params: {}, query: { setting } },
+    route: { name: "settings", params: {}, query: { setting: a.setting } },
     project: { key: a.key, name: "P" },
     data: { settings: st.settings ? { ok: true, status: 200, data: st.settings } : null },
     hashFor: (name, params, patch) => router.hashFor(name, params, { project: a.key, ...patch }),
@@ -127,12 +127,14 @@ function app({ mode = "ready", data = {}, backend = {}, setting = null, key = "p
       targets: st.targets,
       history: st.history,
       // A remove has no value, and its calls carry the action. A set logs what it always logged.
-      preview: async (target, value, action) => {
+      preview: async (target, value, action, setting) => {
         log.preview.push(action === "remove" ? [target, value, action] : [target, value]);
+        log.previewSetting.push(setting);
         return backend.preview(target, value, a, action);
       },
-      save: async (pv, target, value, action) => {
+      save: async (pv, target, value, action, setting) => {
         log.save.push(action === "remove" ? { pv, target, value, action } : { pv, target, value });
+        log.saveSetting.push(setting);
         return after(await backend.save(pv, target, value, a, action));
       },
       undo: async (id) => {
@@ -162,6 +164,14 @@ function app({ mode = "ready", data = {}, backend = {}, setting = null, key = "p
       },
       // app.js draws the project picker again from this, after a choice with no page render.
       syncShell: () => { log.shell += 1; },
+      // Opens a cell of the band. app.js changes the address, drops the targets and loads the new cell's, so the cell draws with
+      // none until land() delivers them.
+      openSetting: (name) => {
+        log.opened.push(name);
+        a.setting = name;
+        st.targets = null;
+        a.draw();
+      },
     },
   });
   const after = (out) => {
@@ -185,6 +195,8 @@ function app({ mode = "ready", data = {}, backend = {}, setting = null, key = "p
   a.pickRow = async (layer) => { rowIn(root, layer).dispatch("change"); await settle(); };
   a.press = async (label) => { const b = btn(root, label); assert.ok(b, "a button named " + label); b.click(); await settle(); };
   a.setMode = (m) => { st.mode = m; };
+  // Delivers the targets answer of the open cell, as app.js does when the load finishes.
+  a.land = (targets) => { st.targets = wrapT(targets); a.draw(); };
   // Moves the page to another project with that project's answers, and draws.
   a.use = (nextKey, nextData) => {
     a.key = nextKey;
@@ -239,6 +251,21 @@ function grey(targets, layer, reason = "not_editable", names = null) {
     const f = level.files.find((x) => x.layer === layer);
     if (f) Object.assign(f, { target: null, op: null, effect: null, lock_reason: reason, pickable: false });
     if (level.preselect && f && level.preselect === (targetOf(targets, layer) || {}).target) level.preselect = null;
+  }
+  return recount(targets);
+}
+// What the server answered before a cap line could be changed from the page: every level a cap holds is stopped, with the
+// cap's file as the reason, and no level waits on a cap change. Used for the caps nobody can change here (a managed cap).
+function lockedCaps(targets, reason = "managed") {
+  for (const level of targets.levels) {
+    if (level.result === "now") continue;
+    level.cap_first = false;
+    level.via = null;
+    for (const limit of level.limits) {
+      if (limit.kind !== "cap") continue;
+      Object.assign(limit, { editable: false, target: null, lock_reason: reason });
+      delete limit.via;
+    }
   }
   return recount(targets);
 }
@@ -512,9 +539,9 @@ test("page: the body, the rail and the foot sit in the panes, and a page without
   assert.equal(byClass(none.root, "s4-rf")[0].childNodes.length, 0);
 });
 
-test("page: a cell that isn't Effort draws its read-only frame and the plain rail, in every mode", () => {
+test("page: a cell the page doesn't edit draws its read-only frame and the plain rail, in every mode", () => {
   for (const mode of ["off", "locked", "ready"]) {
-    const a = app({ mode, setting: "model", data: baseData() });
+    const a = app({ mode, setting: "promptCacheTtl", data: baseData() });
     assert.equal(levelInputs(a.root).length + rowInputs(a.root).length, 0, mode);
     assert.equal(a.root.textContent.includes(STRINGS.ed_off) || a.root.textContent.includes(STRINGS.ed_locked), false, mode);
     assert.equal(byClass(a.rail(), "s4-note").length, 0, mode);
@@ -526,7 +553,11 @@ test("page: a cell that isn't Effort draws its read-only frame and the plain rai
 test("rest: the level notes are now, over cap, can't reach and none", () => {
   const cap = worldData("nomodel_cap");
   const a = app({ data: cap });
-  assert.deepEqual(byClass(a.root, "p2-sn").map(text), [STRINGS.ed_seg_now, STRINGS.ed_seg_over_cap, STRINGS.ed_seg_over_cap, STRINGS.ed_seg_over_cap]);
+  assert.deepEqual(byClass(a.root, "p2-sn").map(text), [STRINGS.ed_seg_now, STRINGS.ed_seg_two_changes, STRINGS.ed_seg_two_changes, STRINGS.ed_seg_two_changes],
+    "a cap line the page can change makes each level above it take two changes");
+  const locked = app({ data: { ...cap, targets: lockedCaps(clone(cap.targets)) } });
+  assert.deepEqual(byClass(locked.root, "p2-sn").map(text), [STRINGS.ed_seg_now, STRINGS.ed_seg_over_cap, STRINGS.ed_seg_over_cap, STRINGS.ed_seg_over_cap],
+    "a cap nobody can change here still says over cap");
   const managed = app({ data: worldData("managed_cap") });
   assert.deepEqual(byClass(managed.root, "p2-sn").map(text), [STRINGS.ed_seg_now, "", STRINGS.ed_seg_over_cap, STRINGS.ed_seg_over_cap], "a managed cap is a cap too");
   const shell = app({ data: worldData("shell") });
@@ -539,13 +570,17 @@ test("rest: the level notes are now, over cap, can't reach and none", () => {
   assert.deepEqual(byClass(shut_.root, "p2-sn").map(text), [STRINGS.ed_seg_now, "", "", STRINGS.ed_seg_stopped], "a stopped level that can't be saved says can't reach");
 });
 
-test("rest: the cap line names who caps what, then says to change the cap by hand, and a level a cap only lowers stays pressable", () => {
+test("rest: the cap line names who caps what, and says why only when this page can't change the cap", () => {
   const lowered = worldData("lowered");
   const a = app({ data: lowered });
   const cap = lowered.targets.levels.find((l) => l.limits.length).limits[0];
   assert.equal(cap.kind, "cap");
   assert.equal(cap.layer, "user");
-  assert.deepEqual(noteTexts(a.body()), [T("ed_limit_cap", { who: STRINGS.ed_cap_who_user, what: "Sonnet 5.5", value: cap.value, file: "config/settings.json", line: cap.line }), STRINGS.ed_lock_cap_later]);
+  assert.equal(cap.editable, true);
+  const line = T("ed_limit_cap", { who: STRINGS.ed_cap_who_user, what: "Sonnet 5.5", value: cap.value, file: "config/settings.json", line: cap.line });
+  assert.deepEqual(noteTexts(a.body()), [line], "a cap line the page can change carries no lock text");
+  const locked = app({ data: { ...lowered, targets: lockedCaps(clone(lowered.targets)) } });
+  assert.deepEqual(noteTexts(locked.body()), [line, STRINGS.ed_lock_managed], "a cap nobody can change here says so");
   assert.deepEqual(byClass(byClass(a.body(), "s4-note")[0], "pa").map(text), ["config/settings.json"]);
   assert.equal(levelInputs(a.root).filter(off).length, 0, "no level is off at rest");
   assert.deepEqual(noteTexts(app({ data: baseData() }).body()), [], "no cap, no line");
@@ -655,12 +690,14 @@ test("project lock: a press on a level does nothing, and no preview goes out", (
 });
 
 test("nothing to save at project level: the picker is off and the rail says so, with the first lock and no Cancel", () => {
-  const w = worldData("nomodel_cap");
+  const base = worldData("nomodel_cap");
+  assert.equal(base.targets.saveable, true, "a cap line the page can change leaves a level to pick");
+  const w = { ...base, targets: lockedCaps(clone(base.targets)) };
   assert.equal(w.targets.saveable, false);
   const a = app({ data: w });
   assert.ok(levelInputs(a.root).every(off));
   assert.deepEqual(checkedOf(levelInputs(a.root)), ["low"]);
-  assert.deepEqual(noteTexts(a.rail()), [STRINGS.ed_nosave_project, STRINGS.ed_lock_cap_later]);
+  assert.deepEqual(noteTexts(a.rail()), [STRINGS.ed_nosave_project, STRINGS.ed_lock_managed]);
   assert.equal(buttons(a.root).length, 0, "nothing is chosen, so there is no Cancel");
   assert.equal(liveRows(a.root).length, 0);
   const plain = clone(w.targets);
@@ -685,14 +722,16 @@ test("a-shell: a value your shell sets draws the lock line over the disabled pic
   assert.equal(byClass(a.rail(), "s4-note").length, 0, "no note, because there is no change in progress");
   assert.equal(buttons(a.root).length, 0);
   // Another lock reason keeps the old words in the rail and no lock line in the body.
-  const cap = app({ data: worldData("nomodel_cap") });
+  const base = worldData("nomodel_cap");
+  const cap = app({ data: { ...base, targets: lockedCaps(clone(base.targets)) } });
   assert.equal(byClass(cap.body(), "s4-lock").length, 0);
-  assert.deepEqual(noteTexts(cap.rail()), [STRINGS.ed_nosave_project, STRINGS.ed_lock_cap_later]);
+  assert.deepEqual(noteTexts(cap.rail()), [STRINGS.ed_nosave_project, STRINGS.ed_lock_managed]);
 });
 
 test("nothing to save at this level: the rail says so with the winner's line and Cancel, and Cancel goes back", async () => {
   const w = worldData("lowered");
   const targets = clone(w.targets);
+  levelOf(targets, "high").cap_first = false;
   shut(targets, "high");
   levelOf(targets, "high").limits = [{ kind: "winner", value: "xhigh", layer: "user", file_display: "config/settings.json", line: 3, editable: false, target: null, lock_reason: "env_shell" }];
   const a = app({ data: { ...w, targets }, backend: { preview: async () => { throw new Error("no preview"); } } });
@@ -1173,9 +1212,18 @@ test("warning: it shows before the Save action and doesn't block it", async () =
   assert.equal(a.log.save[0].value, "high");
 });
 
-test("warning: a cap that lowers the level names the caps and says the effort that runs moves", async () => {
+// The server answers a level with a cap line the page can change as one that needs the cap first, so its effort row has no
+// file to pick. These checks pick the project row anyway, to read the warning a preview of that row carries.
+function pickableLevel(targets, name, layers) {
+  levelOf(targets, name).cap_first = false;
+  for (const layer of layers) open(targets, layer, [name]);
+  return targets;
+}
+
+test("warning: a cap the page can change names the caps, says the effort that runs moves and offers Start with the cap", async () => {
   const w = real("lowered");
-  const a = app({ data: { settings: w.settings, targets: w.targets, history: w.history }, backend: { preview: async (t, v) => ok(w.previews[v]) } });
+  const targets = pickableLevel(clone(w.targets), "xhigh", ["project"]);
+  const a = app({ data: { settings: w.settings, targets, history: w.history }, backend: { preview: async (t, v) => ok(w.previews[v]) } });
   await a.choose("xhigh");
   assert.deepEqual(a.log.preview, [], "the project is the only open row, and it is not preselected");
   await a.pickRow("project");
@@ -1184,38 +1232,58 @@ test("warning: a cap that lowers the level names the caps and says the effort th
   assert.equal(text(byClass(warn, "p2-nt-h")[0]), "▲" + STRINGS.ed_warn_part_h);
   const paras = tag(warn, "p").map(text);
   assert.equal(paras[0], STRINGS.ed_warn_cap_t);
-  assert.equal(paras.length, 3, "the text and one line for each of the two caps, and no cap_later lock line");
+  assert.equal(paras.length, 3, "the text and one line for each of the two caps, and no lock line");
   assert.match(paras[1], /Your user file caps Sonnet 5\.5 at medium in config\/settings\.json, line 3/);
   assert.match(paras[2], /This project caps Sonnet 5\.5 at high in settings\.json, line 3/);
+  assert.deepEqual(tag(warn, "button").map(text), [STRINGS.ed_start_cap], "the warning offers Start with the cap");
   assert.deepEqual(bigs(a.root), ["low", "→", "medium"]);
   assert.equal(headNote(a.root), STRINGS.ed_runs);
-  // A cap that another reason holds is not cap_later, so its lock line replaces the cap text.
+  // A cap nobody can change here is worded as that, with its lock line and no Start with the cap.
   const other = clone(w.previews.xhigh);
-  other.warning.limits[0].lock_reason = "managed";
-  const b = app({ data: { settings: w.settings, targets: w.targets, history: w.history }, backend: { preview: async () => ok(other) } });
+  for (const limit of other.warning.limits) Object.assign(limit, { editable: false, target: null, lock_reason: "managed" });
+  const b = app({ data: { settings: w.settings, targets, history: w.history }, backend: { preview: async () => ok(other) } });
   await b.choose("xhigh");
   await b.pickRow("project");
   const lines = tag(byClass(b.rail(), "p2-nt-warn")[0], "p").map(text);
+  assert.equal(lines[0], STRINGS.ed_warn_cap_locked_t);
   assert.equal(lines.includes(STRINGS.ed_warn_cap_t), false);
   assert.ok(lines.includes(STRINGS.ed_lock_managed));
+  assert.deepEqual(tag(byClass(b.rail(), "p2-nt-warn")[0], "button").map(text), []);
+});
+
+test("warning: Start with the cap in a warning drops the pick and opens the Effort cap cell with the level to choose", async () => {
+  const w = real("lowered");
+  const targets = pickableLevel(clone(w.targets), "xhigh", ["project"]);
+  const a = app({ data: { settings: w.settings, targets, history: w.history }, backend: { preview: async (t, v) => ok(w.previews[v]) } });
+  await a.choose("xhigh");
+  await a.pickRow("project");
+  assert.equal(flowMod.S.level, "xhigh");
+  btn(a.root, STRINGS.ed_start_cap).click();
+  await settle();
+  assert.deepEqual(a.log.opened, ["maxEffortLevel"]);
+  assert.equal(flowMod.S.level, null, "the effort pick is gone");
+  assert.deepEqual(flowMod.S.carry, { setting: "maxEffortLevel", level: "xhigh", from: "effortLevel" });
+  assert.equal(a.log.save.length, 0, "nothing was written");
+  assert.equal(a.log.preview.length, 1, "no preview for the cap yet");
 });
 
 test("warning: no model and a cap below the level says the cap still applies", async () => {
   const c = real("nomodel_cap");
   const targets = clone(c.targets);
-  open(targets, "project", ["high"]);
+  pickableLevel(targets, "high", ["project"]);
   const a = app({ data: { settings: c.settings, targets, history: c.history }, backend: { preview: async (t, v) => ok(c.previews.project[v]) } });
   await a.choose("high");
   await a.pickRow("project");
   assert.equal(c.previews.project.high.warning.status, "in_effect");
   assert.equal(tag(byClass(a.rail(), "p2-nt-warn")[0], "p").map(text)[0], STRINGS.ed_warn_nomodel_cap_t);
   assert.equal(text(byClass(a.rail(), "p2-nt-h")[0]), "▲" + STRINGS.ed_warn_h);
+  assert.deepEqual(tag(byClass(a.rail(), "p2-nt-warn")[0], "button").map(text), [], "the no-model line does not offer Start with the cap");
 });
 
 test("warning: a cap that bites when a model is set does not say that no model is set", async () => {
   const c = real("nomodel_cap");
   const targets = clone(c.targets);
-  open(targets, "project", ["high"]);
+  pickableLevel(targets, "high", ["project"]);
   const pv = clone(c.previews.project.high);
   pv.warning.model_known = true;
   const a = app({ data: { settings: c.settings, targets, history: c.history }, backend: { preview: async () => ok(pv) } });
@@ -1223,6 +1291,7 @@ test("warning: a cap that bites when a model is set does not say that no model i
   await a.pickRow("project");
   const lines = tag(byClass(a.rail(), "p2-nt-warn")[0], "p").map(text);
   assert.equal(lines.includes(STRINGS.ed_warn_nomodel_cap_t), false);
+  assert.equal(lines[0], STRINGS.ed_warn_cap_t);
 });
 
 test("warning: a model limit and each winner status use their own text", async () => {
@@ -1281,7 +1350,7 @@ test("warning: an unknown status says the dashboard can't tell what runs, ahead 
 
 test("stop: a level held by a cap, with no row to save to, is off and says over cap, so it opens nothing", async () => {
   const w = real("lowered");
-  const targets = clone(w.targets);
+  const targets = lockedCaps(clone(w.targets));
   shut(targets, "high");
   const a = app({ data: { settings: w.settings, targets, history: w.history }, backend: { preview: async () => { throw new Error("no preview"); } } });
   assert.ok(off(lvl(a.root, "high")), "an over-cap level can't be pressed");
@@ -1291,8 +1360,8 @@ test("stop: a level held by a cap, with no row to save to, is off and says over 
   assert.equal(nts(a.rail(), "warn").length, 0, "no stop panel");
   assert.equal(byClass(a.root, "p2-df").length, 0);
   assert.deepEqual(checkedOf(levelInputs(a.root)), ["low"], "nothing was chosen");
-  // The cap note carries the change-it-by-hand line.
-  assert.ok(noteTexts(a.body()).includes(STRINGS.ed_lock_cap_later));
+  // The cap note carries the line that says why this page can't change the cap.
+  assert.ok(noteTexts(a.body()).includes(STRINGS.ed_lock_managed));
 });
 
 test("stop: the model uses its own text", async () => {
@@ -2337,7 +2406,7 @@ test("text nodes: every server value on the page is text, so a hostile path and 
   targets.targets[0].file_display = evil;
   targets.runs_as = evil;
   for (const f of targets.files) { f.file_display = evil; f.value = evil; }
-  for (const level of targets.levels) { level.limits = [{ kind: "cap", value: evil, file_display: evil, line: 1, lock_reason: "cap_later" }]; }
+  for (const level of targets.levels) { level.limits = [{ kind: "cap", value: evil, file_display: evil, line: 1, lock_reason: "managed" }]; }
   const history = clone(S.after_save.history);
   history.rows[0].backup_display = evil;
   history.rows[0].file_display = evil;
@@ -2735,14 +2804,14 @@ test("not saved: a project switch and back keeps it, and the project picker is t
   assert.deepEqual(flowMod.notSavedProjects(), []);
 });
 
-test("cells: picking Model during a change keeps the review, the foot and Not saved, and Effort brings the live picker back", async () => {
+test("cells: picking Cache lifetime during a change keeps the review, the foot and Not saved, and Effort brings the live picker back", async () => {
   const a = app({ data: baseData(), backend: { preview: async (t, v) => ok(S.previews[v]) } });
   await a.choose("high");
-  settingsPage.render(a.root, { ...a.makeCtx(), route: { name: "settings", params: {}, query: { setting: "model" } } });
-  // the body is the read-only frame of Model
+  settingsPage.render(a.root, { ...a.makeCtx(), route: { name: "settings", params: {}, query: { setting: "promptCacheTtl" } } });
+  // the body is the read-only frame of Cache lifetime
   assert.equal(levelInputs(a.root).length + rowInputs(a.root).length, 0);
   assert.equal(text(byClass(a.root, "s4-lock")[0]), STRINGS.ro_lock);
-  assert.equal(text(byClass(a.root, "s4-lab")[0]), STRINGS.f_model);
+  assert.equal(text(byClass(a.root, "s4-lab")[0]), STRINGS.f_cache);
   // the rail keeps the review, and the foot keeps Save and Cancel
   assert.equal(text(byClass(a.rail(), "s4-rh")[0]), STRINGS.review_h);
   assert.deepEqual(bigs(a.root), ["low", "→", "high"]);
@@ -2751,7 +2820,7 @@ test("cells: picking Model during a change keeps the review, the foot and Not sa
   assert.equal(saveButtons(a.root).length, 1);
   // and the band says Not saved on the Effort cell
   assert.equal(text(byClass(cellOf(a.root, "effortLevel"), "s5-pend")[0]), STRINGS.band_not_saved);
-  // Cancel on Model ends the change
+  // Cancel on Cache lifetime ends the change
   btn(a.root, STRINGS.ed_cancel).click();
   await settle();
   assert.equal(byClass(a.root, "p2-df").length, 0);
@@ -2759,13 +2828,13 @@ test("cells: picking Model during a change keeps the review, the foot and Not sa
   assert.equal(text(byClass(a.rail(), "s4-rh")[0]), STRINGS.why_h);
   // a cell with no change in progress is untouched: the plain rail, no foot
   const plain = app({ data: baseData(), backend: { preview: async (t, v) => ok(S.previews[v]) } });
-  settingsPage.render(plain.root, { ...plain.makeCtx(), route: { name: "settings", params: {}, query: { setting: "model" } } });
+  settingsPage.render(plain.root, { ...plain.makeCtx(), route: { name: "settings", params: {}, query: { setting: "promptCacheTtl" } } });
   assert.equal(text(byClass(plain.rail(), "s4-rh")[0]), STRINGS.why_h);
   assert.equal(footButtons(plain).length, 0);
   // Effort again, with the same pick
   const b = app({ data: baseData(), backend: { preview: async (t, v) => ok(S.previews[v]) } });
   await b.choose("high");
-  settingsPage.render(b.root, { ...b.makeCtx(), route: { name: "settings", params: {}, query: { setting: "model" } } });
+  settingsPage.render(b.root, { ...b.makeCtx(), route: { name: "settings", params: {}, query: { setting: "promptCacheTtl" } } });
   settingsPage.render(b.root, { ...b.makeCtx(), route: { name: "settings", params: {}, query: { setting: "effortLevel" } } });
   assert.deepEqual(checkedOf(levelInputs(b.root)), ["high"], "the live picker, with the same pick");
   assert.deepEqual(checkedOf(rowInputs(b.root)), ["local"]);
@@ -2777,14 +2846,14 @@ test("cells: a Save pressed on another cell shows its result in the foot with Un
   // The save answer carries no new data, so the page is not drawn again on Effort and the card must draw the result.
   const a = app({ data: baseData(), backend: { ...saveFlow(), save: async () => ok(S.save) } });
   await a.choose("high");
-  settingsPage.render(a.root, { ...a.makeCtx(), route: { name: "settings", params: {}, query: { setting: "model" } } });
+  settingsPage.render(a.root, { ...a.makeCtx(), route: { name: "settings", params: {}, query: { setting: "promptCacheTtl" } } });
   btn(a.root, LOCAL_SAVE).click();
   await settle();
   assert.equal(a.log.save.length, 1);
   assert.deepEqual(strips(a.root).map((n) => tag(n, "button").map(text)), [[STRINGS.ed_undo]]);
   // At rest, a cell that isn't Effort still hides the last change.
   const plain = app({ data: afterSave(), backend: saveFlow() });
-  settingsPage.render(plain.root, { ...plain.makeCtx(), route: { name: "settings", params: {}, query: { setting: "model" } } });
+  settingsPage.render(plain.root, { ...plain.makeCtx(), route: { name: "settings", params: {}, query: { setting: "promptCacheTtl" } } });
   assert.equal(strips(plain.root).length, 0);
 });
 
@@ -3849,6 +3918,7 @@ test("rail notices: the stop panel, the nothing-to-save rail and the blocked rem
 test("nothing to save: when every file is locked, the first file's lock sits under the Can't save line", async () => {
   const w = worldData("lowered");
   const targets = clone(w.targets);
+  levelOf(targets, "high").cap_first = false;
   shut(targets, "high");
   levelOf(targets, "high").limits = [];
   levelOf(targets, "high").files.forEach((f, i) => { f.lock_reason = i === 0 ? "not_on_trail" : "symlink"; });
@@ -5133,6 +5203,489 @@ test("css: the docked rail keeps one :has() per selector, and the heading and a 
 // ---------------------------------------------------------------- run
 
 // MR_ONLY=<text> runs the checks whose name holds the text, for a quick look at one of them.
+// ================================================================ the cap, the model and the compact window (round 6, stage 6)
+
+// A world's three answers for one cell, as app.js holds them when the cell is open.
+const cellData = (w, which, key = null) => {
+  const state = key ? w[key] : w;
+  return { settings: state.settings, targets: state.targets, history: state.history };
+};
+const selectOf = (root) => root.find((n) => n.tagName === "select")[0] || null;
+const optionsOf = (root) => selectOf(root).find((n) => n.tagName === "option");
+const numberBox = (root) => root.find((n) => n.tagName === "input" && n.getAttribute("id") === "p2-compact")[0] || null;
+const typeIn = async (box, value) => { box.value = value; box.dispatch("change"); await settle(); };
+const answerFor = (w, layer, value) => ok(w[layer][String(value)]);
+
+test("cap panel: the same card with the cap's title, group label, levels and the max note", () => {
+  const w = real("cap_panel");
+  const a = app({ setting: "maxEffortLevel", data: cellData(w, "cap", "cap") });
+  const group = byClass(a.root, "p2-segs")[0];
+  assert.equal(group.getAttribute("aria-label"), STRINGS.ed_level_group_sr_cap);
+  assert.deepEqual(levelInputs(a.root).map((r) => r.value), ["low", "medium", "high", "xhigh", "max"]);
+  assert.deepEqual(checkedOf(levelInputs(a.root)), ["medium"]);
+  assert.equal(byClass(a.root, "p2-sn").map(text).pop(), STRINGS.ed_seg_no_cap, "max sets no cap");
+  assert.equal(text(byClass(a.root, "s4-lab")[0]), STRINGS.cap);
+  assert.equal(a.log.preview.length, 0, "nothing is previewed until a level is picked");
+});
+
+test("cap panel: a pick previews the cap line with setting maxEffortLevel, the review words the cap, and nothing is written", async () => {
+  const w = real("cap_panel");
+  const user = w.cap_previews.project;
+  const a = app({ setting: "maxEffortLevel", data: cellData(w, "cap", "cap"), backend: { preview: async (t, v) => ok(user[v]) } });
+  await a.choose("xhigh");
+  assert.equal(a.log.preview.length, 0, "the cap line is in the shared file, so the owner picks the row");
+  await a.pickRow("project");
+  assert.deepEqual(a.log.previewSetting, ["maxEffortLevel"]);
+  assert.equal(a.log.preview.length, 1);
+  assert.equal(headNote(a.root), STRINGS.ed_runs_cap);
+  assert.deepEqual(bigs(a.root), ["medium", "→", "xhigh"]);
+  assert.equal(a.log.save.length, 0, "a pick writes nothing");
+  assert.equal(pendOf(a.root).length, 1, "Not saved shows");
+  assert.equal(text(byClass(cellOf(a.root, "maxEffortLevel"), "s5-pend")[0]), STRINGS.band_not_saved);
+  btn(a.root, STRINGS.ed_cancel).click();
+  await settle();
+  assert.equal(a.log.save.length, 0, "Cancel writes nothing either");
+  assert.deepEqual(checkedOf(levelInputs(a.root)), ["medium"]);
+});
+
+test("cap panel: Save sends setting maxEffortLevel and the saved line words the cap", async () => {
+  const w = real("cap_panel");
+  const user = w.cap_previews.project;
+  const layer = "project";
+  const target = w.cap.targets.targets.find((t) => t.layer === layer).target;
+  const a = app({
+    setting: "maxEffortLevel", data: cellData(w, "cap", "cap"),
+    backend: { preview: async (t, v) => ok(user[v]), save: async () => ok({ edit: { id: "e1", layer, file_display: "f", backup_display: "b", key_path: ["maxEffortLevel"], old_value: "medium", new_value: "high", op: "replace" }, runs_before: "medium", runs_after: "high", cleaned_up: false }) },
+  });
+  await a.choose("high");
+  await a.pickRow("project");
+  const save = saveButtons(a.root)[0];
+  assert.ok(save);
+  save.click();
+  await settle();
+  assert.deepEqual(a.log.saveSetting, ["maxEffortLevel"]);
+  assert.equal(a.log.save[0].target, target);
+  assert.equal(a.log.save[0].value, "high");
+});
+
+test("effort via the cap: the level says raise cap, its rows are the cap's file rows, and the review is of the cap line", async () => {
+  const w = real("cap_via");
+  const row = w.effort.targets.levels.find((l) => l.via === "cap");
+  assert.ok(row);
+  const a = app({ data: cellData(w, "effort", "effort"), backend: { preview: async (t, v) => ok(w.cap_previews.local[v]) } });
+  assert.equal(text(byClass(rowOf(lvl(a.root, "high")), "p2-sn")[0]), STRINGS.ed_seg_raise_cap);
+  assert.equal(off(lvl(a.root, "high")), false);
+  await a.choose("high");
+  assert.deepEqual(a.log.previewSetting, ["maxEffortLevel"], "the preview is of the cap line");
+  assert.equal(a.log.preview[0][0], row.preselect, "the cap line's own target");
+  assert.equal(a.log.preview[0][1], "high");
+  assert.ok(liveRows(a.root).length > 0, "the cap's file rows are live");
+  assert.equal(headNote(a.root), STRINGS.ed_runs_cap, "the line is the cap's");
+  assert.equal(a.log.save.length, 0);
+  // Save goes through the cap setting with the row's target.
+  const saved = [];
+  const b = app({
+    data: cellData(w, "effort", "effort"),
+    backend: { preview: async (t, v) => ok(w.cap_previews.local[v]), save: async (pv, t, v) => { saved.push([t, v]); return ok({ edit: { id: "e2", layer: "local", file_display: "f", backup_display: "b", key_path: ["maxEffortLevel"], op: "replace" }, runs_before: "low", runs_after: "high" }); } },
+  });
+  await b.choose("high");
+  saveButtons(b.root)[0].click();
+  await settle();
+  assert.deepEqual(b.log.saveSetting, ["maxEffortLevel"]);
+  assert.deepEqual(saved, [[row.preselect, "high"]]);
+});
+
+test("effort with the cap first: the level says 2 changes, the rail offers Start with the cap and no file rows or save", async () => {
+  const w = real("cap_first");
+  const a = app({ data: cellData(w, "effort", "effort"), backend: { preview: async () => { throw new Error("no preview"); } } });
+  assert.deepEqual(byClass(a.root, "p2-sn").map(text), [STRINGS.ed_seg_now, STRINGS.ed_seg_two_changes, STRINGS.ed_seg_two_changes, STRINGS.ed_seg_two_changes]);
+  assert.ok(levelInputs(a.root).slice(1).every((r) => !off(r)), "both radios stay enabled");
+  await a.choose("high");
+  assert.equal(a.log.preview.length, 0, "no preview, because there is nothing to save");
+  const warn = nts(a.rail(), "warn")[0];
+  assert.equal(text(byClass(warn, "p2-nt-h")[0]), "▲" + T("ed_two_h", { level: "high" }));
+  const paras = tag(warn, "p").map(text);
+  assert.equal(paras[0], T("ed_two_t", { cap: "low", line: "low", level: "high" }));
+  assert.equal(paras[1], STRINGS.ed_two_undo_t);
+  assert.deepEqual(tag(warn, "button").map(text).sort(), [STRINGS.ed_cancel, STRINGS.ed_start_cap].sort());
+  assert.equal(liveRows(a.root).length, 0, "no file rows");
+  assert.equal(saveButtons(a.root).length, 0, "no Save");
+  assert.equal(pendOf(a.root).length, 0, "nothing waits on Save");
+  btn(a.root, STRINGS.ed_cancel).click();
+  await settle();
+  assert.deepEqual(checkedOf(levelInputs(a.root)), ["low"]);
+});
+
+test("effort with several caps below the level: the stop says more than one cap sits below", async () => {
+  const w = real("cap_several");
+  const a = app({ data: cellData(w, "effort", "effort") });
+  await a.choose("xhigh");
+  const warn = nts(a.rail(), "warn")[0];
+  assert.equal(tag(warn, "p").map(text)[0], T("ed_two_several_t", { level: "xhigh" }));
+  assert.deepEqual(tag(warn, "button").map(text).includes(STRINGS.ed_start_cap), true);
+});
+
+test("Start with the cap: drops the effort pick, opens the cap cell with the same level and previews it there", async () => {
+  const w = real("cap_first");
+  const a = app({ data: cellData(w, "effort", "effort"), backend: { preview: async (t, v) => ok(w.cap_previews.user[v]) } });
+  await a.choose("high");
+  await a.press(STRINGS.ed_start_cap);
+  assert.deepEqual(a.log.opened, ["maxEffortLevel"]);
+  assert.equal(flowMod.S.level, null, "the effort pick is gone");
+  assert.equal(a.log.preview.length, 0, "nothing is previewed until the cap targets arrive");
+  assert.equal(a.log.save.length, 0);
+  a.land(w.cap.targets);
+  await settle();
+  assert.deepEqual(checkedOf(levelInputs(a.root)), ["high"], "the same level is chosen on the cap");
+  const row = w.cap.targets.levels.find((l) => l.level === "high");
+  if (row.preselect === null) await a.pickRow("user");
+  assert.deepEqual(a.log.previewSetting, ["maxEffortLevel"]);
+  assert.equal(headNote(a.root), STRINGS.ed_runs_cap);
+  assert.equal(a.log.save.length, 0, "nothing was written");
+  btn(a.root, STRINGS.ed_cancel).click();
+  await settle();
+  assert.equal(a.log.save.length, 0);
+});
+
+test("Start with the cap: an owner who leaves the cap cell drops the carried level", async () => {
+  const w = real("cap_first");
+  const a = app({ data: cellData(w, "effort", "effort"), backend: { preview: async (t, v) => ok(w.cap_previews.user[v]) } });
+  await a.choose("high");
+  await a.press(STRINGS.ed_start_cap);
+  a.setting = "model";
+  a.land(w.cap.targets);
+  await settle();
+  assert.equal(flowMod.S.level, null);
+  assert.equal(a.log.preview.length, 0);
+});
+
+test("model pop-up: a labelled select, the display names, an alias with the model it means, now and not allowed", () => {
+  const w = real("model_blocked");
+  const a = app({ setting: "model", data: w });
+  const select = selectOf(a.root);
+  assert.ok(select, "a native select");
+  const label = byClass(a.root, "s4-lab").find((n) => n.getAttribute("for") === select.getAttribute("id"));
+  assert.equal(text(label), STRINGS.ed_model_label);
+  const options = optionsOf(a.root);
+  assert.deepEqual(options.map((o) => o.value), w.targets.levels.map((l) => l.level));
+  const opus = options.find((o) => o.value === "opus");
+  assert.equal(text(opus), T("ed_model_opt_alias", { alias: "opus", name: "Opus 5.5" }) + " (" + STRINGS.ed_model_opt_blocked + ")");
+  assert.ok(off(opus), "a blocked option is disabled");
+  const sonnet = options.find((o) => o.value === "sonnet");
+  assert.equal(text(sonnet), T("ed_model_opt_alias", { alias: "sonnet", name: "Sonnet 5.5" }) + " (" + STRINGS.ed_model_opt_now + ")");
+  assert.ok(sonnet.hasAttribute("selected"));
+  const id = options.find((o) => o.value === "claude-sonnet-5-5");
+  assert.equal(text(id), "Sonnet 5.5");
+  assert.equal(off(id), false);
+  assert.equal(levelInputs(a.root).length, 0, "no level radios on the model cell");
+});
+
+test("model pop-up: choosing a model previews with setting model, shows the review and writes nothing", async () => {
+  const w = real("model_panel");
+  const layer = w.previews.project ? "project" : "user";
+  const a = app({ setting: "model", data: w, backend: { preview: async (t, v) => ok(w.previews[layer][v]) } });
+  const select = selectOf(a.root);
+  select.value = "claude-opus-5-5";
+  select.dispatch("change");
+  await settle();
+  assert.deepEqual(a.log.previewSetting, ["model"]);
+  assert.equal(a.log.preview[0][1], "claude-opus-5-5");
+  assert.equal(headNote(a.root), STRINGS.ed_runs);
+  assert.equal(a.log.save.length, 0);
+  assert.equal(pendOf(a.root).length, 1);
+  btn(a.root, STRINGS.ed_cancel).click();
+  await settle();
+  assert.equal(a.log.save.length, 0);
+  assert.equal(pendOf(a.root).length, 0);
+  assert.ok(optionsOf(a.root).find((o) => o.value === "sonnet").hasAttribute("selected"), "the running model is back");
+});
+
+test("model pop-up: choosing the running model does nothing, and a blocked one is refused", async () => {
+  const w = real("model_blocked");
+  const a = app({ setting: "model", data: w, backend: { preview: async () => { throw new Error("no preview"); } } });
+  const select = selectOf(a.root);
+  select.value = "sonnet";
+  select.dispatch("change");
+  await settle();
+  assert.equal(a.log.preview.length, 0);
+  assert.equal(flowMod.S.level, null);
+  select.value = "opus";
+  select.dispatch("change");
+  await settle();
+  assert.equal(a.log.preview.length, 0);
+  assert.equal(flowMod.S.level, null);
+});
+
+test("model pop-up: a blocked file row says so, and an unclear allowlist adds its note to the review", async () => {
+  const w = real("model_unclear");
+  const row = w.targets.levels.find((l) => l.allow === "unclear" && l.result !== "now");
+  assert.ok(row, "the allowlist is unclear");
+  const layer = Object.keys(w.previews)[0];
+  const a = app({ setting: "model", data: w, backend: { preview: async (t, v) => ok(w.previews[layer][v] || Object.values(w.previews[layer])[0]) } });
+  const select = selectOf(a.root);
+  select.value = "claude-sonnet-5-5";
+  select.dispatch("change");
+  await settle();
+  assert.ok(a.rail().textContent.includes(STRINGS.ed_allow_unclear_t));
+  // A blocked level's file rows show the lock word.
+  const blocked = real("model_blocked");
+  const b = app({ setting: "model", data: blocked });
+  const opus = blocked.targets.levels.find((l) => l.allow === "blocked");
+  assert.ok(opus.files.every((f) => f.lock_reason === "model_blocked"));
+  assert.ok(STRINGS.ed_row_lock_model_blocked);
+  assert.equal(b.root.textContent.includes(STRINGS.ed_row_lock_model_blocked), false, "rows stay plain until a level is chosen");
+});
+
+test("model review: the change line shows display names, and an unknown model keeps its raw id", async () => {
+  const w = real("model_panel");
+  const layer = w.previews.project ? "project" : "user";
+  const a = app({ setting: "model", data: w, backend: { preview: async (t, v) => {
+    const pv = clone(w.previews[layer][v]);
+    pv.runs_before = "claude-sonnet-5-5";
+    pv.runs_after = v === "claude-opus-5-5" ? "claude-opus-5-5" : "claude-unlisted-9";
+    pv.after = { ...(pv.after || {}), models: { "claude-sonnet-5-5": "Sonnet 5.5", "claude-opus-5-5": "Opus 5.5" } };
+    return ok(pv);
+  } } });
+  const select = selectOf(a.root);
+  select.value = "claude-opus-5-5";
+  select.dispatch("change");
+  await settle();
+  const chg = byClass(a.rail(), "s4-chg")[0];
+  assert.equal(text(byClass(chg, "s4-was")[0]), "Sonnet 5.5");
+  assert.equal(text(byClass(chg, "s4-to")[0]), "Opus 5.5");
+  assert.equal(chg.textContent.includes("claude-"), false);
+});
+
+test("compact box: a labelled text box with a hint and Auto, showing what runs", () => {
+  const w = real("window_panel");
+  const a = app({ setting: "autoCompactWindow", data: w });
+  const box = numberBox(a.root);
+  assert.ok(box);
+  assert.equal(box.getAttribute("inputmode"), "numeric");
+  assert.equal(box.value, "200000");
+  assert.equal(text(byClass(a.root, "s4-lab").find((n) => n.getAttribute("for") === "p2-compact")), STRINGS.ed_compact_label);
+  assert.ok(noteTexts(a.root).includes(STRINGS.ed_compact_hint));
+  assert.ok(btn(a.root, STRINGS.ed_compact_auto));
+});
+
+test("compact box: commas and spaces are dropped, a good number picks the number row with the typed value", async () => {
+  const w = real("window_panel");
+  const a = app({ setting: "autoCompactWindow", data: w, backend: { preview: async (t, v) => ok(w.previews.project[String(v)] || w.previews.project["300000"]) } });
+  await typeIn(numberBox(a.root), "300,000");
+  assert.equal(a.log.preview.length, 1);
+  assert.equal(a.log.preview[0][1], 300000);
+  assert.deepEqual(a.log.previewSetting, ["autoCompactWindow"]);
+  assert.equal(headNote(a.root), STRINGS.ed_runs_compact);
+  assert.equal(numberBox(a.root).value, "300000", "the typed value shows, not the probe");
+  assert.deepEqual(bigs(a.root), ["200000", "→", "300000"]);
+  assert.equal(a.log.save.length, 0);
+  await typeIn(numberBox(a.root), "250 000");
+  assert.equal(a.log.preview[a.log.preview.length - 1][1], 250000);
+});
+
+test("compact box: a word, a decimal, and numbers out of range say what it takes and pick nothing", async () => {
+  const w = real("window_panel");
+  const a = app({ setting: "autoCompactWindow", data: w, backend: { preview: async () => { throw new Error("no preview"); } } });
+  for (const bad of ["lots", "300000.5", "99,999", "1,000,001", "", "1e6", "-300000"]) {
+    await typeIn(numberBox(a.root), bad);
+    assert.equal(a.log.preview.length, 0, JSON.stringify(bad));
+    assert.equal(flowMod.S.level, null, JSON.stringify(bad));
+    assert.ok(noteTexts(a.root).includes(STRINGS.ed_compact_bad), JSON.stringify(bad));
+    assert.equal(numberBox(a.root).value, bad, "the typed text stays");
+  }
+  await typeIn(numberBox(a.root), "100000");
+  assert.equal(a.log.preview.length, 1, "the floor is a good number");
+});
+
+test("compact box: a bad value after a number was chosen stays in the box, flagged, and the pick stays", async () => {
+  const w = real("window_panel");
+  const a = app({ setting: "autoCompactWindow", data: w, backend: { preview: async (t, v) => ok(w.previews.project[String(v)] || w.previews.project["300000"]) } });
+  await typeIn(numberBox(a.root), "250000");
+  assert.equal(flowMod.S.number, 250000);
+  const count = a.log.preview.length;
+  for (const bad of ["99999", "abc"]) {
+    await typeIn(numberBox(a.root), bad);
+    assert.equal(numberBox(a.root).value, bad, "the typed text stays");
+    assert.equal(numberBox(a.root).getAttribute("aria-invalid"), "true", bad);
+    assert.ok(noteTexts(a.root).includes(STRINGS.ed_compact_bad), bad);
+    assert.equal(flowMod.S.level, "number", bad);
+    assert.equal(flowMod.S.number, 250000, bad);
+    assert.equal(a.log.preview.length, count, "nothing new is picked");
+  }
+});
+
+test("compact box: the running value typed while another number is held picks nothing and the box shows the held number", async () => {
+  const w = real("window_panel");
+  const a = app({ setting: "autoCompactWindow", data: w, backend: { preview: async (t, v) => ok(w.previews.project[String(v)] || w.previews.project["300000"]) } });
+  await typeIn(numberBox(a.root), "250000");
+  const count = a.log.preview.length;
+  await typeIn(numberBox(a.root), "200000");
+  assert.equal(a.log.preview.length, count);
+  assert.equal(flowMod.S.number, 250000);
+  assert.equal(numberBox(a.root).value, "250000");
+  assert.equal(noteTexts(a.root).includes(STRINGS.ed_compact_bad), false);
+});
+
+test("compact box: a number equal to what runs now does nothing", async () => {
+  const w = real("window_panel");
+  const a = app({ setting: "autoCompactWindow", data: w, backend: { preview: async () => { throw new Error("no preview"); } } });
+  await typeIn(numberBox(a.root), "200,000");
+  assert.equal(a.log.preview.length, 0);
+  assert.equal(flowMod.S.level, null);
+  assert.equal(noteTexts(a.root).includes(STRINGS.ed_compact_bad), false);
+});
+
+test("compact box: Auto picks the auto row, and with no model it says Auto needs a model", async () => {
+  const w = real("window_panel");
+  const a = app({ setting: "autoCompactWindow", data: w, backend: { preview: async (t, v) => ok(w.previews.project[String(v)]) } });
+  await a.press(STRINGS.ed_compact_auto);
+  assert.equal(a.log.preview.length, 1);
+  assert.equal(a.log.preview[0][1], "auto");
+  assert.deepEqual(a.log.previewSetting, ["autoCompactWindow"]);
+  assert.equal(a.log.save.length, 0);
+  assert.ok(bigs(a.root).includes(STRINGS.ed_compact_auto));
+  btn(a.root, STRINGS.ed_cancel).click();
+  await settle();
+  const none = real("window_nomodel");
+  assert.equal(none.targets.model, null);
+  const b = app({ setting: "autoCompactWindow", data: none, backend: { preview: async () => { throw new Error("no preview"); } } });
+  await b.press(STRINGS.ed_compact_auto);
+  assert.equal(b.log.preview.length, 0);
+  assert.ok(noteTexts(b.root).includes(STRINGS.ed_compact_auto_nomodel));
+  assert.equal(flowMod.S.level, null);
+});
+
+test("held change: another editable cell draws read-only while a change is held, and the rail keeps the review", async () => {
+  const w = real("cap_via");
+  const a = app({ data: cellData(w, "effort", "effort"), backend: { preview: async (t, v) => ok(w.cap_previews.local[v]) } });
+  await a.choose("high");
+  assert.equal(pendOf(a.root).length, 1);
+  // Open the model cell with its own targets.
+  const m = real("model_panel");
+  a.setting = "model";
+  a.land(m.targets);
+  await settle();
+  const select = selectOf(a.root);
+  assert.ok(select && off(select), "the model pop-up is off while a change is held");
+  select.value = "claude-opus-5-5";
+  select.dispatch("change");
+  await settle();
+  assert.equal(a.log.preview.length, 1, "no second preview");
+  assert.equal(text(byClass(a.rail(), "s4-rh")[0]), STRINGS.review_h, "the review stays");
+  assert.deepEqual(footTexts(a).length, 2, "Save and Cancel stay");
+  assert.equal(text(byClass(cellOf(a.root, "effortLevel"), "s5-pend")[0]), STRINGS.band_not_saved, "the mark stays on the cell that changed");
+  assert.equal(byClass(cellOf(a.root, "model"), "s5-pend").length, 0);
+  // The held change saves with its own setting and target even from the other cell.
+  saveButtons(a.root)[0].click();
+  await settle();
+  assert.deepEqual(a.log.saveSetting, ["maxEffortLevel"]);
+  assert.equal(a.log.save[0].target, w.effort.targets.levels.find((l) => l.via === "cap").preselect);
+});
+
+test("held change: the cap cell's radios and the compact box are off while a change is held on another cell", async () => {
+  const w = real("cap_via");
+  const a = app({ data: cellData(w, "effort", "effort"), backend: { preview: async (t, v) => ok(w.cap_previews.local[v]) } });
+  await a.choose("high");
+  const cap = real("cap_panel");
+  a.setting = "maxEffortLevel";
+  a.land(cap.cap.targets);
+  await settle();
+  assert.ok(levelInputs(a.root).every(off), "the cap radios are off");
+  assert.deepEqual(checkedOf(levelInputs(a.root)), ["medium"], "the level that runs is the one checked");
+  const win = real("window_panel");
+  a.setting = "autoCompactWindow";
+  a.land(win.targets);
+  await settle();
+  assert.ok(off(numberBox(a.root)));
+  assert.ok(off(btn(a.root, STRINGS.ed_compact_auto)));
+  assert.equal(a.log.preview.length, 1);
+});
+
+test("held change: Cancel on another cell drops the change and the cell draws live again", async () => {
+  const w = real("cap_via");
+  const a = app({ data: cellData(w, "effort", "effort"), backend: { preview: async (t, v) => ok(w.cap_previews.local[v]) } });
+  await a.choose("high");
+  const m = real("model_panel");
+  a.setting = "model";
+  a.land(m.targets);
+  await settle();
+  btn(a.root, STRINGS.ed_cancel).click();
+  await settle();
+  assert.equal(off(selectOf(a.root)), false);
+  assert.equal(pendOf(a.root).length, 0);
+});
+
+test("read-only frame: Cache lifetime stays the read-only frame and keeps the held change", async () => {
+  const w = real("cap_via");
+  const a = app({ data: cellData(w, "effort", "effort"), backend: { preview: async (t, v) => ok(w.cap_previews.local[v]) } });
+  await a.choose("high");
+  a.setting = "promptCacheTtl";
+  a.draw();
+  assert.equal(levelInputs(a.root).length + rowInputs(a.root).length, 0);
+  assert.equal(selectOf(a.root), null);
+  assert.equal(text(byClass(a.root, "s4-lock")[0]), STRINGS.ro_lock);
+  assert.equal(text(byClass(a.rail(), "s4-rh")[0]), STRINGS.review_h);
+});
+
+// A cell with its save and undo answered by the real server: change the value, Save, then Undo.
+async function tripOf(name, setting, pick, press) {
+  const w = real(name);
+  const trip = w.trip;
+  const data = name === "cap_panel" ? w.cap : w;
+  const previews = (name === "cap_panel" ? w.cap_previews : w.previews).project;
+  const afterSave = (state) => ({ settings: state.settings, targets: state.targets, history: state.history });
+  // The page preselects the local file, where the world has none yet. The trip is at the project file, so the owner picks that row.
+  const targets = clone(data.targets);
+  for (const level of targets.levels) level.preselect = null;
+  const a = app({
+    setting, data: { settings: data.settings, targets, history: data.history },
+    backend: {
+      preview: async (t, v) => ok(previews[String(v)]),
+      save: async () => ({ ...ok(trip.save), after: afterSave(trip.after_save) }),
+      undo: async () => ({ ...ok(trip.undo), after: afterSave(trip.after_undo) }),
+    },
+  });
+  await pick(a);
+  assert.equal(a.log.save.length, 0, "a pick writes nothing");
+  saveButtons(a.root)[0].click();
+  await settle();
+  assert.deepEqual(a.log.saveSetting, [setting]);
+  assert.equal(a.log.save[0].target, trip.target);
+  const saved = okLine(a.root);
+  return { a, trip, saved };
+}
+
+test("words: a saved cap, then its Undo, are worded for the cap and the undo has no new session line", async () => {
+  const { a, trip, saved } = await tripOf("cap_panel", "maxEffortLevel", async (x) => { await x.choose("high"); await x.pickRow("project"); });
+  assert.ok(a.root.textContent.includes(trip.save.edit.backup_display || "backup"), "the backup path shows");
+  assert.deepEqual(strips(a.root).map((n) => tag(n, "button").map(text)), [[STRINGS.ed_undo]]);
+  assert.ok(saved.startsWith("Saved. settings.json now sets the effort cap to "), saved);
+  assert.equal(saved.includes("new session"), false, "the cap applies at once");
+  await a.press(STRINGS.ed_undo);
+  assert.equal(a.log.undo.length, 1);
+  assert.equal(okLine(a.root).includes("new session"), false, "Undo of a cap carries no new session line");
+  assert.equal(okLine(a.root), STRINGS.ed_undone_t_neutral.replace("{file}", "settings.json"));
+  assert.deepEqual(strips(a.root).map((n) => tag(n, "button").map(text)), [[STRINGS.ed_dismiss, STRINGS.ed_older_link]], "no Undo is left");
+});
+
+test("words: a saved model keeps the effort-style undo, and a saved window words the window", async () => {
+  const model = await tripOf("model_panel", "model", async (x) => {
+    const select = selectOf(x.root);
+    select.value = "claude-opus-5-5";
+    select.dispatch("change");
+    await settle();
+    await x.pickRow("project");
+  });
+  assert.equal(model.saved, T("ed_saved_t_model", { file: "settings.json", level: "Opus 5.5" }).replace("Opus 5.5", model.saved.match(/sets the model to (.*?)\./)[1]));
+  assert.ok(model.saved.endsWith(STRINGS.ed_saved_t_model.split("{level}.")[1].trim()), "the model line keeps the new session sentence");
+  await model.a.press(STRINGS.ed_undo);
+  assert.equal(okLine(model.a.root), T("ed_undone_t", { file: "settings.json" }));
+  const win = await tripOf("window_panel", "autoCompactWindow", async (x) => { await typeIn(numberBox(x.root), "300000"); await x.pickRow("project"); });
+  assert.ok(win.saved.startsWith("Saved. settings.json now sets the compact window to "), win.saved);
+  await win.a.press(STRINGS.ed_undo);
+  assert.equal(okLine(win.a.root).includes("new session"), false);
+});
+
 const only = process.env.MR_ONLY || "";
 let failed = 0;
 for (const [name, fn] of tests) {

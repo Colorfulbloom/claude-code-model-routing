@@ -24,6 +24,8 @@
 // project's cached data is dropped (dropProjectData), the current project is loaded again and the edit
 // targets and history are fetched fresh. Targets and history never go through the api cache, and they load
 // only on the trail of the main session's effortLevel and on Settings in ready mode, because each targets call runs the resolver many times.
+// The targets are for one setting: the cell Settings has open when the page edits it (the model, effort, the effort cap
+// or the compact window), else effort. They load again when the open cell changes.
 // An answer that was in flight when the data was dropped is thrown away, so it cannot bring the old value back.
 
 import { createApi } from "./api.js";
@@ -74,6 +76,7 @@ const state = {
   reader: null,
   editTargets: null,
   editHistory: null,
+  editSetting: null, // the setting the targets held, or on their way, are for
 };
 const loading = new Map();
 let generation = 0;
@@ -158,14 +161,19 @@ async function refreshAll() {
   await Promise.all([api.settings(state.project), loadEdit()]);
 }
 
-// Targets for the current project, fetched fresh every time and never cached, and history too when edits can be
-// written. With edits off the server answers the read-only form of targets, and the history stays null.
+// The setting the targets are wanted for now: the open cell of Settings when the page edits it, else effort.
+const wantedSetting = () => settings.targetsSetting(state.route.query);
+
+// Targets for the current project and the open setting, fetched fresh every time and never cached, and history too when
+// edits can be written. With edits off the server answers the read-only form of targets, and the history stays null.
 async function loadEdit() {
   if (session.mode() === null || state.project === ALL_KEY) return;
   const project = state.project;
+  const setting = wantedSetting();
   const mine = ++editSeq;
+  state.editSetting = setting;
   const [targets, history] = await Promise.all([
-    api.editTargets(project),
+    api.editTargets(project, setting),
     editing() ? api.editHistory(project) : Promise.resolve(null),
   ]);
   if (mine !== editSeq || project !== state.project) return;
@@ -225,14 +233,16 @@ function context() {
       mode: session.mode(),
       targets: state.editTargets,
       history: state.editHistory,
-      preview: (target, value, action) => session.preview(state.project, target, value, action),
-      save: (preview, target, value, action) => session.save(state.project, preview, target, value, action),
+      preview: (target, value, action, setting) => session.preview(state.project, target, value, action, setting),
+      save: (preview, target, value, action, setting) => session.save(state.project, preview, target, value, action, setting),
       undo: (editId) => session.undo(state.project, editId),
       backupPreview: (editId, kind) => session.backupPreview(state.project, editId, kind),
       undoAnyway: (editId, baseFile) => session.undoAnyway(state.project, editId, baseFile),
       restore: (editId, baseFile) => session.restore(state.project, editId, baseFile),
       reload: loadEdit,
       refresh: refreshAll,
+      // Opens a cell of the Settings band, by the address its link carries. Start with the cap uses it to open the cap.
+      openSetting: (setting) => go("settings", {}, { setting }),
       // A choice on the Settings page changes which projects have a change waiting on Save, so the picker is drawn again.
       syncShell: updateShell,
     },
@@ -383,6 +393,12 @@ function handle(route, force) {
   }
   state.route = parsed;
   state.project = project;
+  // The open cell of Settings changed to one with other targets: the held ones are for the cell it left.
+  const switched = !fetches && wantsTargets() && state.editSetting !== null && state.editSetting !== wantedSetting();
+  if (switched) {
+    state.editTargets = null;
+    editSeq += 1;
+  }
   state.range = parsed.query.range || DEFAULT_RANGE;
   applyTheme(parsed.query.theme);
   document.title = t("tab_title", { project: projectInfo().name });
@@ -395,6 +411,8 @@ function handle(route, force) {
       retryProjects();
       loadShared();
     }
+  } else if (switched) {
+    loadEdit();
   }
   renderPages([sectionFor(parsed, state.project)]);
   if (started && !force && previous !== parsed.name) window.scrollTo(0, 0);

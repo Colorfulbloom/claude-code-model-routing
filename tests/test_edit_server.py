@@ -737,7 +737,7 @@ class FlagOn(GateAssertions, unittest.TestCase):
         for level in body["levels"]:
             self.assertNotIn("target", level)
             self.assertEqual(set(level), {"level", "result", "runs_as", "certain", "limits", "files",
-                                          "preselect", "saveable"})
+                                          "preselect", "saveable", "via", "cap_first"})
             self.assertTrue(level["preselect"] is None or isinstance(level["preselect"], str))
         self.assertNotIn(self.token.encode(), data)
 

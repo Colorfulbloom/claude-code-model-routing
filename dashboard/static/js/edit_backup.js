@@ -10,8 +10,10 @@
 
 import { h } from "./h.js";
 import { t, fmtTime } from "./format.js";
-import { basename, button, draw, mark, nt, text } from "./edit_ui.js";
+import { basename, button, draw, mark, nt } from "./edit_ui.js";
 import { diffFigure, gitIgnoreNote } from "./edit_review.js";
+import { settingOf, settingOfEdit } from "./edit_setting.js";
+import * as words from "./edit_words.js";
 
 const has = (value) => value !== null && value !== undefined;
 
@@ -19,12 +21,15 @@ const has = (value) => value !== null && value !== undefined;
 // same rule and may not import this file (it would close an import cycle through the card).
 export { olderRows } from "./edit_pick.js";
 
-// The line of a row. One literal t() call for each form, so the string checks can see every key.
+// The line of a row, worded for the setting the row changed (the last part of its key path), whatever cell is open.
 function rowLine(row) {
   const file = basename(row.file_display);
   const when = fmtTime(row.time);
   if (row.before_absent === true) return t("ed_older_row_absent_t", { file, when });
-  if (has(row.old_value) && row.old_value !== "") return t("ed_older_row_value_t", { file, when, value: text(row.old_value) });
+  if (has(row.old_value) && row.old_value !== "") {
+    const setting = settingOfEdit(row);
+    return words.olderRowValue(setting, { file, when, value: words.shown(setting, row.old_value) });
+  }
   return t("ed_older_row_t", { file, when });
 }
 
@@ -71,11 +76,12 @@ function mainLine(pv, file) {
   }
 }
 
-// What a new session runs after this, from the preview's two levels.
+// What runs after this, from the preview's two values, worded for the setting the preview carries.
 function runsLine(pv) {
-  if (!has(pv.runs_after)) return t("ed_back_runs_unknown_t");
-  if (pv.runs_after === pv.runs_before) return t("ed_back_runs_same_t");
-  return t("ed_back_runs_t", { level: text(pv.runs_after) });
+  const setting = settingOf(pv);
+  if (!has(pv.runs_after)) return words.backRunsUnknown(setting);
+  if (pv.runs_after === pv.runs_before) return words.backRunsSame(setting);
+  return words.backRuns(setting, { level: words.shown(setting, pv.runs_after) });
 }
 
 // True when the preview has a diff and it holds no lines: the file and the backup differ only in line endings, the final

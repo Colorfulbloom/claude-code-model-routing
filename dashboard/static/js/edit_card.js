@@ -1,16 +1,19 @@
-// The Effort body, its rail and its foot on the Settings page (round 6 design, direction A), and the results in the
-// foot. pages/settings.js calls begin(ctx, { restRail, selected, onNotSaved }) once per render with a payload and
-// places what comes back. The page reads ctx.edit (js/edit_session.js through app.js): the mode, the targets and the history, and
+// The body of an editing cell (Effort, the effort cap, the model, the compact window), its rail and its foot on the
+// Settings page (round 6 design, direction A), and the results in the foot. pages/settings.js calls
+// begin(ctx, { restRail, selected, editable, onNotSaved }) once per render with a payload and places what comes back.
+// The page reads ctx.edit (js/edit_session.js through app.js): the mode, the targets and the history, and
 // it sends the preview, the save and the undo. The boards a-rest, a-norm, a-lock and a-shell in the phase 2
 // design folder (design-settings-6) are the reference, and app.css holds every class used here (section
 // "Settings page, round 6").
 //
-// This file holds the shell, the picker, the rows, the rail, the foot, the drawing and the focus. The rest sits
+// This file holds the shell, the pickers, the rows, the rail, the foot, the drawing and the focus. The rest sits
 // beside it.
 // - edit_pick.js: the pure rules (which radio is checked and off, which rail case, where the picked row lands).
 // - edit_flow.js: the state and the actions. It draws through the redraw() registered here.
 // - edit_review.js and edit_foot.js: the pure builders of the review (rail) with its Save and Cancel (foot), and of
 //   the results (foot).
+// - edit_setting.js and edit_words.js: what is particular to each of the four settings (the model options, the window
+//   number, the words), pure.
 // - edit_ui.js: the small shared builders.
 //
 // Rules this file keeps.
@@ -23,46 +26,57 @@
 // - Choosing a level or a row redraws the body, the rail and the foot without a page render. A page render
 //   rebuilds all three, so focusKey() and done() carry an edit control's focus across it.
 // - A chosen level keeps its review in the rail and its Save and Cancel in the foot on every cell, and the body
-//   of any other cell is its read-only frame. One Save exists in the page, never a copy for a narrow window.
+//   of a cell that is not edited is its read-only frame. One Save exists in the page, never a copy for a narrow window.
 // - One change at a time. A chosen level or a line chosen for removal holds the page: the picker is off, the rows
-//   lose their Remove line links, and the review and its Save and Cancel take the rail and the foot. The older backups
-//   list and the preview of an Undo anyway or a restore (edit_backup.js) hold it the same way, and they take the rail
-//   and the foot on every cell, and under the project lock, because Undo stays open there.
+//   lose their Remove line links, and the review and its Save and Cancel take the rail and the foot. Another cell that
+//   edits draws read-only while a change is held (its picker and rows are off), and the Not saved mark stays on the cell
+//   the change was made on. The older backups list and the preview of an Undo anyway or a restore (edit_backup.js) hold
+//   it the same way, and they take the rail and the foot on every cell, and under the project lock, because Undo stays
+//   open there.
+// - A level that needs a cap change first has nothing to save: its rail says so and offers Start with the cap.
 // - A chosen level that can be saved, or a line to remove that nothing blocks, is Not saved. A choice made with no page render updates the Stat band
 //   (onNotSaved) and the project picker (ctx.edit.syncShell) by the callbacks the page and app.js pass in.
 // - The checked radio always equals the chosen level, and a row that goes grey takes no focus. A handler never
-//   puts a radio back.
+//   puts a radio back. The model pop-up and the window box draw from the chosen level in the same way.
 
 import { h, clear, frag } from "./h.js";
 import { t, tn } from "./format.js";
 import { icon } from "./icons.js";
 import { MAIN_KEY } from "./router.js";
-import { pickerState, railCase } from "./edit_pick.js";
+import { controlsOff, pickerState, railCase } from "./edit_pick.js";
 import {
-  S, live, setLive, onRedraw, syncFlow, settle, targetsData, historyData, damagedFor, levelFile, isNotSaved, notSavedProjects,
-  cancel, pick, pickRow, startRemove, doSave, doUndo, dismissStrip, dismissLedger, resetCard,
-  openOlder, closeBack, startBack, confirmBack,
+  S, live, setLive, onRedraw, syncFlow, settle, targetsData, changeTargets, historyData, damagedFor, levelFile, isNotSaved,
+  notSavedProjects, cancel, pick, pickRow, pickAuto, commitWindow, startWithCap, applyCarry, startRemove, doSave, doUndo,
+  dismissStrip, dismissLedger, resetCard, openOlder, closeBack, startBack, confirmBack, openSetting, foreign, changeValue,
+  writeSetting,
 } from "./edit_flow.js";
 import { backFoot, backRail, olderRail, olderRows } from "./edit_backup.js";
-import { capsOf, limitLine, limitParas, review, reviewFacts, reviewFoot, stopPanel, waitingFoot } from "./edit_review.js";
+import {
+  capsOf, limitLine, limitParas, review, reviewFacts, reviewFoot, stopPanel, twoChangesPanel, waitingFoot,
+} from "./edit_review.js";
 import { stripNodes as footNodes } from "./edit_foot.js";
 import {
   basename, button, checkIcon, draw, filesOf, hint, levelRow, levelsOf, lockIcon, lockLine, lockText, mark, nt,
   rowLockText, runningOf, targetById, text, tokenNt, walk,
 } from "./edit_ui.js";
+import { CAP, COMPACT, EFFORT, MODEL, modelOptions, settingOf } from "./edit_setting.js";
+import * as words from "./edit_words.js";
 import { valueString, valueText } from "./pages/settings.js";
 import { entriesOf, entryRow, rowFor, rowNode, shortFile, whereList } from "./pages/where.js";
 
 export { basename };
 
-const SETTING = "effortLevel";
 const FILE_LAYERS = ["local", "project", "user"];
 const NOTE_ID = "p2-levels-note";
-const NBSP = " ";
+const MODEL_ID = "p2-model";
+const COMPACT_ID = "p2-compact";
+const COMPACT_HINT_ID = "p2-compact-hint";
+const COMPACT_NOTE_ID = "p2-compact-note";
+const NBSP = " ";
 
 // ---------------------------------------------------------------- builders
 
-// The plain card of the page, with a heading that is plain text. Only a model with no effort levels uses it.
+// The plain card of the page, with a heading that is plain text. Only a setting with no levels to pick uses it.
 function shell(title, body) {
   return h("section", { class: "cd" },
     h("div", { class: "cd-hd" },
@@ -75,31 +89,36 @@ function shell(title, body) {
 // A model with no effort levels has nothing to pick. The card says so, and shows what runs.
 function noSupportCard(T) {
   const hasRuns = T.runs_as !== null && T.runs_as !== undefined;
-  return shell(t("ed_card"), h("div", { class: "p2-field" },
+  return shell(words.cardTitle(settingOf(T)), h("div", { class: "p2-field" },
     hasRuns ? h("div", { class: "p2-head" }, h("span", { class: "p2-big" }, text(T.runs_as))) : null,
     lockLine(t("ed_levels_no_support"))));
 }
 
 // What the review and its foot need from the flow, read when they are drawn. lead is a list of nodes that go first in
-// the rail. The presses go back through save and cancel.
+// the rail. The presses go back through save, cancel and startCap.
 function reviewEnv(lead = []) {
   return {
     busy: S.busy, failed: S.failed, failedDir: S.failedDir, failedLeft: S.failedLeft, damaged: damagedFor, save: doSave, cancel, lead,
-    model: modelName(),
+    model: modelName(changeTargets()),
+    level: S.level,
+    startCap: () => startWithCap(S.level),
   };
 }
 
-// The display name of the model the targets answer is for, by the page's own model lookup (valueString), else null.
-function modelName() {
-  const T = targetsData();
+// The display name of the model a targets answer is for, by the page's own model lookup (valueString), else null.
+function modelName(T) {
   if (!T || !T.model) return null;
   const res = live.ctx.data && live.ctx.data.settings;
   return valueString({ key: "model", value: T.model }, res && res.data ? res.data : null, true);
 }
 
-// The word under a level. Off-mode levels are offered, so they carry none.
-function levelNote(level) {
+// The word under a level. Off-mode levels are offered, so they carry none. The cap's max sets no cap. A level one cap
+// change reaches says to raise the cap, and a level that needs the cap first says it takes two changes.
+function levelNote(level, setting) {
+  if (setting === CAP && level.level === "max") return t("ed_seg_no_cap");
   if (level.result === "now") return t("ed_seg_now");
+  if (level.via === "cap") return t("ed_seg_raise_cap");
+  if (level.cap_first === true) return t("ed_seg_two_changes");
   if (level.result === "stopped") {
     if (capsOf(Array.isArray(level.limits) ? level.limits : []).length > 0) return t("ed_seg_over_cap");
     if (level.saveable !== true) return t("ed_seg_stopped");
@@ -107,24 +126,29 @@ function levelNote(level) {
   return null;
 }
 
+// What keeps every control of the open cell from taking a press right now, other than the mode and the project lock: a
+// save on its way, a line chosen for removal, an open older backups flow, or a change held on another cell.
+const heldOff = () => S.busy || S.remove !== null || S.back !== null || foreign();
+
 // The level radios. The state comes from edit_pick.js, so the checked radio is the chosen level and the running
 // level is off once a level is chosen. A level held by a cap is off and says over cap (board a-norm), so it can't be pressed and the arrow keys skip it.
-function picker(T, mode) {
+function picker(T, mode, setting) {
   const levels = levelsOf(T);
   const running = runningOf(T);
+  const chosen = foreign() ? null : S.level;
   // A line chosen for removal is a change in progress, so every radio is off and the running level stays checked.
-  const state = pickerState(levels, running, S.level, mode, { busy: S.busy || S.remove !== null || S.back !== null, projectLock: T.project_lock, saveable: T.saveable });
+  const state = pickerState(levels, running, chosen, mode, { busy: heldOff(), projectLock: T.project_lock, saveable: T.saveable });
   const group = h("div", {
-    class: "segs p2-segs s4-segs", role: "radiogroup", "aria-label": t("ed_level_group_sr"),
+    class: "segs p2-segs s4-segs", role: "radiogroup", "aria-label": words.groupLabel(setting),
     "aria-describedby": T.levels_state === "model_unknown" ? NOTE_ID : null,
   });
   for (const level of levels) {
     const name = level.level;
     const off = state.disabled.includes(name);
-    const chosen = S.level === name && state.checked === name;
+    const picked = chosen === name && state.checked === name;
     const now = level.result === "now" || name === running;
-    const note = levelNote(level);
-    group.appendChild(h("label", { class: ["seg", "p2-seg", now && "s6-now", chosen && "s6-on", off && !now && !chosen && "is-off"] },
+    const note = levelNote(level, setting);
+    group.appendChild(h("label", { class: ["seg", "p2-seg", now && "s6-now", picked && "s6-on", off && !now && !picked && "is-off"] },
       h("input", {
         class: "sr", type: "radio", name: "p2-level", value: name, checked: state.checked === name, disabled: off,
         "data-edit-focus": "radio:" + name, on: { change: () => pick(name) },
@@ -135,14 +159,76 @@ function picker(T, mode) {
   return group;
 }
 
+const settingsPayload = () => {
+  const res = live.ctx.data && live.ctx.data.settings;
+  return res && res.ok && res.data && typeof res.data === "object" ? res.data : null;
+};
+
+// The pop-up of the models, labelled. Each option is a model's display name, or for an alias the alias with the model it
+// means today. The running option says now, a blocked one says it is not allowed and is grey. The pick is the option
+// chosen, and a press on the running model does nothing (it is off once another is chosen).
+function modelPicker(T, mode) {
+  const payload = settingsPayload();
+  const off = controlsOff(mode, { busy: heldOff(), projectLock: T.project_lock, saveable: T.saveable });
+  const options = modelOptions(levelsOf(T), payload && payload.models ? payload.models : null,
+    { running: runningOf(T), chosen: foreign() ? null : S.level });
+  const nodes = [];
+  if (!options.some((o) => o.selected)) {
+    // No option is the model that runs (none is set, or the dashboard does not list it), so the pop-up names what does.
+    const runs = T.runs_as === null || T.runs_as === undefined ? "" : valueString({ key: "model", value: T.runs_as }, payload, true);
+    nodes.push(h("option", { value: "", selected: true, disabled: true }, runs || t("where_not_set")));
+  }
+  for (const o of options) {
+    const base = o.alias ? t("ed_model_opt_alias", { alias: o.value, name: o.name }) : o.name;
+    const marks = [o.now ? t("ed_model_opt_now") : null, o.blocked ? t("ed_model_opt_blocked") : null].filter(Boolean);
+    nodes.push(h("option", { value: o.value, selected: o.selected, disabled: o.disabled },
+      marks.length ? base + " (" + marks.join(", ") + ")" : base));
+  }
+  const select = h("select", {
+    id: MODEL_ID, class: "s6-sel", disabled: off, "data-edit-focus": "radio:model",
+    on: { change: (ev) => pick(ev && ev.target ? ev.target.value : "") },
+  }, nodes);
+  return h("div", { class: "s4-run" }, h("label", { class: "s4-lab", for: MODEL_ID }, t("ed_model_label")), select);
+}
+
+// The number box and Auto. The box holds what runs now (a number), the number chosen, or what was typed that did not
+// count. It commits on change (Enter or blur), never on a keystroke. A word under it says what it takes, and a second
+// says why a press picked nothing.
+function compactBox(T, mode) {
+  const off = controlsOff(mode, { busy: heldOff(), projectLock: T.project_lock, saveable: T.saveable });
+  const own = !foreign();
+  const field = own && S.field ? S.field : null;
+  const bad = field !== null && field.note === "bad";
+  const noModel = field !== null && field.note === "nomodel";
+  let value = "";
+  if (field !== null && field.text !== null) value = field.text;
+  else if (own && S.level === "number") value = String(S.number);
+  else if (typeof T.runs_as === "number") value = String(T.runs_as);
+  const autoOn = (own && S.level === "auto") || T.runs_as === "auto";
+  const describedby = [COMPACT_HINT_ID, bad || noModel ? COMPACT_NOTE_ID : null].filter(Boolean).join(" ");
+  const input = h("input", {
+    id: COMPACT_ID, class: "s6-num", type: "text", inputmode: "numeric", autocomplete: "off", value, disabled: off,
+    "aria-describedby": describedby, "aria-invalid": bad ? "true" : null, "data-edit-focus": "radio:compact",
+    on: { change: (ev) => commitWindow(ev && ev.target ? ev.target.value : "") },
+  });
+  const auto = button(t("ed_compact_auto"), { focus: "auto", disabled: off, onClick: pickAuto });
+  auto.setAttribute("aria-pressed", autoOn ? "true" : "false");
+  return h("div", { class: "s4-run" },
+    h("label", { class: "s4-lab", for: COMPACT_ID }, t("ed_compact_label")),
+    h("div", { class: "s6-ctl" }, input, auto),
+    h("p", { class: "s4-note", id: COMPACT_HINT_ID }, t("ed_compact_hint")),
+    bad ? h("p", { class: "s4-note", id: COMPACT_NOTE_ID, role: "status" }, t("ed_compact_bad")) : null,
+    noModel ? h("p", { class: "s4-note", id: COMPACT_NOTE_ID, role: "status" }, t("ed_compact_auto_nomodel")) : null);
+}
+
 // The first cap limit across the levels, as one line, with the lock line that says why this screen can't change it.
 function capNote(T) {
   for (const level of levelsOf(T)) {
     for (const limit of Array.isArray(level.limits) ? level.limits : []) {
       if (!limit || limit.kind !== "cap") continue;
-      const line = limitLine(limit, modelName());
+      const line = limitLine(limit, modelName(T));
       if (!line) continue;
-      const why = lockText(limit.lock_reason);
+      const why = lockText(limit.lock_reason, settingOf(T));
       return [h("p", { class: "s4-note" }, line), why ? h("p", { class: "s4-note" }, why) : null];
     }
   }
@@ -161,11 +247,12 @@ function placeOf(layer) {
   }
 }
 
-// The small line under a file row's name. A locked row with no line shows its file name alone.
-function fileLine(file) {
+// The small line under a file row's name. A locked row with no line shows its file name alone. setting is the setting whose
+// lines the rows are about.
+function fileLine(file, setting) {
   const shown = file.file_display ? shortFile(file.layer, file.file_display) : "";
   if (file.state === "absent") return t("where_no_file", { file: shown });
-  if (file.state === "no_line") return t("where_no_line", { file: shown });
+  if (file.state === "no_line") return words.whereNoLine(setting, { file: shown });
   if (!shown) return null;
   if (file.line !== null && file.line !== undefined) return t("file_line", { path: shown, line: file.line });
   return shown;
@@ -216,19 +303,49 @@ function canRemove(T, file) {
   return Boolean(entry && entry.remove) && (lock === null || lock === undefined || lock === "repeated_key");
 }
 
-// One file row. lv is the chosen level's row when the rows are live, else null.
-function fileRow(T, file, lv) {
-  const common = { name: placeOf(file.layer), file: fileLine(file) };
-  const hasValue = file.value !== null && file.value !== undefined && file.value !== "";
+// The entries of the main session's row of a setting, top wins. Empty when the payload has no such row.
+function mainEntries(payload, setting) {
+  if (!payload || !Array.isArray(payload.entries)) return [];
+  const row = rowFor(payload, MAIN_KEY, setting);
+  return row && Array.isArray(row.entries) ? entriesOf(payload, row) : [];
+}
+
+// A file row of a level that one cap change reaches. The file rows of the targets answer are about the effort line, and the
+// change goes to the cap line, so the row is drawn from the level's own file (what it would do) and the cap entries of
+// the settings payload (the value the file holds now).
+function capFile(file, lf, payload) {
+  const op = lf ? lf.op : null;
+  const entries = mainEntries(payload, CAP);
+  const mine = op === "replace"
+    ? entries.find((e) => e.layer === file.layer && e.line === lf.line) || entries.find((e) => e.layer === file.layer) || null
+    : null;
+  const state = op === "create" ? "absent" : op === "insert" ? "no_line" : op === "replace" ? "has_line" : file.state;
+  return { ...file, state, line: lf && lf.line !== undefined ? lf.line : file.line, value: mine ? mine.value : null, status: mine ? mine.status : null };
+}
+
+// The value of a file row as the page words it: a model by its display name, any other value as text.
+function fileValue(file, setting, payload) {
+  if (setting === MODEL) return valueString({ key: MODEL, value: file.value }, payload, true);
+  return text(file.value);
+}
+
+// One file row. lv is the chosen level's row when the rows are live, else null. setting is the open cell's.
+function fileRow(T, file, lv, setting) {
+  const payload = settingsPayload();
+  const lf = lv ? levelFile(lv, file.layer) : null;
+  const via = Boolean(lv) && lv.via === "cap";
+  const shown = via ? capFile(file, lf, payload) : file;
+  const about = via ? CAP : setting;
+  const common = { name: placeOf(file.layer), file: fileLine(shown, about) };
+  const hasValue = shown.value !== null && shown.value !== undefined && shown.value !== "";
   const cells = hasValue
-    ? { value: text(file.value), status: file.status || null }
+    ? { value: fileValue(shown, about, payload), status: shown.status || null }
     : { none: t("where_not_set") };
   if (!lv) {
     // In a remove's review the row whose line goes wears the picked style
-    const going = S.remove !== null && S.remove.layer === file.layer;
+    const going = S.remove !== null && !foreign() && S.remove.layer === file.layer;
     return rowNode({ ...common, ...cells, act: canRemove(T, file) ? removeLink(file) : null, cls: going ? "is-pick" : null });
   }
-  const lf = levelFile(lv, file.layer);
   const can = Boolean(lf) && lf.pickable === true;
   const picked = can && S.row === file.layer;
   return rowNode({
@@ -238,18 +355,6 @@ function fileRow(T, file, lv) {
       focus: "row:" + file.layer, onChange: () => pickRow(file.layer),
     },
   });
-}
-
-const settingsPayload = () => {
-  const res = live.ctx.data && live.ctx.data.settings;
-  return res && res.ok && res.data && typeof res.data === "object" ? res.data : null;
-};
-
-// The entries of the main session's effort row, top wins. Empty when the payload has no such row.
-function mainEntries(payload) {
-  if (!payload || !Array.isArray(payload.entries)) return [];
-  const row = rowFor(payload, MAIN_KEY, SETTING);
-  return row && Array.isArray(row.entries) ? entriesOf(payload, row) : [];
 }
 
 // Claude Code's default, outside the box: the value and its chip when it wins, else the value as not used.
@@ -263,16 +368,19 @@ function defaultRow(entries, payload) {
 }
 
 // The rows below the picker. Live, when a level is chosen and can be saved: the files of that level, labels around
-// a radio, same columns as at rest. Otherwise plain rows from the top-level files.
-function rows(T, lv) {
+// a radio, same columns as at rest. Otherwise plain rows from the top-level files. The line about what can beat these
+// files is worded for the setting whose lines the rows are.
+function rows(T, lv, setting) {
   const payload = settingsPayload();
-  const entries = mainEntries(payload);
+  const via = Boolean(lv) && lv.via === "cap";
+  const about = via ? CAP : setting;
+  const entries = mainEntries(payload, about);
   const others = entries
     .filter((e) => !FILE_LAYERS.includes(e.layer) && e.layer !== "default")
     .map((e) => entryRow(e, payload));
-  const files = filesOf(T).map((file) => fileRow(T, file, lv));
+  const files = filesOf(T).map((file) => fileRow(T, file, lv, setting));
   const tail = defaultRow(entries, payload);
-  return whereList(lv ? t("where_live") : t("where_rest"), others.concat(files), tail, true, Boolean(lv));
+  return whereList(lv ? t("where_live") : t("where_rest"), others.concat(files), tail, true, Boolean(lv), words.whereBeyond(about));
 }
 
 // ---------------------------------------------------------------- the body
@@ -281,28 +389,38 @@ function rows(T, lv) {
 // draws it. There is no change in progress, and the rail is the plain one.
 function shellLock(T) {
   if (situation().kase !== "nothing_project" || firstLockReason(T) !== "env_shell") return null;
-  return h("p", { class: "s4-lock" }, lockIcon(), h("span", null, lockText("env_shell")));
+  return h("p", { class: "s4-lock" }, lockIcon(), h("span", null, lockText("env_shell", settingOf(T))));
 }
 
-function bodyFrame(T, mode) {
-  const chosen = S.level !== null && mode === "ready" ? levelRow(T, S.level) : null;
-  const lv = chosen && chosen.saveable === true && T.saveable !== false && !T.project_lock ? chosen : null;
+// The control of a setting: the level radios, the model pop-up or the window box.
+function control(T, mode, setting) {
+  switch (setting) {
+    case MODEL: return modelPicker(T, mode);
+    case COMPACT: return compactBox(T, mode);
+    default: return h("div", { class: "s4-run" }, h("p", { class: "s4-lab" }, setting === CAP ? t("cap") : t("run_at")), picker(T, mode, setting));
+  }
+}
+
+function bodyFrame(T, mode, setting) {
+  const chosen = S.level !== null && mode === "ready" && !foreign() ? levelRow(T, S.level) : null;
+  // A level that needs the cap first has no file to pick, so its rows stay plain.
+  const lv = chosen && chosen.saveable === true && chosen.cap_first !== true && T.saveable !== false && !T.project_lock ? chosen : null;
   return [
     shellLock(T),
-    h("div", { class: "s4-run" }, h("p", { class: "s4-lab" }, t("run_at")), picker(T, mode)),
+    control(T, mode, setting),
     T.levels_state === "model_unknown" ? h("p", { class: "s4-note", id: NOTE_ID }, t("ed_levels_model_unknown")) : null,
     capNote(T),
-    rows(T, lv),
+    rows(T, lv, setting),
   ];
 }
 
 function bodyNodes() {
-  if (live.selected !== SETTING) return [];
+  if (!live.editable) return [];
   const T = targetsData();
   if (T === null) return [];
   if (T === false) return [hint(t("ed_err_network"))];
   if (T.levels_state === "no_effort_support") return [noSupportCard(T)];
-  return bodyFrame(T, live.ctx.edit.mode);
+  return bodyFrame(T, live.ctx.edit.mode, openSetting());
 }
 
 // ---------------------------------------------------------------- the rail
@@ -349,40 +467,61 @@ function noticeNode() {
 function firstLockReason(T) {
   for (const level of levelsOf(T)) {
     for (const limit of Array.isArray(level.limits) ? level.limits : []) {
-      if (limit && lockText(limit.lock_reason)) return limit.lock_reason;
+      if (limit && lockText(limit.lock_reason, settingOf(T))) return limit.lock_reason;
     }
   }
   return null;
 }
 
+// The settings payload's models map (id to display name), or null.
+function modelsMap() {
+  const payload = settingsPayload();
+  return payload && payload.models ? payload.models : null;
+}
+
+// The value of the chosen level as the rail words it: the typed number of the compact window, Auto, or the level.
+function shownLevel() {
+  return words.shown(S.setting, changeValue(), modelsMap());
+}
+
 // The headline of the change in the rail: what runs now and the level picked. lead is the notice over it, if any.
 // Pick a file adds the note that no file is picked yet. While a preview is on its way, or after it failed, the frame
-// is the same with no note. Save and Cancel sit in the foot.
+// is the same with no note. Save and Cancel sit in the foot. A model the dashboard can't tell the allowed models list
+// for says so.
 function pickFileRail(T, lead, withNote) {
   const was = T.runs_as;
   const hasWas = was !== null && was !== undefined;
+  const lv = levelRow(T, S.level);
   return h("div", { class: "s4-rb" },
     lead,
     h("h2", { class: "s4-rh" }, t("review_h")),
     h("div", { class: "s4-chg" },
-      hasWas ? h("span", { class: "s4-was" }, text(was)) : null,
+      hasWas ? h("span", { class: "s4-was" }, words.shown(S.setting, was, modelsMap())) : null,
       hasWas ? h("span", { "aria-hidden": "true" }, "→") : null,
       hasWas ? h("span", { class: "sr" }, t("ed_to")) : null,
-      h("span", { class: "s4-to" }, text(S.level))),
-    h("p", { class: "s4-runs" }, t("ed_runs")),
+      h("span", { class: "s4-to" }, shownLevel())),
+    h("p", { class: "s4-runs" }, words.runsWord(writeSetting())),
+    lv && lv.allow === "unclear" ? h("p", { class: "s4-note" }, t("ed_allow_unclear_t")) : null,
     withNote ? h("p", { class: "s4-note" }, t("ed_pick_file")) : null);
 }
 
 // Nothing can be saved at this level. The winner's own line says what holds it, when there is one.
-function nothingLevelRail(lv) {
+function nothingLevelRail(lv, T) {
+  const setting = S.setting;
   const limits = Array.isArray(lv && lv.limits) ? lv.limits : [];
   const winner = limits.find((l) => l && l.kind === "winner");
-  const paras = winner ? limitParas([winner], modelName()) : [];
+  const paras = winner ? limitParas([winner], modelName(T), setting) : [];
   // When every file is locked, the first file's lock says why, under the Can't save line.
   const files = Array.isArray(lv && lv.files) ? lv.files.filter((f) => f && typeof f === "object") : [];
-  if (files.length > 0 && files.every((f) => f.lock_reason !== null && f.lock_reason !== undefined)) paras.push(lockText(files[0].lock_reason));
-  return h("div", { class: "s4-rb" }, nt("warn", t("ed_nosave_level", { level: S.level }), paras,
+  if (files.length > 0 && files.every((f) => f.lock_reason !== null && f.lock_reason !== undefined)) paras.push(lockText(files[0].lock_reason, setting));
+  return h("div", { class: "s4-rb" }, nt("warn", words.nosaveLevel(setting, { level: shownLevel() }), paras,
     [button(t("ed_cancel"), { focus: "cancel", onClick: cancel })]));
+}
+
+// The value of the effort line, for the two-change panel: the winner of the effort row, else what runs.
+function effortLine(T) {
+  const winner = mainEntries(settingsPayload(), EFFORT)[0];
+  return winner && typeof winner.value === "string" ? winner.value : T.runs_as;
 }
 
 // The frame of a removal's review while its preview is on its way or failed: the heading alone. Save and Cancel sit in
@@ -397,10 +536,11 @@ function removeBlockedRail() {
     [button(t("ed_cancel"), { focus: "cancel", onClick: cancel })]));
 }
 
-// What the page is showing, and the data it draws from. T is a usable ready or locked answer, or null.
+// What the page is showing, and the data it draws from. T is a usable ready or locked answer, or null. A change made on
+// another cell reads its own targets answer, so its rail and foot stay whichever cell is open.
 function situation() {
   const mode = live.ctx.edit.mode;
-  const found = targetsData();
+  const found = changeTargets();
   const T = found && typeof found === "object" ? found : null;
   if (mode === "ready" && !T) return { mode, T, kase: "rest" };
   const noLevels = T !== null && T.levels_state === "no_effort_support";
@@ -417,9 +557,9 @@ function situation() {
   return { mode, T, lv, kase };
 }
 
-// The cases that hold a chosen level. On a cell that isn't Effort the rail and the foot keep them too, because
-// picking another cell never drops the change.
-const CHANGING = ["review", "pick_file", "stop", "nothing_level", "remove", "remove_blocked"];
+// The cases that hold a chosen level. On a cell that isn't the one the change was made on the rail and the foot keep
+// them too, because picking another cell never drops the change.
+const CHANGING = ["review", "pick_file", "two_changes", "stop", "nothing_level", "remove", "remove_blocked"];
 const changing = ({ mode, T, kase }) => mode === "ready" && T !== null && (S.level !== null || S.remove !== null)
   && CHANGING.includes(kase);
 // True when the older backups list, or the preview of an Undo anyway or a restore, is open.
@@ -432,22 +572,23 @@ function railNodes() {
   }
   const sit = situation();
   const { mode, T, lv, kase } = sit;
-  if (live.selected !== SETTING && !changing(sit)) return [live.restRail(null)];
+  if (!live.editable && !changing(sit)) return [live.restRail(null)];
   if (mode === "ready" && S.frame && kase !== "project_lock") return [noticeNode(), frameNodes(S.frame)];
   const lead = [noticeNode()];
   switch (kase) {
-    case "project_lock": return [live.restRail([lockText(T.project_lock)].filter(Boolean))];
+    case "project_lock": return [live.restRail([lockText(T.project_lock, settingOf(T))].filter(Boolean))];
     case "off": return [live.restRail([tn("ed_off")])];
     case "locked": return [S.token && S.token.where === "card" ? tokenNt() : null, live.restRail([tn("ed_locked")])];
     case "nothing_project":
       if (firstLockReason(T) === "env_shell") return [noticeNode(), live.restRail(null)];
-      return [noticeNode(), live.restRail([t("ed_nosave_project"), lockText(firstLockReason(T))].filter(Boolean))];
+      return [noticeNode(), live.restRail([words.nosaveProject(settingOf(T)), lockText(firstLockReason(T), settingOf(T))].filter(Boolean))];
     case "review": return [S.pv ? review(T, S.pv, reviewEnv(lead)) : pickFileRail(T, lead, false)];
     case "remove": return [S.pv ? review(T, S.pv, reviewEnv(lead)) : removeFrame(lead)];
     case "remove_blocked": return [noticeNode(), removeBlockedRail()];
     case "pick_file": return [pickFileRail(T, lead, true)];
-    case "stop": return [noticeNode(), stopPanel(lv, S.level, { cancel, model: modelName() })];
-    case "nothing_level": return [noticeNode(), nothingLevelRail(lv)];
+    case "two_changes": return [noticeNode(), twoChangesPanel(lv, S.level, { cancel, startCap: () => startWithCap(S.level), effortLine: effortLine(T) })];
+    case "stop": return [noticeNode(), stopPanel(lv, S.level, { cancel, model: modelName(T), setting: S.setting })];
+    case "nothing_level": return [noticeNode(), nothingLevelRail(lv, T)];
     default: return [noticeNode(), live.restRail(null)];
   }
 }
@@ -470,8 +611,9 @@ function changeFootNodes() {
 
 // What the strip builders need from the flow, read when the strip is drawn.
 function stripNodes() {
-  // A result stays on every cell, because a Save can be pressed on any of them. The last change at rest is Effort's.
-  if (live.selected !== SETTING && !S.strip) return [];
+  // A result stays on every cell, because a Save can be pressed on any of them. The last change at rest is the project's,
+  // whichever of the four settings it changed, and it is worded for its own.
+  if (!live.editable && !S.strip) return [];
   const mode = live.ctx.edit.mode;
   return footNodes({
     mode,
@@ -479,7 +621,7 @@ function stripNodes() {
     strip: S.strip,
     changing: holding(), // the foot holds Save and Cancel then, and the last change waits
     stripBusy: S.stripBusy,
-    history: mode === "ready" && live.selected === SETTING ? historyData() : null,
+    history: mode === "ready" && live.editable ? historyData() : null,
     doUndo,
     dismissStrip,
     startBack,
@@ -502,7 +644,8 @@ const keyOf = (n) => String(n.getAttribute("data-edit-focus"));
 const isOff = (n) => n.hasAttribute("disabled");
 
 // The control that takes focus when the one that held it is gone or off: the checked row, the first enabled row,
-// then the checked level radio, then the first enabled one. Searches the slots given.
+// then the checked level radio, then the first enabled one. Searches the slots given. The model pop-up and the window
+// box carry a radio key, so they stand in for the level radios.
 function fallbackFocus(slots, rowsFirst) {
   const find = (test) => slots.flatMap((slot) => walk(slot, test))[0] || null;
   const on = (prefix) => (n) => keyOf(n).startsWith(prefix) && !isOff(n);
@@ -515,9 +658,9 @@ function fallbackFocus(slots, rowsFirst) {
 // are in the page, because a detached node takes no focus.
 function applyWant() {
   if (!S.want || !live) return false;
-  // The level radios belong to the Effort cell. On another cell there is none to focus, and the wish does not wait
-  // for the day Effort comes back.
-  if (S.want === "radio" && live.selected !== SETTING) {
+  // The level radios belong to a cell the page edits. On another cell there is none to focus, and the wish does not wait
+  // for the day an editing cell comes back.
+  if (S.want === "radio" && !live.editable) {
     S.want = null;
     return false;
   }
@@ -560,8 +703,9 @@ export function restoreFocus(root, key) {
   if (found && found !== document.activeElement) found.focus();
 }
 
-// The Set of setting keys that have a change waiting on Save: Effort, while the open project is Not saved.
-const notSavedSet = () => new Set(isNotSaved() ? [SETTING] : []);
+// The Set of setting keys that have a change waiting on Save: the cell the change was made on, while the open project is
+// Not saved.
+const notSavedSet = () => new Set(isNotSaved() ? [S.setting] : []);
 
 // A choice made with no page render changes what the band and the project picker say. The band is told when its
 // Set changes, and app.js is asked to draw the picker again when the list of projects does.
@@ -602,12 +746,12 @@ onRedraw(redraw);
 
 // Called by pages/settings.js once per render with a payload, whichever cell is open. restRail(notes) draws the
 // rail at rest for the open cell: notes is a list of lines for under "Why this value", or null. selected is the
-// open cell, and the Effort frame, the notes and the results belong to the effortLevel cell alone, so a read-only cell
-// never shows the editing-is-off line. A change in progress is the exception: its review and its Save and Cancel
-// stay on every cell. onNotSaved(set) redraws the band alone when a choice changes the Set of Not saved settings.
+// open cell and editable says the page edits it. The body, the notes and the results belong to the editing cells alone, so
+// a read-only cell never shows the editing-is-off line. A change in progress is the exception: its review and its Save and
+// Cancel stay on every cell. onNotSaved(set) redraws the band alone when a choice changes the Set of Not saved settings.
 // It returns the three slots, notSaved (that Set, for the band the page draws) and done(), which the page calls once
 // its nodes are in the document. Mode null returns nothing to place.
-export function begin(ctx, { restRail, selected, onNotSaved }) {
+export function begin(ctx, { restRail, selected, editable, onNotSaved }) {
   const shellBefore = live ? live.shellSig : null; // the project list the picker was last drawn with
   const mode = ctx.edit ? ctx.edit.mode : null;
   syncFlow(ctx.project ? ctx.project.key : null, mode);
@@ -620,6 +764,7 @@ export function begin(ctx, { restRail, selected, onNotSaved }) {
   const mine = {
     ctx,
     selected,
+    editable: editable === undefined ? selected === EFFORT : Boolean(editable),
     restRail: restRail || (() => h("div", { class: "s4-rb" })),
     onNotSaved,
     bandSig: "",
@@ -631,12 +776,14 @@ export function begin(ctx, { restRail, selected, onNotSaved }) {
     foot: h("div", { class: "s4-slot", "data-edit": "foot" }, pickSlot, stripSlot),
   };
   setLive(mine);
+  // The level Start with the cap carried is chosen once the targets of the cell it named are in.
+  const carried = applyCarry();
   // Once for each targets object the page draws: the picked row stays valid, and a preview matches it.
   const T = targetsData();
   if (T && T !== S.seen && !S.busy) {
     const first = S.seen !== null; // a flow that just loaded has no seen yet, and its preview is asked for once
     S.seen = T;
-    settle(first);
+    if (!carried) settle(first);
   }
   const notSaved = notSavedSet();
   mine.bandSig = Array.from(notSaved).join(",");

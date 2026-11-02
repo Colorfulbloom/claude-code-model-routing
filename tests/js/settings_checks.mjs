@@ -1487,11 +1487,12 @@ test("frame: each key of TILES is editable or draws no radio and no Run at contr
     assert.equal(body.find((n) => hasClass(n, "s4-run") && /Run at/.test(text(n))).length, 0, spec.key);
     assert.equal(text(body).includes(STRINGS.run_at), false, spec.key + " says Run at");
   }
-  assert.deepEqual(FRAME_KEYS, ["model", "maxEffortLevel", "autoCompactWindow", "promptCacheTtl", "alwaysThinkingEnabled", "fallbackModel", "availableModels"]);
+  assert.deepEqual(FRAME_KEYS, ["promptCacheTtl", "alwaysThinkingEnabled", "fallbackModel", "availableModels"]);
+  assert.deepEqual(settings.EDITABLE_SETTINGS, ["model", "effortLevel", "maxEffortLevel", "autoCompactWindow"]);
   assert.equal(bodyOf_(show(payload, { setting: "effortLevel" })).childNodes.length, 3, "with no edit session Effort's body is the read-only frame");
 });
 
-test("frame: the seven read-only cells draw the lock line and never the editing off or locked lines, in every mode", () => {
+test("frame: the four read-only cells draw the lock line and never the editing off or locked lines, in every mode", () => {
   const payload = framePayload(EIGHT);
   for (const mode of ["off", "locked", "ready"]) {
     for (const key of FRAME_KEYS) {

@@ -1,6 +1,6 @@
-// The flow of the Effort body, the rail and the undo strip on the Settings page: its state, kept for each project,
-// the data readers over the newest render, and the actions (pick a level, pick a row, preview, save, undo,
-// dismiss, reload). Nothing here builds a node. An action that changes what is on screen calls redraw(), which
+// The flow of the editing body (Effort, the effort cap, the model, the compact window), the rail and the undo strip on
+// the Settings page: its state, kept for each project, the data readers over the newest render, and the actions (pick a
+// level, pick a row, preview, save, undo, dismiss, reload). Nothing here builds a node. An action that changes what is on screen calls redraw(), which
 // edit_card.js registers with onRedraw() when it loads, so this file imports nothing from it.
 //
 // Rules this file keeps, the same as edit_card.js.
@@ -18,20 +18,31 @@
 //   of the file the preview showed, so a file that changed since is refused and the preview is drawn again.
 // - One change at a time. A level (with a row) or a line to remove is chosen, never both. A remove is a set with no
 //   value: its preview and save carry action "remove", and its flow field holds the line's target, layer and line.
+// - A change belongs to one setting, the cell it was made on (setting), and keeps the targets answer it was made from
+//   (heldT). Another cell that edits opens read-only while a change is held (foreign()), and the rail and the foot keep
+//   the change's review. A level that one cap change reaches (via "cap") is written through the cap, so its preview and
+//   save carry the cap setting. A level that needs the cap first (cap_first) has nothing to save: Start with the cap
+//   drops the pick and opens the cap cell with the same level chosen (carry).
 
 import { t } from "./format.js";
 import { olderRows, overCap, settleRow } from "./edit_pick.js";
 import { basename, bodyOf, codeOf, errorText, levelRow, lockText, runningOf, targetById, walk } from "./edit_ui.js";
+import { CAP, EFFORT, parseWindow, settingOf, settingOfEdit } from "./edit_setting.js";
 
 // ---------------------------------------------------------------- state
 
 export function flow() {
   return {
-    level: null, // the level the owner picked, or null at rest
+    level: null, // the level the owner picked, or null at rest. For the compact window it is "auto" or "number"
+    number: null, // the whole number of a compact window change (level "number"), else null
+    setting: null, // the setting of the change in progress (a level or a remove): the cell it was made on, else null
+    heldT: null, // the targets answer that change was made from, so another cell can keep drawing its review
+    field: null, // the compact window box: { text, note } what was typed and the note under the box, or null
+    carry: null, // { setting, level } a level to choose on another cell once its targets load (Start with the cap)
     row: null, // the layer of the file row picked for that level, or null
     remove: null, // { target, layer, line, blocked } a line the owner chose to remove, or null. It excludes level
-    pv: null, // { target, value, action, data } the preview on screen. A remove has value null
-    pending: null, // { target, value, action } a preview on its way
+    pv: null, // { target, value, action, setting, data } the preview on screen. A remove has value null
+    pending: null, // { target, value, action, setting } a preview on its way
     notice: null, // a note over the review: { kind, heading, paras, dismiss }
     frame: null, // a result that replaces the review: unverified, raced or ledger
     failed: false, // a write failed and the review stays
@@ -93,6 +104,10 @@ export function resetFlow() {
 export function resetCard() {
   bump();
   S.level = null;
+  S.number = null;
+  S.setting = null;
+  S.heldT = null;
+  S.field = null;
   S.row = null;
   S.remove = null;
   S.pv = null;
@@ -141,18 +156,18 @@ export function syncFlow(key, mode) {
 // ---------------------------------------------------------------- not saved
 
 // True when a change waits on Save in the flow S holds: a level is chosen and that level can be saved somewhere, or
-// a line to remove is chosen and nothing blocks it. The two stop rows (a cap or the model holds the level, or nothing
-// can be saved at it) have nothing to save, a blocked remove has nothing to save either, and a project that takes no
-// save has no change at all. The picker and the rows are not part of it.
+// a line to remove is chosen and nothing blocks it. The stop rows (a cap or the model holds the level, or nothing can
+// be saved at it) have nothing to save, and neither has a level that needs the cap first. A blocked remove has nothing to
+// save either, and a project that takes no save has no change at all. The picker and the rows are not part of it.
 export function isNotSaved() {
   if (!live || (S.level === null && S.remove === null) || live.ctx.edit.mode !== "ready") return false;
   if (S.frame && S.frame.type !== "ledger") return false; // a raced or unverified save wrote the file
-  const T = targetsData();
+  const T = changeTargets();
   if (!T || T.enabled === false || T.levels_state === "no_effort_support") return false;
   if (T.project_lock || T.saveable === false) return false;
   if (S.remove !== null) return S.remove.blocked !== true;
   const lv = levelRow(T, S.level);
-  return Boolean(lv) && lv.saveable === true;
+  return Boolean(lv) && lv.saveable === true && lv.cap_first !== true;
 }
 
 // The keys of the projects with a change waiting on Save: the open one, and the ones a switch put away.
@@ -165,8 +180,30 @@ export function notSavedProjects() {
 
 // ---------------------------------------------------------------- data
 
-// The targets answer when it is usable: the object, null when it has not loaded (or belongs to another project),
-// false when it failed. The off answer has no targets, and a flow draws it read-only.
+// The setting the targets of the open cell are for: the open cell when the page edits it, else Effort, whose targets the
+// page loads for a cell it cannot edit.
+export function openSetting() {
+  return live && live.editable ? live.selected : EFFORT;
+}
+
+// The setting of the change the flow holds: a chosen level or a remove (the cell it was made on), or the preview of an
+// older backup (the setting of the row). Null at rest, and for the list of older backups, which belongs to no setting.
+export function heldSetting() {
+  if (S.level !== null || S.remove !== null) return S.setting;
+  if (S.back !== null && S.back.view === "review") return settingOfEdit(S.back.pv || S.back.row);
+  return null;
+}
+
+// True when a change is held for another setting than the open cell's. That cell draws read-only then: its picker and
+// rows are off and its rows have no Remove line links, and the rail keeps the change's review.
+export function foreign() {
+  const held = heldSetting();
+  return held !== null && held !== openSetting();
+}
+
+// The targets answer when it is usable: the object, null when it has not loaded (or belongs to another project, or to
+// another setting than the open cell's, whose own answer is on its way), false when it failed. The off answer has no
+// targets, and a flow draws it read-only.
 export function targetsData() {
   const res = live.ctx.edit.targets;
   if (!res) return null;
@@ -174,7 +211,27 @@ export function targetsData() {
   const usable = res.ok && data && typeof data === "object" && Array.isArray(data.levels)
     && (Array.isArray(data.targets) || data.enabled === false);
   if (usable && data.project !== live.ctx.project.key) return null;
+  if (usable && settingOf(data) !== openSetting()) return null;
   return usable ? data : false;
+}
+
+// The targets answer the change in progress reads: the open cell's own, or, when the change was made on another cell, the
+// answer it was made from. With no change in progress it is the open cell's.
+export function changeTargets() {
+  const T = targetsData();
+  if (S.setting === null || (S.level === null && S.remove === null)) return T;
+  return openSetting() === S.setting ? T : S.heldT;
+}
+
+// The value the chosen level writes: the typed number for the compact window's number level, else the level itself.
+export const changeValue = () => (S.level === "number" ? S.number : S.level);
+
+// The setting a preview and a save of the change are sent for. A level that one cap change reaches is written through the
+// cap, so it is the cap's, whatever cell it was chosen on.
+export function writeSetting() {
+  const T = changeTargets();
+  const lv = T && S.level !== null ? levelRow(T, S.level) : null;
+  return lv && lv.via === "cap" ? CAP : S.setting;
 }
 
 export function historyData() {
@@ -218,7 +275,7 @@ export function cancel() {
 // pick, a refused save, and once for each new targets object the page draws. The running level chosen after a
 // refresh clears the flow. A row that went grey lands on the local file or on nothing, never on another file.
 export function settle(fresh = false) {
-  if (!live || S.busy || live.ctx.edit.mode !== "ready") return;
+  if (!live || S.busy || live.ctx.edit.mode !== "ready" || foreign()) return;
   if (S.level === null && S.remove !== null) {
     settleRemove(fresh);
     return;
@@ -231,10 +288,12 @@ export function settle(fresh = false) {
     return;
   }
   const lv = levelRow(T, S.level);
-  if (!lv || lv.result === "now" || runningOf(T) === S.level) {
+  // The running level chosen after a refresh clears the flow. So does a window number that now runs.
+  if (!lv || lv.result === "now" || runningOf(T) === S.level || (S.level === "number" && T.runs_as === S.number)) {
     resetCard();
     return;
   }
+  S.heldT = T;
   S.row = settleRow(lv, S.row);
   const file = S.row === null ? null : levelFile(lv, S.row);
   if (!file || !file.target) {
@@ -244,11 +303,11 @@ export function settle(fresh = false) {
     return;
   }
   if (S.frame) return;
-  const same = (x) => x && x.target === file.target && x.value === S.level;
+  const same = (x) => x && x.target === file.target && x.value === changeValue();
   // fresh: begin() handed a new targets answer, so a preview made from the old files is asked for again.
   if ((!fresh && same(S.pv)) || same(S.pending)) return;
   S.pv = null;
-  startPreview(file.target, S.level);
+  startPreview(file.target, changeValue());
 }
 
 // The remove path of settle(): the chosen line is still in the targets answer, and the preview matches it. A line that
@@ -256,6 +315,7 @@ export function settle(fresh = false) {
 function settleRemove(fresh) {
   const T = targetsData();
   if (!T || T.enabled === false) return;
+  S.heldT = T;
   if (T.project_lock || T.saveable === false) {
     resetCard();
     return;
@@ -287,13 +347,17 @@ function pickable(T) {
   return Boolean(T) && T.enabled !== false && live.ctx.edit.mode === "ready" && !T.project_lock && T.saveable !== false;
 }
 
-// The owner picked a level. Pressing the running level, or any level while a save is on its way, does nothing.
-export function pick(value) {
-  if (S.busy || !live || S.remove !== null || S.back !== null) return;
+// Chooses a level on the open cell and asks for its preview. Returns null when nothing was chosen (the running level, a
+// level held by a cap or the allowed models list, a press while a save is on its way, a cell that is read-only now), else
+// { hadResult }, true when the result of the last save left the foot. number is the whole number of the compact window's
+// number level. Nothing is written: a preview writes nothing, and only Save does.
+function choose(value, number = null) {
+  if (S.busy || !live || S.remove !== null || S.back !== null || foreign()) return null;
   const T = targetsData();
-  if (!pickable(T)) return;
+  if (!pickable(T)) return null;
   const lv = levelRow(T, value);
-  if (!lv || lv.result === "now" || runningOf(T) === value || overCap(lv)) return;
+  if (!lv || lv.result === "now" || runningOf(T) === value || overCap(lv) || lv.allow === "blocked") return null;
+  if (value === "number" && T.runs_as === number) return null; // the window that runs now, typed again
   bump(); // an older preview answer still on its way is dropped
   S.notice = null;
   S.frame = null;
@@ -302,16 +366,60 @@ export function pick(value) {
   S.failedLeft = false;
   S.pv = null;
   S.reloaded = null;
+  S.field = null;
   S.level = value;
+  S.number = value === "number" ? number : null;
+  S.setting = openSetting();
+  S.heldT = T;
   const hadResult = Boolean(S.strip) && !S.stripBusy;
   if (hadResult) S.strip = null; // a new edit starts
   settle();
-  redraw(hadResult ? undefined : "card"); // the body, the rail and the foot's buttons, and the strip only when its result went
+  return { hadResult };
+}
+
+// The owner picked a level. Pressing the running level, or any level while a save is on its way, does nothing.
+export function pick(value, number = null) {
+  const done = choose(value, number);
+  if (done) redraw(done.hadResult ? undefined : "card"); // the body, the rail and the foot's buttons, and the strip only when its result went
+}
+
+// The owner committed the compact window box (Enter or blur). Commas and spaces are dropped, then it must be a whole
+// number from 100000 to 1000000, else the box keeps what was typed, says so, and nothing is picked. The number that runs
+// now, or the one already chosen, picks nothing. The box is drawn again either way, so it shows the state.
+export function commitWindow(raw) {
+  if (S.busy || !live || S.remove !== null || S.back !== null || foreign()) return;
+  if (!pickable(targetsData())) return;
+  const parsed = parseWindow(raw);
+  if (!parsed.ok) {
+    S.field = { text: String(raw === null || raw === undefined ? "" : raw), note: "bad" };
+    redraw("card");
+    return;
+  }
+  S.field = null;
+  const done = S.level === "number" && S.number === parsed.value ? null : choose("number", parsed.value);
+  redraw(done && done.hadResult ? undefined : "card");
+}
+
+// The owner pressed Auto. When the dashboard has no model, Auto has no line to go in (it is written under a model only),
+// so the box says so and nothing is picked.
+export function pickAuto() {
+  if (S.busy || !live || S.remove !== null || S.back !== null || foreign()) return;
+  const T = targetsData();
+  if (!pickable(T)) return;
+  const lv = levelRow(T, "auto");
+  if (lv && lv.result !== "now" && lv.saveable !== true && (T.model === null || T.model === undefined)) {
+    S.field = { text: null, note: "nomodel" };
+    redraw("card");
+    return;
+  }
+  S.field = null;
+  const done = choose("auto");
+  redraw(done && done.hadResult ? undefined : "card");
 }
 
 // The owner picked a file row for the chosen level. Only that row's target is previewed.
 export function pickRow(layer) {
-  if (S.busy || !live || S.level === null || S.remove !== null || S.back !== null) return;
+  if (S.busy || !live || S.level === null || S.remove !== null || S.back !== null || foreign()) return;
   const T = targetsData();
   if (!pickable(T)) return;
   const file = levelFile(levelRow(T, S.level), layer);
@@ -325,7 +433,7 @@ export function pickRow(layer) {
   S.pv = null;
   S.reloaded = null;
   S.row = layer;
-  startPreview(file.target, S.level);
+  startPreview(file.target, changeValue());
   redraw("card");
 }
 
@@ -334,7 +442,7 @@ export function pickRow(layer) {
 // target, or one the server locks for any reason but a repeated key, does nothing. A repeated key opens the blocked
 // rail and asks for no preview. Cancel is where focus goes, because the pressed link goes away.
 export function startRemove(file) {
-  if (S.busy || !live || S.level !== null || S.remove !== null || S.back !== null) return;
+  if (S.busy || !live || S.level !== null || S.remove !== null || S.back !== null || foreign()) return;
   const T = targetsData();
   if (!pickable(T) || !file || !file.target) return;
   const entry = targetById(T, file.target);
@@ -350,6 +458,8 @@ export function startRemove(file) {
   S.pv = null;
   S.reloaded = null;
   S.remove = { target: entry.target, layer: entry.layer, line: entry.line, blocked: lock === "repeated_key" };
+  S.setting = openSetting();
+  S.heldT = T;
   const hadResult = Boolean(S.strip) && !S.stripBusy;
   if (hadResult) S.strip = null; // a new edit starts
   if (!S.remove.blocked) startPreview(entry.target, null, "remove");
@@ -357,32 +467,63 @@ export function startRemove(file) {
   redraw(hadResult ? undefined : "card");
 }
 
+// "Start with the cap": the pick on the Effort cell goes, and the Effort cap cell opens with the same level to choose in the
+// cap picker once its own targets load. The normal settle then applies that level's preselect (the local file, or none).
+// Nothing is written. The cell is opened through ctx.edit.openSetting, the same address the band's cell links to.
+export function startWithCap(level) {
+  if (S.busy || !live || S.back !== null || typeof level !== "string") return;
+  const goTo = live.ctx.edit.openSetting;
+  if (typeof goTo !== "function") return;
+  const from = S.setting !== null ? S.setting : openSetting();
+  resetCard();
+  S.carry = { setting: CAP, level, from };
+  redraw("card");
+  goTo(CAP);
+}
+
+// Called by the card on every render. Once the targets of the cell Start with the cap named are in, the level it carried is
+// chosen there. A carry waits while those targets load, and goes when the owner has gone to a cell that is neither the one
+// it left nor the one it named. Returns true when it chose a level.
+export function applyCarry() {
+  const carry = S.carry;
+  if (carry === null || !live) return false;
+  if (live.selected !== carry.setting) {
+    if (live.selected !== carry.from) S.carry = null;
+    return false;
+  }
+  const T = targetsData();
+  if (T === null) return false;
+  S.carry = null;
+  return T !== false && choose(carry.level) !== null;
+}
+
 // True when the preview's op isn't the op the targets answer gave for the file row of that target.
 function opDiffers(target, value, data) {
-  const T = targetsData();
-  const lv = T ? levelRow(T, value) : null;
+  const T = changeTargets();
+  const lv = T && S.level !== null ? levelRow(T, S.level) : null;
   const file = lv && Array.isArray(lv.files) ? lv.files.find((f) => f && f.target === target) : null;
   return Boolean(file) && file.op !== data.op;
 }
 
 // The heading of a refused answer. The project folder going away says so for the two files inside it. Any other
 // answer is worded by its code.
-function failHeading(out, layer) {
+function failHeading(out, layer, setting) {
   if (codeOf(out) === "file_missing") {
     if (layer === "local" || layer === "project") return t("ed_fail_project_gone");
-    return lockText("file_missing") || errorText(out && out.res);
+    return lockText("file_missing") || errorText(out && out.res, setting);
   }
-  return errorText(out && out.res);
+  return errorText(out && out.res, setting);
 }
 
 export async function startPreview(target, value, action = "set") {
   const mine = S.seq;
   const epoch = S.epoch;
   const layer = action === "remove" && S.remove ? S.remove.layer : S.row;
-  S.pending = { target, value, action };
+  const setting = writeSetting();
+  S.pending = { target, value, action, setting };
   let out;
   try {
-    out = await live.ctx.edit.preview(target, value, action);
+    out = await live.ctx.edit.preview(target, value, action, setting);
   } catch (err) {
     out = { kind: "error", res: null };
   }
@@ -410,9 +551,9 @@ export async function startPreview(target, value, action = "set") {
       redraw("card");
       return;
     }
-    S.pv = { target, value, action, data };
+    S.pv = { target, value, action, setting, data };
   } else {
-    S.notice = { kind: "err", heading: failHeading(out, layer), paras: [], dismiss: true };
+    S.notice = { kind: "err", heading: failHeading(out, layer, setting), paras: [], dismiss: true };
   }
   redraw("card");
 }
@@ -461,6 +602,10 @@ function landLate(key, out, sent) {
   if (kind === "ok") {
     const data = bodyOf(out);
     holder.level = null;
+    holder.number = null;
+    holder.setting = null;
+    holder.heldT = null;
+    holder.field = null;
     holder.row = null;
     holder.remove = null;
     holder.pv = null;
@@ -490,9 +635,11 @@ function syncShellList() {
 
 // The result a save leaves in the foot. The preview it was made from says what the change did to what runs.
 function savedStrip(data, sent) {
+  const edit = data.edit || {};
   return {
     kind: "saved",
-    edit: data.edit || {},
+    setting: Array.isArray(edit.key_path) ? settingOfEdit(edit) : sent.setting || EFFORT,
+    edit,
     warning: sent.data.warning || null,
     noEffect: sent.data.no_effect === true,
     runsAfter: sent.data.runs_after,
@@ -514,7 +661,7 @@ export async function doSave() {
   redraw();
   let out;
   try {
-    out = await live.ctx.edit.save(sent.data, sent.target, sent.value, sent.action);
+    out = await live.ctx.edit.save(sent.data, sent.target, sent.value, sent.action, sent.setting);
   } catch (err) {
     out = { kind: "error", res: null };
   }
@@ -538,7 +685,7 @@ export async function doSave() {
   } else if (kind === "stale") {
     const stale = staleNotice(data);
     S.notice = stale.notice;
-    S.pv = stale.fresh ? { target: sent.target, value: sent.value, action: sent.action, data: stale.fresh } : null;
+    S.pv = stale.fresh ? { target: sent.target, value: sent.value, action: sent.action, setting: sent.setting, data: stale.fresh } : null;
     if (!stale.fresh) {
       S.row = null;
       S.remove = null; // the line to remove is gone, so the notice stays over the rest rail
@@ -567,10 +714,10 @@ export async function doSave() {
   } else if (refused(out)) {
     S.pv = null;
     S.remove = null;
-    S.notice = { kind: "err", heading: failHeading(out, sent.data.layer), paras: [], dismiss: true };
+    S.notice = { kind: "err", heading: failHeading(out, sent.data.layer, sent.setting), paras: [], dismiss: true };
     reload = true;
   } else {
-    S.notice = { kind: "err", heading: errorText(out && out.res), paras: [], dismiss: true };
+    S.notice = { kind: "err", heading: errorText(out && out.res, sent.setting), paras: [], dismiss: true };
   }
   redraw();
   if (S.failed) showFailure();
