@@ -1,0 +1,23 @@
+{
+  "fixture": "agent-effort-user-model-unknown-under-cap",
+  "rule_ids": [
+    "agent-effort-user-settings-model-unknown"
+  ],
+  "note": "With no model, the user file's top-level effortLevel may not reach the agent at all, so the entry stays Unknown even under a top-level cap. Unknown ranks above Lowered.",
+  "confidence": "documented",
+  "source": "https://code.claude.com/docs/en/settings-reference#maxeffortlevel",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "effort",
+      "value": "high",
+      "status": "unknown",
+      "layer": "user",
+      "file": "config/settings.json",
+      "line": 2,
+      "scope": "agent",
+      "agent": "probe",
+      "rule_id": "agent-effort-user-settings-model-unknown"
+    }
+  ]
+}
