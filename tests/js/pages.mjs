@@ -827,6 +827,41 @@ test("pinView: a Lowered pin with every run at the pin", async () => {
   assert.deepEqual(ml.sentences, ["Capped by maxEffortLevel."]);
 });
 
+test("pinView: a cap with no known model names the top-level cap, and a known model keeps its words", async () => {
+  createPage();
+  const format = await import(JS + "format.js");
+  format.setStrings(STRINGS);
+  const { pinView } = await import(JS + "pin-view.js");
+  const DOUBT = "The dashboard doesn't know the session's model, so a per-model cap in modelSettings could change that.";
+  const unknown = { status: "lowered", value: "xhigh", becomes: "high", rule_id: "effort-lowered-by-cap-model-unknown", model: null };
+  const capNoModel = { key: "maxEffortLevel", value: "high", model: null, file: "~/.claude/settings.json", line: 4 };
+
+  const withFile = pinView(U, agentOf("effort_only", "matches", null, setting("matches", { rmp: true, e: unknown, cap: capNoModel })));
+  assert.deepEqual(withFile.sentences, ["These runs match the pin. Right now the top-level maxEffortLevel caps effort at high from ~/.claude/settings.json, line 4, so new runs should use high. " + DOUBT]);
+  noNull(withFile, "a cap with no model");
+  assert.ok(!withFile.sentences[0].includes("Unknown"), "never caps a model called Unknown");
+
+  const noFile = pinView(U, agentOf("effort_only", "matches", null, setting("matches", { rmp: true, e: unknown, cap: { ...capNoModel, file: null, line: null } })));
+  assert.deepEqual(noFile.sentences, ["These runs match the pin. Right now the top-level maxEffortLevel caps effort at high, so new runs should use high. " + DOUBT]);
+
+  const winner = { ...unknown, key: "effortLevel", layer: "user", file: "~/.claude/settings.json", line: 7, reason: "maxEffortLevel caps it." };
+  const overridden = pinView(U, agentOf("effort_only", "overridden", null, setting("overridden", { rmp: true, e: winner, cap: capNoModel })));
+  assert.equal(overridden.pill, "overridden");
+  assert.deepEqual(overridden.sentences, ["These runs match the pin. Right now effortLevel overrides it from ~/.claude/settings.json, line 7. The top-level maxEffortLevel caps effort at high, so new runs should use high. " + DOUBT]);
+
+  // The model-unknown rule id with no cap object reads the entry's own model, still unknown.
+  const noCap = pinView(U, agentOf("effort_only", "overridden", null, setting("overridden", { rmp: true, e: winner })));
+  assert.deepEqual(noCap.sentences, overridden.sentences);
+
+  // A known model keeps the sentences it had.
+  const known = { ...unknown, rule_id: "effort-lowered-by-cap", model: FABLE };
+  const capKnown = { ...capNoModel, model: FABLE };
+  const knownMatch = pinView(U, agentOf("effort_only", "matches", null, setting("matches", { rmp: true, e: known, cap: capKnown })));
+  assert.deepEqual(knownMatch.sentences, ["These runs match the pin. Right now maxEffortLevel caps Fable 5.1 at high from ~/.claude/settings.json, line 4, so new runs should use high."]);
+  const knownOver = pinView(U, agentOf("effort_only", "overridden", null, setting("overridden", { rmp: true, e: { ...known, ...{ key: "effortLevel", layer: "user", file: "~/.claude/settings.json", line: 7 } }, cap: capKnown })));
+  assert.deepEqual(knownOver.sentences, ["These runs match the pin. Right now effortLevel overrides it from ~/.claude/settings.json, line 7. maxEffortLevel caps Fable 5.1 at high, so new runs should use high."]);
+});
+
 test("pinView: a lost pin with every run at the pin, and without", async () => {
   createPage();
   const format = await import(JS + "format.js");
