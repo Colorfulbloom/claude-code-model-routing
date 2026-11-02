@@ -2323,6 +2323,33 @@ class ApplyTest(CliBase):
         self.assertIn("0 tally samples added, 1 replaced", self.run_cmd(lib.cmd_apply, self.store)[1])
         self.assertEqual([s["v"] for s in self.samples()["plan"]], [1800])
 
+    def test_tally_two_captures_in_the_same_second_keep_the_later_figure(self):
+        # A nudge wakes a stopped agent and it stops again in the same second: the second capture is named
+        # <stamp>-...-2.json, which sorts before <stamp>-....json. Apply must still keep the later capture.
+        frozen = datetime.datetime(2026, 10, 20, 12, 0, 0)
+        tally = lambda v, rows, rnd, prev=None: dict(  # noqa: E731
+            {"turns": 3, "context_final_plus_out": v, "model": "m", "skipped": None, "round": rnd,
+             "anchor": "capture", "rows": rows}, **({"prev": {"context_final_plus_out": prev}} if prev else {}))
+        base = {"version": 1, "date": TODAY, "time": "2026-10-20T12:00:00", "agent_type": "deep-reasoner",
+                "agent_id": "agent1", "used": [], "verified": [], "contradicts": []}
+        with mock.patch.object(lib, "now", return_value=frozen):
+            first = lib.write_run_file(self.store, dict(base, kind="plan", tally=tally(1000, 20, 1)),
+                                       "deep-reasoner", "agent1")
+            second = lib.write_run_file(self.store, dict(base, kind="plan", tally=tally(1500, 26, 1)),
+                                        "deep-reasoner", "agent1")
+            third = lib.write_run_file(self.store, dict(base, kind="apply", tally=tally(1900, 40, 2, 1500)),
+                                       "deep-reasoner", "agent1")
+            fourth = lib.write_run_file(self.store, dict(base, kind="apply", tally=tally(2300, 47, 2, 1500)),
+                                        "deep-reasoner", "agent1")
+        names = [os.path.basename(p) for p, _ in lib.load_runs(self.store)]
+        self.assertEqual(names, [os.path.basename(p) for p in (second, third, fourth, first)])
+        rc, out, err = self.run_cmd(lib.cmd_apply, self.store)
+        self.assertEqual((rc, err), (0, ""))
+        self.assertIn("2 tally samples added, 2 replaced", out)
+        got = self.samples()
+        self.assertEqual([(s["v"], s.get("round", 1)) for s in got["plan"]], [(1500, 1)])
+        self.assertEqual([(s["v"], s.get("round", 1)) for s in got["apply+resumed"]], [(800, 2)])
+
     def test_tally_a_resumed_round_captured_twice_is_replaced_in_the_resumed_row(self):
         self.tally_run("tw", "site-copy-round", 9000, rnd=1)
         self.tally_run("tw", "site-copy-round", 13000, rnd=2, prev=9000)

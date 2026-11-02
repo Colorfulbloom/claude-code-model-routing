@@ -3359,6 +3359,16 @@ def move_resumed_samples(tallies):
         target["last_date"] = max(dates) if dates else target.get("last_date", "")
 
 
+def capture_order(run):
+    """Sort key of a (path, data) run: capture time, then transcript rows read. A later capture of one agent
+    has read at least as many rows, so it sorts after an earlier one taken in the same second. The sort is
+    stable, so runs with equal keys (old formats with no time or rows) keep file-name order."""
+    data = run[1]
+    t = data.get("tally")
+    return (data.get("time") if isinstance(data.get("time"), str) else "",
+            _int(t.get("rows")) if isinstance(t, dict) else 0)
+
+
 def add_tally_samples(tallies, runs, cfg):
     """Fold the runs' tally samples in; returns (n added, n replaced, {reason: n skipped}).
 
@@ -3369,10 +3379,13 @@ def add_tally_samples(tallies, runs, cfg):
     same round, after a nudge or a worker's hand-back woke the agent, so it is the complete figure) replaces
     that sample's value and date. A run file without an anchor (an old format) is skipped as a duplicate; that
     also keeps an old run file (no round) of a resumed agent from overwriting the agent's first sample.
+    Runs fold in capture order (capture_order), not file-name order: two captures of one agent in the same
+    second are named X.json and X-2.json, and X-2.json sorts first, so name order would let the earlier,
+    smaller figure replace the later one.
     """
     move_resumed_samples(tallies)
     added, replaced, skipped = 0, 0, {}
-    for _, data in runs:
+    for _, data in sorted(runs, key=capture_order):
         v, rnd, reason = run_sample(data, cfg)
         d = run_date(data)
         if v is None or not d:
