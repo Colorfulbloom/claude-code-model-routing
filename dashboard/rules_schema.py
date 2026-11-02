@@ -63,6 +63,11 @@ A rule:
                   as in highest_layer. Otherwise the `ceiling_layer` candidate
                   wins when its number is lower than the best candidate below
                   it, or when none is below. If not, the candidate below wins.
+                  managed_or_merge: a managed candidate wins whole and every
+                  other candidate is overridden (a managed list is applied
+                  as it is). With no managed candidate, every candidate stays
+                  in effect and the lists combine, in layer order, with
+                  duplicates removed. The rule's layer_order must hold managed.
     ceiling_layer only with combine ceiling, and then required: a layer in
                   layer_order that is neither the first nor the last
     value_order   only with combine lowest_value, and then required: a
@@ -137,6 +142,11 @@ needs one of EFFORT_LEVELS, and any other key takes any non-empty string.
                               effort_levels at or below the value. The
                               condition matches only when the model's
                               effort_levels is not empty and lacks the value.
+    {"computed": "chain"}     the fallbackModel chain that runs, as the entry
+                              names joined by ", " (or "nothing" when every entry
+                              is dropped). Only with `when: chain_limited`. It
+                              is a list of model names, not an effort level, so
+                              the effort-level checks do not apply to it.
 
 A string or computed `becomes` is only for the lowered status, and lowered
 always needs it. An integer `becomes` needs a `range` and is allowed with the
@@ -175,6 +185,22 @@ settingsFile):
     unreadable          a settings file (settingsFile) that exists but cannot be
                         read, for example a permission error. The dashboard
                         cannot say what the file sets, so the status is unknown.
+    wrong_type          the candidate's value has a type Claude Code does not read
+                        for this key: alwaysThinkingEnabled wants true or false
+                        in a file (and, from MAX_THINKING_TOKENS, a string of
+                        digits), fallbackModel and availableModels want a list
+                        of strings. A hidden (masked) value is never wrong_type.
+                        Only a condition with this case judges such a candidate.
+                        Needs status unknown.
+    chain_limited       a fallbackModel chain that Claude Code cuts: duplicates
+                        removed, entries the allowlist blocks dropped, then
+                        capped at three. The chain that runs is `becomes`
+                        (computed chain). Needs status lowered.
+    chain_unclear       a fallbackModel chain the dashboard can't work out,
+                        because an entry or the allowlist is unclear (a
+                        "default" entry, an unreadable file, deniedModels or
+                        availableModelsMatch in managed settings, or a cap and
+                        an allowlist that both apply). Needs status unknown.
     model_unknown       the row's model is unknown, so a default cannot be named.
                         A condition on any layer may use it.
     replaced_in_source  a maxEffortLevel set at the top level of a settings file
@@ -255,7 +281,7 @@ REASON_SLOTS = ("key", "value", "file", "layer", "model", "agent", "winner", "be
 EFFORT_LEVELS = ("low", "medium", "high", "xhigh", "max")
 
 # How the candidates for a key combine into one winner.
-COMBINE_MODES = ("highest_layer", "lowest_value", "all", "ceiling")
+COMBINE_MODES = ("highest_layer", "lowest_value", "all", "ceiling", "managed_or_merge")
 
 # Values of the dashboard config's `plan` field a condition can match. unset
 # matches a config with no `plan` field.
@@ -265,10 +291,10 @@ PLANS = ("subscription", "api_key", "cloud_provider", "unset")
 WHEN_CASES = ("same_name_in_layer", "not_md_file", "no_name", "no_description",
               "parse_error", "reader_rejected_but_loads", "reader_rejected_untested",
               "unknown_field", "unparsed", "unreadable", "model_unknown",
-              "replaced_in_source")
+              "replaced_in_source", "wrong_type", "chain_limited", "chain_unclear")
 
 # What a computed `becomes` works out.
-COMPUTED_BECOMES = ("cap", "fallback")
+COMPUTED_BECOMES = ("cap", "fallback", "chain")
 
 # Last dotted part of a rule key whose values are effort levels.
 EFFORT_KEYS = ("effortLevel", "effort", "maxEffortLevel")
@@ -629,6 +655,8 @@ def check_rule(rule, base_dir=HERE, model_ids=None, variables=None):
         err("combine must be one of %s" % ", ".join(COMBINE_MODES))
     if combine == "lowest_value" and "value_order" not in rule:
         err("combine lowest_value needs value_order")
+    if combine == "managed_or_merge" and "managed" not in order:
+        err("combine managed_or_merge needs managed in layer_order")
     if "ceiling_layer" in rule:
         ceiling_layer = rule["ceiling_layer"]
         if combine != "ceiling":
@@ -850,6 +878,8 @@ def _check_condition(cond, order, model_ids=None, levels=None, key=None, scope=N
             elif not (isinstance(becomes["computed"], str)
                       and becomes["computed"] in COMPUTED_BECOMES):
                 errors.append("becomes computed must be one of %s" % ", ".join(COMPUTED_BECOMES))
+            elif becomes["computed"] == "chain" and cond.get("when") != "chain_limited":
+                errors.append("becomes computed chain needs when chain_limited")
         elif not _text(becomes):
             errors.append("becomes must be a non-empty string, a computed object or an integer")
         elif levels is not None and becomes not in levels:
@@ -875,6 +905,10 @@ def _check_condition(cond, order, model_ids=None, levels=None, key=None, scope=N
             errors.append("when %s needs status unknown" % when)
         elif when == "unreadable" and status != "unknown":
             errors.append("when unreadable needs status unknown")
+        elif when in ("wrong_type", "chain_unclear") and status != "unknown":
+            errors.append("when %s needs status unknown" % when)
+        elif when == "chain_limited" and status != "lowered":
+            errors.append("when chain_limited needs status lowered")
         elif when == "replaced_in_source" and (status != "overridden"
                                                or key != "maxEffortLevel"):
             errors.append("when replaced_in_source needs status overridden "

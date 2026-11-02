@@ -1,0 +1,21 @@
+{
+  "fixture": "thinking-string-false-unknown",
+  "rule_ids": [
+    "always-thinking-value-wrong"
+  ],
+  "confidence": "assumed",
+  "source": "assumed: no run backs the wrong-type rule",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "alwaysThinkingEnabled",
+      "value": "false",
+      "status": "unknown",
+      "layer": "user",
+      "file": "config/settings.json",
+      "scope": "main",
+      "rule_id": "always-thinking-value-wrong",
+      "model": "claude-opus-4-8"
+    }
+  ]
+}

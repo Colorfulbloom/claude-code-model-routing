@@ -1,0 +1,21 @@
+{
+  "fixture": "thinking-false-model-unknown",
+  "rule_ids": [
+    "always-thinking-model-unknown"
+  ],
+  "note": "No model is set, so the dashboard can't tell whether the session's model always thinks. False has no effect on those models.",
+  "confidence": "documented",
+  "source": "https://code.claude.com/docs/en/settings-reference#alwaysthinkingenabled",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "alwaysThinkingEnabled",
+      "value": false,
+      "status": "unknown",
+      "layer": "user",
+      "file": "config/settings.json",
+      "scope": "main",
+      "rule_id": "always-thinking-model-unknown"
+    }
+  ]
+}

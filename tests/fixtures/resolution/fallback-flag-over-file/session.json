@@ -1,0 +1,8 @@
+{
+  "shell_env": {},
+  "flags": [
+    "--fallback-model",
+    "sonnet, haiku"
+  ],
+  "cli_settings": null
+}

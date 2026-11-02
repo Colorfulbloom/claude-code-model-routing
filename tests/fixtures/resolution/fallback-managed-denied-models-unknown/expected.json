@@ -1,0 +1,23 @@
+{
+  "fixture": "fallback-managed-denied-models-unknown",
+  "rule_ids": [
+    "fallback-model-chain-unclear"
+  ],
+  "note": "Managed deniedModels can drop a chain entry, and the dashboard doesn't work out which.",
+  "confidence": "documented",
+  "source": "https://code.claude.com/docs/en/model-config#block-specific-models-or-versions",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "fallbackModel",
+      "value": [
+        "sonnet"
+      ],
+      "status": "unknown",
+      "layer": "user",
+      "file": "config/settings.json",
+      "scope": "main",
+      "rule_id": "fallback-model-chain-unclear"
+    }
+  ]
+}

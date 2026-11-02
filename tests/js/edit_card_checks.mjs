@@ -48,7 +48,8 @@ const hasClass = (n, c) => Boolean(n.classList && n.classList.contains(c));
 const byClass = (root, c) => root.find((n) => hasClass(n, c));
 const text = (n) => n.textContent.replace(/\s+/g, " ").trim();
 const tag = (root, name) => root.find((n) => n.tagName === name);
-const buttons = (root) => tag(root, "button");
+// The Arrange button in the page head is the band's, not the edit card's, so these counts leave it out.
+const buttons = (root) => tag(root, "button").filter((n) => !hasClass(n, "s6-arr"));
 const btn = (root, label) => buttons(root).find((b) => text(b) === label);
 const inputs = (root, name) => root.find((n) => n.tagName === "input" && n.getAttribute("type") === "radio" && n.getAttribute("name") === name);
 const levelInputs = (root) => inputs(root, "p2-level");

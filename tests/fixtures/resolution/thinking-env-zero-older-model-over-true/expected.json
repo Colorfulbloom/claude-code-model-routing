@@ -1,0 +1,41 @@
+{
+  "fixture": "thinking-env-zero-older-model-over-true",
+  "rule_ids": [
+    "always-thinking-order"
+  ],
+  "note": "MAX_THINKING_TOKENS is not a secret name, so its value 0 reaches the row.",
+  "confidence": "documented",
+  "source": "https://code.claude.com/docs/en/settings-reference#alwaysthinkingenabled",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "alwaysThinkingEnabled",
+      "value": "0",
+      "status": "in_effect",
+      "layer": "env",
+      "file": "session.json:shell_env",
+      "scope": "main",
+      "via": "MAX_THINKING_TOKENS",
+      "rule_id": "always-thinking-order",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "key": "alwaysThinkingEnabled",
+      "value": true,
+      "status": "overridden",
+      "layer": "user",
+      "file": "config/settings.json",
+      "scope": "main",
+      "rule_id": "always-thinking-order",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "key": "env.MAX_THINKING_TOKENS",
+      "value": "0",
+      "status": "in_effect",
+      "layer": "env",
+      "file": "session.json:shell_env",
+      "scope": "main"
+    }
+  ]
+}

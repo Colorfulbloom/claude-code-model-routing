@@ -1,0 +1,31 @@
+{
+  "fixture": "thinking-higher-file-wins",
+  "rule_ids": [
+    "always-thinking-order"
+  ],
+  "confidence": "documented",
+  "source": "https://code.claude.com/docs/en/settings#settings-precedence",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "alwaysThinkingEnabled",
+      "value": true,
+      "status": "in_effect",
+      "layer": "local",
+      "file": "project/.claude/settings.local.json",
+      "scope": "main",
+      "rule_id": "always-thinking-order",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "key": "alwaysThinkingEnabled",
+      "value": false,
+      "status": "overridden",
+      "layer": "user",
+      "file": "config/settings.json",
+      "scope": "main",
+      "rule_id": "always-thinking-order",
+      "model": "claude-opus-4-8"
+    }
+  ]
+}

@@ -6,6 +6,10 @@
 // has open always shows: if it was in More, it takes the last cell slot and the key it displaced goes first in
 // More. No other cell moves, and the saved order itself is never changed.
 //
+// The saved order is per project and lives in the browser (pages/band.js keeps it). move, merge, sameOrder,
+// dropSlot and dropIndex below are the pure part of changing it: the order of keys after a move, the saved order
+// reconciled with the keys the page has now, and where a mouse drop lands.
+//
 // The 1360 window rule: a 1360 pixel window less the sidebar (240) and the page gutters (32 on each side) leaves
 // a band 1056 wide, which is eight cells of 132. The rule is the 132 pixel cell, not a window width, so the
 // band follows whatever width it is given. Five keys fit from 660.
@@ -28,4 +32,66 @@ export function fit(keys, width, selected, minCell = MIN_CELL) {
     more.unshift(displaced);
   }
   return { cells, more };
+}
+
+// ---------------------------------------------------------------- changing the order
+
+// keys with key moved so it sits at index (clamped to the list). A key that is not in keys gives a plain copy.
+export function move(keys, key, index) {
+  const out = keys.slice();
+  const from = out.indexOf(key);
+  if (from < 0) return out;
+  out.splice(from, 1);
+  const wanted = Number.isFinite(index) ? Math.trunc(index) : 0;
+  out.splice(Math.max(0, Math.min(out.length, wanted)), 0, key);
+  return out;
+}
+
+// The saved order reconciled with the keys the page has: saved keys that still exist keep their place, then any key
+// the saved order lacks follows in keys order. Anything that is not a list gives the keys as they are, and a repeat or
+// a value that is not a string in the saved list is dropped.
+export function merge(saved, keys) {
+  if (!Array.isArray(saved)) return keys.slice();
+  const known = new Set(keys);
+  const seen = new Set();
+  const out = [];
+  for (const key of saved) {
+    if (typeof key === "string" && known.has(key) && !seen.has(key)) {
+      seen.add(key);
+      out.push(key);
+    }
+  }
+  for (const key of keys) if (!seen.has(key)) out.push(key);
+  return out;
+}
+
+export function sameOrder(a, b) {
+  return Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((key, i) => key === b[i]);
+}
+
+// The slot a mouse at x drops into. edges: { left, right } of each cell on screen, in screen order. Slot i sits
+// before cell i and slot edges.length after the last one. A slot is the first one whose cell has its middle right of x.
+export function dropSlot(edges, x) {
+  for (let i = 0; i < edges.length; i++) {
+    if ((edges[i].left + edges[i].right) / 2 > x) return i;
+  }
+  return edges.length;
+}
+
+// The index move() needs for a drop. order: the saved order. cells and more: the keys on screen now, as fit() gave
+// them. key: the cell that was dragged. slot: from dropSlot(). onMore: the drop was on the More button.
+// It works by keys and not by positions, because the open cell takes the last slot, so the cells are not always the
+// first of the order. A drop on a neighbour puts key before it, a drop after the last cell puts key before the first
+// key in More (or last, with no More), and a drop on More puts key right after the first key in More, so that key
+// is the first one behind More and the one it passed moves up into the band. key itself is never the neighbour.
+export function dropIndex(order, cells, more, key, slot, onMore) {
+  const at = order.indexOf(key);
+  if (at < 0) return order.length;
+  const others = order.filter((k) => k !== key);
+  const behind = more.find((k) => k !== key && others.includes(k));
+  if (onMore) return behind === undefined ? others.length : others.indexOf(behind) + 1;
+  if (slot >= cells.length) return behind === undefined ? others.length : others.indexOf(behind);
+  const next = cells[Math.max(0, slot)];
+  if (next === key) return at;
+  return others.indexOf(next) < 0 ? at : others.indexOf(next);
 }

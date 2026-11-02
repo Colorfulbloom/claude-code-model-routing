@@ -1,0 +1,33 @@
+{
+  "fixture": "fallback-managed-replaces-whole",
+  "rule_ids": [
+    "fallback-model-order"
+  ],
+  "confidence": "documented",
+  "source": "https://code.claude.com/docs/en/settings#lists-merge-instead-of-overriding",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "fallbackModel",
+      "value": [
+        "claude-sonnet-5"
+      ],
+      "status": "in_effect",
+      "layer": "managed",
+      "file": "managed/managed-settings.json",
+      "scope": "main",
+      "rule_id": "fallback-model-order"
+    },
+    {
+      "key": "fallbackModel",
+      "value": [
+        "claude-haiku-4-5"
+      ],
+      "status": "overridden",
+      "layer": "user",
+      "file": "config/settings.json",
+      "scope": "main",
+      "rule_id": "fallback-model-order"
+    }
+  ]
+}

@@ -610,10 +610,13 @@ class WhenConditionTest(TempDirMixin, unittest.TestCase):
         for case in rules_schema.WHEN_CASES:
             with self.subTest(when=case):
                 status = ("unknown" if case in ("reader_rejected_but_loads", "reader_rejected_untested",
-                                                "unreadable")
-                          else "overridden" if case == "replaced_in_source" else "ignored")
+                                                "unreadable", "wrong_type", "chain_unclear")
+                          else "overridden" if case == "replaced_in_source"
+                          else "lowered" if case == "chain_limited" else "ignored")
                 key = "maxEffortLevel" if case == "replaced_in_source" else DROP
-                self.assertEqual(self.errors(self.cond(when=case, status=status, key=key)), [])
+                extra = {"becomes": {"computed": "chain"}} if case == "chain_limited" else {}
+                self.assertEqual(
+                    self.errors(self.cond(when=case, status=status, key=key, **extra)), [])
 
     def test_unknown_when_fails(self):
         for bad in ("other", "", "NOT_MD_FILE"):
@@ -635,6 +638,24 @@ class WhenConditionTest(TempDirMixin, unittest.TestCase):
             with self.subTest(status=status):
                 self.assertRejected(self.cond(when="reader_rejected_but_loads", status=status),
                                     "when reader_rejected_but_loads needs status unknown")
+
+    def test_wrong_type_and_chain_unclear_need_status_unknown(self):
+        for case in ("wrong_type", "chain_unclear"):
+            self.assertIn(case, rules_schema.WHEN_CASES)
+            self.assertEqual(self.errors(self.cond(when=case, status="unknown")), [])
+            for status in ("ignored", "invalid", "in_effect", "overridden", "default"):
+                with self.subTest(when=case, status=status):
+                    self.assertRejected(self.cond(when=case, status=status),
+                                        "when %s needs status unknown" % case)
+
+    def test_chain_limited_needs_status_lowered(self):
+        self.assertIn("chain_limited", rules_schema.WHEN_CASES)
+        self.assertEqual(self.errors(self.cond(when="chain_limited", status="lowered",
+                                               becomes={"computed": "chain"})), [])
+        for status in ("ignored", "unknown", "in_effect", "overridden", "default"):
+            with self.subTest(status=status):
+                self.assertRejected(self.cond(when="chain_limited", status=status),
+                                    "when chain_limited needs status lowered")
 
     def test_model_unknown_is_allowed_on_the_default_layer(self):
         for status in ("default", "unknown"):
@@ -963,6 +984,19 @@ class BecomesTest(TempDirMixin, unittest.TestCase):
         for kind in ("cap", "fallback"):
             with self.subTest(computed=kind):
                 self.assertEqual(self.errors(self.cond(becomes={"computed": kind})), [])
+
+    def test_computed_chain_passes_with_chain_limited_only(self):
+        self.assertIn("chain", rules_schema.COMPUTED_BECOMES)
+        self.assertEqual(self.errors(self.cond(becomes={"computed": "chain"},
+                                               when="chain_limited")), [])
+        # It is a list of names, so the effort-level checks on a key do not reach it.
+        self.assertEqual(self.errors(self.rule(key="effortLevel", conditions=[{
+            "layer": "user", "models": ["*"], "status": "lowered", "when": "chain_limited",
+            "becomes": {"computed": "chain"}}])), [])
+        self.assertRejected(self.cond(becomes={"computed": "chain"}),
+                            "becomes computed chain needs when chain_limited")
+        self.assertRejected(self.cond(becomes={"computed": "chain"}, when="chain_unclear"),
+                            "becomes computed chain needs when chain_limited")
 
     def test_unknown_computed_fails(self):
         self.assertRejected(self.cond(becomes={"computed": "other"}), "computed must be one of")
@@ -1392,6 +1426,31 @@ class CeilingCombineTest(TempDirMixin, unittest.TestCase):
                                     "must not be the first or last layer")
 
 
+class ManagedOrMergeCombineTest(TempDirMixin, unittest.TestCase):
+    def merge(self, **changes):
+        rule = self.rule(layer_order=["managed", "user", "default"], combine="managed_or_merge",
+                         conditions=[{"layer": "user", "models": ["*"], "status": "in_effect"}])
+        rule.update(changes)
+        return rule
+
+    def test_managed_or_merge_with_managed_in_the_order_passes(self):
+        self.assertIn("managed_or_merge", rules_schema.COMBINE_MODES)
+        self.assertEqual(self.errors(self.merge()), [])
+        self.assertEqual(self.errors(self.merge(layer_order=["user", "managed"])), [])
+
+    def test_managed_or_merge_needs_managed_in_layer_order(self):
+        for order in (["user", "default"], ["cli", "local", "project", "user", "default"]):
+            with self.subTest(order=order):
+                self.assertRejected(self.merge(layer_order=order),
+                                    "combine managed_or_merge needs managed in layer_order")
+
+    def test_managed_or_merge_takes_no_value_order_or_ceiling_layer(self):
+        self.assertRejected(self.merge(value_order=["a", "b"]),
+                            "value_order is only for combine lowest_value")
+        self.assertRejected(self.merge(ceiling_layer="user"),
+                            "ceiling_layer is only for combine ceiling")
+
+
 class NameFormTest(TempDirMixin, unittest.TestCase):
     def rule_with(self, key="modelSettings", **cond):
         base = {"layer": "user", "models": ["*"], "status": "in_effect"}
@@ -1594,7 +1653,8 @@ class Step3RealRulesTest(unittest.TestCase):
             "FORCE_PROMPT_CACHING_5M", "CLAUDE_CODE_PROMPT_CACHE_TTL",
             "CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL", "ENABLE_PROMPT_CACHING_1H",
             "CLAUDE_CODE_SUBAGENT_MODEL_FORCE", "CLAUDE_CODE_SUBAGENT_MODEL",
-            "ANTHROPIC_MODEL", "CLAUDE_CODE_EFFORT_LEVEL", "CLAUDE_CODE_AUTO_COMPACT_WINDOW"])
+            "ANTHROPIC_MODEL", "CLAUDE_CODE_EFFORT_LEVEL", "CLAUDE_CODE_AUTO_COMPACT_WINDOW",
+            "MAX_THINKING_TOKENS"])
         self.assertEqual(self.variables["FORCE_PROMPT_CACHING_5M"]["value"], "5m")
         self.assertEqual(self.variables["ENABLE_PROMPT_CACHING_1H"]["value"], "1h")
         self.assertEqual(self.variables["CLAUDE_CODE_SUBAGENT_MODEL_FORCE"]["rows"], [])
@@ -1666,6 +1726,97 @@ class Step3RealRulesTest(unittest.TestCase):
                              "status": "in_effect"})
             expected.append({"layer": layer, "models": ["*"], "status": "in_effect"})
         self.assertEqual(rule["conditions"], expected)
+
+    def model_rules(self, key):
+        return [r for r in self.data["rules"] if r["key"] == key and r["scope"] == "main"]
+
+    def test_the_thinking_rules_share_one_order_and_combine(self):
+        rules = self.model_rules("alwaysThinkingEnabled")
+        self.assertEqual([r["rule_id"] for r in rules], [
+            "always-thinking-no-effect", "always-thinking-model-unknown",
+            "always-thinking-value-wrong", "always-thinking-order",
+            "always-thinking-default-always-on", "always-thinking-default"])
+        for rule in rules:
+            with self.subTest(rule=rule["rule_id"]):
+                self.assertEqual((rule["layer_order"], rule["combine"], rule["experiment"]), (
+                    ["env", "managed", "cli", "local", "project", "user", "default"],
+                    "highest_layer", None))
+                self.assertEqual(rule["verified_on"]["claude_version"], "2.1.302")
+        # The always-on default explains the entry first, so it sits before the plain default.
+        ids = list(self.rules)
+        self.assertLess(ids.index("always-thinking-default-always-on"),
+                        ids.index("always-thinking-default"))
+        self.assertEqual(self.variables["MAX_THINKING_TOKENS"],
+                         {"name": "MAX_THINKING_TOKENS", "value": None,
+                          "rows": [{"key": "alwaysThinkingEnabled", "scope": "main", "layer": "env"}]})
+
+    def test_models_that_always_think_are_fable_5_and_later(self):
+        ids = [m["id"] for m in self.data["models"]]
+        covered = rules_schema.expand_models([{"from": "claude-fable-5"}], ids)
+        self.assertEqual(covered, ["claude-fable-5", "claude-fable-5-1", "claude-opus-5-5",
+                                   "claude-sonnet-5-5", "claude-haiku-5-5"])
+        for rid in ("always-thinking-no-effect", "always-thinking-default-always-on"):
+            for cond in self.rules[rid]["conditions"]:
+                with self.subTest(rule=rid, layer=cond["layer"]):
+                    self.assertEqual(cond["models"], [{"from": "claude-fable-5"}])
+
+    def test_the_thinking_ignored_rule_reads_false_from_files_and_zero_from_the_variable(self):
+        conds = self.rules["always-thinking-no-effect"]["conditions"]
+        self.assertEqual([c["layer"] for c in conds],
+                         ["env", "managed", "cli", "local", "project", "user"])
+        self.assertEqual(conds[0]["via"], "MAX_THINKING_TOKENS")
+        self.assertEqual(conds[0]["values"], ["0"])
+        for cond in conds[1:]:
+            self.assertEqual((cond["values"], cond["status"]), (["false"], "ignored"))
+
+    def test_the_thinking_default_is_the_word_on(self):
+        for rid in ("always-thinking-default-always-on", "always-thinking-default"):
+            (cond,) = self.rules[rid]["conditions"]
+            self.assertEqual((cond["layer"], cond["status"], cond["default_value"]),
+                             ("default", "default", "on"))
+
+    def test_the_wrong_value_rules_are_assumed_with_no_quotes(self):
+        for rid in ("always-thinking-value-wrong", "fallback-model-value-wrong",
+                    "available-models-value-wrong"):
+            with self.subTest(rule=rid):
+                rule = self.rules[rid]
+                self.assertEqual((rule["confidence"], rule["quotes"]), ("assumed", []))
+                self.assertTrue(all(c["when"] == "wrong_type" and c["status"] == "unknown"
+                                    for c in rule["conditions"]))
+
+    def test_the_fallback_rules_share_one_order(self):
+        rules = self.model_rules("fallbackModel")
+        self.assertEqual([r["rule_id"] for r in rules], [
+            "fallback-model-chain-limits", "fallback-model-chain-unclear",
+            "fallback-model-value-wrong", "fallback-model-order", "fallback-model-default"])
+        for rule in rules:
+            self.assertEqual((rule["layer_order"], rule["combine"]), (
+                ["flag", "managed", "cli", "local", "project", "user", "default"],
+                "highest_layer"))
+        limits = self.rules["fallback-model-chain-limits"]["conditions"]
+        self.assertEqual([c["layer"] for c in limits],
+                         ["flag", "managed", "cli", "local", "project", "user"])
+        for cond in limits:
+            self.assertEqual((cond["status"], cond["when"], cond["becomes"]),
+                             ("lowered", "chain_limited", {"computed": "chain"}))
+        for cond in self.rules["fallback-model-chain-unclear"]["conditions"]:
+            self.assertEqual((cond["status"], cond["when"]), ("unknown", "chain_unclear"))
+        self.assertEqual([c["layer"] for c in self.rules["fallback-model-value-wrong"]["conditions"]],
+                         ["managed", "cli", "local", "project", "user"])
+
+    def test_the_available_models_rules_all_merge(self):
+        rules = self.model_rules("availableModels")
+        self.assertEqual([r["rule_id"] for r in rules], [
+            "available-models-managed-empty", "available-models-value-wrong",
+            "available-models-order", "available-models-default"])
+        for rule in rules:
+            self.assertEqual((rule["layer_order"], rule["combine"]), (
+                ["managed", "cli", "local", "project", "user", "default"], "managed_or_merge"))
+        (empty,) = self.rules["available-models-managed-empty"]["conditions"]
+        self.assertEqual((empty["layer"], empty["values"], empty["status"]),
+                         ("managed", ["[]"], "in_effect"))
+        self.assertIn("model-config#default-model-behavior",
+                      self.rules["available-models-managed-empty"]["quotes"][0]["doc_url"])
 
     def test_untested_reader_rule_follows_the_tested_one(self):
         order = list(self.rules)

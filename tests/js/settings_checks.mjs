@@ -78,27 +78,30 @@ function handPayload(entries, over = {}) {
   };
 }
 
-const FIVE = [
+const EIGHT = [
   entry({ key: "model", value: "claude-opus-5-5", line: 2 }),
   entry({ key: "effortLevel", value: "high" }),
   entry({ key: "maxEffortLevel", value: null, file: null, status: "default", layer: "default", line: undefined }),
   entry({ key: "autoCompactWindow", value: 1000000, file: null, status: "default", layer: "default", line: undefined }),
   entry({ key: "promptCacheTtl", value: "1h", file: null, status: "default", layer: "default", line: undefined }),
+  entry({ key: "alwaysThinkingEnabled", value: "on", file: null, status: "default", layer: "default", line: undefined }),
+  entry({ key: "fallbackModel", value: null, file: null, status: "default", layer: "default", line: undefined }),
+  entry({ key: "availableModels", value: null, file: null, status: "default", layer: "default", line: undefined }),
 ];
 
 // ---------------------------------------------------------------- the band
 
-test("band: five cells, in the order Model, Effort, Effort cap, Compact window, Cache lifetime", () => {
-  const root = show(handPayload(FIVE));
+test("band: eight cells, in the order Model, Effort, Effort cap, Compact window, Cache lifetime, Extended thinking, Fallback models, Allowed models", () => {
+  const root = show(handPayload(EIGHT));
   const cells = cellsOf(root);
-  assert.deepEqual(cells.map((n) => n.getAttribute("data-setting")), ["model", "effortLevel", "maxEffortLevel", "autoCompactWindow", "promptCacheTtl"]);
-  assert.deepEqual(cells.map((n) => text(sub(n, "s4-sl"))), ["Model", "Effort", "Effort cap", "Compact window", "Cache lifetime"]);
+  assert.deepEqual(cells.map((n) => n.getAttribute("data-setting")), ["model", "effortLevel", "maxEffortLevel", "autoCompactWindow", "promptCacheTtl", "alwaysThinkingEnabled", "fallbackModel", "availableModels"]);
+  assert.deepEqual(cells.map((n) => text(sub(n, "s4-sl"))), ["Model", "Effort", "Effort cap", "Compact window", "Cache lifetime", "Extended thinking", "Fallback models", "Allowed models"]);
   assert.equal(byClass(root, "s5-a").length, 1);
   assert.equal(byClass(root, "s5-a")[0].tagName, "nav");
   assert.equal(byClass(root, "s5-a")[0].getAttribute("aria-label"), STRINGS.band_nav_sr);
-  assert.equal(moreOf(root), undefined, "all five fit in a wide band, so there is no More");
+  assert.equal(moreOf(root), undefined, "all eight fit in a wide band, so there is no More");
   assert.equal(popOf(root), undefined);
-  assert.equal(byClass(root, "s5-a")[0].styleMap["--n"], "5");
+  assert.equal(byClass(root, "s5-a")[0].styleMap["--n"], "8");
 });
 
 test("band: BAND_SETTINGS in the router holds the same keys as TILES, in the same order", () => {
@@ -106,7 +109,7 @@ test("band: BAND_SETTINGS in the router holds the same keys as TILES, in the sam
 });
 
 test("band: the page head comes first, a cell links to its setting on the page, and the aria-label says what it does", () => {
-  const root = show(handPayload(FIVE));
+  const root = show(handPayload(EIGHT));
   const page = root.childNodes[0];
   assert.deepEqual(page.childNodes.map((n) => n.getAttribute("class").split(" ")[0]), ["s4-chead", "s5-band", "s5-w"]);
   assert.equal(page.childNodes[0].childNodes[0].classList.contains("ph"), true);
@@ -122,7 +125,7 @@ test("band: the page head comes first, a cell links to its setting on the page, 
 });
 
 test("band: every cell shows a mark glyph and a status word, never hue alone", () => {
-  const root = show(handPayload(FIVE));
+  const root = show(handPayload(EIGHT));
   for (const cell of cellsOf(root)) {
     const chip = sub(cell, "st");
     assert.ok(chip, "a status chip");
@@ -134,14 +137,14 @@ test("band: every cell shows a mark glyph and a status word, never hue alone", (
 });
 
 test("band: the model shows its display name alone, and a name outside the catalog says so", () => {
-  const root = show(handPayload(FIVE));
+  const root = show(handPayload(EIGHT));
   assert.equal(text(sub(cellFor(root, "model"), "s4-sv")), "Opus 5.5");
   const other = show(handPayload([entry({ key: "model", value: "claude-opus-6-preview" })]));
   assert.equal(text(sub(cellFor(other, "model"), "s4-sv")), "claude-opus-6-preview (not in the dashboard's model list)");
 });
 
 test("band: the compact window shows thousands commas, and the screen reader hears them too", () => {
-  const root = show(handPayload(FIVE));
+  const root = show(handPayload(EIGHT));
   assert.equal(text(sub(cellFor(root, "autoCompactWindow"), "s4-sv")), "1,000,000");
   assert.equal(cellFor(root, "autoCompactWindow").getAttribute("aria-label"), "Compact window, 1,000,000, Default. " + STRINGS.band_cell_desc);
   const small = show(handPayload([entry({ key: "autoCompactWindow", value: 500 })]));
@@ -149,7 +152,7 @@ test("band: the compact window shows thousands commas, and the screen reader hea
 });
 
 test("band: the effort cap reads Not set with no value or with only the default, and Not known with no entry", () => {
-  const root = show(handPayload(FIVE));
+  const root = show(handPayload(EIGHT));
   assert.equal(text(sub(cellFor(root, "maxEffortLevel"), "s4-sv")), "Not set");
   assert.equal(sub(cellFor(root, "maxEffortLevel"), "s5-sv-none"), undefined, "Not set is a plain value");
   const none = show(handPayload([entry({ key: "maxEffortLevel", value: null, status: "in_effect" })]));
@@ -195,12 +198,12 @@ test("band: a Lowered value keeps its value in the cell and says what it runs as
 });
 
 test("band: ?setting= opens that cell, an unknown or missing value opens Effort, and only the open cell is current", () => {
-  const model = show(handPayload(FIVE), { setting: "model" });
+  const model = show(handPayload(EIGHT), { setting: "model" });
   assert.deepEqual(cellsOf(model).filter((n) => n.getAttribute("aria-current") === "true").map((n) => n.getAttribute("data-setting")), ["model"]);
   assert.ok(hasClass(cellFor(model, "model"), "is-on"));
   assert.ok(!hasClass(cellFor(model, "effortLevel"), "is-on"));
   for (const setting of [null, "bogus"]) {
-    const root = show(handPayload(FIVE), { setting });
+    const root = show(handPayload(EIGHT), { setting });
     assert.deepEqual(cellsOf(root).filter((n) => hasClass(n, "is-on")).map((n) => n.getAttribute("data-setting")), ["effortLevel"]);
   }
 });
@@ -220,9 +223,9 @@ test("router: setting is carried by the hash, validated against the band, and re
 
 test("band: the band redraws with the page, so a second render does not stack listeners", () => {
   const page = createPage();
-  show(handPayload(FIVE), { page });
-  show(handPayload(FIVE), { page });
-  show(handPayload(FIVE), { page, setting: "model" });
+  show(handPayload(EIGHT), { page });
+  show(handPayload(EIGHT), { page });
+  show(handPayload(EIGHT), { page, setting: "model" });
   assert.equal((page.listeners.resize || []).length, 1, "one resize listener");
   assert.equal((page.doc.listeners.keydown || []).length, 1, "one key listener");
   assert.equal((page.doc.listeners.click || []).length, 1, "one click listener");
@@ -271,43 +274,43 @@ test("band order: a selected key in More takes the last cell slot and the displa
 
 test("more: a narrow band keeps the open cell and puts the rest behind More, with the count and the summary", () => {
   const page = createPage();
-  const root = show(handPayload(FIVE), { page });
+  const root = show(handPayload(EIGHT), { page });
   narrow(page, root, 343);
   assert.deepEqual(cellsOf(root).map((n) => n.getAttribute("data-setting")), ["effortLevel"], "Effort is open, so it takes the one cell");
   const more = moreOf(root);
   assert.equal(more.getAttribute("aria-expanded"), "false");
   assert.equal(text(sub(more, "s4-sl")), "More settings");
-  assert.equal(text(sub(more, "s4-sv")), "4 more");
+  assert.equal(text(sub(more, "s4-sv")), "7 more");
   assert.equal(sub(more, "s4-sv").find((n) => n.tagName === "svg").length, 1, "the chevron");
-  assert.equal(more.getAttribute("aria-label"), "4 more settings");
-  assert.equal(text(sub(more, "s4-sw")), "1 set in a file", "Model is in effect, the other three hidden ones are defaults");
+  assert.equal(more.getAttribute("aria-label"), "7 more settings");
+  assert.equal(text(sub(more, "s4-sw")), "1 set in a file", "Model is in effect, the other six hidden ones are defaults");
   assert.equal(byClass(root, "s5-a")[0].styleMap["--n"], "2");
   assert.equal(popOf(root).hidden, true);
-  // Wide again: five cells and no More.
+  // Wide again: eight cells and no More.
   narrow(page, root, 1136);
-  assert.equal(cellsOf(root).length, 5);
+  assert.equal(cellsOf(root).length, 8);
   assert.equal(moreOf(root), undefined);
   // 500 wide: three slots, so two cells and More.
   narrow(page, root, 500);
   assert.deepEqual(cellsOf(root).map((n) => n.getAttribute("data-setting")), ["model", "effortLevel"]);
-  assert.equal(text(sub(moreOf(root), "s4-sv")), "3 more");
+  assert.equal(text(sub(moreOf(root), "s4-sv")), "6 more");
 });
 
 test("more: an open setting that was in More takes the last cell slot and the displaced cell leads the list", () => {
   const page = createPage();
-  const root = show(handPayload(FIVE), { page, setting: "promptCacheTtl" });
+  const root = show(handPayload(EIGHT), { page, setting: "promptCacheTtl" });
   narrow(page, root, 500);
   assert.deepEqual(cellsOf(root).map((n) => n.getAttribute("data-setting")), ["model", "promptCacheTtl"]);
   assert.ok(hasClass(cellFor(root, "promptCacheTtl"), "is-on"));
   const hidden = rowsOf_(popOf(root)).filter((n) => !hasClass(n.parentNode, "s5-vc")).map((n) => n.getAttribute("data-setting"));
-  assert.deepEqual(hidden, ["effortLevel", "maxEffortLevel", "autoCompactWindow"], "the displaced key goes first, in the saved order after it");
+  assert.deepEqual(hidden, ["effortLevel", "maxEffortLevel", "autoCompactWindow", "alwaysThinkingEnabled", "fallbackModel", "availableModels"], "the displaced key goes first, in the saved order after it");
   narrow(page, root, 343);
   assert.deepEqual(cellsOf(root).map((n) => n.getAttribute("data-setting")), ["promptCacheTtl"]);
 });
 
 test("more: pressing More opens the list of the hidden settings, Escape closes it and returns focus, a row closes it", () => {
   const page = createPage();
-  const root = show(handPayload(FIVE), { page });
+  const root = show(handPayload(EIGHT), { page });
   narrow(page, root, 343);
   const more = moreOf(root);
   more.click();
@@ -316,12 +319,12 @@ test("more: pressing More opens the list of the hidden settings, Escape closes i
   assert.equal(more.getAttribute("aria-controls"), popOf(root).getAttribute("id"));
   const rows = rowsOf_(popOf(root));
   const hiddenRows = rows.filter((n) => !hasClass(n.parentNode, "s5-vc"));
-  assert.deepEqual(hiddenRows.map((n) => text(sub(n, "n"))), ["Model", "Effort cap", "Compact window", "Cache lifetime"]);
-  assert.deepEqual(hiddenRows.map((n) => text(sub(n, "v"))), ["Opus 5.5", "Not set", "1,000,000", "1h"]);
-  assert.deepEqual(hiddenRows.map((n) => text(sub(n, "st"))), ["In effect", "Default", "Default", "Default"]);
+  assert.deepEqual(hiddenRows.map((n) => text(sub(n, "n"))), ["Model", "Effort cap", "Compact window", "Cache lifetime", "Extended thinking", "Fallback models", "Allowed models"]);
+  assert.deepEqual(hiddenRows.map((n) => text(sub(n, "v"))), ["Opus 5.5", "Not set", "1,000,000", "1h", "On", "Not set", "All models"]);
+  assert.deepEqual(hiddenRows.map((n) => text(sub(n, "st"))), ["In effect", "Default", "Default", "Default", "Default", "Default", "Default"]);
   assert.equal(hiddenRows[0].getAttribute("href"), "#/settings?project=app&setting=model");
   // The narrow layout shows every setting, so the cell that has its own cell is in the list too, marked open.
-  assert.equal(rows.length, 5);
+  assert.equal(rows.length, 8);
   const open = rows.find((n) => hasClass(n, "is-on"));
   assert.equal(open.getAttribute("data-setting"), "effortLevel");
   assert.equal(open.getAttribute("aria-current"), "true");
@@ -380,7 +383,7 @@ test("more: the summary counts hidden settings that are not defaults, and a prob
 
 test("more: a change waiting in a hidden setting shows the mark and Not saved in the summary, the row and the name", () => {
   const page = createPage();
-  const payload = handPayload(FIVE);
+  const payload = handPayload(EIGHT);
   const host = band.bandFor({ route: { name: "settings", params: {}, query: {} }, hashFor: (n, p, patch) => router.hashFor(n, p, { project: "app", ...patch }) },
     payload, "effortLevel", new Set(["promptCacheTtl"]));
   const root = page.sections.settings;
@@ -391,7 +394,7 @@ test("more: a change waiting in a hidden setting shows the mark and Not saved in
   const more = moreOf(root);
   assert.equal(text(sub(more, "s4-sw")), STRINGS.band_not_saved);
   assert.equal(sub(more, "s4-sw").find((n) => hasClass(n, "s5-pend")).length, 1);
-  assert.equal(more.getAttribute("aria-label"), "4 more settings, Cache lifetime not saved");
+  assert.equal(more.getAttribute("aria-label"), "7 more settings, Cache lifetime not saved");
   const row = rowsOf_(popOf(root)).find((n) => n.getAttribute("data-setting") === "promptCacheTtl");
   assert.equal(text(sub(row, "s5-pend")), STRINGS.band_not_saved);
   assert.equal(sub(row, "st"), undefined, "the mark and word stand in place of the status");
@@ -407,7 +410,7 @@ test("more: a change waiting in a cell shows Not saved in place of its status an
   const page = createPage();
   const ctx = { route: { name: "settings", params: {}, query: {} }, hashFor: (n, p, patch) => router.hashFor(n, p, { project: "app", ...patch }) };
   const root = page.sections.settings;
-  root.appendChild(band.bandFor(ctx, handPayload(FIVE), "effortLevel", new Set(["effortLevel"])));
+  root.appendChild(band.bandFor(ctx, handPayload(EIGHT), "effortLevel", new Set(["effortLevel"])));
   const cell = cellFor(root, "effortLevel");
   assert.equal(text(sub(cell, "s4-sv")), "high");
   assert.equal(text(sub(cell, "s5-pend")), "Not saved");
@@ -415,7 +418,7 @@ test("more: a change waiting in a cell shows Not saved in place of its status an
   assert.equal(cell.getAttribute("aria-label"), "Effort, high, Not saved. " + STRINGS.band_cell_desc);
   // A pending cell is not behind More, so the name and the summary stay at rest.
   narrowTo(root, 500);
-  assert.equal(moreOf(root).getAttribute("aria-label"), "3 more settings");
+  assert.equal(moreOf(root).getAttribute("aria-label"), "6 more settings");
   assert.equal(text(sub(moreOf(root), "s4-sw")), "All default");
   assert.equal(text(sub(cellFor(root, "effortLevel"), "s5-pend")), "Not saved");
 });
@@ -424,7 +427,7 @@ test("band: setNotSaved redraws the band alone, keeps its width and focus, and m
   const page = createPage();
   const ctx = { route: { name: "settings", params: {}, query: {} }, hashFor: (n, p, patch) => router.hashFor(n, p, { project: "app", ...patch }) };
   const root = page.sections.settings;
-  const host = band.bandFor(ctx, handPayload(FIVE), "effortLevel", new Set());
+  const host = band.bandFor(ctx, handPayload(EIGHT), "effortLevel", new Set());
   root.appendChild(host);
   const nav = byClass(root, "s5-a")[0];
   assert.equal(root.find((n) => hasClass(n, "s5-pend")).length, 0);
@@ -445,7 +448,7 @@ test("band: setNotSaved redraws the band alone, keeps its width and focus, and m
   band.setNotSaved(new Set(["promptCacheTtl"]));
   assert.deepEqual(cellsOf(root).map((n) => n.getAttribute("data-setting")), ["effortLevel"], "still one cell");
   assert.equal(text(sub(moreOf(root), "s4-sw")), STRINGS.band_not_saved);
-  assert.equal(moreOf(root).getAttribute("aria-label"), "4 more settings, Cache lifetime not saved");
+  assert.equal(moreOf(root).getAttribute("aria-label"), "7 more settings, Cache lifetime not saved");
   band.setNotSaved(new Set());
   assert.equal(root.find((n) => hasClass(n, "s5-pend")).length, 0);
   assert.equal(text(sub(moreOf(root), "s4-sw")), atRest);
@@ -453,7 +456,7 @@ test("band: setNotSaved redraws the band alone, keeps its width and focus, and m
 
 test("more: a redraw for a new width keeps focus on the same cell", () => {
   const page = createPage();
-  const root = show(handPayload(FIVE), { page });
+  const root = show(handPayload(EIGHT), { page });
   cellFor(root, "effortLevel").focus();
   narrow(page, root, 343);
   assert.equal(FElement.focused, cellFor(root, "effortLevel"));
@@ -464,7 +467,7 @@ test("more: a redraw for a new width keeps focus on the same cell", () => {
 
 test("more: a band that has no width yet, or one that stays on the same cells, is not drawn again", () => {
   const page = createPage();
-  const root = show(handPayload(FIVE), { page });
+  const root = show(handPayload(EIGHT), { page });
   const nav = byClass(root, "s5-a")[0];
   const first = cellFor(root, "model");
   (page.listeners.resize || []).forEach((fn) => fn({}));
@@ -528,7 +531,7 @@ test("first pair: user xhigh is ignored on Opus 5.5, so Effort shows medium, Def
   assert.equal(text(sub(cell, "st")), "Default");
   assert.equal(settings.sourceText(settings.winnerOf(payload, "effortLevel"), payload, true), "Claude Code's default");
   assert.equal(text(sub(cellFor(root, "model"), "s4-sv")), "Opus 5.5");
-  assert.equal(cellsOf(root).length, 5);
+  assert.equal(cellsOf(root).length, 8);
   // The rail says why, in the winner's own reason.
   const winner = settings.winnerOf(payload, "effortLevel");
   assert.equal(text(sub(railOf(root), "s4-p")), winner.reason);
@@ -593,7 +596,7 @@ const pageOf = (root) => root.childNodes[0];
 const kinds = (node) => node.childNodes.map((n) => n.getAttribute("class").split(" ")[0]);
 
 test("states: no .claude folder and no user settings file both show above the band", () => {
-  const payload = handPayload(FIVE, { state: "no_claude_folder", no_user_settings: true });
+  const payload = handPayload(EIGHT, { state: "no_claude_folder", no_user_settings: true });
   const root = show(payload);
   assert.deepEqual(kinds(pageOf(root)), ["s4-chead", "s5-msgs", "s5-band", "s5-w"]);
   const heads = root.find((n) => hasClass(n, "cd-h")).map(text);
@@ -602,15 +605,15 @@ test("states: no .claude folder and no user settings file both show above the ba
   assert.match(bodies[0], /^~\/work\/app has no \.claude folder/);
   assert.ok(bodies[0].includes("~/.claude"));
   assert.match(bodies[1], /^~\/\.claude has no settings\.json/);
-  assert.equal(cellsOf(root).length, 5);
+  assert.equal(cellsOf(root).length, 8);
 });
 
 test("states: one message alone, and none when both files are there", () => {
-  const noUser = show(handPayload(FIVE, { no_user_settings: true }));
+  const noUser = show(handPayload(EIGHT, { no_user_settings: true }));
   assert.deepEqual(noUser.find((n) => hasClass(n, "cd-h")).map(text), ["No user settings file"]);
-  const noClaude = show(handPayload(FIVE, { state: "no_claude_folder" }));
+  const noClaude = show(handPayload(EIGHT, { state: "no_claude_folder" }));
   assert.deepEqual(noClaude.find((n) => hasClass(n, "cd-h")).map(text), ["No .claude folder"]);
-  const fine = show(handPayload(FIVE));
+  const fine = show(handPayload(EIGHT));
   assert.equal(fine.find((n) => hasClass(n, "cd-h")).length, 0);
   assert.equal(byClass(fine, "s5-msgs").length, 0, "no messages, no wrapper");
 });
@@ -626,7 +629,7 @@ test("states: a missing folder shows its message with the config file and no ban
 });
 
 test("states: All projects shows the project picker and nothing else", () => {
-  const root = show(handPayload(FIVE), { project: { key: "all", name: "All projects" } });
+  const root = show(handPayload(EIGHT), { project: { key: "all", name: "All projects" } });
   assert.equal(cellsOf(root).length, 0);
   assert.equal(byClass(root, "s5-a").length + byClass(root, "s4-rail").length, 0);
   assert.deepEqual(root.find((n) => hasClass(n, "cd-h")).map(text), ["Pick a project"]);
@@ -646,7 +649,7 @@ test("states: no payload yet, or a refused one, shows the head only", () => {
 });
 
 test("page: the band, then the two panes with the empty body and foot slots, and the Settings-only classes", () => {
-  const root = show(handPayload(FIVE));
+  const root = show(handPayload(EIGHT));
   const page = pageOf(root);
   assert.ok(hasClass(page, "s4") && hasClass(page, "s4-c") && hasClass(page, "s5-lock"));
   const panes = page.childNodes[2];
@@ -688,21 +691,21 @@ test("render clears the section first, so a second render does not stack bands",
   const page = createPage();
   const root = page.sections.settings;
   const ctx = { route: { name: "settings", params: {}, query: {} }, project: { key: "app", name: "App" },
-    data: { settings: { ok: true, status: 200, data: handPayload(FIVE) } }, hashFor: (n, p) => router.hashFor(n, p, {}) };
+    data: { settings: { ok: true, status: 200, data: handPayload(EIGHT) } }, hashFor: (n, p) => router.hashFor(n, p, {}) };
   settings.render(root, ctx);
   settings.render(root, ctx);
-  assert.equal(cellsOf(root).length, 5);
+  assert.equal(cellsOf(root).length, 8);
   assert.equal(byClass(root, "s5-a").length, 1);
 });
 
 test("focus: a draw puts focus back on the cell that had it, and a cell chosen by the route keeps focus", () => {
   const page = createPage();
-  const root = show(handPayload(FIVE), { page });
+  const root = show(handPayload(EIGHT), { page });
   cellFor(root, "model").focus();
-  show(handPayload(FIVE), { page, setting: "model" });
+  show(handPayload(EIGHT), { page, setting: "model" });
   assert.equal(FElement.focused, cellFor(root, "model"));
   FElement.focused = null;
-  show(handPayload(FIVE), { page });
+  show(handPayload(EIGHT), { page });
   assert.equal(FElement.focused, null, "focus that was elsewhere is left alone");
 });
 
@@ -720,7 +723,7 @@ test("data: no string from the payload reaches innerHTML, and markup in it shows
   assert.deepEqual(parsed, []);
   assert.equal(root.find((n) => n.tagName === "img").length, 0);
   assert.ok(text(root).includes(evil));
-  for (const file of ["pages/settings.js", "pages/band.js", "band_order.js"]) {
+  for (const file of ["pages/settings.js", "pages/band.js", "pages/band_arrange.js", "pages/band_drag.js", "band_order.js"]) {
     const source = fs.readFileSync(new URL("js/" + file, STATIC), "utf8");
     assert.equal(/innerHTML|outerHTML|insertAdjacentHTML|document\.write/.test(source), false, file);
   }
@@ -1293,7 +1296,7 @@ test("trail: the demo's effort trail has winner, losers, rules and file lines", 
 // ---------------------------------------------------------------- the trail: keys and focus
 
 test("keys: a cell is an anchor, so Enter opens its setting through the route, and the rail link opens the trail", () => {
-  const root = show(handPayload(FIVE));
+  const root = show(handPayload(EIGHT));
   for (const key of router.BAND_SETTINGS) {
     const cell = cellFor(root, key);
     assert.equal(cell.tagName, "a");
@@ -1328,7 +1331,7 @@ test("keys: Escape closes the trail and puts focus back on the cell", () => {
   assert.equal(FElement.focused, cellFor(settingsRoot, "effortLevel"));
   assert.ok(hasClass(cellFor(settingsRoot, "effortLevel"), "is-on"), "Settings opens on the row the trail was for");
   assert.equal(panelOf(m.root), undefined, "the trail is gone");
-  assert.equal(cellsOf(settingsRoot).length, 5);
+  assert.equal(cellsOf(settingsRoot).length, 8);
   // A later render of Settings does not take the return focus again. Focus on another cell stays on that setting.
   const moved = FElement.focused;
   FElement.focused = cellFor(settingsRoot, "model");
@@ -1476,7 +1479,7 @@ const FRAME_KEYS = settings.TILES.map((x) => x.key).filter((k) => !settings.EDIT
 const framePayload = (entries, over = {}) => trailPayload(entries, [], over);
 
 test("frame: each key of TILES is editable or draws no radio and no Run at control", () => {
-  const payload = framePayload(FIVE);
+  const payload = framePayload(EIGHT);
   for (const spec of settings.TILES) {
     const body = bodyOf_(show(payload, { setting: spec.key }));
     if (settings.EDITABLE_SETTINGS.includes(spec.key)) continue;
@@ -1484,12 +1487,12 @@ test("frame: each key of TILES is editable or draws no radio and no Run at contr
     assert.equal(body.find((n) => hasClass(n, "s4-run") && /Run at/.test(text(n))).length, 0, spec.key);
     assert.equal(text(body).includes(STRINGS.run_at), false, spec.key + " says Run at");
   }
-  assert.deepEqual(FRAME_KEYS, ["model", "maxEffortLevel", "autoCompactWindow", "promptCacheTtl"]);
+  assert.deepEqual(FRAME_KEYS, ["model", "maxEffortLevel", "autoCompactWindow", "promptCacheTtl", "alwaysThinkingEnabled", "fallbackModel", "availableModels"]);
   assert.equal(bodyOf_(show(payload, { setting: "effortLevel" })).childNodes.length, 3, "with no edit session Effort's body is the read-only frame");
 });
 
-test("frame: the four cells draw the lock line and never the editing off or locked lines, in every mode", () => {
-  const payload = framePayload(FIVE);
+test("frame: the seven read-only cells draw the lock line and never the editing off or locked lines, in every mode", () => {
+  const payload = framePayload(EIGHT);
   for (const mode of ["off", "locked", "ready"]) {
     for (const key of FRAME_KEYS) {
       const root = show(payload, { setting: key, edit: mode });
@@ -1513,7 +1516,7 @@ test("frame: a null winner draws without throwing and says Not known", () => {
 });
 
 test("frame: the Effort cap with no value or only the default says Not set", () => {
-  const body = bodyOf_(show(framePayload(FIVE), { setting: "maxEffortLevel" }));
+  const body = bodyOf_(show(framePayload(EIGHT), { setting: "maxEffortLevel" }));
   assert.ok(text(body).includes(STRINGS.band_not_set));
 });
 
@@ -1569,7 +1572,7 @@ test("frame: a shell value reads as the shell with its variable", () => {
 
 test("frame: the value text equals the cell text for each setting", () => {
   const payload = framePayload([
-    ...FIVE.slice(0, 3),
+    ...EIGHT.slice(0, 3),
     entry({ key: "autoCompactWindow", value: 1000000, file: null, status: "default", layer: "default", line: undefined }),
     entry({ key: "promptCacheTtl", value: "1h", file: null, status: "default", layer: "default", line: undefined }),
     entry({ key: "maxEffortLevel", value: "high", line: 9 }),
@@ -1582,7 +1585,7 @@ test("frame: the value text equals the cell text for each setting", () => {
     const frame = text(byClass(bodyOf_(root), "s4-v")[0]);
     assert.equal(frame, cell, key);
   }
-  const root = show(framePayload(FIVE), { setting: "maxEffortLevel" });
+  const root = show(framePayload(EIGHT), { setting: "maxEffortLevel" });
   assert.equal(text(byClass(bodyOf_(root), "s4-v")[0]), text(sub(cellFor(root, "maxEffortLevel"), "s4-sv")));
 });
 
@@ -1599,6 +1602,233 @@ test("where: shortFile and rowNode build the shared rows", () => {
   assert.ok(hasClass(list, "s6-lvs"));
   assert.equal(byClass(list, "s4-beyond").length, 1);
   assert.equal(byClass(where.whereList("Head", [row]), "s4-beyond").length, 0);
+});
+
+// ---------------------------------------------------------------- thinking, fallback and allowed models
+
+const NEW_KEYS = ["alwaysThinkingEnabled", "fallbackModel", "availableModels"];
+const DFLT = { file: null, status: "default", layer: "default", line: undefined };
+const thinking = (over) => entry({ key: "alwaysThinkingEnabled", ...over });
+const fallback = (over) => entry({ key: "fallbackModel", ...over });
+const allowed = (over) => entry({ key: "availableModels", ...over });
+const valueOfFrame = (root, key) => text(byClass(bodyOf_(show(framePayload(root), { setting: key })), "s4-v")[0]);
+
+// Each form: the key, the entries of the row (the first is the winner), and what the cell and the frame say.
+const FORMS = [
+  ["alwaysThinkingEnabled", [thinking({ value: true })], "On"],
+  ["alwaysThinkingEnabled", [thinking({ value: false })], "Off"],
+  ["alwaysThinkingEnabled", [thinking({ value: "0", layer: "env", status: "in_effect" })], "Off"],
+  ["alwaysThinkingEnabled", [thinking({ value: "8000", layer: "env", status: "in_effect" })], "On"],
+  ["alwaysThinkingEnabled", [thinking({ value: "on", ...DFLT })], "On"],
+  ["alwaysThinkingEnabled", [thinking({ value: "sometimes", status: "unknown", rule_ids: ["always-thinking-value-wrong"] })], "Not known"],
+  ["alwaysThinkingEnabled", [thinking({ value: false, status: "unknown", rule_ids: ["always-thinking-model-unknown"] })], "Not known"],
+  ["alwaysThinkingEnabled", [thinking({ value: false, status: "unknown", rule_ids: ["some-other-rule"] })], "Not known"],
+  ["fallbackModel", [fallback({ value: null, ...DFLT })], "Not set"],
+  ["fallbackModel", [fallback({ value: ["sonnet"] })], "1 model"],
+  ["fallbackModel", [fallback({ value: ["sonnet", "opus", "haiku"] })], "3 models"],
+  ["fallbackModel", [fallback({ value: [] })], "None"],
+  ["fallbackModel", [fallback({ value: ["sonnet", "opus"], status: "lowered", becomes: "sonnet" })], "2 models"],
+  ["fallbackModel", [fallback({ value: "sonnet", status: "unknown", rule_ids: ["fallback-model-value-wrong"] })], "Not known"],
+  ["availableModels", [allowed({ value: null, ...DFLT })], "All models"],
+  ["availableModels", [allowed({ value: ["opus"], merged: ["opus"] })], "1 model"],
+  ["availableModels", [allowed({ value: ["opus"], merged: ["opus", "sonnet", "haiku"] }), allowed({ value: ["sonnet", "haiku"] })], "3 models"],
+  ["availableModels", [allowed({ value: [], merged: [], layer: "managed" })], "None"],
+  ["availableModels", [allowed({ value: ["opus"], status: "unknown" })], "Not known"],
+  ["availableModels", [allowed({ value: "opus", status: "unknown", rule_ids: ["available-models-value-wrong"] })], "Not known"],
+];
+
+test("new settings: every value form reads the same in the cell, the More row and the frame", () => {
+  for (const [key, entries, want] of FORMS) {
+    const label = key + " " + JSON.stringify(entries[0].value) + " " + entries[0].status;
+    const payload = framePayload(entries);
+    const root = show(payload);
+    assert.equal(text(sub(cellFor(root, key), "s4-sv")), want, label + " cell");
+    assert.equal(band.valueFor(key, entries[0], payload).plain, want, label + " plain");
+    assert.equal(valueOfFrame(entries, key), want, label + " frame");
+    assert.ok(cellFor(root, key).getAttribute("aria-label").startsWith(settings.settingLabel(key) + ", " + want), label + " name");
+    const page = createPage();
+    const narrowRoot = show(payload, { page });
+    narrow(page, narrowRoot, 343);
+    const row = rowsOf_(popOf(narrowRoot)).find((n) => n.getAttribute("data-setting") === key);
+    assert.equal(text(sub(row, "v")), want, label + " More row");
+  }
+});
+
+test("new settings: extended thinking never says Off on an unknown row, and its value stays out of every screen", () => {
+  for (const ruleId of ["always-thinking-model-unknown", "always-thinking-value-wrong", "an-unreadable-file-rule", undefined]) {
+    for (const value of [false, "0", true, "sometimes"]) {
+      const e = thinking({ value, status: "unknown", rule_ids: ruleId ? [ruleId] : [] });
+      assert.equal(settings.valueNotShown(e), true, String(ruleId) + " " + value);
+      assert.equal(settings.valueString(e, {}), "");
+      assert.equal(settings.valueText(e, {}), null);
+      const payload = framePayload([e]);
+      assert.equal(text(sub(cellFor(show(payload), "alwaysThinkingEnabled"), "s4-sv")), STRINGS.band_not_known);
+      const body = text(bodyOf_(show(payload, { setting: "alwaysThinkingEnabled" })));
+      assert.equal(body.includes(STRINGS.band_off), false, "the frame never says Off");
+      assert.equal(body.includes(STRINGS.band_on), false, "the frame never says On");
+    }
+  }
+  // A known row with a rule of the same key still shows its value, and an unknown row of another key keeps the old rule.
+  assert.equal(settings.valueNotShown(thinking({ value: false, status: "overridden" })), false);
+  assert.equal(settings.valueNotShown(entry({ key: "effortLevel", status: "unknown", rule_ids: ["some-other-rule"] })), false);
+  for (const id of ["fallback-model-value-wrong", "available-models-value-wrong"]) {
+    assert.equal(settings.valueNotShown(entry({ key: "fallbackModel", status: "unknown", rule_ids: [id] })), true, id);
+  }
+});
+
+test("new settings: valueString words thinking and lists, plain or not", () => {
+  const cases = [
+    [thinking({ value: true }), "On"], [thinking({ value: "on" }), "On"], [thinking({ value: "8000" }), "On"],
+    [thinking({ value: "1" }), "On"], [thinking({ value: false }), "Off"], [thinking({ value: "0" }), "Off"],
+    [thinking({ value: "maybe" }), "maybe"], [thinking({ value: "-5" }), "-5"], [thinking({ value: 7 }), "7"],
+    [fallback({ value: ["a", "b"] }), "a, b"], [fallback({ value: ["claude-opus-5-5"] }), "claude-opus-5-5"],
+    [allowed({ value: [] }), "empty"], [allowed({ value: ["x", "y", "z"] }), "x, y, z"],
+  ];
+  for (const [e, want] of cases) {
+    assert.equal(settings.valueString(e, {}), want, JSON.stringify(e.value));
+    assert.equal(settings.valueString(e, {}, true), want, JSON.stringify(e.value) + " plain");
+    assert.equal(settings.valueText(e, {}, true), want);
+  }
+  assert.equal(settings.valueString(thinking({ value: null }), {}), "");
+});
+
+test("new settings: the lists name their models under the value in the frame, and the other keys name none", () => {
+  const names = (entries, key) => byClass(bodyOf_(show(framePayload(entries), { setting: key })), "s4-names").map(text);
+  assert.deepEqual(names([fallback({ value: ["sonnet", "opus"] })], "fallbackModel"), ["sonnet, opus"]);
+  assert.deepEqual(names([fallback({ value: ["sonnet", "opus"], status: "lowered", becomes: "sonnet" })], "fallbackModel"), ["sonnet, opus"]);
+  assert.deepEqual(names([allowed({ value: ["opus"], merged: ["opus", "sonnet", "haiku"] }), allowed({ value: ["sonnet", "haiku"] })], "availableModels"),
+    ["opus, sonnet, haiku"], "the merged list wins over the value");
+  assert.deepEqual(names([allowed({ value: ["opus", "sonnet"] })], "availableModels"), ["opus, sonnet"], "no merged list, so the value");
+  for (const [key, entries] of [
+    ["fallbackModel", [fallback({ value: null, ...DFLT })]], ["fallbackModel", [fallback({ value: [] })]],
+    ["availableModels", [allowed({ value: null, ...DFLT })]], ["availableModels", [allowed({ value: [], merged: [], layer: "managed" })]],
+    ["availableModels", [allowed({ value: "opus", status: "unknown" })]], ["alwaysThinkingEnabled", [thinking({ value: true })]],
+    ["model", [entry({ key: "model", value: "opus" })]],
+    // A list with a non-text item is Unknown, so its names are not the answer and no names line shows.
+    ["fallbackModel", [fallback({ value: ["opus", 1], status: "unknown", rule_ids: ["fallback-model-value-wrong"] })]],
+    ["availableModels", [allowed({ value: ["opus", 1], merged: ["opus"], status: "unknown", rule_ids: ["available-models-value-wrong"] })]],
+  ]) assert.deepEqual(names(entries, key), [], key + " " + JSON.stringify(entries[0].value));
+  assert.deepEqual(names([], "availableModels"), [], "no entry");
+  // The names sit under the value block, inside it.
+  const block = byClass(bodyOf_(show(framePayload([fallback({ value: ["a"] })]), { setting: "fallbackModel" })), "s4-run")[0];
+  assert.deepEqual(block.childNodes.map((n) => n.getAttribute("class")), ["s4-lab", "s4-lvv", "s4-names"]);
+});
+
+test("new settings: the merged count comes from the head's merged list, however many entries are in effect", () => {
+  const entries = [
+    allowed({ value: ["opus"], merged: ["opus", "sonnet", "haiku", "fable"], layer: "local", file: "/w/app/.claude/settings.local.json" }),
+    allowed({ value: ["sonnet", "haiku"], layer: "project", file: "/w/app/.claude/settings.json" }),
+    allowed({ value: ["fable"], layer: "user" }),
+  ];
+  assert.ok(entries.every((e) => e.status === "in_effect"));
+  assert.equal(valueOfFrame(entries, "availableModels"), "4 models");
+  assert.equal(text(sub(cellFor(show(framePayload(entries)), "availableModels"), "s4-sv")), "4 models");
+  const real_ = real("available-user-and-project-merge");
+  assert.equal(text(sub(cellFor(show(real_), "availableModels"), "s4-sv")), "3 models");
+  assert.equal(text(byClass(bodyOf_(show(real_, { setting: "availableModels" })), "s4-names")[0]), "opus, sonnet, haiku");
+  // The real fallback chain that Claude Code cuts counts what runs, and the frame names it.
+  const cut = real("fallback-allowed-list-drops-entry");
+  const cell = cellFor(show(cut), "fallbackModel");
+  assert.equal(text(sub(cell, "s4-sv")), "1 model");
+  assert.ok(cell.getAttribute("aria-label").includes("sonnet"), "runs as sonnet");
+  assert.equal(text(byClass(bodyOf_(show(cut, { setting: "fallbackModel" })), "s4-names")[0]), "sonnet");
+  // Every dropped: the cell reads none and the frame has no names line. Where it's set keeps the written list.
+  const none = real("fallback-allowed-list-drops-all");
+  assert.equal(text(sub(cellFor(show(none), "fallbackModel"), "s4-sv")), STRINGS.band_models_none);
+  assert.deepEqual(byClass(bodyOf_(show(none, { setting: "fallbackModel" })), "s4-names"), []);
+  assert.equal(valueOfFrame([fallback({ value: ["sonnet", "sonnet", "haiku"], status: "lowered", becomes: "sonnet", merged: ["sonnet"] })], "fallbackModel"), "1 model");
+  const written = byClass(bodyOf_(show(framePayload([fallback({ value: ["sonnet", "sonnet", "haiku"], status: "lowered", merged: ["sonnet"] })]), { setting: "fallbackModel" })), "s6-r")[0];
+  assert.ok(text(written).includes("sonnet") && text(written).includes("haiku"), "the row shows the written list");
+  // Thinking off on an unknown model from the real fixture says Not known.
+  assert.equal(text(sub(cellFor(show(real("thinking-false-model-unknown")), "alwaysThinkingEnabled"), "s4-sv")), STRINGS.band_not_known);
+  // The same when the allowed list blocks the model setting: the cell never says Off, and the frame never says it either.
+  const blocked = real("thinking-model-blocked-by-allowlist");
+  assert.equal(text(sub(cellFor(show(blocked), "alwaysThinkingEnabled"), "s4-sv")), STRINGS.band_not_known);
+  assert.equal(text(bodyOf_(show(blocked, { setting: "alwaysThinkingEnabled" }))).includes(STRINGS.band_off), false);
+});
+
+test("new settings: where it's set rows of a list value take s6-wide and the others do not", () => {
+  const rows = (entries, key) => byClass(bodyOf_(show(framePayload(entries), { setting: key })), "s6-r");
+  const list = rows([fallback({ value: ["sonnet", "opus"] })], "fallbackModel");
+  assert.ok(list.length > 0 && list.every((r) => hasClass(r, "s6-wide")));
+  const allowedRows = rows([allowed({ value: ["opus"], merged: ["opus"] })], "availableModels");
+  assert.ok(allowedRows.length > 0 && allowedRows.every((r) => hasClass(r, "s6-wide")));
+  const plain = rows([entry({ key: "model", value: "opus" })], "model");
+  assert.ok(plain.length > 0 && plain.every((r) => !hasClass(r, "s6-wide")));
+  const tail = rows([fallback({ value: null, ...DFLT })], "fallbackModel");
+  assert.ok(tail.every((r) => !hasClass(r, "s6-wide")), "an entry with no list is not wide");
+});
+
+test("new settings: the where heading says lists combine for allowed models set in files, and keeps the old words otherwise", () => {
+  const heading = (entries, key) => text(byClass(byClass(bodyOf_(show(framePayload(entries), { setting: key })), "s6-lvs")[0], "s4-lab")[0]);
+  const files = [allowed({ value: ["opus"], merged: ["opus", "sonnet"], layer: "project" }), allowed({ value: ["sonnet"], layer: "user" })];
+  assert.equal(heading(files, "availableModels"), STRINGS.where_rest_merged);
+  assert.equal(heading([files[0], allowed({ value: null, ...DFLT })], "availableModels"), STRINGS.where_rest_merged);
+  const managed = [allowed({ value: ["opus"], merged: ["opus"], layer: "managed", file: "/etc/claude/managed-settings.json" }), ...files];
+  assert.equal(heading(managed, "availableModels"), STRINGS.where_rest, "a managed list applies as it is");
+  assert.equal(heading([allowed({ value: null, ...DFLT })], "availableModels"), STRINGS.where_rest, "only the default");
+  assert.equal(heading([], "availableModels"), STRINGS.where_rest, "no entries");
+  assert.equal(heading([fallback({ value: ["a"], layer: "project" })], "fallbackModel"), STRINGS.where_rest, "chains do not merge");
+  assert.equal(heading([thinking({ value: true })], "alwaysThinkingEnabled"), STRINGS.where_rest);
+  assert.equal(STRINGS.where_rest_merged, "Where it's set, lists combine");
+});
+
+// ---------------------------------------------------------------- read-only guarantee
+
+test("new settings: each draws no radio, no Run at control and no edit controls, and none is editable", () => {
+  for (const key of NEW_KEYS) assert.equal(settings.EDITABLE_SETTINGS.includes(key), false, key + " is read-only");
+  const entries = [
+    thinking({ value: false }), fallback({ value: ["a", "b"] }), allowed({ value: ["a"], merged: ["a"] }),
+  ];
+  for (const mode of [null, "off", "locked", "ready"]) {
+    for (const key of NEW_KEYS) {
+      const root = show(framePayload(entries), { setting: key, edit: mode });
+      const body = bodyOf_(root);
+      assert.equal(byClass(body, "s4-lock").length, 1, key + " " + mode + " lock line");
+      for (const tag of ["input", "select", "textarea", "button", "label"]) {
+        assert.equal(body.find((n) => n.tagName === tag).length, 0, key + " " + mode + " draws a " + tag);
+      }
+      assert.equal(body.find((n) => n.getAttribute("data-edit-focus") !== null && n.getAttribute("data-edit-focus") !== undefined).length, 0);
+      assert.equal(text(body).includes(STRINGS.run_at), false, key + " says Run at");
+      // Outside the band, the page has no radio and no control but the links, the More button and the Arrange button.
+      const wide = root.find((n) => n.tagName === "input" || n.tagName === "select" || n.tagName === "textarea");
+      assert.equal(wide.length, 0, key + " " + mode + " page controls");
+      const buttons = root.find((n) => n.tagName === "button" && !hasClass(n, "s5-more") && !hasClass(n, "s6-arr"));
+      assert.equal(buttons.length, 0, key + " " + mode + " buttons");
+    }
+  }
+});
+
+// ---------------------------------------------------------------- eight cells and the 1360 window
+
+test("band: 8 cells start More at a 1360 window, and the arithmetic matches app.css", () => {
+  const keys = settings.TILES.map((spec) => spec.key);
+  assert.equal(keys.length, 8);
+  assert.deepEqual(bandOrder.fit(keys, 1056, "effortLevel"), { cells: keys, more: [] });
+  const out = bandOrder.fit(keys, 1055, "effortLevel");
+  assert.equal(out.cells.length, 6);
+  assert.deepEqual(out.more, keys.slice(6));
+  assert.equal(out.more.length, 2);
+  // The same through the band: 1056 draws eight cells and no More, 1055 draws six cells and More with 2 more.
+  const page = createPage();
+  const root = show(handPayload(EIGHT), { page });
+  narrow(page, root, 1056);
+  assert.equal(cellsOf(root).length, 8);
+  assert.equal(moreOf(root), undefined);
+  narrow(page, root, 1055);
+  assert.equal(cellsOf(root).length, 6);
+  assert.equal(text(sub(moreOf(root), "s4-sv")), "2 more");
+  // The 1360 arithmetic of band_order.js: the sidebar and the page gutters in app.css and tokens.css.
+  const css = fs.readFileSync(new URL("app.css", STATIC), "utf8");
+  const tokens = fs.readFileSync(new URL("tokens.css", STATIC), "utf8");
+  const sidebar = Number(/\.app\{display:grid;grid-template-columns:(\d+)px minmax\(0,1fr\)/.exec(css)[1]);
+  const gutterToken = /\.s5-bw\{padding:0 var\(--(space-\d)\)\}/.exec(css)[1];
+  const gutter = Number(new RegExp("--" + gutterToken + ":\\s*(\\d+)px").exec(tokens)[1]);
+  assert.match(css, /\.content:has\(>\[data-page="settings"\]:not\(\[hidden\]\)\)\{padding:0;/, "the Settings route adds no padding of its own");
+  assert.equal(sidebar, 240);
+  assert.equal(gutter, 32);
+  assert.equal(1360 - sidebar - 2 * gutter, 1056);
+  assert.equal(bandOrder.MIN_CELL * 8, 1056);
 });
 
 // ---------------------------------------------------------------- run

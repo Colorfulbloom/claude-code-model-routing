@@ -26,7 +26,8 @@ const THEMES = ["light", "dark"];
 
 // The settings that have a cell in the Settings band, in the saved order of the cells. pages/settings.js keeps
 // the same keys in TILES, and a check holds the two together. An unknown value of ?setting= reads as null.
-export const BAND_SETTINGS = ["model", "effortLevel", "maxEffortLevel", "autoCompactWindow", "promptCacheTtl"];
+export const BAND_SETTINGS = ["model", "effortLevel", "maxEffortLevel", "autoCompactWindow", "promptCacheTtl",
+  "alwaysThinkingEnabled", "fallbackModel", "availableModels"];
 
 const encodeKey = (value) => (value === MAIN_KEY ? MAIN_KEY : encodeURIComponent(value));
 

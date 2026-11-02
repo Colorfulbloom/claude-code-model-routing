@@ -1,0 +1,47 @@
+{
+  "fixture": "available-managed-over-user-and-project",
+  "rule_ids": [
+    "available-models-order"
+  ],
+  "confidence": "documented",
+  "source": "https://code.claude.com/docs/en/model-config#merge-behavior",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "availableModels",
+      "value": [
+        "opus"
+      ],
+      "status": "in_effect",
+      "layer": "managed",
+      "file": "managed/managed-settings.json",
+      "scope": "main",
+      "merged": [
+        "opus"
+      ],
+      "rule_id": "available-models-order"
+    },
+    {
+      "key": "availableModels",
+      "value": [
+        "haiku"
+      ],
+      "status": "overridden",
+      "layer": "project",
+      "file": "project/.claude/settings.json",
+      "scope": "main",
+      "rule_id": "available-models-order"
+    },
+    {
+      "key": "availableModels",
+      "value": [
+        "sonnet"
+      ],
+      "status": "overridden",
+      "layer": "user",
+      "file": "config/settings.json",
+      "scope": "main",
+      "rule_id": "available-models-order"
+    }
+  ]
+}

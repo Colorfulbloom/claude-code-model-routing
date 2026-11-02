@@ -1,0 +1,30 @@
+{
+  "fixture": "fallback-and-allowed-defaults",
+  "rule_ids": [
+    "fallback-model-default",
+    "available-models-default"
+  ],
+  "confidence": "documented",
+  "source": "https://code.claude.com/docs/en/settings-reference#fallbackmodel",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "fallbackModel",
+      "value": null,
+      "status": "default",
+      "layer": "default",
+      "file": null,
+      "scope": "main",
+      "rule_id": "fallback-model-default"
+    },
+    {
+      "key": "availableModels",
+      "value": null,
+      "status": "default",
+      "layer": "default",
+      "file": null,
+      "scope": "main",
+      "rule_id": "available-models-default"
+    }
+  ]
+}

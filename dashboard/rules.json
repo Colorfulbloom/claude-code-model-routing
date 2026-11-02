@@ -411,6 +411,17 @@
           "layer": "env"
         }
       ]
+    },
+    {
+      "name": "MAX_THINKING_TOKENS",
+      "value": null,
+      "rows": [
+        {
+          "key": "alwaysThinkingEnabled",
+          "scope": "main",
+          "layer": "env"
+        }
+      ]
     }
   ],
   "rules": [
@@ -5145,6 +5156,1026 @@
       "verified_on": {
         "claude_version": "2.1.302",
         "date": "2026-10-29"
+      }
+    },
+    {
+      "rule_id": "always-thinking-no-effect",
+      "key": "alwaysThinkingEnabled",
+      "scope": "main",
+      "layer_order": [
+        "env",
+        "managed",
+        "cli",
+        "local",
+        "project",
+        "user",
+        "default"
+      ],
+      "combine": "highest_layer",
+      "conditions": [
+        {
+          "layer": "env",
+          "models": [
+            {
+              "from": "claude-fable-5"
+            }
+          ],
+          "via": "MAX_THINKING_TOKENS",
+          "values": [
+            "0"
+          ],
+          "status": "ignored"
+        },
+        {
+          "layer": "managed",
+          "models": [
+            {
+              "from": "claude-fable-5"
+            }
+          ],
+          "values": [
+            "false"
+          ],
+          "status": "ignored"
+        },
+        {
+          "layer": "cli",
+          "models": [
+            {
+              "from": "claude-fable-5"
+            }
+          ],
+          "values": [
+            "false"
+          ],
+          "status": "ignored"
+        },
+        {
+          "layer": "local",
+          "models": [
+            {
+              "from": "claude-fable-5"
+            }
+          ],
+          "values": [
+            "false"
+          ],
+          "status": "ignored"
+        },
+        {
+          "layer": "project",
+          "models": [
+            {
+              "from": "claude-fable-5"
+            }
+          ],
+          "values": [
+            "false"
+          ],
+          "status": "ignored"
+        },
+        {
+          "layer": "user",
+          "models": [
+            {
+              "from": "claude-fable-5"
+            }
+          ],
+          "values": [
+            "false"
+          ],
+          "status": "ignored"
+        }
+      ],
+      "reason": "{model} always thinks, so {file} can't turn thinking off. Neither false nor MAX_THINKING_TOKENS=0 has any effect on it.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/settings-reference#alwaysthinkingenabled",
+          "quote": "On models that always think, such as Opus 5.5, Sonnet 5.5, Haiku 5.5, and the Fable models, `false` has no effect."
+        },
+        {
+          "doc_url": "https://code.claude.com/docs/en/model-config#extended-thinking",
+          "quote": "a saved `alwaysThinkingEnabled: false` or `MAX_THINKING_TOKENS=0` has no effect there"
+        }
+      ],
+      "experiment": null,
+      "confidence": "documented",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-11-02"
+      }
+    },
+    {
+      "rule_id": "always-thinking-model-unknown",
+      "key": "alwaysThinkingEnabled",
+      "scope": "main",
+      "layer_order": [
+        "env",
+        "managed",
+        "cli",
+        "local",
+        "project",
+        "user",
+        "default"
+      ],
+      "combine": "highest_layer",
+      "conditions": [
+        {
+          "layer": "env",
+          "models": [
+            "*"
+          ],
+          "via": "MAX_THINKING_TOKENS",
+          "values": [
+            "0"
+          ],
+          "when": "model_unknown",
+          "status": "unknown"
+        },
+        {
+          "layer": "managed",
+          "models": [
+            "*"
+          ],
+          "values": [
+            "false"
+          ],
+          "when": "model_unknown",
+          "status": "unknown"
+        },
+        {
+          "layer": "cli",
+          "models": [
+            "*"
+          ],
+          "values": [
+            "false"
+          ],
+          "when": "model_unknown",
+          "status": "unknown"
+        },
+        {
+          "layer": "local",
+          "models": [
+            "*"
+          ],
+          "values": [
+            "false"
+          ],
+          "when": "model_unknown",
+          "status": "unknown"
+        },
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "values": [
+            "false"
+          ],
+          "when": "model_unknown",
+          "status": "unknown"
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "values": [
+            "false"
+          ],
+          "when": "model_unknown",
+          "status": "unknown"
+        }
+      ],
+      "reason": "{file} asks to turn thinking off, but some models always think, and the dashboard doesn't know the session's model. So it can't say whether thinking is on or off. To check, run /config in a new session started in this project, where those models show \"Thinking can't be turned off\".",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/settings-reference#alwaysthinkingenabled",
+          "quote": "On models that always think, such as Opus 5.5, Sonnet 5.5, Haiku 5.5, and the Fable models, `false` has no effect."
+        },
+        {
+          "doc_url": "https://code.claude.com/docs/en/model-config#extended-thinking",
+          "quote": "a saved `alwaysThinkingEnabled: false` or `MAX_THINKING_TOKENS=0` has no effect there"
+        }
+      ],
+      "experiment": null,
+      "confidence": "documented",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-11-02"
+      }
+    },
+    {
+      "rule_id": "always-thinking-value-wrong",
+      "key": "alwaysThinkingEnabled",
+      "scope": "main",
+      "layer_order": [
+        "env",
+        "managed",
+        "cli",
+        "local",
+        "project",
+        "user",
+        "default"
+      ],
+      "combine": "highest_layer",
+      "conditions": [
+        {
+          "layer": "env",
+          "models": [
+            "*"
+          ],
+          "via": "MAX_THINKING_TOKENS",
+          "when": "wrong_type",
+          "status": "unknown"
+        },
+        {
+          "layer": "managed",
+          "models": [
+            "*"
+          ],
+          "when": "wrong_type",
+          "status": "unknown"
+        },
+        {
+          "layer": "cli",
+          "models": [
+            "*"
+          ],
+          "when": "wrong_type",
+          "status": "unknown"
+        },
+        {
+          "layer": "local",
+          "models": [
+            "*"
+          ],
+          "when": "wrong_type",
+          "status": "unknown"
+        },
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "when": "wrong_type",
+          "status": "unknown"
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "when": "wrong_type",
+          "status": "unknown"
+        }
+      ],
+      "reason": "The value in {file} isn't true or false, or a whole number for MAX_THINKING_TOKENS, so the dashboard can't say what Claude Code does with it.",
+      "quotes": [],
+      "experiment": null,
+      "confidence": "assumed",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-11-02"
+      }
+    },
+    {
+      "rule_id": "always-thinking-order",
+      "key": "alwaysThinkingEnabled",
+      "scope": "main",
+      "layer_order": [
+        "env",
+        "managed",
+        "cli",
+        "local",
+        "project",
+        "user",
+        "default"
+      ],
+      "combine": "highest_layer",
+      "conditions": [
+        {
+          "layer": "env",
+          "models": [
+            "*"
+          ],
+          "via": "MAX_THINKING_TOKENS",
+          "status": "in_effect"
+        },
+        {
+          "layer": "managed",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "cli",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "local",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        }
+      ],
+      "reason": "{winner} sets extended thinking, because MAX_THINKING_TOKENS beats alwaysThinkingEnabled for one session and the higher file wins. On a third-party provider such as Bedrock, Agent Platform or Foundry, Claude Code leaves out the thinking parameter instead of turning thinking off, so adaptive-reasoning models may still think. The dashboard can't see the provider.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/settings#settings-precedence",
+          "quote": "When the same key appears in more than one place, Claude Code uses the value from the highest level that sets it."
+        },
+        {
+          "doc_url": "https://code.claude.com/docs/en/settings-reference#alwaysthinkingenabled",
+          "quote": "takes precedence over this key for one session: `0` turns thinking off, under the same model and provider limits as `false`, and a positive value turns thinking on even when this key is `false`."
+        },
+        {
+          "doc_url": "https://code.claude.com/docs/en/settings-reference#alwaysthinkingenabled",
+          "quote": "Claude Code omits the `thinking` parameter instead of turning thinking off, so adaptive-reasoning models may still think."
+        }
+      ],
+      "experiment": null,
+      "confidence": "documented",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-11-02"
+      }
+    },
+    {
+      "rule_id": "always-thinking-default-always-on",
+      "key": "alwaysThinkingEnabled",
+      "scope": "main",
+      "layer_order": [
+        "env",
+        "managed",
+        "cli",
+        "local",
+        "project",
+        "user",
+        "default"
+      ],
+      "combine": "highest_layer",
+      "conditions": [
+        {
+          "layer": "default",
+          "models": [
+            {
+              "from": "claude-fable-5"
+            }
+          ],
+          "status": "default",
+          "default_value": "on"
+        }
+      ],
+      "reason": "Nothing can turn thinking off here, because {model} always thinks.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/model-config#extended-thinking",
+          "quote": "You can't turn thinking off on Opus 5.5, Sonnet 5.5, Haiku 5.5, or the Fable models."
+        }
+      ],
+      "experiment": null,
+      "confidence": "documented",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-11-02"
+      }
+    },
+    {
+      "rule_id": "always-thinking-default",
+      "key": "alwaysThinkingEnabled",
+      "scope": "main",
+      "layer_order": [
+        "env",
+        "managed",
+        "cli",
+        "local",
+        "project",
+        "user",
+        "default"
+      ],
+      "combine": "highest_layer",
+      "conditions": [
+        {
+          "layer": "default",
+          "models": [
+            "*"
+          ],
+          "status": "default",
+          "default_value": "on"
+        }
+      ],
+      "reason": "Nothing sets extended thinking, so it's on by default for models that support it.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/settings-reference#alwaysthinkingenabled",
+          "quote": "unset, so thinking is on for models that support it"
+        }
+      ],
+      "experiment": null,
+      "confidence": "documented",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-11-02"
+      }
+    },
+    {
+      "rule_id": "fallback-model-chain-limits",
+      "key": "fallbackModel",
+      "scope": "main",
+      "layer_order": [
+        "flag",
+        "managed",
+        "cli",
+        "local",
+        "project",
+        "user",
+        "default"
+      ],
+      "combine": "highest_layer",
+      "conditions": [
+        {
+          "layer": "flag",
+          "models": [
+            "*"
+          ],
+          "when": "chain_limited",
+          "status": "lowered",
+          "becomes": {
+            "computed": "chain"
+          }
+        },
+        {
+          "layer": "managed",
+          "models": [
+            "*"
+          ],
+          "when": "chain_limited",
+          "status": "lowered",
+          "becomes": {
+            "computed": "chain"
+          }
+        },
+        {
+          "layer": "cli",
+          "models": [
+            "*"
+          ],
+          "when": "chain_limited",
+          "status": "lowered",
+          "becomes": {
+            "computed": "chain"
+          }
+        },
+        {
+          "layer": "local",
+          "models": [
+            "*"
+          ],
+          "when": "chain_limited",
+          "status": "lowered",
+          "becomes": {
+            "computed": "chain"
+          }
+        },
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "when": "chain_limited",
+          "status": "lowered",
+          "becomes": {
+            "computed": "chain"
+          }
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "when": "chain_limited",
+          "status": "lowered",
+          "becomes": {
+            "computed": "chain"
+          }
+        }
+      ],
+      "reason": "The chain in {file} runs as {becomes}. Claude Code removes duplicates, drops models the allowed list doesn't permit and keeps at most three.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/model-config#fallback-model-chains",
+          "quote": "Claude Code caps chains at three models after duplicate removal and ignores extra entries."
+        },
+        {
+          "doc_url": "https://code.claude.com/docs/en/model-config#restrict-model-selection",
+          "quote": "entries outside the allowlist are dropped"
+        },
+        {
+          "doc_url": "https://code.claude.com/docs/en/settings-reference#fallbackmodel",
+          "quote": "Claude Code keeps at most three distinct allowed models from the list and ignores the rest"
+        }
+      ],
+      "experiment": null,
+      "confidence": "documented",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-11-02"
+      }
+    },
+    {
+      "rule_id": "fallback-model-chain-unclear",
+      "key": "fallbackModel",
+      "scope": "main",
+      "layer_order": [
+        "flag",
+        "managed",
+        "cli",
+        "local",
+        "project",
+        "user",
+        "default"
+      ],
+      "combine": "highest_layer",
+      "conditions": [
+        {
+          "layer": "flag",
+          "models": [
+            "*"
+          ],
+          "when": "chain_unclear",
+          "status": "unknown"
+        },
+        {
+          "layer": "managed",
+          "models": [
+            "*"
+          ],
+          "when": "chain_unclear",
+          "status": "unknown"
+        },
+        {
+          "layer": "cli",
+          "models": [
+            "*"
+          ],
+          "when": "chain_unclear",
+          "status": "unknown"
+        },
+        {
+          "layer": "local",
+          "models": [
+            "*"
+          ],
+          "when": "chain_unclear",
+          "status": "unknown"
+        },
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "when": "chain_unclear",
+          "status": "unknown"
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "when": "chain_unclear",
+          "status": "unknown"
+        }
+      ],
+      "reason": "The dashboard can't say which models in {file} stay in the chain. It can't match some entries against the allowed list, such as default or a provider ID, and it doesn't apply a managed deniedModels or availableModelsMatch. In a chain of more than three models, default also hides which three stay, because it expands to a model the dashboard can't name.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/model-config#fallback-model-chains",
+          "quote": "Claude Code caps chains at three models after duplicate removal and ignores extra entries."
+        },
+        {
+          "doc_url": "https://code.claude.com/docs/en/model-config#restrict-model-selection",
+          "quote": "entries outside the allowlist are dropped"
+        }
+      ],
+      "experiment": null,
+      "confidence": "documented",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-11-02"
+      }
+    },
+    {
+      "rule_id": "fallback-model-value-wrong",
+      "key": "fallbackModel",
+      "scope": "main",
+      "layer_order": [
+        "flag",
+        "managed",
+        "cli",
+        "local",
+        "project",
+        "user",
+        "default"
+      ],
+      "combine": "highest_layer",
+      "conditions": [
+        {
+          "layer": "managed",
+          "models": [
+            "*"
+          ],
+          "when": "wrong_type",
+          "status": "unknown"
+        },
+        {
+          "layer": "cli",
+          "models": [
+            "*"
+          ],
+          "when": "wrong_type",
+          "status": "unknown"
+        },
+        {
+          "layer": "local",
+          "models": [
+            "*"
+          ],
+          "when": "wrong_type",
+          "status": "unknown"
+        },
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "when": "wrong_type",
+          "status": "unknown"
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "when": "wrong_type",
+          "status": "unknown"
+        }
+      ],
+      "reason": "The value in {file} isn't a list of model names, so the dashboard can't say what Claude Code does with it.",
+      "quotes": [],
+      "experiment": null,
+      "confidence": "assumed",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-11-02"
+      }
+    },
+    {
+      "rule_id": "fallback-model-order",
+      "key": "fallbackModel",
+      "scope": "main",
+      "layer_order": [
+        "flag",
+        "managed",
+        "cli",
+        "local",
+        "project",
+        "user",
+        "default"
+      ],
+      "combine": "highest_layer",
+      "conditions": [
+        {
+          "layer": "flag",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "managed",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "cli",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "local",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        }
+      ],
+      "reason": "{winner} sets the fallback chain. Claude Code takes the whole list from the highest file that sets one, and lists don't merge. The --fallback-model flag beats every file.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/settings#lists-merge-instead-of-overriding",
+          "quote": "is an ordered chain where position carries meaning, so Claude Code takes the whole value from the highest-precedence file that defines it."
+        },
+        {
+          "doc_url": "https://code.claude.com/docs/en/settings-reference#fallbackmodel",
+          "quote": "`--fallback-model` takes precedence over this key for one session"
+        },
+        {
+          "doc_url": "https://code.claude.com/docs/en/model-config#fallback-model-chains",
+          "quote": "The `--fallback-model` flag takes precedence over the `fallbackModel` setting."
+        }
+      ],
+      "experiment": null,
+      "confidence": "documented",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-11-02"
+      }
+    },
+    {
+      "rule_id": "fallback-model-default",
+      "key": "fallbackModel",
+      "scope": "main",
+      "layer_order": [
+        "flag",
+        "managed",
+        "cli",
+        "local",
+        "project",
+        "user",
+        "default"
+      ],
+      "combine": "highest_layer",
+      "conditions": [
+        {
+          "layer": "default",
+          "models": [
+            "*"
+          ],
+          "status": "default"
+        }
+      ],
+      "reason": "Nothing sets a chain, so a failed request isn't retried on another model.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/settings-reference#fallbackmodel",
+          "quote": "unset, so a failed request isn't retried on another model"
+        }
+      ],
+      "experiment": null,
+      "confidence": "documented",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-11-02"
+      }
+    },
+    {
+      "rule_id": "available-models-managed-empty",
+      "key": "availableModels",
+      "scope": "main",
+      "layer_order": [
+        "managed",
+        "cli",
+        "local",
+        "project",
+        "user",
+        "default"
+      ],
+      "combine": "managed_or_merge",
+      "conditions": [
+        {
+          "layer": "managed",
+          "models": [
+            "*"
+          ],
+          "values": [
+            "[]"
+          ],
+          "status": "in_effect"
+        }
+      ],
+      "reason": "{file} sets an empty list, so Claude Code blocks named model selections.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/model-config#default-model-behavior",
+          "quote": "With `availableModels: []`, named model selections are blocked"
+        }
+      ],
+      "experiment": null,
+      "confidence": "documented",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-11-02"
+      }
+    },
+    {
+      "rule_id": "available-models-value-wrong",
+      "key": "availableModels",
+      "scope": "main",
+      "layer_order": [
+        "managed",
+        "cli",
+        "local",
+        "project",
+        "user",
+        "default"
+      ],
+      "combine": "managed_or_merge",
+      "conditions": [
+        {
+          "layer": "managed",
+          "models": [
+            "*"
+          ],
+          "when": "wrong_type",
+          "status": "unknown"
+        },
+        {
+          "layer": "cli",
+          "models": [
+            "*"
+          ],
+          "when": "wrong_type",
+          "status": "unknown"
+        },
+        {
+          "layer": "local",
+          "models": [
+            "*"
+          ],
+          "when": "wrong_type",
+          "status": "unknown"
+        },
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "when": "wrong_type",
+          "status": "unknown"
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "when": "wrong_type",
+          "status": "unknown"
+        }
+      ],
+      "reason": "The value in {file} isn't a list of model names, so the dashboard can't say what Claude Code does with it.",
+      "quotes": [],
+      "experiment": null,
+      "confidence": "assumed",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-11-02"
+      }
+    },
+    {
+      "rule_id": "available-models-order",
+      "key": "availableModels",
+      "scope": "main",
+      "layer_order": [
+        "managed",
+        "cli",
+        "local",
+        "project",
+        "user",
+        "default"
+      ],
+      "combine": "managed_or_merge",
+      "conditions": [
+        {
+          "layer": "managed",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "cli",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "local",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "status": "in_effect"
+        }
+      ],
+      "reason": "A managed list applies as it is, and Claude Code ignores the lists in your own files. With no managed list, Claude Code combines the lists from your files.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/settings#lists-merge-instead-of-overriding",
+          "quote": "applies that list as-is and ignores entries you add in user, project, or local settings"
+        },
+        {
+          "doc_url": "https://code.claude.com/docs/en/settings#lists-merge-instead-of-overriding",
+          "quote": "Across non-managed scopes Claude Code merges the arrays as usual."
+        },
+        {
+          "doc_url": "https://code.claude.com/docs/en/model-config#merge-behavior",
+          "quote": "entries in user, project, or local settings cannot extend it"
+        }
+      ],
+      "experiment": null,
+      "confidence": "documented",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-11-02"
+      }
+    },
+    {
+      "rule_id": "available-models-default",
+      "key": "availableModels",
+      "scope": "main",
+      "layer_order": [
+        "managed",
+        "cli",
+        "local",
+        "project",
+        "user",
+        "default"
+      ],
+      "combine": "managed_or_merge",
+      "conditions": [
+        {
+          "layer": "default",
+          "models": [
+            "*"
+          ],
+          "status": "default"
+        }
+      ],
+      "reason": "Nothing sets a list, so every model is available.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/settings-reference#availablemodels",
+          "quote": "unset, so every model is available"
+        }
+      ],
+      "experiment": null,
+      "confidence": "documented",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-11-02"
       }
     }
   ]

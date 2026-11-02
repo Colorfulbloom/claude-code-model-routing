@@ -1,0 +1,7 @@
+{
+  "model": "opus",
+  "availableModels": [
+    "claude-opus-4-6"
+  ],
+  "alwaysThinkingEnabled": false
+}

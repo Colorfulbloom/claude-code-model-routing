@@ -22,6 +22,7 @@ import server  # noqa: E402
 
 TESTS = Path(__file__).resolve().parent
 CHECKS = TESTS / "js" / "settings_checks.mjs"
+REORDER = TESTS / "js" / "band_reorder_checks.mjs"
 NODE = shutil.which("node")
 FLAG = "--experimental-default-type=module"
 FIXTURE_DIR = os.path.join(helpers.FIXTURES, "resolution")
@@ -35,6 +36,11 @@ CASES = (
     "prompt-cache-force-5m-over-everything",
     "agent-effort-default-fable-5-1",
     "settings-user-not-json-skipped",
+    "available-user-and-project-merge",
+    "fallback-allowed-list-drops-entry",
+    "fallback-allowed-list-drops-all",
+    "thinking-false-model-unknown",
+    "thinking-model-blocked-by-allowlist",
 )
 
 
@@ -63,6 +69,17 @@ class SettingsScripts(unittest.TestCase):
         env = dict(os.environ, MR_PAYLOADS=folder)
         run = subprocess.run([NODE] + node_flags() + [str(CHECKS)], capture_output=True, text=True,
                              timeout=300, env=env)
+        report = run.stdout + run.stderr
+        if run.returncode != 0:
+            sys.stderr.write(report)
+        self.assertEqual(run.returncode, 0, report)
+        self.assertIn("checks passed", run.stdout)
+        self.assertNotIn("FAIL", run.stdout)
+
+    def test_band_order_checks_pass(self):
+        # The per-project band order (ticket 105): the pure moves, the saved order, the Arrange list and the mouse drag.
+        # It builds its payloads by hand, so it needs no folder.
+        run = subprocess.run([NODE] + node_flags() + [str(REORDER)], capture_output=True, text=True, timeout=300)
         report = run.stdout + run.stderr
         if run.returncode != 0:
             sys.stderr.write(report)

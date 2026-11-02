@@ -1,0 +1,34 @@
+{
+  "fixture": "fallback-flag-over-file",
+  "rule_ids": [
+    "fallback-model-order"
+  ],
+  "confidence": "documented",
+  "source": "https://code.claude.com/docs/en/model-config#fallback-model-chains",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "fallbackModel",
+      "value": [
+        "sonnet",
+        "haiku"
+      ],
+      "status": "in_effect",
+      "layer": "flag",
+      "file": "session.json:flags",
+      "scope": "main",
+      "rule_id": "fallback-model-order"
+    },
+    {
+      "key": "fallbackModel",
+      "value": [
+        "claude-haiku-4-5"
+      ],
+      "status": "overridden",
+      "layer": "user",
+      "file": "config/settings.json",
+      "scope": "main",
+      "rule_id": "fallback-model-order"
+    }
+  ]
+}

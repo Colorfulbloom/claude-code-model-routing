@@ -463,6 +463,16 @@ class AppCss(unittest.TestCase):
             if selector == ".main:has(>.content>[data-page=\"settings\"]:not([hidden]))>.topbar":
                 self.assertEqual(media, "(max-width: 720px)")
 
+    def test_the_lifted_cell_is_translucent_but_readable_and_touch_scroll_is_left_alone(self):
+        # Ticket 105: a dragged band cell shows the cells behind it (opacity between 0.7 and 0.95, over an opaque card
+        # background so the text stays readable), and no rule blocks touch scrolling, because a touch drag must scroll.
+        opacity = float(final_value(self.rules, ".s6-lift", "opacity"))
+        self.assertTrue(0.7 <= opacity <= 0.95, opacity)
+        self.assertEqual(final_value(self.rules, ".s6-lift", "background"), "var(--card-bg)")
+        self.assertNotRegex(self.clean, r"touch-action\s*:\s*none")
+        for path in sorted(JS_DIR.rglob("*.js")):
+            self.assertNotRegex(path.read_text(encoding="utf-8"), r"touch-action", path.name)
+
     def test_the_rail_foot_docks_by_itself_at_1240_and_the_page_holds_no_second_dock(self):
         # One DOM, no copies: a second Save or a second radio set would be a safety risk. At 1240 and under the rail
         # stacks under the body and its own foot is fixed to the window's bottom. At 1241 and up it stays the rail's foot.
