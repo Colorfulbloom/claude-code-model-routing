@@ -155,7 +155,7 @@ Both skills are user-invoked only. Claude never runs them on its own.
 
 ## Model access
 
-The agent files pin the `haiku`, `sonnet`, `opus` and `fable` aliases by default. On the Anthropic API those resolve to Haiku 5.5, Sonnet 5.5, Opus 5.5 and Fable 5.1. If your plan or provider does not give you one of them, pick another model in the installer or edit the `model:` line of that agent file.
+The agent files pin the `haiku`, `sonnet` and `fable` aliases by default, and the full `claude-opus-5-5` model ID for the three Opus agents. On the Anthropic API those resolve to Haiku 5.5, Sonnet 5.5, Fable 5.1 and Opus 5.5. The full ID keeps those agents on Opus 5.5 when a newer Opus ships. If your plan or provider does not give you one of them, pick another model in the installer or edit the `model:` line of that agent file.
 
 Fable is never the account default on any plan or provider, so a file selects it only when you choose it. The picker shows "may bill to usage credits" next to `fable`. Depending on your plan and seat tier, Fable usage can bill to usage credits instead of plan limits. Check your plan before you turn it on for the main session.
 
@@ -291,7 +291,7 @@ A different file that declares one of those six `name` values gets a warning, on
 
 ## Choosing models
 
-On a terminal, `./install.sh` opens a picker for the model and effort of each of the six agents. The defaults are the values in the repo's `agents/*.md`. The picker uses curses. If curses is not available, or you pass `--plain`, it asks with numbered prompts instead. Model choices are `haiku`, `sonnet`, `opus`, `fable` or a typed model ID such as `claude-opus-5-5`. Effort choices are `low`, `medium`, `high`, `xhigh` and `max`. Next to `fable` the picker shows "may bill to usage credits". Cancelling changes nothing and exits 1.
+On a terminal, `./install.sh` opens a picker for the model and effort of each of the six agents. The defaults are the values in the repo's `agents/*.md`. The picker uses curses. If curses is not available, or you pass `--plain`, it asks with numbered prompts instead. Model choices are `haiku`, `sonnet`, `claude-opus-5-5`, `fable` or a typed model ID. Effort choices are `low`, `medium`, `high`, `xhigh` and `max`. Next to `fable` the picker shows "may bill to usage credits". Cancelling changes nothing and exits 1.
 
 The installer writes only the `model:` and `effort:` lines of each installed agent file. Everything else in the file is copied as is.
 
