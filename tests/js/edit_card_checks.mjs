@@ -5548,6 +5548,21 @@ test("compact box: a labelled text box with a hint and Auto, showing what runs",
   assert.ok(btn(a.root, STRINGS.ed_compact_auto));
 });
 
+test("compact box: the box keeps raw digits, the Where it's set rows and the saved number are formatted and plain", async () => {
+  const w = real("window_panel");
+  const a = app({ setting: "autoCompactWindow", data: w, backend: { preview: async (t, v) => ok(w.previews.project[String(v)] || w.previews.project["300000"]) } });
+  assert.equal(numberBox(a.root).value, "200000", "the input box stays raw so typing works");
+  await typeIn(numberBox(a.root), "300,000");
+  assert.equal(numberBox(a.root).value, "300000");
+  const rows = byClass(a.root, "s6-rows")[0];
+  const shownValues = byClass(rows, "s4-v").map((n) => text(n));
+  assert.ok(shownValues.length > 0);
+  for (const v of shownValues) assert.equal(/^\d{4,}$/.test(v), false, "no raw long digits in a Where it's set row: " + v);
+  assert.ok(shownValues.some((v) => /^\d{1,3}(,\d{3})+$/.test(v)), "a row shows the window with commas: " + JSON.stringify(shownValues));
+  assert.equal(flowMod.S.number, 300000, "the held number is a plain integer");
+  assert.equal(typeof flowMod.S.number, "number");
+});
+
 test("compact box: commas and spaces are dropped, a good number picks the number row with the typed value", async () => {
   const w = real("window_panel");
   const a = app({ setting: "autoCompactWindow", data: w, backend: { preview: async (t, v) => ok(w.previews.project[String(v)] || w.previews.project["300000"]) } });
@@ -5557,7 +5572,7 @@ test("compact box: commas and spaces are dropped, a good number picks the number
   assert.deepEqual(a.log.previewSetting, ["autoCompactWindow"]);
   assert.equal(headNote(a.root), STRINGS.ed_runs_compact);
   assert.equal(numberBox(a.root).value, "300000", "the typed value shows, not the probe");
-  assert.deepEqual(bigs(a.root), ["200000", "→", "300000"]);
+  assert.deepEqual(bigs(a.root), ["200,000", "→", "300,000"], "the rail words the window with thousands commas");
   assert.equal(a.log.save.length, 0);
   await typeIn(numberBox(a.root), "250 000");
   assert.equal(a.log.preview[a.log.preview.length - 1][1], 250000);

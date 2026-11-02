@@ -50,6 +50,11 @@ export function rangeWord(range) {
 
 // ---------------------------------------------------------------- numbers
 
+// A string of digits with thousands commas ("200000" reads "200,000"). Used for the compact window wherever it is shown.
+export function withCommas(digits) {
+  return String(digits).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
 export function fmtTokens(n) {
   if (n === null || n === undefined) return "0";
   if (n >= 1e9) return (n / 1e9).toFixed(1) + "B";
