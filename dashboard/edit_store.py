@@ -30,6 +30,16 @@ by descriptor, and removes .claude only when this save made it and it is empty.
 Nothing here ever empties a folder, so a stray file in .claude keeps it. A folder
 that stays after a failed save is reported with dir_left on the error.
 
+restore() takes three more arguments. force skips only the hash check, so an undo
+can write over a file the owner changed by hand (a damaged or pruned backup still
+refuses, and the current bytes are backed up first like any save). kind "restore"
+puts back the backup of any visible row as a new row that is never undoable, and
+its source row may be gone by the time the answer is built (restored_from_path is
+then None). A restore of a marker row is a delete, under the same remove_dir rule
+as an undo of a create. gate(raw, data) runs under the lock after the backup is
+checked and refuses by raising. value_of(bytes, key_path) reads the row's old and
+new value from the bytes themselves, so a hand edit shows in the row.
+
 Standard library only, Python 3.9.
 """
 import collections
@@ -535,17 +545,29 @@ class Store:
         current = _file_hash(target)
         if current is None or current != row.get("after_sha256"):
             return "changed_since_save"
+        return self.backup_state(target, row)[0]
+
+    def backup_state(self, target, row):
+        """Return (reason, data) for a row's backup: reason None, "backup_pruned" or "backup_damaged".
+
+        data is the backup's bytes, or None for a marker (and for any reason). Reads only
+        and creates nothing.
+        """
         name = row.get("backup")
         # a half pair ends in a delete, so it reads damaged even with no store folder
         if (row.get("before_sha256") == ABSENT) != _valid_marker(name):
-            return "backup_damaged"
+            return "backup_damaged", None
         store_fd = self._open_store(target, create=False)
         if store_fd is None:
-            return "backup_pruned"
+            return "backup_pruned", None
         try:
-            return self._backup_state(row, store_fd)[0]
+            return self._backup_state(row, store_fd)
         finally:
             os.close(store_fd)
+
+    def file_hash(self, target):
+        """Hash of the target file, "absent" when it is not there, None when it cannot be read."""
+        return _file_hash(target)
 
     # Public writes
 
@@ -562,11 +584,17 @@ class Store:
                         plan.old_value, plan.new_value, None, None, None, op=plan.op)
         return self._commit(target, produce, allow_absent)[0]
 
-    def restore(self, target, edit_id, check=None):
-        """Put a row's backup back as an undo row. Returns Restored.
+    def restore(self, target, edit_id, check=None, force=False, kind="undo", gate=None, value_of=None):
+        """Put a row's backup back as a new row of kind undo or restore. Returns Restored.
 
         The undo of a create deletes the file, and the folder too when that save made it.
+        force skips only the hash check. gate(raw, data) runs under the lock after the
+        backup is checked, and refuses by raising. value_of(bytes, key_path) gives the
+        row's old and new value from the bytes (None for no file or no value).
         """
+        if kind not in ("undo", "restore"):
+            raise ValueError("kind is undo or restore")
+
         def produce(raw, rows, current, store_fd):
             row = None
             for item in rows:
@@ -578,25 +606,37 @@ class Store:
             if check is not None:
                 check(rows, row)
             name = row.get("backup")
-            if current != row.get("after_sha256"):
+            if not force and current != row.get("after_sha256"):
                 raise ChangedSinceSave(self.backup_path(target, name))
             reason, data = self._backup_state(row, store_fd)
             if reason == "backup_pruned":
                 raise NotUndoable("backup_pruned")
             if reason == "backup_damaged":
                 raise BackupDamaged(self.backup_path(target, name))
+            if gate is not None:
+                gate(raw, data)
+            key_path = list(row.get("key_path") or [])
+            if value_of is not None:
+                old_value, new_value = value_of(raw, key_path), value_of(data, key_path)
+            else:
+                old_value, new_value = row.get("new_value"), row.get("old_value")
             op = row.get("op", "replace")
             if _valid_marker(name):
-                return _Job(None, "undo", list(row.get("key_path") or []), row.get("layer"),
-                            row.get("new_value"), row.get("old_value"), row.get("id"), name, name,
-                            op=op, remove_dir=bool(row.get("made_dir")))
-            return _Job(data, "undo", list(row.get("key_path") or []), row.get("layer"),
-                        row.get("new_value"), row.get("old_value"), row.get("id"), name, name,
-                        op=op, remove_dir=False)
+                return _Job(None, kind, key_path, row.get("layer"), old_value, new_value,
+                            row.get("id"), name, name, op=op, remove_dir=bool(row.get("made_dir")))
+            return _Job(data, kind, key_path, row.get("layer"), old_value, new_value,
+                        row.get("id"), name, name, op=op, remove_dir=False)
         done = self._commit(target, produce, True)
         row = done.row
-        return Restored(row, done.matches, self.backup_path(target, row.get("restored_from_backup")),
-                        self.backup_path(target, row.get("backup")),
+        source = self.backup_path(target, row.get("restored_from_backup"))
+        if kind == "restore":
+            try:
+                gone = self.find(target, edit_id) is None
+            except StoreError:
+                gone = False  # the commit is done, so a read that fails keeps the name
+            if gone:
+                source = None  # the source row was pruned by this commit, so its backup is gone
+        return Restored(row, done.matches, source, self.backup_path(target, row.get("backup")),
                         row.get("after_sha256") == ABSENT, done.removed_dir)
 
     def _backup_state(self, row, store_fd):

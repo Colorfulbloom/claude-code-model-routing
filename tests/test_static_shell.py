@@ -478,7 +478,7 @@ class AppCss(unittest.TestCase):
         self.assertIsNone(final_value(r, ".s4-rf", "padding", "(max-width: 720px)"), "a phone keeps the dock's padding")
         # The rail takes the bottom padding while the foot holds something, so the dock never covers the last line.
         padded = [sel for m, sel, d in r if m == narrow and "padding-bottom" in d and sel.startswith(".s4-rail")]
-        self.assertEqual(padded, [".s4-rail:has(.s4-rf:has(:not(.s4-slot)))"])
+        self.assertEqual(padded, [".s4-rail:has(.s4-rf :not(.s4-slot))"])
         # An empty foot takes no room at any width.
         self.assertEqual(final_value(r, ".s4-rf:not(:has(:not(.s4-slot)))", "display"), "none")
         self.assertNotRegex(self.clean, r"\.s5-dock|\.s4-inl|\.s5-pad")

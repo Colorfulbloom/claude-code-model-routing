@@ -532,17 +532,24 @@ body{background:var(--page-bg)}
 .s5-lock .s4-body{overflow:auto;min-height:0;display:grid;gap:var(--space-3);align-content:start}
 .s4-rail{background:var(--surface);border-left:var(--border-width) solid var(--border);display:flex;flex-direction:column;min-width:0}
 .s5-lock .s4-rail{min-height:0}
-.s4-rb{padding:var(--space-5);overflow:auto;flex:1;min-height:0;display:grid;gap:var(--space-3);align-content:start}
-.s4-rf{padding:var(--space-4) var(--space-5);border-top:var(--border-width) solid var(--border);display:grid;gap:var(--space-2)}
+.s4-rb{padding:var(--space-5);overflow:auto;flex:1;min-height:0;display:grid;gap:var(--space-3);align-content:start;grid-auto-rows:max-content}
+.s4-rf{padding:var(--space-4) var(--space-5);border-top:var(--border-width) solid var(--border);display:grid;gap:var(--space-2);max-height:50vh;overflow:auto}
 .s4-rf:empty,.s4-rf:not(:has(:not(.s4-slot))){display:none}
 .s5-rf{grid-template-columns:minmax(0,1fr) auto!important;align-items:center}
 .s4-rh{font-size:var(--text-lg);font-weight:var(--weight-semibold);line-height:var(--leading-tight);margin:0}
 .s4-p{font-size:var(--text-sm)}
 .s4-link{color:var(--accent);font-size:var(--text-sm);text-decoration:underline;text-underline-offset:3px;background:none;border:0;padding:0;cursor:pointer}
 .s4-wide{width:100%;justify-content:center;min-height:40px;font-size:var(--text-md)}
+/* The older backups list: a row is a button that opens its preview, or a grey line with its reason */
+.s4-bk{list-style:none;margin:0;padding:0;display:grid;gap:var(--space-3)}
+.s4-bkrow{display:block;width:100%;text-align:left;font:inherit;font-size:var(--text-sm);color:var(--text);background:var(--card-bg);border:var(--border-width) solid var(--border-strong);border-radius:var(--radius-md);padding:var(--space-2) var(--space-3);cursor:pointer}
+.s4-bkrow:not(.is-off):hover{background:var(--nav-hover-bg)}
+.s4-bkrow.is-off{color:var(--text-muted);background:var(--surface-2);border-color:var(--border);cursor:default}
+.s4-bkrow.is-off .s4-note{margin:var(--space-1) 0 0}
 .s5-rf .s4-wide{width:auto;padding-inline:var(--space-4)}
-.s4-hint{color:var(--text-muted);font-size:var(--text-xs);text-align:center}
+.s4-hint{color:var(--text-muted);font-size:var(--text-xs);text-align:left}
 .s5-rf .s4-hint,.s5-rf .s4-ok{grid-column:1/-1}
+.s5-rf .s4-link{grid-column:1/-1;justify-self:start}
 .s4-rf .nt{grid-column:1/-1}
 /* The slots the edit card refills without a page render take no box of their own, so their children lay out in the pane */
 .s4-slot{display:contents}
@@ -556,7 +563,8 @@ body{background:var(--page-bg)}
 .s4-chg{display:flex;align-items:baseline;gap:10px;font-size:var(--text-xl)}
 .s4-was{color:var(--text-muted)}
 .s4-to{font-weight:var(--weight-semibold)}
-.s4-runs{color:var(--text-muted);font-size:var(--text-sm);margin-top:calc(var(--space-2) * -1)!important}
+.s4-runs{color:var(--text-muted);font-size:var(--text-sm)}
+.s4-chg+.s4-runs,.s4-rb .p2-df+.s4-runs{margin-top:calc(var(--space-2) * -1)!important}
 .s4-ok{display:flex;gap:var(--space-2);font-size:var(--text-sm)}
 .s4-okm{color:var(--status-in-effect-fg);font-weight:var(--weight-semibold)}
 .s4-ok-warn .s4-okm{color:var(--status-overridden-fg)}
@@ -604,10 +612,11 @@ body{background:var(--page-bg)}
   .s5-w{grid-template-columns:minmax(0,1fr);display:block}
   .s4-rail{border-left:0;border-top:var(--border-width) solid var(--border)}
   .s4-rf{display:grid;position:fixed;left:0;right:0;bottom:0;z-index:9;grid-template-columns:minmax(0,1fr) auto;gap:var(--space-2);align-items:center;background:var(--card-bg);border-top:var(--border-width) solid var(--border-strong);padding:10px max(var(--space-4),calc((100% - 1100px)/2)) calc(10px + env(safe-area-inset-bottom,0px))}
-  .s4-rf .s4-hint{grid-column:1/-1;text-align:left}
+  .s4-rf .s4-hint{grid-column:1/-1}
   .s4-rf .s4-ok{grid-column:1;align-self:center}
   .s4-rf .s4-wide{width:auto;padding-inline:var(--space-4)}
-  .s4-rail:has(.s4-rf:has(:not(.s4-slot))){padding-bottom:120px}
+  .s4-rail:has(.s4-rf :not(.s4-slot)){padding-bottom:calc(var(--s4-foot,108px) + 12px)}
+  .s4-rb .s4-rh,.s4-rb .nt{scroll-margin-top:110px}
   .s5-a .s5-stat{padding-inline:var(--space-3)}
   .s5-a .s5-stat:first-child{padding-left:0}
   .s5-pop{border-right:var(--border-width) solid var(--border-strong);right:var(--space-6);width:400px}
@@ -631,6 +640,7 @@ body{background:var(--page-bg)}
   .s4-rb{padding:var(--space-4)}
   .s4 .btn{min-height:44px}
   .s4-link{display:inline-flex;align-items:center;min-height:44px}
+  .s4-bkrow{min-height:44px;scroll-margin:130px 0 96px}
   .s4-segs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));width:100%;grid-auto-flow:row}
   .s4-segs .seg{min-width:0;padding:var(--space-1) 2px}
   .s4-run{justify-items:stretch}

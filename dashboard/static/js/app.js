@@ -219,7 +219,7 @@ function context() {
     // patch is optional and wins over the current query, as in a link from All projects to one project.
     hashFor: (name, params, patch) => hashFor(name, params, Object.assign({}, state.route.query, patch)),
     setRange: (range) => go(state.route.name, state.route.params, { range }),
-    // The edit session. targets and history are { ok, status, data } or null. The three actions fill in the
+    // The edit session. targets and history are { ok, status, data } or null. The actions fill in the
     // current project and resolve to an outcome { kind, res }. The token never leaves the session.
     edit: {
       mode: session.mode(),
@@ -228,6 +228,9 @@ function context() {
       preview: (target, value, action) => session.preview(state.project, target, value, action),
       save: (preview, target, value, action) => session.save(state.project, preview, target, value, action),
       undo: (editId) => session.undo(state.project, editId),
+      backupPreview: (editId, kind) => session.backupPreview(state.project, editId, kind),
+      undoAnyway: (editId, baseFile) => session.undoAnyway(state.project, editId, baseFile),
+      restore: (editId, baseFile) => session.restore(state.project, editId, baseFile),
       reload: loadEdit,
       refresh: refreshAll,
       // A choice on the Settings page changes which projects have a change waiting on Save, so the picker is drawn again.

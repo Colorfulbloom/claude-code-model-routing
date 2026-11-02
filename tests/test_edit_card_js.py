@@ -8,7 +8,7 @@ written by hand in the checks. No browser starts, no socket opens, and every fol
 The test skips when node is not installed, and it tries the --experimental-default-type=module flag like
 tests/test_shell_js.py does.
 
-Two more tests read the card's source. One fails if any of the six card files holds a call that parses text as markup.
+Two more tests read the card's source. One fails if any of the seven card files holds a call that parses text as markup.
 The other fails if a class the card uses is missing from app.css.
 """
 import json
@@ -27,7 +27,7 @@ import test_api_edit as tae
 
 TESTS = Path(__file__).resolve().parent
 STATIC = Path(helpers.REPO) / "dashboard" / "static"
-CARD_FILES = [STATIC / "js" / name for name in ("edit_card.js", "edit_flow.js", "edit_pick.js", "edit_review.js", "edit_foot.js", "edit_ui.js")]
+CARD_FILES = [STATIC / "js" / name for name in ("edit_card.js", "edit_flow.js", "edit_pick.js", "edit_review.js", "edit_foot.js", "edit_backup.js", "edit_ui.js")]
 CSS = STATIC / "app.css"
 CHECKS = TESTS / "js" / "edit_card_checks.mjs"
 NODE = shutil.which("node")
@@ -406,6 +406,36 @@ class CardSource(unittest.TestCase):
         css = strip_comments(CSS.read_text(encoding="utf-8"))
         defined = set(re.findall(r"\.(-?[_a-zA-Z][_a-zA-Z0-9-]*)", css))
         self.assertEqual(sorted(used - defined), [], "classes the card uses that app.css lacks")
+
+    def test_the_rail_styles_the_stage_4_fixes_need(self):
+        css = strip_comments(CSS.read_text(encoding="utf-8")).replace("\n", "")
+        wanted = {
+            "a long diff keeps its own height in the rail": r"\.s4-rb\{[^}]*grid-auto-rows:max-content",
+            "the foot is capped and scrolls": r"\.s4-rf\{[^}]*max-height:50vh;overflow:auto",
+            "a hint line is left-aligned at its base rule": r"(?<![\w-])\.s4-hint\{[^}]*text-align:left",
+            "the Older backups link sits left under the result": r"\.s5-rf \.s4-link\{grid-column:1/-1;justify-self:start\}",
+            "the runs line pulls up only under a change line or a diff": r"\.s4-chg\+\.s4-runs,\.s4-rb \.p2-df\+\.s4-runs\{margin-top:",
+            "the docked rail pads by the measured foot, when the foot holds more than a slot": r"\.s4-rail:has\(\.s4-rf :not\(\.s4-slot\)\)\{padding-bottom:calc\(var\(--s4-foot,[^)]*\) \+ \d+px\)",
+            "the heading and a notice above it clear the sticky band": r"\.s4-rb \.s4-rh,\.s4-rb \.nt\{scroll-margin-top:110px\}",
+            "a list row clears the band and the docked foot": r"\.s4-bkrow\{min-height:44px;scroll-margin:130px 0 96px\}",
+        }
+        for what, pattern in wanted.items():
+            self.assertRegex(css, pattern, what)
+        self.assertNotRegex(css, r"(?<![+])\.s4-runs\{[^}]*margin-top", "the negative margin is scoped, not on every runs line")
+        self.assertNotRegex(css, r"\.s4-rf \.s4-hint\{text-align:left\}", "the base rule already left-aligns a hint")
+
+    def test_css_nests_no_has_inside_has(self):
+        # A browser drops a whole rule whose selector nests :has() in :has(), and nothing else shows it.
+        css = strip_comments(CSS.read_text(encoding="utf-8"))
+        found = []
+        for match in re.finditer(r":has\(", css):
+            depth, i = 1, match.end()
+            while i < len(css) and depth:
+                depth += {"(": 1, ")": -1}.get(css[i], 0)
+                if css.startswith(":has(", i) and depth:
+                    found.append(css[match.start():i + 5])
+                i += 1
+        self.assertEqual(found, [], "selectors that nest :has() inside :has()")
 
 
 if __name__ == "__main__":

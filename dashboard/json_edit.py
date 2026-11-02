@@ -470,10 +470,11 @@ def _lines(text):
 def structured_diff(before_text, after_text, file_display):
     """Return {"file_display", "hunks"} for the masked before and after texts.
 
-    before_text may be None for a new file, which counts as no lines.
+    before_text may be None for a new file, and after_text may be None for a file
+    that goes. Each counts as no lines, and mask_text never sees empty text.
     """
     before = [] if before_text is None else _lines(mask_text(before_text))
-    after = _lines(mask_text(after_text))
+    after = [] if after_text is None else _lines(mask_text(after_text))
     matcher = difflib.SequenceMatcher(None, before, after, autojunk=False)
     hunks = []
     for group in matcher.get_grouped_opcodes(_CONTEXT):

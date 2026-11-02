@@ -153,7 +153,9 @@ def write_routes_for(allow):
     if not allow:
         return {}
     return {
+        "/api/edit/backup-preview": api_edit.backup_preview,
         "/api/edit/preview": api_edit.preview,
+        "/api/edit/restore": api_edit.restore,
         "/api/edit/save": api_edit.save,
         "/api/edit/undo": api_edit.undo,
     }

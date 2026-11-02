@@ -25,11 +25,15 @@ Selectors, from dashboard/static/js/edit_card.js, edit_review.js, edit_foot.js a
   li.p2-add as its changed lines.
 - .s4-rf is the foot. button[data-edit-focus="btn:save"], "btn:undo" and "btn:dismiss-strip" are the buttons,
   .s4-ok is the result line and .s4-hint .pa the backup or restored-from path.
+- Older backups (edit_backup.js): button[data-edit-focus="btn:anyway"] is Undo anyway in the foot, button[data-edit-focus=
+  "older"] the Older backups link, and the list in the rail is ul.s4-bk with button.s4-bkrow for a row that can be
+  restored and li.s4-bkrow.is-off for one that can't. The confirm of a preview is the same btn:save.
 """
 import filecmp
 import json
 import os
 import shutil
+import time
 import unittest
 import urllib.parse
 
@@ -40,6 +44,9 @@ import test_settings_e2e as settings_e2e
 import test_shell_e2e as shell
 
 SETTINGS = settings_e2e.SETTINGS
+# Every word the page shows comes from strings.json, so the checks read the words they wait for from it.
+with open(os.path.join(helpers.REPO, "dashboard", "static", "strings.json"), encoding="utf-8") as _fh:
+    STRINGS = json.load(_fh)
 START_LEVEL = "high"
 OTHER_LEVELS = ("medium", "low")
 
@@ -69,6 +76,12 @@ REMOVE_LINK = ROWS + " button[data-edit-focus='remove:%s']"
 ANY_REMOVE_LINK = ROWS + " button[data-edit-focus^='remove:']"
 MARKED_ROW = ROWS + " .s6-r.is-pick"
 DIFF_ADD = DIFF + " li.p2-add"
+ANYWAY = FOOT + " button[data-edit-focus='btn:anyway']"
+OLDER = FOOT + " button[data-edit-focus='older']"
+OLDER_CLOSE = FOOT + " button[data-edit-focus='btn:older-close']"
+BACKUP_ROW = RAIL + " button.s4-bkrow"
+BACKUP_OFF = RAIL + " li.s4-bkrow.is-off"
+CONFIRM = SAVE
 
 # Pure page scripts. Each is an expression with no side effect unless its name says it clicks.
 HAS_RADIO = "Boolean(document.querySelector(%s))" % json.dumps(RADIO)
@@ -704,6 +717,270 @@ class EditWrites(_WorldPerTest):
         self.assertEqual(w.settings_bytes(), before)
         self.assertTrue(w.same_as_copy(copy), "cmp finds the file changed from the copy made before the write")
         self.assertEqual(w.project_state(), start)
+
+
+@unittest.skipUnless(os.environ.get("MR_E2E") == "1", "set MR_E2E=1 to run the headless Chrome checks")
+@unittest.skipIf(shell.CHROME is None, "Chrome was not found (set MR_CHROME to its path)")
+class EditBackups(_WorldPerTest):
+    """Undo anyway and Restore (#114), each in its own world. Every file is compared with a copy made before the
+    write, never only with the dashboard's own backups. A hand edit writes the world's file directly, as a person
+    would, and the page is opened again afterwards, so it reads the file as it is."""
+
+    def local_path(self, w):
+        return os.path.join(os.path.dirname(w.settings_path), "settings.local.json")
+
+    def copy_of(self, w, path, name):
+        """A copy of any file in the world, made outside the project and the config folder."""
+        copies = os.path.join(w.root, "copies")
+        os.makedirs(copies, exist_ok=True)
+        out = os.path.join(copies, name)
+        shutil.copyfile(path, out)
+        return out
+
+    def hand_edit(self, path, data):
+        """Write the file as a person would, with the keys and the layout of the fixture."""
+        with open(path, "wb") as fh:
+            fh.write((json.dumps(data, indent=2) + "\n").encode("utf-8"))
+
+    def bytes_of(self, path):
+        with open(path, "rb") as fh:
+            return fh.read()
+
+    def save_in_project(self, level):
+        """Pick a level, move the pick to the shared file and save. The result line and Undo show after."""
+        self.pick(level)
+        self.pick_project_row()
+        self.click(SAVE)
+        self.wait_saved()
+
+    def wait_back_review(self, heading):
+        """The preview is on screen: the rail heading, a diff or a line, and the confirm button on."""
+        self.wait_present(RAIL_HEAD, CANCEL, CONFIRM)
+        self.page.wait_for(js("document.querySelector(%s).textContent.trim() === %s", RAIL_HEAD, heading))
+        self.page.wait_for(js(IS_ON, CONFIRM))
+        time.sleep(0.6)  # the confirm ignores a press for 500 ms after the preview draws (flow.guard)
+
+    def wait_back_done(self, word):
+        """The result line of an Undo anyway or a restore, and the review gone."""
+        self.wait_present(STRIP_LINE)
+        self.page.wait_for(js("document.querySelector(%s).textContent.includes(%s)", STRIP_LINE, word))
+        self.wait_gone(CONFIRM)
+
+    def wait_list(self, rows, off=0):
+        """The older backups list is open with this many rows to press and this many grey ones."""
+        self.wait_present(RAIL_HEAD, OLDER_CLOSE)
+        self.page.wait_for(js("document.querySelector(%s).textContent.trim() === %s", RAIL_HEAD, STRINGS["ed_older_h"]))
+        self.page.wait_for("%s === %d && %s === %d" % (js(COUNT, BACKUP_ROW), rows, js(COUNT, BACKUP_OFF), off))
+
+    def open_list(self, rows, off=0):
+        self.wait_present(OLDER)
+        self.click(OLDER)
+        self.wait_list(rows, off)
+
+    def test_undo_anyway_over_a_hand_edit(self):
+        w = self.new_world()
+        before_copy = w.copy_settings("shared-before.json")
+        self.open_settings()
+        level = OTHER_LEVELS[0]
+        self.save_in_project(level)
+        self.assertEqual(current_level(w), level)
+
+        # A person edits the file after the save, so plain Undo is no longer offered.
+        self.hand_edit(w.settings_path, {"effortLevel": level, "language": "fr"})
+        hand_copy = w.copy_settings("shared-hand.json")
+        self.open_settings()
+        self.wait_present(ANYWAY)
+        self.assertEqual(self.count(UNDO), 0, "Undo is offered over a hand edit")
+        self.assertEqual(self.count(CONFIRM), 0)
+
+        # The preview reads the file and writes nothing.
+        state = w.project_state()
+        backups = sorted(w.backups())
+        self.click(ANYWAY)
+        self.wait_back_review(STRINGS["ed_back_h_undo"])
+        self.assertEqual(self.text_of(CONFIRM), STRINGS["ed_back_go_undo"])
+        self.wait_present(DIFF)
+        self.wait_focus("btn:cancel")
+        self.assertEqual(w.project_state(), state, "the preview wrote the project folder")
+        self.assertEqual(sorted(w.backups()), backups, "the preview cut a backup")
+        self.assertTrue(w.same_as_copy(hand_copy), "the preview changed the file")
+
+        self.click(CONFIRM)
+        self.wait_back_done(STRINGS["ed_back_done_undo_t"].split("{file}")[0].strip())
+        self.assertTrue(w.same_as_copy(before_copy), "cmp finds the file changed from the copy made before the save")
+        fresh = sorted(set(w.backups()) - set(backups))
+        self.assertEqual(len(fresh), 1, fresh)
+        self.assertEqual(self.bytes_of(fresh[0]), self.bytes_of(hand_copy), "the new backup lost the hand edit")
+        self.wait_present(STRIP_PATH)
+        self.assertEqual(w.real_path(self.text_of(STRIP_PATH)), fresh[0], "the strip names the backup that holds the hand edit")
+
+    def test_undo_anyway_on_a_created_file_deletes_it(self):
+        w = self.new_world()
+        start = w.project_state()
+        self.open_settings()
+        level = OTHER_LEVELS[0]
+        self.pick(level)
+        self.click(SAVE)
+        self.wait_saved("Created")
+        local = self.local_path(w)
+        self.assertTrue(w.local_exists())
+
+        self.hand_edit(local, {"effortLevel": level, "language": "fr"})
+        hand_copy = self.copy_of(w, local, "local-hand.json")
+        backups = sorted(w.backups())
+        self.open_settings()
+        self.wait_present(ANYWAY)
+        self.click(ANYWAY)
+        self.wait_back_review(STRINGS["ed_back_h_undo"])
+        self.assertEqual(self.text_of(CONFIRM), STRINGS["ed_back_go_delete"].replace("{file}", "settings.local.json"))
+        self.assertEqual(self.bytes_of(local), self.bytes_of(hand_copy), "the preview changed the file")
+        self.assertEqual(sorted(w.backups()), backups, "the preview cut a backup")
+
+        self.click(CONFIRM)
+        self.wait_back_done(STRINGS["ed_back_done_deleted_t"].split("{file}")[0].strip())
+        self.assertFalse(w.local_exists(), "the local file is still there")
+        self.assertEqual(w.project_state(), start, "the project folder is not as it started")
+        fresh = sorted(set(w.backups()) - set(backups))
+        self.assertEqual(len(fresh), 1, fresh)
+        self.assertEqual(self.bytes_of(fresh[0]), self.bytes_of(hand_copy), "the backup lost the hand edit")
+
+    def two_saves(self, w):
+        """Two saves in the shared file, with a copy before each. Returns the copies: start, after one, after two."""
+        first = w.copy_settings("shared-0.json")
+        self.open_settings()
+        self.save_in_project(OTHER_LEVELS[0])
+        second = w.copy_settings("shared-1.json")
+        self.save_in_project(OTHER_LEVELS[1])
+        third = w.copy_settings("shared-2.json")
+        return first, second, third
+
+    def test_restore_an_older_backup_then_reverse_it(self):
+        w = self.new_world()
+        start = w.project_state()
+        first, _second, third = self.two_saves(w)
+        self.assertFalse(w.same_as_copy(first))
+
+        # The newest save is Undo's. The older save is the one row the list offers.
+        self.open_list(1)
+        self.wait_focus(self.page.eval("document.querySelector(%s).getAttribute('data-edit-focus')" % json.dumps(BACKUP_ROW)))
+        self.click(BACKUP_ROW)
+        self.wait_back_review(STRINGS["ed_back_h_restore"])
+        self.assertEqual(self.text_of(CONFIRM), STRINGS["ed_back_go_restore"])
+        self.assertTrue(w.same_as_copy(third), "opening the preview changed the file")
+        self.click(CONFIRM)
+        self.wait_back_done(STRINGS["ed_back_done_restored_t"].split("{file}")[0].strip())
+        self.assertTrue(w.same_as_copy(first), "the restore did not put back the file from before the first save")
+        self.assertEqual(w.project_state()[".claude/settings.json"], self.bytes_of(first))
+
+        # The restore row's backup holds the file as it was before the restore. Newest first, so it is the first row.
+        # The oldest save's backup is the file now, so that row is grey.
+        self.open_list(2, 1)
+        self.click(BACKUP_ROW)
+        self.wait_back_review(STRINGS["ed_back_h_restore"])
+        self.assertTrue(w.same_as_copy(first), "opening the preview changed the file")
+        self.click(CONFIRM)
+        self.wait_back_done(STRINGS["ed_back_done_restored_t"].split("{file}")[0].strip())
+        self.assertTrue(w.same_as_copy(third), "the second restore did not reverse the first")
+        self.assertEqual(w.project_state().keys(), start.keys())
+
+    def test_restore_preview_then_cancel_writes_nothing(self):
+        w = self.new_world()
+        _first, _second, third = self.two_saves(w)
+        state = w.project_state()
+        backups = sorted(w.backups())
+        self.open_list(1)
+        self.click(BACKUP_ROW)
+        self.wait_back_review(STRINGS["ed_back_h_restore"])
+        self.assertEqual(w.project_state(), state, "the preview wrote the project folder")
+        self.assertEqual(sorted(w.backups()), backups, "the preview cut a backup")
+
+        # Cancel goes back to the list, and Close goes back to rest.
+        self.click(CANCEL)
+        self.wait_list(1)
+        self.wait_focus(self.page.eval("document.querySelector(%s).getAttribute('data-edit-focus')" % json.dumps(BACKUP_ROW)))
+        self.click(OLDER_CLOSE)
+        self.wait_present(OLDER)
+        self.wait_focus("older")
+        self.assertEqual(self.count(STRIP_LINE), 0, "Cancel left a result line")
+        self.assertEqual(self.count(CONFIRM), 0)
+        self.assertEqual(w.project_state(), state, "Cancel wrote something")
+        self.assertTrue(w.same_as_copy(third))
+        self.assertEqual(sorted(w.backups()), backups, "a backup was cut for a restore that never ran")
+
+    def test_restore_a_no_file_backup_deletes_the_file(self):
+        w = self.new_world()
+        start = w.project_state()
+        self.open_settings()
+        level, later = OTHER_LEVELS
+        self.pick(level)
+        self.click(SAVE)
+        self.wait_saved("Created")
+        local = self.local_path(w)
+        created = self.copy_of(w, local, "local-created.json")
+
+        # A later save to the file that now exists. It has no New file tag, so the pick waits on the review alone.
+        self.page.wait_for(js(CLICK_LEVEL, later))
+        self.wait_present(RAIL_HEAD, DIFF, PICKED_LOCAL)
+        self.page.wait_for(js(IS_ON, SAVE))
+        self.click(SAVE)
+        self.wait_saved()
+        self.assertNotEqual(self.bytes_of(local), self.bytes_of(created))
+
+        # The create row reads as not existing before its save, and restoring it deletes the file.
+        self.open_list(1)
+        self.assertIn(STRINGS["ed_older_row_absent_t"].split("{file}")[1].split("{when}")[0].strip(), self.text_of(BACKUP_ROW))
+        self.click(BACKUP_ROW)
+        self.wait_back_review(STRINGS["ed_back_h_restore"])
+        self.assertEqual(self.text_of(CONFIRM), STRINGS["ed_back_go_delete"].replace("{file}", "settings.local.json"))
+        self.assertTrue(w.local_exists(), "the preview deleted the file")
+        self.click(CONFIRM)
+        self.wait_back_done(STRINGS["ed_back_done_deleted_t"].split("{file}")[0].strip())
+        self.assertFalse(w.local_exists(), "the local file is still there")
+        self.assertEqual(w.project_state(), start, "the project folder is not as it started")
+
+    def test_older_backups_at_375(self):
+        w = self.new_world()
+        self.two_saves(w)
+        state = w.project_state()
+        failures = []
+        for theme in ("light", "dark"):
+            tag = "375 %s" % theme
+            self.open_settings(375, theme)
+            self.wait_present(OLDER)
+            link = self.page.eval(js(BOX_OF, OLDER))
+            if link["height"] < 44:
+                failures.append("%s: the Older backups link is %.0f px tall, wanted 44" % (tag, link["height"]))
+            self.click(OLDER)
+            self.wait_list(1)
+            width = self.page.eval("innerWidth")
+
+            def check(where, selectors):
+                if self.page.eval(BODY_OVERFLOW) != "0":
+                    failures.append("%s %s: data-ox is not 0, the page scrolls sideways" % (tag, where))
+                for name, selector in selectors:
+                    box = self.page.eval(js(BOX_OF, selector))
+                    if box is None or box["left"] < 0 or box["right"] > width:
+                        failures.append("%s %s: %s is outside the %d px window: %r" % (tag, where, name, width, box))
+                self.page.eval(settings_e2e.OPEN_DETAILS)
+                result = self.page.eval(settings_e2e.TEXT_CONTRAST_BAD)
+                if result["checked"] <= 10:
+                    failures.append("%s %s: checked only %d elements" % (tag, where, result["checked"]))
+                failures.extend("%s %s: %s" % (tag, where, item) for item in result["bad"])
+
+            row = self.page.eval(js(BOX_OF, BACKUP_ROW))
+            if row["height"] < 44:
+                failures.append("%s: a list row is %.0f px tall, wanted 44" % (tag, row["height"]))
+            check("list", (("row", BACKUP_ROW), ("Close", OLDER_CLOSE)))
+            self.click(BACKUP_ROW)
+            self.wait_back_review(STRINGS["ed_back_h_restore"])
+            self.wait_present(DIFF)
+            check("preview", (("Restore", CONFIRM), ("Cancel", CANCEL), ("diff", DIFF)))
+            self.click(CANCEL)
+            self.wait_list(1)
+            self.click(OLDER_CLOSE)
+            self.wait_present(OLDER)
+            self.assertEqual(w.project_state(), state, tag + ": the list or the preview wrote something")
+        self.assertEqual(failures, [], "\n".join(failures))
 
 
 @unittest.skipUnless(os.environ.get("MR_E2E") == "1", "set MR_E2E=1 to run the headless Chrome checks")

@@ -8,6 +8,7 @@ import os
 import re
 import sys
 import unittest
+from unittest import mock
 
 import helpers
 
@@ -754,6 +755,40 @@ class NewFileDiff(unittest.TestCase):
     def test_none_before_masks_the_after_text(self):
         diff = json_edit.structured_diff(None, '{\n  "API_KEY": "sk-planted-1"\n}\n', "f")
         self.assertNotIn("sk-planted-", json.dumps(diff))
+
+
+class GoneFileDiff(unittest.TestCase):
+    def test_none_after_gives_only_del_lines(self):
+        text = json_edit.new_file(("effortLevel",), "high").decode()
+        diff = json_edit.structured_diff(text, None, "settings.json")
+        self.assertEqual("settings.json", diff["file_display"])
+        lines = [line for hunk in diff["hunks"] for line in hunk["lines"]]
+        self.assertEqual(3, len(lines))
+        for number, line in enumerate(lines, 1):
+            self.assertEqual({"kind": "del", "old_line": number, "new_line": None, "text": line["text"]}, line)
+        self.assertEqual(['{', '  "effortLevel": "high"', '}'], [line["text"] for line in lines])
+
+    def test_none_after_masks_the_before_text(self):
+        diff = json_edit.structured_diff('{\n  "API_KEY": "sk-planted-1"\n}\n', None, "f")
+        self.assertNotIn("sk-planted-", json.dumps(diff))
+        self.assertIn("hidden", json.dumps(diff))
+
+    def test_both_none_is_an_empty_diff(self):
+        self.assertEqual({"file_display": "f", "hunks": []}, json_edit.structured_diff(None, None, "f"))
+
+    def test_mask_text_is_called_only_for_a_side_that_has_text(self):
+        seen = []
+        real = json_edit.mask_text
+
+        def spy(text):
+            seen.append(text)
+            return real(text)
+        with mock.patch.object(json_edit, "mask_text", side_effect=spy):
+            json_edit.structured_diff(None, None, "f")
+            self.assertEqual([], seen)
+            json_edit.structured_diff("{}\n", None, "f")
+            json_edit.structured_diff(None, "{}\n", "f")
+        self.assertEqual(["{}\n", "{}\n"], seen)
 
 
 class Purity(unittest.TestCase):

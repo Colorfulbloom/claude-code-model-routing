@@ -372,7 +372,7 @@ The [rules reference](docs/rules-reference.md) lists those fields, the files the
 python3 /path/to/claude-code-model-routing/dashboard/server.py --allow-edits
 ```
 
-An edit changes `effortLevel` or `modelSettings.<name>.effortLevel`, on a line that already exists in a user, project or local settings file. It adds no line, creates no file and leaves every other byte alone. It never touches managed settings, and it refuses a symlink, a hard link or a file over 1 MiB.
+An edit changes `effortLevel` or `modelSettings.<name>.effortLevel` in a user, project or local settings file. It can change a line, add one, remove one or create the file, making `.claude` if it's missing, and it leaves every other byte alone. It never touches managed settings, and it refuses a symlink, a hard link, a file over 1 MiB or a save that would pass that size.
 
 The flag prints a different link, `http://127.0.0.1:8377/#/settings?edit=<key>`, with a key in the URL fragment. Only that link unlocks editing. The key lasts one launch, so the plain address, a bookmark or a link from an earlier launch stays read-only. A browser doesn't send a fragment to any server, and the server never logs the key.
 
@@ -388,7 +388,7 @@ One narrow window stays open. The server compares the file's bytes just before i
 
 ### Undo a save by hand
 
-Once a file has changed since a save, the server won't undo that save, so the backup is the way back. Each settings file has its own folder in the backup store. The folder's name is the first 16 hex characters of the SHA-256 of the file's real path.
+Plain Undo refuses a file that has changed since the save. Undo anyway can force it after a preview, and Older backups restores earlier ones. When neither fits, such as a backup that isn't valid JSON, the backup is the way back by hand. Each settings file has its own folder in the backup store. The folder's name is the first 16 hex characters of the SHA-256 of the file's real path.
 
 ```bash
 FILE=~/.claude/settings.json
@@ -401,12 +401,12 @@ Use your own config folder in `STORE` if it isn't `~/.claude`, and point `FILE` 
 `ledger.json` in that folder lists the writes, oldest first, under `rows`. Each row describes one `.bak` file. Pick the row for the save you want to reverse.
 
 - `time` is when the server wrote the row, in UTC.
-- `kind` is `edit` for a save and `undo` for an undo.
+- `kind` is `edit` for a save, `undo` for an undo or an Undo anyway, and `restore` for a restore from Older backups.
 - `layer` and `key_path` name the settings file and the setting.
 - `old_value` and `new_value` show the change, masked.
 - `backup` names the `.bak` file, a full copy of the settings file from just before this write.
 - `before_sha256` is that backup's hash, and `after_sha256` is the file's hash right after the write.
-- `restored_from` and `restored_from_backup` appear on an undo row. They name the row and the backup it copied back.
+- `restored_from` and `restored_from_backup` appear on an undo or restore row. They name the row and the backup it copied back.
 
 Put the row's backup back with `cp`, then compare with `cmp`, which prints nothing when the files match. A backup is the whole file, not one line. If something else changed the file since that save, restoring drops that change too, so read the `diff` first. If you want to keep it, change the one line by hand instead.
 

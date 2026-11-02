@@ -66,6 +66,8 @@ const okRow = (root) => byClass(stripOf(root), "s4-ok")[0];
 const okLine = (root) => text(tag(okRow(root), "span").find((n) => !hasClass(n, "s4-okm")));
 const okMark = (root) => text(byClass(okRow(root), "s4-okm")[0]);
 const pathLine = (root) => { const n = byClass(stripOf(root), "s4-hint")[0]; return n ? text(n) : null; };
+// Every line under the status row, each its own paragraph.
+const hintLines = (root) => byClass(stripOf(root), "s4-hint").map(text);
 const strips = (root) => (stripOf(root) && stripOf(root).childNodes.length ? [stripOf(root)] : []);
 const nts = (root, kind) => notes(root).filter((n) => hasClass(n, "p2-nt-" + kind));
 const headNote = (root) => text(byClass(root, "s4-runs")[0]);
@@ -103,7 +105,7 @@ function app({ mode = "ready", data = {}, backend = {}, setting = null, key = "p
   const page = createPage({ narrow: false });
   const root = page.sections.settings;
   root.hidden = false;
-  const a = { page, root, key, log: { preview: [], save: [], undo: [], reload: 0, refresh: 0, draws: 0, shell: 0 } };
+  const a = { page, root, key, log: { preview: [], save: [], undo: [], backup: [], anyway: [], restore: [], reload: 0, refresh: 0, draws: 0, shell: 0 } };
   const forKey = (body) => (body && typeof body === "object" && !body.fail ? { ...body, project: a.key } : body);
   const wrapT = (body) => wrap(forKey(body));
   const st = { mode, settings: data.settings, targets: wrapT(data.targets), history: wrap(data.history) };
@@ -135,6 +137,19 @@ function app({ mode = "ready", data = {}, backend = {}, setting = null, key = "p
       undo: async (id) => {
         log.undo.push(id);
         return after(await backend.undo(id, a));
+      },
+      // The preview of an Undo anyway or a restore, and the two writes. The write sends the hash its preview carried.
+      backupPreview: async (id, kind) => {
+        log.backup.push([id, kind]);
+        return backend.backupPreview(id, kind, a);
+      },
+      undoAnyway: async (id, baseFile) => {
+        log.anyway.push([id, baseFile]);
+        return after(await backend.undoAnyway(id, baseFile, a));
+      },
+      restore: async (id, baseFile) => {
+        log.restore.push([id, baseFile]);
+        return after(await backend.restore(id, baseFile, a));
       },
       reload: async () => {
         log.reload += 1;
@@ -190,6 +205,13 @@ const worldData = (name, over = {}) => {
 };
 const afterSave = () => ({ settings: S.after_save.settings, targets: S.after_save.targets, history: S.after_save.history });
 const LOCAL_SAVE = T("ed_save_to", { file: "settings.local.json" });
+// The history the page loads again after a refused Undo: the row that was pressed, with what the server now says of it.
+const refreshed = (history, over = {}) => {
+  const out = clone(history);
+  Object.assign(out.rows[0], over);
+  return out;
+};
+const NOW_STALE = { undoable: false, not_undoable_reason: "changed_since_save", restore_state: null, undo_anyway: true };
 
 const levelOf = (targets, name) => targets.levels.find((l) => l.level === name);
 const fileOf = (targets, name, layer) => levelOf(targets, name).files.find((f) => f.layer === layer);
@@ -1359,7 +1381,7 @@ test("undo: one undo level shows, and after an undo no Undo shows and the strip 
   assert.equal(okMark(a.root), "✓");
   assert.equal(okRow(a.root).getAttribute("role"), "status");
   assert.equal(okLine(a.root), T("ed_undone_t", { file: "settings.local.json" }));
-  assert.deepEqual(tag(done, "button").map(text), [STRINGS.ed_dismiss]);
+  assert.deepEqual(tag(done, "button").map(text), [STRINGS.ed_dismiss, STRINGS.ed_older_link], "the saved row is an older backup now");
   assert.equal(pathLine(a.root), T("ed_undone_path", { path: S.undo.restored_from_display }), "the restored path is a hint line");
   assert.equal(buttons(a.root).filter((b) => text(b) === STRINGS.ed_undo).length, 0);
   assert.deepEqual(byClass(done, "pa").map(text), [S.undo.restored_from_display]);
@@ -1372,7 +1394,7 @@ test("undo: one undo level shows, and after an undo no Undo shows and the strip 
   await settle();
   const rest = stripOf(a.root);
   assert.equal(S.after_undo.history.rows[0].kind, "undo");
-  assert.equal(tag(rest, "button").length, 0);
+  assert.deepEqual(tag(rest, "button").map(text), [STRINGS.ed_older_link], "no Undo, only the link to the older backups");
   assert.equal(byClass(rest, "s4-okm").length, 0);
   assert.deepEqual(byClass(rest, "pa").map(text), [S.after_undo.history.rows[0].restored_from_display]);
   assert.equal(anyKey(a.root), false);
@@ -1410,28 +1432,49 @@ test("changed file: the row shows no Undo, names the backup path, and a press an
   const bar = stripOf(rest.root);
   assert.ok(hasClass(okRow(rest.root), "s4-ok-warn"));
   assert.equal(okMark(rest.root), "▲");
-  assert.equal(tag(bar, "button").length, 0);
-  assert.deepEqual(byClass(bar, "pa").map(text), [c.history.rows[0].backup_display]);
+  assert.equal(c.history.rows[0].undo_anyway, true);
+  // The backup is good, so the line offers Undo anyway and does not name the backup (the preview does).
+  assert.deepEqual(tag(bar, "button").map(text), [STRINGS.ed_anyway_btn], "the one row is Undo anyway's, so the list has none left and no link");
+  assert.equal(byClass(bar, "pa").length, 0);
   assert.match(text(bar), new RegExp(T("ed_undo_stale_h", { file: "settings.json" })));
   assert.equal(buttons(rest.root).filter((b) => text(b) === STRINGS.ed_undo).length, 0);
   // The page showed Undo (an older history), and the server answered 409.
   const press = app({
     data: afterSave(),
-    backend: { undo: async () => bad("error", 409, c.undo_answer), refresh: () => ({ settings: c.settings, targets: c.targets, history: c.history }) },
+    backend: {
+      undo: async () => bad("error", 409, c.undo_answer),
+      refresh: () => ({ settings: c.settings, targets: c.targets, history: refreshed(c.history, { id: S.after_save.history.rows[0].id }) }),
+    },
   });
   await press.press(STRINGS.ed_undo);
   assert.equal(press.log.refresh, 1, "the answer loads the page data again");
   const warn = stripOf(press.root);
   assert.ok(hasClass(okRow(press.root), "s4-ok-warn"));
   assert.equal(okRow(press.root).getAttribute("role"), "status");
-  assert.deepEqual(byClass(warn, "pa").map(text), [c.undo_answer.backup_display]);
-  assert.deepEqual(tag(warn, "button").map(text), [STRINGS.ed_dismiss]);
-  tag(warn, "button")[0].click();
+  assert.equal(byClass(warn, "pa").length, 0, "the offer line names no path");
+  assert.equal(text(okRow(press.root)).endsWith(STRINGS.ed_anyway_offer_t), true);
+  assert.deepEqual(tag(warn, "button").map(text), [STRINGS.ed_anyway_btn, STRINGS.ed_dismiss]);
+  tag(warn, "button")[1].click();
   await settle();
   const back = stripOf(press.root);
-  assert.deepEqual(tag(back, "button").map(text), [], "the row's own strip is back, with no dead Undo");
+  assert.deepEqual(tag(back, "button").map(text), [STRINGS.ed_anyway_btn], "the row's own strip is back, with no dead Undo");
   assert.ok(hasClass(okRow(press.root), "s4-ok-warn"));
   assert.match(text(back), new RegExp(T("ed_undo_stale_h", { file: "settings.json" })));
+  // The offer follows the history loaded after the refusal. A backup Undo anyway can't use (restore_state set) draws the
+  // plain stale line with the path, and so does a history that never came back.
+  const id = S.after_save.history.rows[0].id;
+  const cannot = (history) => app({
+    data: afterSave(),
+    backend: { undo: async () => bad("error", 409, c.undo_answer), refresh: () => ({ history }) },
+  });
+  const grey = cannot(refreshed(c.history, { id, restore_state: "backup_unparsed", undo_anyway: false }));
+  await grey.press(STRINGS.ed_undo);
+  assert.equal(anywayBtn(grey.root), undefined, "no Undo anyway for a row the server says it can't restore");
+  assert.equal(byClass(stripOf(grey.root), "pa").length, 1, "the plain stale line names the backup");
+  const none = cannot(undefined);
+  await none.press(STRINGS.ed_undo);
+  assert.equal(anywayBtn(none.root), undefined, "no offer from the row the press was made from");
+  assert.deepEqual(tag(stripOf(none.root), "button").map(text), [STRINGS.ed_dismiss]);
 });
 
 test("backup_damaged: at rest a warning with no buttons, and on a press an alert that replaces the strip", async () => {
@@ -1439,7 +1482,7 @@ test("backup_damaged: at rest a warning with no buttons, and on a press an alert
   const rest = app({ data: { settings: d.settings, targets: d.targets, history: d.history } });
   const bar = stripOf(rest.root);
   assert.ok(hasClass(okRow(rest.root), "s4-ok-warn"));
-  assert.equal(tag(bar, "button").length, 0);
+  assert.deepEqual(tag(bar, "button").map(text), [STRINGS.ed_older_link], "no Undo, only the link");
   assert.equal(okLine(rest.root), T("ed_backup_damaged_rest", { path: d.history.rows[0].backup_display }));
   const press = app({ data: afterSave(), backend: { undo: async () => bad("error", 409, d.undo_answer) } });
   await press.press(STRINGS.ed_undo);
@@ -1456,8 +1499,8 @@ test("strip: a pruned backup at rest is a quiet line, and not_undoable on a pres
   const p = real("backup_pruned");
   const a = app({ data: { settings: p.settings, targets: p.targets, history: p.history } });
   const bar = strips(a.root)[0];
-  assert.equal(text(bar), STRINGS.ed_backup_pruned_rest);
-  assert.equal(tag(bar, "button").length, 0);
+  assert.equal(text(byClass(bar, "s4-note")[0]), STRINGS.ed_backup_pruned_rest);
+  assert.deepEqual(tag(bar, "button").map(text), [STRINGS.ed_older_link]);
   const n = real("not_undoable");
   const b = app({ data: afterSave(), backend: { undo: async () => bad("error", 409, n.undo_answer) } });
   await b.press(STRINGS.ed_undo);
@@ -2308,7 +2351,7 @@ test("text nodes: every server value on the page is text, so a hostile path and 
 });
 
 test("text nodes: the card files hold no call that parses markup, no style, and every diff text goes through h()", () => {
-  const source = ["edit_card", "edit_flow", "edit_pick", "edit_review", "edit_foot", "edit_ui"]
+  const source = ["edit_card", "edit_flow", "edit_pick", "edit_review", "edit_foot", "edit_backup", "edit_ui"]
     .map((name) => fs.readFileSync(new URL("js/" + name + ".js", STATIC), "utf8")).join("\n");
   for (const banned of ["innerHTML", "outerHTML", "insertAdjacentHTML", "document.write", "DOMParser", "createContextualFragment"]) {
     assert.equal(source.includes(banned), false, banned);
@@ -3551,12 +3594,19 @@ test("undo of a create: a file that changed after the save leaves no Undo, and t
   const line = text(okRow(a.root));
   assert.equal(line, "▲" + T("ed_undo_stale_h", { file: LOCAL }) + " " + STRINGS.ed_undo_stale_created_t);
   assert.equal(byClass(stripOf(a.root), "pa").length, 0, "no path");
-  assert.equal(tag(stripOf(a.root), "button").length, 0);
-  // The press answer says the same, and a file that had a backup still names it.
-  const c = app({ data: dataOf(CR.after_save), backend: { undo: async () => bad("error", 409, { error: "changed_since_save", backup_display: null }), refresh: () => ({}) } });
+  assert.deepEqual(tag(stripOf(a.root), "button").map(text), [STRINGS.ed_older_link]);
+  // The press answer offers Undo anyway, which deletes the created file.
+  const c = app({
+    data: dataOf(CR.after_save),
+    backend: {
+      undo: async () => bad("error", 409, { error: "changed_since_save", backup_display: null }),
+      refresh: () => ({ history: refreshed(CR.after_save.history, NOW_STALE) }),
+    },
+  });
   await c.press(STRINGS.ed_undo);
-  assert.equal(okLine(c.root), T("ed_undo_stale_h", { file: LOCAL }) + " " + STRINGS.ed_undo_stale_created_t);
+  assert.equal(okLine(c.root), T("ed_undo_stale_h", { file: LOCAL }) + " " + STRINGS.ed_anyway_offer_created_t);
   assert.equal(pathLine(c.root), null);
+  assert.deepEqual(tag(stripOf(c.root), "button").map(text).slice(0, 2), [STRINGS.ed_anyway_btn, STRINGS.ed_dismiss]);
   const r = app({ data: dataOf(RM.after_save) });
   assert.equal(quiet(r.root).startsWith("Last change"), true);
   const h2 = clone(RM.after_save.history);
@@ -3677,13 +3727,13 @@ test("undo: an edit the server no longer knows says so and loads the history aga
 
 test("undo: a stale undo (409 stale) shows the stale-undo line and loads the history again", async () => {
   const body = { error: "stale", changed: "file", changed_files: [], preview: null };
-  const a = app({ data: afterSave(), backend: { undo: async () => bad("stale", 409, body), refresh: () => ({}) } });
+  const a = app({ data: afterSave(), backend: { undo: async () => bad("stale", 409, body), refresh: () => ({ history: refreshed(S.after_save.history, NOW_STALE) }) } });
   await a.press(STRINGS.ed_undo);
   assert.equal(a.log.refresh, 1);
   assert.ok(hasClass(okRow(a.root), "s4-ok-warn"));
   assert.match(text(stripOf(a.root)), new RegExp(T("ed_undo_stale_h", { file: "settings.local.json" })));
   assert.equal(text(stripOf(a.root)).includes(STRINGS.ed_err_forbidden), false, "not the generic refusal line");
-  assert.deepEqual(tag(stripOf(a.root), "button").map(text), [STRINGS.ed_dismiss]);
+  assert.deepEqual(tag(stripOf(a.root), "button").map(text).slice(0, 2), [STRINGS.ed_anyway_btn, STRINGS.ed_dismiss]);
 });
 
 test("strip: a replace row with no old value reads as an added line, and its undo as an undone change", () => {
@@ -3952,6 +4002,1133 @@ test("create: a failed save that left the .claude folder behind drops the folder
   assert.deepEqual(noteTexts(plain.rail()), [T("ed_new_dir_note", { file: LOCAL })], "the folder is still not there");
 });
 
+// ---------------------------------------------------------------- older backups, Undo anyway and restore
+
+const backupMod = await import(JS + "edit_backup.js");
+// The confirm drops a press that comes soon after its preview drew. The checks press it at once, so they turn the wait
+// off, and the double-click check turns it back on.
+flowMod.guard.ms = 0;
+const BK = real("changed_since_save");
+const BKFILE = "settings.json";
+const BKPATH = "config/routing-dashboard/backups/x/000001-a.bak";
+const bkRow = (over = {}) => ({ ...clone(BK.history.rows[0]), ...over });
+const bkHist = (rows) => ({ ...clone(BK.history), rows });
+// The newest row of a changed file with a good backup: Undo anyway reaches it, so the list leaves it out.
+const rNewest = (over = {}) => bkRow({ id: "e9", undoable: false, not_undoable_reason: "changed_since_save", restore_state: null, undo_anyway: true, ...over });
+const rOld = (id, over = {}) => bkRow({
+  id, undoable: false, not_undoable_reason: "not_newest", restore_state: null, undo_anyway: false, before_absent: false, old_value: "low", ...over,
+});
+const bkPv = (over = {}) => ({
+  edit: "e9", kind: "undo", layer: "project", shared: false, file_display: "project/.claude/settings.json", op: "replace", result: "replace",
+  no_change: false, changed: "file", file_unparsed: false, removes_dir: false, creates_dir: false, backup_display: BKPATH,
+  base_file: "HASH1", runs_before: "xhigh", runs_after: "low", repo_locked: false, git_ignore: "ignored", old_value: "xhigh", new_value: "low",
+  diff: { file_display: "project/.claude/settings.json", hunks: [{ lines: [
+    { kind: "del", old_line: 2, new_line: null, text: "  \"effortLevel\": \"xhigh\"" },
+    { kind: "add", old_line: null, new_line: 2, text: "  \"effortLevel\": \"low\"" },
+  ] }] },
+  ...over,
+});
+const bkDone = (over = {}) => ({
+  edit: bkRow({ id: "e10", kind: "undo", undoable: false, not_undoable_reason: "undo_row" }), settings: {}, matches_backup: true,
+  restored_from_display: BKPATH, removed_file: false, removed_dir: false, replaced_display: "config/routing-dashboard/backups/x/000002-b.bak",
+  replaced_file: true, ...over,
+});
+const bkBackend = (over = {}) => ({
+  backupPreview: async (id, kind) => ok(bkPv({ edit: id, kind })),
+  undoAnyway: async () => ok(bkDone()),
+  restore: async () => ok(bkDone()),
+  ...over,
+});
+const bkApp = (rows, { backend = {}, targets = BK.targets, ...rest } = {}) =>
+  app({ data: { settings: BK.settings, targets, history: bkHist(rows) }, backend: bkBackend(backend), ...rest });
+const focusKeyOf = () => (FElement.focused ? FElement.focused.getAttribute("data-edit-focus") : null);
+const olderLink = (root) => buttons(root).find((b) => b.getAttribute("data-edit-focus") === "older");
+const anywayBtn = (root) => buttons(root).find((b) => b.getAttribute("data-edit-focus") === "btn:anyway");
+const railHead = (a) => text(byClass(a.rail(), "s4-rh")[0]);
+const bkRows = (a) => byClass(a.rail(), "s4-bkrow");
+// A level the picker takes: not the running one.
+const offeredLevel = (root) => levelInputs(root).find((r) => !off(r) && !r.hasAttribute("checked")).value;
+const bkBack = (over = {}) => ({ view: "review", kind: "undo", row: rNewest(), pv: bkPv(), busy: false, stale: false, from: "foot", ...over });
+
+test("older rows: every row but the first when Undo or Undo anyway reaches it, in order, and none when the history is missing", () => {
+  const rows = [rNewest(), rOld("e8"), bkRow({ id: "e7", undoable: true, undo_anyway: false }), rOld("e6", { restore_state: "same_as_file" })];
+  // The foot draws the first row alone, so the newest row of a second file stays in the list.
+  assert.deepEqual(backupMod.olderRows({ rows }).map((r) => r.id), ["e8", "e7", "e6"]);
+  assert.deepEqual(backupMod.olderRows({ rows: [bkRow({ id: "e1", undoable: true, undo_anyway: false }), ...rows.slice(1)] }).map((r) => r.id), ["e8", "e7", "e6"]);
+  assert.deepEqual(backupMod.olderRows({ rows: [rOld("e2"), rNewest()] }).map((r) => r.id), ["e2", "e9"], "only the first row is held back");
+  assert.deepEqual(backupMod.olderRows(null), []);
+  assert.deepEqual(backupMod.olderRows({}), []);
+  assert.deepEqual(backupMod.olderRows({ rows: "x" }), []);
+  assert.deepEqual(pickMod.olderRows({ rows }).map((r) => r.id), ["e8", "e7", "e6"], "the flow reads the same rule");
+});
+
+test("older backups: a second file's newest row can be reached from the list and restored", async () => {
+  // Two files: the foot draws the newest row (file A, changed since the save), and file B's own newest row is undoable.
+  const second = bkRow({ id: "e5", undoable: true, not_undoable_reason: null, restore_state: null, undo_anyway: false, layer: "local", file_display: "project/.claude/settings.local.json", old_value: "low" });
+  const a = bkApp([rNewest(), second]);
+  assert.ok(olderLink(a.root), "the link shows with only a second file's row left");
+  olderLink(a.root).click();
+  await settle();
+  assert.deepEqual(bkRows(a).map((n) => n.getAttribute("data-edit-focus")), ["backup:e5"]);
+  assert.equal(focusKeyOf(), "backup:e5");
+  bkRows(a)[0].click();
+  await settle();
+  assert.deepEqual(a.log.backup, [["e5", "restore"]]);
+  footButtons(a)[0].click();
+  await settle();
+  assert.deepEqual(a.log.restore, [["e5", "HASH1"]]);
+  assert.equal(okLine(a.root), T("ed_back_done_restored_t", { file: BKFILE }));
+});
+
+test("rest strip: undo_anyway offers Undo anyway under the stale line, and a created file says it deletes the file", () => {
+  const a = bkApp([rNewest()]);
+  assert.ok(hasClass(okRow(a.root), "s4-ok-warn"));
+  assert.equal(okRow(a.root).getAttribute("role"), "status");
+  assert.equal(okLine(a.root), T("ed_undo_stale_h", { file: BKFILE }) + " " + STRINGS.ed_anyway_offer_t);
+  const any = anywayBtn(a.root);
+  assert.equal(text(any), STRINGS.ed_anyway_btn);
+  assert.ok(hasClass(any, "s4-wide"));
+  assert.equal(hasClass(any, "p2-pri"), false, "not the primary button");
+  assert.equal(off(any), false);
+  const made = bkApp([rNewest({ op: "create" })]);
+  assert.equal(okLine(made.root), T("ed_undo_stale_h", { file: BKFILE }) + " " + STRINGS.ed_anyway_offer_created_t);
+  assert.ok(anywayBtn(made.root));
+  assert.equal(anyKey(made.root), false);
+  noGaps(made.root);
+});
+
+test("rest strip: undo_anyway false keeps the stale line with the backup path and no button", () => {
+  const a = bkApp([rNewest({ undo_anyway: false })]);
+  assert.equal(okLine(a.root).startsWith(T("ed_undo_stale_h", { file: BKFILE })), true);
+  assert.equal(okLine(a.root).includes(STRINGS.ed_anyway_offer_t), false);
+  assert.equal(anywayBtn(a.root), undefined);
+  assert.deepEqual(byClass(stripOf(a.root), "pa").map(text), [BK.history.rows[0].backup_display]);
+  const made = bkApp([rNewest({ undo_anyway: false, op: "create", backup_display: null })]);
+  assert.equal(okLine(made.root), T("ed_undo_stale_h", { file: BKFILE }) + " " + STRINGS.ed_undo_stale_created_t);
+});
+
+test("undo anyway: the button opens the preview, writes nothing, and the confirm sends the hash it carried", async () => {
+  const a = bkApp([rNewest()]);
+  await a.press(STRINGS.ed_anyway_btn);
+  assert.deepEqual(a.log.backup, [["e9", "undo"]]);
+  assert.equal(a.log.anyway.length + a.log.restore.length + a.log.undo.length, 0, "a preview writes nothing");
+  assert.equal(railHead(a), STRINGS.ed_back_h_undo);
+  assert.deepEqual(footTexts(a), [STRINGS.ed_back_go_undo, STRINGS.ed_cancel]);
+  const [go, cancel] = footButtons(a);
+  assert.equal(hasClass(go, "p2-pri"), false, "an Undo anyway is never the primary button");
+  assert.equal(FElement.focused, cancel, "focus goes to Cancel");
+  assert.equal(flowMod.S.back.view, "review");
+  assert.equal(stripOf(a.root).childNodes.length, 0, "the last change waits");
+  assert.equal(olderLink(a.root), undefined);
+  go.click();
+  await settle();
+  assert.deepEqual(a.log.anyway, [["e9", "HASH1"]]);
+  assert.equal(flowMod.S.back, null);
+  assert.equal(okMark(a.root), "✓");
+  assert.equal(okRow(a.root).getAttribute("role"), "status");
+  assert.equal(okLine(a.root), T("ed_back_done_undo_t", { file: BKFILE }));
+  assert.deepEqual(tag(stripOf(a.root), "button").filter((b) => !hasClass(b, "s4-link")).map(text), [STRINGS.ed_dismiss]);
+  assert.equal(FElement.focused, btn(a.root, STRINGS.ed_dismiss));
+  assert.deepEqual(hintLines(a.root), [T("ed_back_kept", { path: "config/routing-dashboard/backups/x/000002-b.bak" }), T("ed_undone_path", { path: BKPATH })], "two lines, one for each backup");
+  assert.deepEqual(byClass(stripOf(a.root), "pa").map(text), ["config/routing-dashboard/backups/x/000002-b.bak", BKPATH]);
+  assert.equal(flowMod.S.stripBusy, false);
+});
+
+test("undo anyway: Cancel from the foot returns to rest, with focus on Undo anyway, else on the link", async () => {
+  const a = bkApp([rNewest()]);
+  await a.press(STRINGS.ed_anyway_btn);
+  footButtons(a).find((b) => text(b) === STRINGS.ed_cancel).click();
+  await settle();
+  assert.equal(flowMod.S.back, null);
+  assert.equal(a.log.anyway.length, 0);
+  assert.equal(okLine(a.root), T("ed_undo_stale_h", { file: BKFILE }) + " " + STRINGS.ed_anyway_offer_t, "the rest strip is back");
+  assert.equal(FElement.focused, anywayBtn(a.root));
+  assert.equal(flowMod.S.want, null);
+  // With an older row too, the button that opened the review still takes focus.
+  const b = bkApp([rNewest(), rOld("e8")]);
+  await b.press(STRINGS.ed_anyway_btn);
+  footButtons(b).find((x) => text(x) === STRINGS.ed_cancel).click();
+  await settle();
+  assert.equal(FElement.focused, anywayBtn(b.root));
+  // When the button is gone by then (the row went grey), the link takes focus.
+  const c = bkApp([rNewest(), rOld("e8")]);
+  await c.press(STRINGS.ed_anyway_btn);
+  c.st.history = wrap(bkHist([rNewest({ undo_anyway: false }), rOld("e8")]));
+  c.draw();
+  footButtons(c).find((x) => text(x) === STRINGS.ed_cancel).click();
+  await settle();
+  assert.equal(anywayBtn(c.root), undefined);
+  assert.equal(FElement.focused, olderLink(c.root));
+  assert.equal(flowMod.S.want, null);
+  // A review opened from the list still returns to the link.
+  const d = bkApp([rNewest(), rOld("e8")]);
+  olderLink(d.root).click();
+  await settle();
+  bkRows(d)[0].click();
+  await settle();
+  footButtons(d)[1].click();
+  await settle();
+  footButtons(d)[0].click();
+  await settle();
+  assert.equal(FElement.focused, olderLink(d.root));
+});
+
+test("undo anyway: the press does nothing while a change is chosen or an undo is on its way", async () => {
+  const a = bkApp([rNewest(), rOld("e8")]);
+  await a.choose(offeredLevel(a.root));
+  assert.notEqual(flowMod.S.level, null);
+  await flowMod.startBack("undo", rNewest(), "foot");
+  flowMod.openOlder();
+  assert.equal(flowMod.S.back, null);
+  assert.equal(a.log.backup.length, 0);
+});
+
+test("older backups: the link shows with a row left, hides with none, and opens the list with focus on the first row", async () => {
+  const rows = [rNewest(), rOld("e8"), rOld("e7", { before_absent: true, old_value: undefined }), rOld("e5", { old_value: undefined })];
+  const a = bkApp(rows);
+  const link = olderLink(a.root);
+  assert.equal(link.tagName, "button");
+  assert.ok(hasClass(link, "s4-link"));
+  assert.equal(text(link), STRINGS.ed_older_link);
+  assert.equal(link.getAttribute("type"), "button");
+  link.click();
+  await settle();
+  assert.equal(railHead(a), STRINGS.ed_older_h);
+  assert.equal(text(byClass(a.rail(), "s4-sub")[0]), STRINGS.ed_older_intro);
+  assert.equal(byClass(a.rail(), "s4-bk")[0].tagName, "ul");
+  const list = bkRows(a);
+  assert.equal(list.length, 3, "the newest row, Undo anyway's, is left out");
+  assert.deepEqual(list.map(text), [
+    T("ed_older_row_value_t", { file: BKFILE, when: when(rows[1]), value: "low" }),
+    T("ed_older_row_absent_t", { file: BKFILE, when: when(rows[2]) }),
+    T("ed_older_row_t", { file: BKFILE, when: when(rows[3]) }),
+  ]);
+  assert.deepEqual(list.map((n) => n.tagName), ["button", "button", "button"]);
+  assert.deepEqual(list.map((n) => n.getAttribute("data-edit-focus")), ["backup:e8", "backup:e7", "backup:e5"]);
+  assert.equal(list[0].getAttribute("type"), "button");
+  assert.equal(focusKeyOf(), "backup:e8");
+  assert.deepEqual(footTexts(a), [STRINGS.ed_older_close]);
+  assert.equal(footButtons(a)[0].getAttribute("data-edit-focus"), "btn:older-close");
+  assert.equal(stripOf(a.root).childNodes.length, 0);
+  assert.equal(a.log.backup.length, 0, "opening the list asks for nothing");
+  footButtons(a)[0].click();
+  await settle();
+  assert.equal(flowMod.S.back, null);
+  assert.equal(focusKeyOf(), "older");
+  assert.equal(FElement.focused, olderLink(a.root));
+  // No row left, so no link.
+  assert.equal(olderLink(bkApp([rNewest()]).root), undefined);
+  assert.equal(olderLink(bkApp([]).root), undefined);
+  const onlyUndoable = bkApp([bkRow({ undoable: true, not_undoable_reason: null, restore_state: null, undo_anyway: false })]);
+  assert.equal(olderLink(onlyUndoable.root), undefined, "the row Undo reaches is not an older backup");
+});
+
+test("older backups: a row that can't be restored is grey with its reason, one for each state", async () => {
+  const states = [
+    ["same_as_file", STRINGS.ed_older_same],
+    ["backup_unparsed", STRINGS.ed_older_unparsed],
+    ["backup_damaged", STRINGS.ed_older_damaged],
+    ["backup_pruned", STRINGS.ed_older_pruned],
+    ["file_refused", STRINGS.ed_older_file_refused],
+  ];
+  const rows = [rOld("e8"), ...states.map(([state], i) => rOld("g" + i, { restore_state: state }))];
+  const a = bkApp(rows);
+  olderLink(a.root).click();
+  await settle();
+  const offRows = byClass(a.rail(), "is-off");
+  assert.equal(offRows.length, 5);
+  assert.deepEqual(offRows.map((n) => n.tagName), ["li", "li", "li", "li", "li"]);
+  assert.ok(offRows.every((n) => hasClass(n, "s4-bkrow")));
+  states.forEach(([state, reason], i) => {
+    assert.equal(text(byClass(offRows[i], "s4-note")[0]), reason, state);
+    assert.equal(tag(offRows[i], "button").length, 0, "a grey row takes no press");
+    assert.equal(text(offRows[i]).startsWith(T("ed_older_row_value_t", { file: BKFILE, when: when(rows[i + 1]), value: "low" })), true);
+  });
+  assert.equal(tag(a.rail(), "button").length, 1, "one row can be restored");
+  assert.equal(anyKey(a.root), false);
+  noGaps(a.rail());
+  // With every row grey the focus goes to Close.
+  const b = bkApp([rOld("g0", { restore_state: "same_as_file" })]);
+  olderLink(b.root).click();
+  await settle();
+  assert.equal(focusKeyOf(), "btn:older-close");
+});
+
+test("restore: a row opens its preview, the confirm is the primary button, Cancel returns to the list, Close returns to rest", async () => {
+  const a = bkApp([rNewest(), rOld("e8"), rOld("e7")]);
+  olderLink(a.root).click();
+  await settle();
+  bkRows(a)[0].click();
+  await settle();
+  assert.deepEqual(a.log.backup, [["e8", "restore"]]);
+  assert.equal(a.log.restore.length + a.log.anyway.length, 0);
+  assert.equal(railHead(a), STRINGS.ed_back_h_restore);
+  assert.deepEqual(footTexts(a), [STRINGS.ed_back_go_restore, STRINGS.ed_cancel]);
+  assert.ok(hasClass(footButtons(a)[0], "p2-pri"), "a restore that writes is the primary button");
+  assert.equal(focusKeyOf(), "btn:cancel");
+  footButtons(a)[1].click();
+  await settle();
+  assert.equal(railHead(a), STRINGS.ed_older_h, "Cancel goes back to the list");
+  assert.equal(flowMod.S.back.view, "list");
+  assert.equal(focusKeyOf(), "backup:e8", "focus is on the row that opened it");
+  footButtons(a)[0].click();
+  await settle();
+  assert.equal(flowMod.S.back, null);
+  assert.equal(focusKeyOf(), "older");
+  assert.equal(a.log.restore.length, 0, "nothing was written");
+});
+
+test("restore: the confirm sends the preview's hash, and the strip says restored with both paths", async () => {
+  const a = bkApp([rNewest(), rOld("e8")], { backend: { backupPreview: async (id, kind) => ok(bkPv({ edit: id, kind, base_file: "HASH-R" })) } });
+  olderLink(a.root).click();
+  await settle();
+  bkRows(a)[0].click();
+  await settle();
+  footButtons(a)[0].click();
+  await settle();
+  assert.deepEqual(a.log.restore, [["e8", "HASH-R"]]);
+  assert.equal(okLine(a.root), T("ed_back_done_restored_t", { file: BKFILE }));
+  assert.equal(flowMod.S.back, null);
+});
+
+test("review rail: a replace shows the main line, the diff, what runs, the shared note, the backup path and the git warning", () => {
+  const rail = backupMod.backRail(bkBack({ pv: bkPv({ shared: true, git_ignore: "not_ignored" }) }), {});
+  assert.equal(rail.tagName, "div");
+  assert.ok(hasClass(rail, "s4-rb"));
+  assert.equal(text(byClass(rail, "s4-rh")[0]), STRINGS.ed_back_h_undo);
+  assert.equal(text(byClass(rail, "s4-sub")[0]), T("ed_back_replace_t", { file: BKFILE }));
+  assert.equal(byClass(rail, "p2-df").length, 1);
+  assert.equal(byClass(byClass(rail, "p2-df")[0], "ly").length, 1, "the diff caption names the layer");
+  assert.equal(text(byClass(rail, "s4-runs")[0]), T("ed_back_runs_t", { level: "low" }));
+  assert.deepEqual(noteTexts(rail), [STRINGS.ed_shared]);
+  assert.equal(text(byClass(rail, "p2-nt-h")[0]), "▲" + STRINGS.ed_git_warn_h);
+  const hint = byClass(rail, "s4-hint")[0];
+  assert.equal(text(hint), T("ed_back_source", { path: BKPATH }));
+  assert.deepEqual(byClass(hint, "pa").map(text), [BKPATH]);
+  // The order: line, diff, runs, notes, the hint last.
+  const order2 = [byClass(rail, "s4-sub")[0], byClass(rail, "p2-df")[0], byClass(rail, "s4-runs")[0], hint].map((n) => order(rail, n));
+  assert.deepEqual(order2, [...order2].sort((x, y) => x - y));
+  const unknown = backupMod.backRail(bkBack({ pv: bkPv({ git_ignore: "unknown" }) }), {});
+  assert.deepEqual(noteTexts(unknown), [T("ed_git_unknown", { file: BKFILE })]);
+  assert.equal(byClass(unknown, "p2-nt").length, 0);
+  assert.deepEqual(noteTexts(backupMod.backRail(bkBack({ pv: bkPv() }), {})), []);
+});
+
+test("review rail: a delete, a create, an unparsed file and a no-change preview each say their own thing", () => {
+  const del = backupMod.backRail(bkBack({ pv: bkPv({ result: "delete", op: "create", removes_dir: true, diff: null }) }), {});
+  assert.equal(text(byClass(del, "s4-sub")[0]), T("ed_back_delete_t", { file: BKFILE }));
+  assert.deepEqual(noteTexts(del), [STRINGS.ed_back_delete_dir_t]);
+  assert.equal(byClass(del, "p2-df").length, 0);
+  const nofolder = backupMod.backRail(bkBack({ pv: bkPv({ result: "delete", removes_dir: false, diff: null }) }), {});
+  assert.deepEqual(noteTexts(nofolder), []);
+  const empty = backupMod.backRail(bkBack({ pv: bkPv({ diff: { file_display: "project/.claude/settings.json", hunks: [] } }) }), {});
+  assert.equal(byClass(empty, "p2-df").length, 0, "a diff with no hunks draws no figure");
+  const create = backupMod.backRail(bkBack({ kind: "restore", pv: bkPv({ result: "create", kind: "restore" }) }), {});
+  assert.equal(text(byClass(create, "s4-rh")[0]), STRINGS.ed_back_h_restore);
+  assert.equal(text(byClass(create, "s4-sub")[0]), T("ed_back_create_t", { file: BKFILE }));
+  assert.deepEqual(noteTexts(create), [], "the main line already says the file is created, and no Undo follows a restore");
+  const dir = backupMod.backRail(bkBack({ pv: bkPv({ result: "create", creates_dir: true }) }), {});
+  assert.deepEqual(noteTexts(dir), [T("ed_back_create_dir_t", { file: BKFILE })]);
+  const gone = backupMod.backRail(bkBack({ pv: bkPv({ result: "delete", diff: null, git_ignore: "not_ignored" }) }), {});
+  assert.deepEqual(noteTexts(gone), [], "a file that goes takes no git warning");
+  const bad2 = backupMod.backRail(bkBack({ pv: bkPv({ file_unparsed: true, diff: null }) }), {});
+  assert.deepEqual(noteTexts(bad2), [T("ed_back_unparsed_t", { file: BKFILE })]);
+  const same = backupMod.backRail(bkBack({ pv: bkPv({ no_change: true, diff: null }) }), {});
+  assert.equal(text(byClass(same, "s4-sub")[0]), T("ed_back_no_change_t", { file: BKFILE }));
+  assert.equal(byClass(same, "s4-runs").length, 0, "nothing runs differently, so no runs line");
+});
+
+test("review rail: what a new session runs is unknown, the same, or a level", () => {
+  const line = (over) => text(byClass(backupMod.backRail(bkBack({ pv: bkPv(over) }), {}), "s4-runs")[0]);
+  assert.equal(line({ runs_after: null }), STRINGS.ed_back_runs_unknown_t);
+  assert.equal(line({ runs_after: "low", runs_before: "low" }), STRINGS.ed_back_runs_same_t);
+  assert.equal(line({ runs_after: "high", runs_before: "low" }), T("ed_back_runs_t", { level: "high" }));
+  assert.equal(line({ runs_after: "high", runs_before: null }), T("ed_back_runs_t", { level: "high" }));
+});
+
+test("review rail: with no preview yet the rail is the heading alone, and a stale one opens with a warning", () => {
+  const wait = backupMod.backRail(bkBack({ pv: null }), {});
+  assert.deepEqual(wait.childNodes.map((n) => n.tagName), ["h2"]);
+  assert.equal(text(wait), STRINGS.ed_back_h_undo);
+  const stale = backupMod.backRail(bkBack({ stale: true }), {});
+  const first = stale.childNodes[0];
+  assert.ok(hasClass(first, "p2-nt-warn"));
+  assert.equal(text(byClass(first, "p2-nt-h")[0]), "▲" + T("ed_back_stale_h", { file: BKFILE }));
+  assert.equal(text(first.find((n) => n.tagName === "p")[0]), STRINGS.ed_back_stale_t);
+  assert.equal(stale.childNodes[1].tagName, "h2");
+  const staleWait = backupMod.backRail(bkBack({ stale: true, pv: null }), {});
+  assert.deepEqual(staleWait.childNodes.map((n) => n.tagName), ["div", "h2"]);
+});
+
+test("review foot: the label and the primary button for each kind and result, Working while busy, Cancel alone with nothing to do", () => {
+  const env = { closeBack() {}, confirmBack() {} };
+  const feet = (over) => backupMod.backFoot(bkBack(over), env).filter(Boolean);
+  const goOf = (over) => feet(over)[0];
+  assert.equal(text(goOf({})), STRINGS.ed_back_go_undo);
+  assert.equal(hasClass(goOf({}), "p2-pri"), false);
+  assert.equal(text(goOf({ pv: bkPv({ result: "delete" }) })), T("ed_back_go_delete", { file: BKFILE }));
+  assert.equal(hasClass(goOf({ pv: bkPv({ result: "delete" }) }), "p2-pri"), false, "a delete is never primary");
+  const restore = { kind: "restore", from: "list" };
+  assert.equal(text(goOf(restore)), STRINGS.ed_back_go_restore);
+  assert.ok(hasClass(goOf(restore), "p2-pri"));
+  assert.ok(hasClass(goOf({ ...restore, pv: bkPv({ result: "create" }) }), "p2-pri"));
+  assert.equal(text(goOf({ ...restore, pv: bkPv({ result: "delete" }) })), T("ed_back_go_delete", { file: BKFILE }));
+  assert.equal(hasClass(goOf({ ...restore, pv: bkPv({ result: "delete" }) }), "p2-pri"), false);
+  assert.equal(goOf({}).getAttribute("data-edit-focus"), "btn:save");
+  assert.equal(feet({})[1].getAttribute("data-edit-focus"), "btn:cancel");
+  assert.ok(feet({}).filter((n) => n.tagName === "button").every((b) => hasClass(b, "s4-wide")));
+  const busy = feet({ busy: true });
+  assert.equal(text(busy[0]), STRINGS.ed_back_busy);
+  assert.equal(off(busy[0]), true);
+  assert.equal(off(busy[1]), true);
+  assert.equal(busy[0].getAttribute("aria-busy"), "true");
+  assert.equal(text(busy[2]), T("ed_back_busy_sr", { file: BKFILE }));
+  assert.equal(busy[2].getAttribute("role"), "status");
+  assert.ok(hasClass(busy[2], "sr"));
+  for (const over of [{ pv: null }, { pv: bkPv({ no_change: true }) }]) {
+    const only = feet(over);
+    assert.deepEqual(only.filter((n) => n.tagName === "button").map(text), [STRINGS.ed_cancel]);
+    assert.equal(only[0].getAttribute("data-edit-focus"), "btn:cancel");
+  }
+  const list = backupMod.backFoot({ view: "list" }, env).filter(Boolean);
+  assert.deepEqual(list.map(text), [STRINGS.ed_older_close]);
+  assert.equal(list[0].getAttribute("data-edit-focus"), "btn:older-close");
+});
+
+test("restore: the busy button shows Working with both buttons off, and Cancel does nothing while the write is on its way", async () => {
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  const a = bkApp([rNewest()], { backend: { undoAnyway: async () => { await gate; return ok(bkDone()); } } });
+  await a.press(STRINGS.ed_anyway_btn);
+  const go = footButtons(a)[0];
+  go.click();
+  await settle();
+  assert.deepEqual(footTexts(a), [STRINGS.ed_back_busy, STRINGS.ed_cancel]);
+  assert.deepEqual(footButtons(a).map(off), [true, true]);
+  flowMod.closeBack();
+  assert.equal(flowMod.S.back.view, "review", "busy returns");
+  flowMod.confirmBack();
+  assert.equal(a.log.anyway.length, 1, "a second confirm sends nothing");
+  release();
+  await settle();
+  assert.equal(flowMod.S.back, null);
+  assert.equal(okLine(a.root), T("ed_back_done_undo_t", { file: BKFILE }));
+});
+
+test("stale: a changed file answers with a fresh preview that replaces the old one, with a warning, and the confirm is sent again", async () => {
+  const stale = { error: "stale", changed: "file", changed_files: [{ layer: "project", file_display: "project/.claude/settings.json" }], preview: bkPv({ base_file: "HASH2", runs_after: "high" }) };
+  let n = 0;
+  const a = bkApp([rNewest()], { backend: { undoAnyway: async () => (++n === 1 ? bad("stale", 409, stale) : ok(bkDone())) }, });
+  await a.press(STRINGS.ed_anyway_btn);
+  footButtons(a)[0].click();
+  await settle();
+  assert.deepEqual(a.log.anyway, [["e9", "HASH1"]]);
+  assert.equal(a.log.refresh, 1, "the page loads the files again");
+  assert.equal(flowMod.S.back.stale, true);
+  assert.equal(flowMod.S.back.pv.base_file, "HASH2");
+  assert.equal(flowMod.S.back.busy, false);
+  assert.equal(text(byClass(a.rail(), "p2-nt-h")[0]), "▲" + T("ed_back_stale_h", { file: BKFILE }));
+  assert.equal(text(byClass(a.rail(), "s4-runs")[0]), T("ed_back_runs_t", { level: "high" }), "the preview is the new one");
+  assert.deepEqual(footTexts(a), [STRINGS.ed_back_go_undo, STRINGS.ed_cancel]);
+  assert.equal(footButtons(a).every((b) => !off(b)), true);
+  assert.equal(focusKeyOf(), "btn:cancel");
+  footButtons(a)[0].click();
+  await settle();
+  assert.deepEqual(a.log.anyway, [["e9", "HASH1"], ["e9", "HASH2"]]);
+  assert.equal(okLine(a.root), T("ed_back_done_undo_t", { file: BKFILE }));
+});
+
+test("stale: with no preview the review ends, nothing is written, and the strip says the backup moved", async () => {
+  const stale = { error: "stale", changed: "file_removed", changed_files: [], preview: null };
+  const a = bkApp([rNewest()], { backend: { undoAnyway: async () => bad("stale", 409, stale) } });
+  await a.press(STRINGS.ed_anyway_btn);
+  footButtons(a)[0].click();
+  await settle();
+  assert.equal(flowMod.S.back, null);
+  assert.equal(a.log.refresh, 1);
+  const alert = byClass(stripOf(a.root), "p2-nt-err")[0];
+  assert.equal(text(byClass(alert, "p2-nt-h")[0]), "✕" + STRINGS.ed_back_gone_t);
+  assert.equal(flowMod.S.stripBusy, false);
+});
+
+test("answers: each written result has its own line, and the paths under it show only when they exist", async () => {
+  const run = async (kind, body) => {
+    const a = bkApp([rNewest(), rOld("e8")], { backend: { undoAnyway: async () => ok(body), restore: async () => ok(body) } });
+    if (kind === "undo") await a.press(STRINGS.ed_anyway_btn);
+    else {
+      olderLink(a.root).click();
+      await settle();
+      bkRows(a)[0].click();
+      await settle();
+    }
+    footButtons(a)[0].click();
+    await settle();
+    return a;
+  };
+  const cases = [
+    ["undo", {}, T("ed_back_done_undo_t", { file: BKFILE })],
+    ["restore", {}, T("ed_back_done_restored_t", { file: BKFILE })],
+    ["undo", { removed_file: true }, T("ed_back_done_deleted_t", { file: BKFILE })],
+    ["restore", { removed_file: true }, T("ed_back_done_deleted_t", { file: BKFILE })],
+    ["undo", { removed_file: true, removed_dir: true }, T("ed_back_done_deleted_both_t", { file: BKFILE })],
+    ["restore", { replaced_file: false, replaced_display: null }, T("ed_back_done_created_t", { file: BKFILE })],
+    ["undo", { replaced_file: false, replaced_display: null }, T("ed_back_done_created_t", { file: BKFILE })],
+  ];
+  for (const [kind, over, line] of cases) {
+    const a = await run(kind, bkDone(over));
+    assert.equal(okLine(a.root), line, kind + JSON.stringify(over));
+    assert.equal(okMark(a.root), "✓");
+    assert.equal(a.log.refresh, 0, "the write reloaded the page already");
+    assert.equal(flowMod.S.back, null);
+  }
+  // A file that was gone has nothing replaced, so only the restored path shows.
+  const gone = await run("restore", bkDone({ replaced_file: false, replaced_display: null }));
+  assert.equal(pathLine(gone.root), T("ed_undone_path", { path: BKPATH }));
+  // A replaced file that has no path, and no restored path, shows no empty line.
+  const none = await run("undo", bkDone({ replaced_display: null, restored_from_display: null }));
+  assert.equal(pathLine(none.root), null);
+  assert.equal(byClass(stripOf(none.root), "s4-hint").length, 0);
+  const kept = await run("undo", bkDone({ restored_from_display: null }));
+  assert.equal(pathLine(kept.root), T("ed_back_kept", { path: "config/routing-dashboard/backups/x/000002-b.bak" }));
+});
+
+test("answers: a refused backup, a refused write and a damaged ledger each leave their own strip", async () => {
+  const press = async (kind, out, rows = [rNewest(), rOld("e8")]) => {
+    const a = bkApp(rows, { backend: { undoAnyway: async () => out, restore: async () => out } });
+    if (kind === "undo") await a.press(STRINGS.ed_anyway_btn);
+    else {
+      olderLink(a.root).click();
+      await settle();
+      bkRows(a)[0].click();
+      await settle();
+    }
+    footButtons(a)[0].click();
+    await settle();
+    return a;
+  };
+  const head = (a) => text(byClass(byClass(stripOf(a.root), "p2-nt")[0], "p2-nt-h")[0]);
+  const unparsed = await press("restore", bad("error", 422, { error: "backup_unparsed" }));
+  assert.equal(head(unparsed), "✕" + STRINGS.ed_backup_unparsed_h);
+  assert.equal(unparsed.log.refresh, 1, "the history loads again");
+  assert.equal(flowMod.S.back, null);
+  const none = await press("undo", bad("error", 400, { error: "no_change" }));
+  assert.equal(head(none), "✕" + STRINGS.ed_back_no_change_h);
+  assert.equal(none.log.refresh, 1);
+  const failedRestore = await press("restore", bad("error", 500, { error: "write_failed", file_unchanged: true }));
+  assert.equal(head(failedRestore), "✕" + STRINGS.ed_restore_fail_h);
+  assert.equal(text(byClass(stripOf(failedRestore.root), "p2-nt")[0].find((n) => n.tagName === "p")[0]), T("ed_restore_fail_t", { file: BKFILE }));
+  const failedUndo = await press("undo", bad("error", 500, { error: "write_failed", file_unchanged: true }));
+  assert.equal(head(failedUndo), "✕" + STRINGS.ed_undo_fail_h);
+  const damaged = await press("undo", bad("error", 409, { error: "backup_damaged", backup_display: BKPATH }));
+  assert.equal(head(damaged), "✕" + STRINGS.ed_backup_damaged_h);
+  const notUndoable = await press("restore", bad("error", 409, { error: "not_undoable", reason: "backup_pruned" }));
+  assert.equal(head(notUndoable), "✕" + STRINGS.ed_older_pruned, "a pruned backup says it is gone");
+  assert.equal(notUndoable.log.refresh, 1, "the history loads again, so the row goes grey");
+  const otherReason = await press("restore", bad("error", 409, { error: "not_undoable", reason: "not_newest" }));
+  assert.equal(head(otherReason), "✕" + STRINGS.ed_not_undoable);
+  const ledger = await press("undo", bad("error", 500, { error: "ledger_damaged", ledger_display: "config/routing-dashboard/backups/x/ledger.json" }));
+  assert.equal(head(ledger), "✕" + T("ed_ledger_h", { file: BKFILE }));
+  const raced = await press("restore", bad("raced", 409, { error: "raced", restored_from_display: BKPATH }));
+  assert.equal(head(raced), "▲" + T("ed_raced_h", { file: BKFILE }));
+  const unknown = await press("restore", bad("error", 404, { error: "unknown_edit" }));
+  assert.equal(unknown.log.refresh, 1);
+  const unverified = await press("undo", bad("unverified", 500, { error: "unverified", stage: "reread", backup_display: BKPATH }));
+  assert.equal(head(unverified), "✕" + STRINGS.ed_unverified_reread_h);
+});
+
+test("answers: the preview itself can be refused, and the review then ends with the reason", async () => {
+  const a = bkApp([rNewest(), rOld("e8")], { backend: { backupPreview: async () => bad("error", 422, { error: "backup_unparsed" }) } });
+  olderLink(a.root).click();
+  await settle();
+  bkRows(a)[0].click();
+  await settle();
+  assert.equal(flowMod.S.back, null);
+  assert.equal(text(byClass(byClass(stripOf(a.root), "p2-nt")[0], "p2-nt-h")[0]), "✕" + STRINGS.ed_backup_unparsed_h);
+  assert.equal(a.log.refresh, 1);
+  const b = bkApp([rNewest()], { backend: { backupPreview: async () => bad("error", 409, { error: "not_undoable", reason: "backup_pruned" }) } });
+  await b.press(STRINGS.ed_anyway_btn);
+  assert.equal(flowMod.S.back, null);
+  assert.equal(text(byClass(byClass(stripOf(b.root), "p2-nt")[0], "p2-nt-h")[0]), "✕" + STRINGS.ed_older_pruned);
+  assert.equal(b.log.refresh, 1);
+  assert.equal(focusKeyOf(), "btn:dismiss-strip", "focus goes to Dismiss");
+});
+
+test("answers: a lost token on the preview or on the write ends the review and shows the token notice", async () => {
+  const a = bkApp([rNewest()], { backend: { backupPreview: async () => ({ kind: "locked", res: null }) } });
+  await a.press(STRINGS.ed_anyway_btn);
+  assert.equal(flowMod.S.back, null);
+  assert.deepEqual(flowMod.S.token, { where: "strip" });
+  const b = bkApp([rNewest()], { backend: { undoAnyway: async () => ({ kind: "locked", res: null }) } });
+  await b.press(STRINGS.ed_anyway_btn);
+  footButtons(b)[0].click();
+  await settle();
+  assert.equal(flowMod.S.back, null);
+  assert.equal(b.st.mode, "locked");
+});
+
+test("answers: a preview that comes after Cancel is dropped", async () => {
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  const a = bkApp([rNewest(), rOld("e8")], { backend: { backupPreview: async (id, kind) => { await gate; return ok(bkPv({ edit: id, kind })); } } });
+  olderLink(a.root).click();
+  await settle();
+  bkRows(a)[0].click();
+  await settle();
+  assert.equal(flowMod.S.back.pv, null);
+  assert.deepEqual(footTexts(a), [STRINGS.ed_cancel], "Cancel alone while the preview is on its way");
+  assert.deepEqual(byClass(a.rail(), "s4-rh").map(text), [STRINGS.ed_back_h_restore]);
+  footButtons(a)[0].click();
+  await settle();
+  assert.equal(flowMod.S.back.view, "list");
+  release();
+  await settle();
+  assert.equal(flowMod.S.back.view, "list", "the late answer does not reopen the review");
+});
+
+test("answers: a write that lands after a project switch clears that project's review and shows the result when it comes back", async () => {
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  const a = bkApp([rNewest()], { backend: { undoAnyway: async () => { await gate; return ok(bkDone()); } } });
+  const home = a.key;
+  await a.press(STRINGS.ed_anyway_btn);
+  footButtons(a)[0].click();
+  await settle();
+  a.use("other", baseData());
+  assert.equal(flowMod.S.back, null);
+  release();
+  await settle();
+  a.use(home, { settings: BK.settings, targets: BK.targets, history: bkHist([rNewest()]) });
+  assert.equal(flowMod.S.back, null);
+  assert.equal(okLine(a.root), T("ed_back_done_undo_t", { file: BKFILE }));
+});
+
+test("restore row: the last change reads as a restore, with the path and no Undo", () => {
+  const row = bkRow({ id: "e11", kind: "restore", undoable: false, not_undoable_reason: "restore_row", restore_state: null, undo_anyway: false, restored_from_display: BKPATH });
+  const a = bkApp([row, rOld("e8")]);
+  assert.equal(quiet(a.root).startsWith(T("ed_last_restored_t", { when: when(row), file: BKFILE })), true);
+  assert.equal(btn(a.root, STRINGS.ed_undo), undefined);
+  assert.equal(anywayBtn(a.root), undefined);
+  assert.deepEqual(byClass(stripOf(a.root), "pa").map(text), [BKPATH]);
+  assert.equal(text(byClass(stripOf(a.root), "s4-note")[0]).endsWith(T("ed_undone_path", { path: BKPATH })), true);
+  assert.deepEqual(tag(stripOf(a.root), "button").map(text), [STRINGS.ed_older_link]);
+  // The restore row is itself an older backup, one that can be restored.
+  assert.deepEqual(backupMod.olderRows({ rows: [row, rOld("e8")] }).map((r) => r.id), ["e11", "e8"]);
+  const bare = bkApp([{ ...row, restored_from_display: null }]);
+  assert.equal(byClass(stripOf(bare.root), "pa").length, 0);
+  noGaps(bare.root);
+});
+
+test("one change at a time: the picker is off and the Remove line links are gone while the list or a review is open", async () => {
+  const a = app({ data: { settings: RM.start.settings, targets: RM.start.targets, history: bkHist([rOld("e8")]) }, backend: bkBackend() });
+  assert.ok(removeLinks(a.root).length > 0, "the links show at rest");
+  assert.equal(levelInputs(a.root).every(off), false);
+  olderLink(a.root).click();
+  await settle();
+  assert.equal(removeLinks(a.root).length, 0);
+  assert.equal(levelInputs(a.root).every(off), true);
+  assert.deepEqual(levelInputs(a.root).filter((r) => r.hasAttribute("checked")).length, 1, "the running level stays checked");
+  // The flow's own actions do nothing meanwhile.
+  flowMod.pick("high");
+  flowMod.pickRow("local");
+  assert.equal(flowMod.S.level, null);
+  assert.equal(flowMod.S.remove, null);
+  await flowMod.doUndo(rOld("e8"));
+  assert.equal(a.log.undo.length, 0);
+  bkRows(a)[0].click();
+  await settle();
+  assert.equal(removeLinks(a.root).length, 0);
+  assert.equal(levelInputs(a.root).every(off), true);
+  footButtons(a)[1].click();
+  await settle();
+  footButtons(a)[0].click();
+  await settle();
+  assert.ok(removeLinks(a.root).length > 0, "the links come back with the rest");
+  assert.equal(levelInputs(a.root).every(off), false);
+  assert.equal(flowMod.S.back, null);
+});
+
+test("one change at a time: a chosen level or a chosen line keeps the Older backups link and Undo anyway out of reach", async () => {
+  const a = bkApp([rNewest(), rOld("e8")]);
+  await a.choose(offeredLevel(a.root));
+  assert.equal(olderLink(a.root), undefined, "the link waits with the last change");
+  assert.equal(anywayBtn(a.root), undefined);
+  flowMod.openOlder();
+  assert.equal(flowMod.S.back, null);
+  const b = app({ data: { settings: RM.start.settings, targets: RM.start.targets, history: bkHist([rOld("e8")]) }, backend: bkBackend() });
+  removeLinks(b.root)[0].click();
+  await settle();
+  assert.equal(olderLink(b.root), undefined);
+  flowMod.openOlder();
+  assert.equal(flowMod.S.back, null);
+});
+
+test("project lock: the link and the flow still work, because Undo stays open under the lock", async () => {
+  const targets = clone(BK.targets);
+  targets.project_lock = "not_repo_root";
+  const a = bkApp([rNewest(), rOld("e8")], { targets });
+  assert.ok(olderLink(a.root), "the link shows under the lock");
+  assert.ok(anywayBtn(a.root), "and so does Undo anyway");
+  olderLink(a.root).click();
+  await settle();
+  assert.equal(railHead(a), STRINGS.ed_older_h);
+  bkRows(a)[0].click();
+  await settle();
+  assert.deepEqual(a.log.backup, [["e8", "restore"]]);
+  assert.equal(railHead(a), STRINGS.ed_back_h_restore);
+  footButtons(a)[1].click();
+  await settle();
+  footButtons(a)[0].click();
+  await settle();
+  assert.equal(flowMod.S.back, null);
+  assert.equal(railHead(a) === STRINGS.ed_older_h, false);
+  assert.ok(olderLink(a.root));
+  await a.press(STRINGS.ed_anyway_btn);
+  assert.equal(railHead(a), STRINGS.ed_back_h_undo);
+  footButtons(a)[0].click();
+  await settle();
+  assert.equal(a.log.anyway.length, 1);
+});
+
+test("edits off or locked: no link and no review", () => {
+  for (const mode of ["off", "locked"]) {
+    const a = bkApp([rNewest(), rOld("e8")], { mode });
+    assert.equal(olderLink(a.root), undefined, mode);
+    assert.equal(anywayBtn(a.root), undefined, mode);
+  }
+});
+
+test("a page render keeps the list and the review, and another cell keeps them too", async () => {
+  const a = bkApp([rNewest(), rOld("e8")]);
+  olderLink(a.root).click();
+  await settle();
+  a.draw();
+  assert.equal(railHead(a), STRINGS.ed_older_h);
+  assert.equal(focusKeyOf(), "backup:e8", "focus survives the render");
+  assert.deepEqual(footTexts(a), [STRINGS.ed_older_close]);
+  const ctx = a.makeCtx();
+  ctx.route.query = { setting: "model" };
+  settingsPage.render(a.root, ctx);
+  assert.equal(railHead(a), STRINGS.ed_older_h, "another cell keeps the list");
+  assert.deepEqual(footTexts(a), [STRINGS.ed_older_close]);
+  bkRows(a)[0].click();
+  await settle();
+  a.draw();
+  assert.equal(railHead(a), STRINGS.ed_back_h_restore);
+  assert.deepEqual(footTexts(a), [STRINGS.ed_back_go_restore, STRINGS.ed_cancel]);
+  assert.equal(text(byClass(a.rail(), "s4-sub")[0]), T("ed_back_replace_t", { file: BKFILE }));
+  settingsPage.render(a.root, ctx);
+  assert.equal(railHead(a), STRINGS.ed_back_h_restore);
+  footButtons(a)[1].click();
+  await settle();
+  footButtons(a)[0].click();
+  await settle();
+  assert.equal(flowMod.S.back, null);
+});
+
+test("a flow keeps its list per project", async () => {
+  const a = bkApp([rNewest(), rOld("e8")]);
+  const home = a.key;
+  olderLink(a.root).click();
+  await settle();
+  a.use("other", baseData());
+  assert.equal(flowMod.S.back, null);
+  assert.equal(olderLink(a.root), undefined);
+  a.use(home, { settings: BK.settings, targets: BK.targets, history: bkHist([rNewest(), rOld("e8")]) });
+  assert.equal(flowMod.S.back.view, "list");
+  assert.equal(railHead(a), STRINGS.ed_older_h);
+  footButtons(a)[0].click();
+  await settle();
+});
+
+test("a review waiting on its preview does not outlive a project switch", async () => {
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  const a = bkApp([rNewest(), rOld("e8")], { backend: { backupPreview: async (id, kind) => { await gate; return ok(bkPv({ edit: id, kind })); } } });
+  const home = a.key;
+  olderLink(a.root).click();
+  await settle();
+  bkRows(a)[0].click();
+  await settle();
+  a.use("other", baseData());
+  release();
+  await settle();
+  a.use(home, { settings: BK.settings, targets: BK.targets, history: bkHist([rNewest(), rOld("e8")]) });
+  assert.equal(flowMod.S.back, null);
+  assert.ok(olderLink(a.root));
+});
+
+test("text nodes: a hostile value, file and path in the list and the review make no element", async () => {
+  const evil = "<img src=x onerror=alert(1)>";
+  const a = bkApp([rNewest(), rOld("e8", { old_value: evil })], {
+    backend: { backupPreview: async (id, kind) => ok(bkPv({ edit: id, kind, backup_display: evil, diff: { file_display: evil, hunks: [{ lines: [{ kind: "add", old_line: null, new_line: 1, text: evil }] }] } })) },
+  });
+  olderLink(a.root).click();
+  await settle();
+  assert.equal(a.root.find((n) => n.tagName === "img").length, 0);
+  assert.ok(a.root.textContent.includes(evil));
+  bkRows(a)[0].click();
+  await settle();
+  assert.equal(a.root.find((n) => n.tagName === "img").length, 0);
+  assert.ok(a.root.textContent.includes(evil));
+  assert.equal(parsed.length, 0);
+});
+
+// ---------------------------------------------------------------- Stage 4 fixes
+
+const noteHead = (root) => text(byClass(byClass(stripOf(root), "p2-nt")[0], "p2-nt-h")[0]);
+const noteBody = (root) => text(byClass(stripOf(root), "p2-nt")[0].find((n) => n.tagName === "p")[0]);
+const BKPATH2 = "config/routing-dashboard/backups/x/000002-b.bak";
+// An Undo anyway (or a restore) on a stale row, previewed with over, and confirmed into out.
+const confirmed = async (out, { pv = {}, row = {}, kind = "undo" } = {}) => {
+  const a = bkApp([rNewest(row), rOld("e8")], { backend: {
+    backupPreview: async (id, k) => ok(bkPv({ edit: id, kind: k, ...pv })),
+    undoAnyway: async () => out,
+    restore: async () => out,
+  } });
+  if (kind === "undo") await a.press(STRINGS.ed_anyway_btn);
+  else {
+    olderLink(a.root).click();
+    await settle();
+    bkRows(a)[0].click();
+    await settle();
+  }
+  footButtons(a)[0].click();
+  await settle();
+  return a;
+};
+
+test("answers: a raced or unverified forced write names the backup it kept, and a file that was absent before has none", async () => {
+  // op create on the row does not mean the write had no backup: the file held the owner's bytes when the write came.
+  const raced = await confirmed(bad("raced", 409, { error: "raced", backup_display: BKPATH2, restored_from_display: BKPATH }), { row: { op: "create" } });
+  assert.equal(noteHead(raced.root), "▲" + T("ed_raced_h", { file: BKFILE }));
+  assert.equal(noteBody(raced.root), T("ed_back_raced_t", { backup: BKPATH2 }));
+  assert.deepEqual(byClass(stripOf(raced.root), "pa").map(text), [BKPATH2]);
+  assert.equal(FElement.focused, btn(raced.root, STRINGS.ed_dismiss));
+  const absent = await confirmed(bad("raced", 409, { error: "raced", backup_display: BKPATH2 }), { pv: { result: "create" } });
+  assert.equal(noteBody(absent.root), STRINGS.ed_back_raced_new_t, "the file was gone before the write, so there is no backup to name");
+  assert.equal(byClass(stripOf(absent.root), "pa").length, 0);
+  const reread = await confirmed(bad("unverified", 500, { error: "unverified", stage: "reread", backup_display: BKPATH2 }), { row: { op: "create" } });
+  assert.equal(noteHead(reread.root), "✕" + STRINGS.ed_unverified_reread_h);
+  assert.equal(noteBody(reread.root), T("ed_back_unverified_t", { backup: BKPATH2 }));
+  const fsync = await confirmed(bad("unverified", 500, { error: "unverified", stage: "fsync", backup_display: BKPATH2 }), { kind: "restore" });
+  assert.equal(noteHead(fsync.root), "✕" + STRINGS.ed_unverified_fsync_h);
+  assert.equal(noteBody(fsync.root), T("ed_unverified_fsync_t", { path: BKPATH2 }));
+  const none = await confirmed(bad("unverified", 500, { error: "unverified", stage: "reread", backup_display: BKPATH2 }), { pv: { result: "create" } });
+  assert.equal(noteBody(none.root), STRINGS.ed_unverified_new_t);
+  const noneFsync = await confirmed(bad("unverified", 500, { error: "unverified", stage: "fsync" }), { pv: { result: "create" } });
+  assert.equal(noteBody(noneFsync.root), STRINGS.ed_unverified_fsync_new_t);
+  // A 200 whose file does not match the backup is a raced write too, and its answer names the backup in replaced_display.
+  const mismatch = await confirmed(ok(bkDone({ matches_backup: false })));
+  assert.equal(noteHead(mismatch.root), "▲" + T("ed_raced_h", { file: BKFILE }));
+  assert.equal(noteBody(mismatch.root), T("ed_back_raced_t", { backup: BKPATH2 }));
+  assert.equal(mismatch.log.refresh, 0);
+});
+
+test("answers: a failed Undo anyway or restore that left the .claude folder says so, and one that did not keeps the plain line", async () => {
+  const left = await confirmed(bad("error", 500, { error: "write_failed", file_unchanged: true, dir_left: true }));
+  assert.equal(noteHead(left.root), "✕" + STRINGS.ed_undo_fail_dir_h);
+  assert.equal(noteBody(left.root), T("ed_back_fail_dir_left_t", { file: BKFILE }));
+  const leftRestore = await confirmed(bad("error", 500, { error: "write_failed", file_unchanged: true, dir_left: true }), { kind: "restore" });
+  assert.equal(noteHead(leftRestore.root), "✕" + STRINGS.ed_restore_fail_dir_h);
+  assert.equal(noteBody(leftRestore.root), T("ed_back_fail_dir_left_t", { file: BKFILE }));
+  const plain = await confirmed(bad("error", 500, { error: "write_failed", file_unchanged: true }));
+  assert.equal(noteHead(plain.root), "✕" + STRINGS.ed_undo_fail_h);
+  assert.equal(noteBody(plain.root), T("ed_undo_fail_t", { file: BKFILE }));
+});
+
+test("answers: over a file that did not parse, the strip names the backup and does not point at Older backups", async () => {
+  const bare = await confirmed(ok(bkDone()), { pv: { file_unparsed: true, diff: null } });
+  assert.deepEqual(hintLines(bare.root), [T("ed_back_kept_unparsed_t", { path: BKPATH2 }), T("ed_undone_path", { path: BKPATH })]);
+  assert.equal(hintLines(bare.root).some((line) => line.includes("Older backups")), false);
+  const parsed = await confirmed(ok(bkDone()));
+  assert.equal(hintLines(parsed.root)[0], T("ed_back_kept", { path: BKPATH2 }));
+  assert.ok(hintLines(parsed.root)[0].includes("Older backups"), "a file that parsed can be restored from the list");
+});
+
+test("answers: a refused preview or write leaves focus on Dismiss, and the strip is drawn from the answer", async () => {
+  const preview = bkApp([rNewest()], { backend: { backupPreview: async () => bad("error", 404, { error: "unknown_edit" }) } });
+  await preview.press(STRINGS.ed_anyway_btn);
+  assert.equal(flowMod.S.back, null);
+  assert.equal(FElement.focused, btn(preview.root, STRINGS.ed_dismiss));
+  const write = await confirmed(bad("error", 404, { error: "unknown_edit" }));
+  assert.equal(FElement.focused, btn(write.root, STRINGS.ed_dismiss));
+  const odd = await confirmed(bad("error", 500, { error: "something_new" }));
+  assert.equal(FElement.focused, btn(odd.root, STRINGS.ed_dismiss));
+});
+
+test("answers: a lost token on a preview that came after Cancel is still told, and the open list stays", async () => {
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  const a = bkApp([rNewest(), rOld("e8")], { backend: { backupPreview: async () => { await gate; return { kind: "locked", res: null }; } } });
+  olderLink(a.root).click();
+  await settle();
+  bkRows(a)[0].click();
+  await settle();
+  footButtons(a)[0].click();
+  await settle();
+  assert.equal(flowMod.S.back.view, "list");
+  release();
+  await settle();
+  assert.deepEqual(flowMod.S.token, { where: "strip" });
+  assert.equal(flowMod.S.back.view, "list", "the list is not the review that was waiting");
+});
+
+test("answers: a write answer that lands after a project switch still loads the history again when it changes it", async () => {
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  const stale = { error: "stale", changed: "file_removed", changed_files: [], preview: null };
+  const a = bkApp([rNewest()], { backend: { undoAnyway: async () => { await gate; return bad("stale", 409, stale); } } });
+  await a.press(STRINGS.ed_anyway_btn);
+  footButtons(a)[0].click();
+  await settle();
+  a.use("other", baseData());
+  release();
+  await settle();
+  assert.equal(a.log.refresh, 1);
+});
+
+test("undo anyway: a second press right after the preview draws is dropped with no sign, and a press after the wait writes", async () => {
+  flowMod.guard.ms = 500;
+  try {
+    const a = bkApp([rNewest(), rOld("e8")]);
+    await a.press(STRINGS.ed_anyway_btn); // the first click of a double click opens the review
+    footButtons(a)[0].click(); // the second lands on the confirm that replaced the button
+    await settle();
+    assert.deepEqual(a.log.anyway, [], "nothing was written");
+    assert.equal(flowMod.S.back.busy, false);
+    assert.equal(off(footButtons(a)[0]), false, "the confirm is not shown as busy or off");
+    assert.equal(notes(a.root).length, 0, "and nothing was said");
+    assert.equal(focusKeyOf(), "btn:cancel");
+    await tick(520);
+    footButtons(a)[0].click();
+    await settle();
+    assert.deepEqual(a.log.anyway, [["e9", "HASH1"]]);
+    // A restore from the list has the same wait.
+    const b = bkApp([rNewest(), rOld("e8")]);
+    olderLink(b.root).click();
+    await settle();
+    bkRows(b)[0].click();
+    await settle();
+    footButtons(b)[0].click();
+    await settle();
+    assert.deepEqual(b.log.restore, []);
+    await tick(520);
+    footButtons(b)[0].click();
+    await settle();
+    assert.deepEqual(b.log.restore, [["e8", "HASH1"]]);
+    // A fresh preview after a stale answer is a preview nobody has read yet, so it waits again.
+    const stalePv = { error: "stale", changed: "file", changed_files: [], preview: bkPv({ base_file: "HASH2" }) };
+    let n = 0;
+    const c = bkApp([rNewest()], { backend: { undoAnyway: async () => (++n === 1 ? bad("stale", 409, stalePv) : ok(bkDone())) } });
+    await c.press(STRINGS.ed_anyway_btn);
+    await tick(520);
+    footButtons(c)[0].click();
+    await settle();
+    assert.equal(c.log.anyway.length, 1);
+    footButtons(c)[0].click();
+    await settle();
+    assert.equal(c.log.anyway.length, 1, "the press on the fresh preview is dropped");
+    await tick(520);
+    footButtons(c)[0].click();
+    await settle();
+    assert.deepEqual(c.log.anyway, [["e9", "HASH1"], ["e9", "HASH2"]]);
+  } finally {
+    flowMod.guard.ms = 0;
+  }
+});
+
+test("review: a long diff draws every line, and the rail lays its rows out at their own height", () => {
+  const lines = Array.from({ length: 400 }, (_, i) => ({ kind: i % 2 ? "add" : "del", old_line: i % 2 ? null : i + 1, new_line: i % 2 ? i + 1 : null, text: "  \"key" + i + "\": " + i }));
+  const rail = backupMod.backRail(bkBack({ pv: bkPv({ diff: { file_display: "project/.claude/settings.json", hunks: [{ lines }] } }) }), {});
+  assert.equal(byClass(rail, "p2-df")[0].find((n) => n.tagName === "li").length, 400, "no line is cut");
+  assert.ok(hasClass(rail, "s4-rb"));
+  // Row heights are CSS. The rail is a grid of rows that would shrink to the pane unless each takes its content's height.
+  const css = fs.readFileSync(new URL("app.css", STATIC), "utf8");
+  assert.match(css, /\.s4-rb\{[^}]*overflow:auto[^}]*grid-auto-rows:max-content[^}]*\}/);
+});
+
+test("review rail: the shared-file line is left off a preview that changes nothing", () => {
+  assert.ok(noteTexts(backupMod.backRail(bkBack({ pv: bkPv({ shared: true }) }), {})).includes(STRINGS.ed_shared));
+  const same = backupMod.backRail(bkBack({ pv: bkPv({ shared: true, no_change: true, diff: { file_display: "x", hunks: [] } }) }), {});
+  assert.equal(noteTexts(same).includes(STRINGS.ed_shared), false);
+});
+
+test("review foot: a loaded preview is announced in a status line that says what it does and what runs after", async () => {
+  const a = bkApp([rNewest()]);
+  await a.press(STRINGS.ed_anyway_btn);
+  const say = byClass(slotOf(a.root, "pick"), "sr").filter((n) => n.getAttribute("role") === "status");
+  assert.equal(say.length, 1);
+  assert.equal(text(say[0]), T("ed_back_replace_t", { file: BKFILE }) + " " + T("ed_back_runs_t", { level: "low" }));
+  // Nothing to say while the preview is on its way, and a preview that changes nothing says only that.
+  const none = backupMod.backFoot(bkBack({ pv: null }), {}).filter(Boolean);
+  assert.equal(none.length, 1);
+  const same = backupMod.backFoot(bkBack({ pv: bkPv({ no_change: true }) }), {}).filter(Boolean);
+  assert.deepEqual(same.map(text), [STRINGS.ed_cancel, T("ed_back_no_change_t", { file: BKFILE })]);
+  // A list with every row grey says what the list is for, because focus is on Close.
+  const grey = bkApp([rNewest(), rOld("g0", { restore_state: "same_as_file" })]);
+  olderLink(grey.root).click();
+  await settle();
+  const greySay = byClass(slotOf(grey.root, "pick"), "sr");
+  assert.deepEqual(greySay.map(text), [STRINGS.ed_older_intro]);
+  const some = bkApp([rNewest(), rOld("e8"), rOld("g0", { restore_state: "same_as_file" })]);
+  olderLink(some.root).click();
+  await settle();
+  assert.equal(byClass(slotOf(some.root, "pick"), "sr").length, 0);
+});
+
+test("review: the heading scrolls into view when the list or a review opens, and focus stays put", async () => {
+  const calls = [];
+  const original = FElement.prototype.scrollIntoView;
+  FElement.prototype.scrollIntoView = function scrollIntoView(arg) { calls.push([this, arg]); };
+  try {
+    const a = bkApp([rNewest(), rOld("e8")]);
+    a.page.media.matches = true; // 1240 and under: the rail sits under the body
+    await a.press(STRINGS.ed_anyway_btn);
+    assert.equal(calls.length, 1, "once, when the preview has drawn");
+    assert.ok(hasClass(calls[0][0], "s4-rh"));
+    assert.deepEqual(calls[0][1], { block: "start" });
+    assert.equal(focusKeyOf(), "btn:cancel");
+    footButtons(a).find((b) => text(b) === STRINGS.ed_cancel).click();
+    await settle();
+    assert.equal(calls.length, 1, "closing scrolls nothing");
+    olderLink(a.root).click();
+    await settle();
+    assert.equal(calls.length, 2);
+    assert.equal(text(calls[1][0]), STRINGS.ed_older_h);
+    assert.equal(focusKeyOf(), "backup:e8");
+  } finally {
+    if (original) FElement.prototype.scrollIntoView = original; else delete FElement.prototype.scrollIntoView;
+  }
+  // With no scrollIntoView on the node the review still draws.
+  const b = bkApp([rNewest()]);
+  b.page.media.matches = true;
+  await b.press(STRINGS.ed_anyway_btn);
+  assert.equal(flowMod.S.back.view, "review");
+});
+
+test("review: above 1240 nothing scrolls, because the rail keeps its place beside the body", async () => {
+  const calls = [];
+  const original = FElement.prototype.scrollIntoView;
+  FElement.prototype.scrollIntoView = function scrollIntoView(arg) { calls.push([this, arg]); };
+  try {
+    const a = bkApp([rNewest(), rOld("e8")]);
+    assert.equal(a.page.media.matches, false);
+    await a.press(STRINGS.ed_anyway_btn);
+    assert.equal(flowMod.S.back.view, "review");
+    footButtons(a).find((b) => text(b) === STRINGS.ed_cancel).click();
+    await settle();
+    olderLink(a.root).click();
+    await settle();
+    assert.equal(flowMod.S.back.view, "list");
+    assert.equal(calls.length, 0);
+  } finally {
+    if (original) FElement.prototype.scrollIntoView = original; else delete FElement.prototype.scrollIntoView;
+  }
+});
+
+test("review: the rail is a focusable region named by its heading", async () => {
+  const a = bkApp([rNewest()]);
+  await a.press(STRINGS.ed_anyway_btn);
+  const rb = byClass(a.rail(), "s4-rb")[0];
+  assert.equal(rb.getAttribute("tabindex"), "0");
+  const head = byClass(rb, "s4-rh")[0];
+  assert.ok(head.getAttribute("id"), "the heading has an id");
+  assert.equal(rb.getAttribute("aria-labelledby"), head.getAttribute("id"));
+  // The id is on the one heading, in the rail with a preview and in the one without.
+  const bare = backupMod.backRail(bkBack({ pv: null }), {});
+  assert.equal(bare.getAttribute("tabindex"), "0");
+  assert.equal(bare.getAttribute("aria-labelledby"), byClass(bare, "s4-rh")[0].getAttribute("id"));
+});
+
+test("focus: Cancel is focused as soon as the review opens, before the preview comes", async () => {
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  const a = bkApp([rNewest()], { backend: { backupPreview: async () => { await gate; return ok(bkPv()); } } });
+  await a.press(STRINGS.ed_anyway_btn);
+  assert.equal(flowMod.S.back.pv, null);
+  assert.equal(focusKeyOf(), "btn:cancel");
+  release();
+  await settle();
+  assert.equal(focusKeyOf(), "btn:cancel");
+});
+
+test("focus: Dismiss hands focus to the Older backups link, else Undo anyway, else the level radios", async () => {
+  const run = async (rows) => {
+    const a = bkApp(rows, { backend: { undoAnyway: async () => ok(bkDone()) } });
+    await a.press(STRINGS.ed_anyway_btn);
+    footButtons(a)[0].click();
+    await settle();
+    btn(a.root, STRINGS.ed_dismiss).click();
+    await settle();
+    return a;
+  };
+  const link = await run([rNewest(), rOld("e8")]);
+  assert.equal(focusKeyOf(), "older");
+  assert.equal(flowMod.S.want, null);
+  const anyway = await run([rNewest()]);
+  assert.equal(FElement.focused, anywayBtn(anyway.root));
+  // A strip with neither: an Undo that the server refused, over a row that Undo reaches (so no Undo anyway, no link).
+  const n = real("not_undoable");
+  const radios = app({ data: afterSave(), backend: { undo: async () => bad("error", 409, n.undo_answer) } });
+  await radios.press(STRINGS.ed_undo);
+  btn(radios.root, STRINGS.ed_dismiss).click();
+  await settle();
+  assert.ok(focusKeyOf().startsWith("radio:"), "the level radios: " + focusKeyOf());
+});
+
+test("focus: a wish for a list row or a link that is not there ends, and takes no later focus", async () => {
+  const a = bkApp([rNewest(), rOld("e8")]);
+  flowMod.S.want = "backup:nope";
+  a.draw();
+  assert.equal(flowMod.S.want, null);
+  // A wish for Undo anyway when only the link is there lands on the link, once.
+  const b = bkApp([rNewest({ undo_anyway: false })]);
+  assert.equal(anywayBtn(b.root), undefined);
+  flowMod.S.want = "anyway";
+  b.draw();
+  assert.equal(FElement.focused, olderLink(b.root));
+  assert.equal(flowMod.S.want, null);
+});
+
+test("settings page: the rail's foot height goes in --s4-foot on the rail, one watcher at a time", async () => {
+  const watchers = [];
+  globalThis.ResizeObserver = class {
+    constructor(fn) { this.fn = fn; this.seen = []; this.off = false; watchers.push(this); }
+    observe(node) { this.seen.push(node); }
+    disconnect() { this.off = true; }
+  };
+  Object.defineProperty(FElement.prototype, "offsetHeight", { configurable: true, get() { return 284; } });
+  try {
+    const a = bkApp([rNewest()]);
+    assert.equal(watchers.length, 1);
+    const foot = watchers[0].seen[0];
+    assert.equal(foot.getAttribute("data-slot"), "foot");
+    watchers[0].fn();
+    assert.equal(foot.parentNode.styleMap["--s4-foot"], "284px");
+    a.draw();
+    assert.equal(watchers.length, 2);
+    assert.equal(watchers[0].off, true, "the old foot is no longer watched");
+    assert.equal(watchers[1].off, false);
+  } finally {
+    delete globalThis.ResizeObserver;
+    delete FElement.prototype.offsetHeight;
+  }
+});
+
+test("css: the list rows carry only classes app.css defines, with a 44px row at the phone breakpoint", () => {
+  const css = fs.readFileSync(new URL("app.css", STATIC), "utf8");
+  for (const name of ["s4-bk", "s4-bkrow", "is-off"]) assert.ok(new RegExp("\\." + name + "\\b").test(css), name);
+  assert.match(css, /\.s4-bkrow\{min-height:44px;scroll-margin:130px 0 96px\}/);
+});
+
+test("css: the docked rail keeps one :has() per selector, and the heading and a notice clear the band", () => {
+  const css = fs.readFileSync(new URL("app.css", STATIC), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+  assert.match(css, /\.s4-rail:has\(\.s4-rf :not\(\.s4-slot\)\)\{padding-bottom:/);
+  assert.match(css, /\.s4-rb \.s4-rh,\.s4-rb \.nt\{scroll-margin-top:110px\}/);
+  assert.doesNotMatch(css, /:has\([^{}]*:has\(/, "a :has() nested in a :has() drops the whole rule");
+  assert.match(css, /(^|[^\w-])\.s4-hint\{[^}]*text-align:left/);
+});
+
 // ---------------------------------------------------------------- run
 
 // MR_ONLY=<text> runs the checks whose name holds the text, for a quick look at one of them.
@@ -3969,3 +5146,62 @@ for (const [name, fn] of tests) {
 }
 console.log((tests.length - failed) + " of " + tests.length + " checks passed");
 process.exit(failed ? 1 : 0);
+
+test("review rail: a diff with no lines says so, drops the runs line, and keeps the screen-reader text in step", () => {
+  const empty = bkPv({ diff: { file_display: "project/.claude/settings.json", hunks: [] } });
+  const rail = backupMod.backRail(bkBack({ pv: empty }), {});
+  assert.equal(text(byClass(rail, "s4-sub")[0]), T("ed_back_replace_t", { file: BKFILE }));
+  assert.equal(text(byClass(rail, "s4-note")[0]), STRINGS.ed_back_no_diff_t);
+  assert.equal(byClass(rail, "s4-runs").length, 0, "a restored hidden value can still matter, so no runs line");
+  const say = byClass(backupMod.backFoot(bkBack({ pv: empty }), {}), "sr");
+  assert.equal(text(say[0]), T("ed_back_replace_t", { file: BKFILE }) + " " + STRINGS.ed_back_no_diff_t);
+  // A diff with lines, an unparsed file with no diff, and a no-change preview do not get the line.
+  const lines = backupMod.backRail(bkBack({ pv: bkPv() }), {});
+  assert.equal(byClass(lines, "s4-note").map(text).includes(STRINGS.ed_back_no_diff_t), false);
+  assert.equal(byClass(lines, "s4-runs").length, 1);
+  const unparsed = backupMod.backRail(bkBack({ pv: bkPv({ file_unparsed: true, diff: null }) }), {});
+  assert.equal(byClass(unparsed, "s4-note").map(text).includes(STRINGS.ed_back_no_diff_t), false);
+  const same = backupMod.backRail(bkBack({ pv: bkPv({ no_change: true, diff: { file_display: "x", hunks: [] } }) }), {});
+  assert.equal(byClass(same, "s4-note").map(text).includes(STRINGS.ed_back_no_diff_t), false);
+});
+
+test("answers: refusals reload the history, and a restore words a damaged backup and a missing folder its own way", async () => {
+  const damagedRestore = await confirmed(bad("error", 409, { error: "backup_damaged", backup_display: BKPATH }), { kind: "restore" });
+  assert.equal(noteHead(damagedRestore.root), "✕" + STRINGS.ed_restore_backup_damaged_h);
+  assert.equal(noteBody(damagedRestore.root), T("ed_backup_damaged_t", { path: BKPATH }));
+  assert.equal(damagedRestore.log.refresh, 1, "a dead Undo anyway doesn't come back after Dismiss");
+  const damagedUndo = await confirmed(bad("error", 409, { error: "backup_damaged", backup_display: BKPATH }));
+  assert.equal(noteHead(damagedUndo.root), "✕" + STRINGS.ed_backup_damaged_h);
+  assert.equal(damagedUndo.log.refresh, 1);
+  const gone = { error: "config_dir_missing", file_unchanged: true, config_dir_display: "~/gone/.claude" };
+  const dirRestore = await confirmed(bad("error", 409, gone), { kind: "restore" });
+  assert.equal(noteHead(dirRestore.root), "✕" + STRINGS.ed_restore_fail_h);
+  assert.equal(noteBody(dirRestore.root), T("ed_restore_fail_config_dir_t", { config_dir: "~/gone/.claude" }));
+  assert.equal(dirRestore.log.refresh, 1);
+  const dirUndo = await confirmed(bad("error", 409, gone));
+  assert.equal(noteHead(dirUndo.root), "✕" + STRINGS.ed_undo_fail_h);
+  assert.equal(noteBody(dirUndo.root), T("ed_undo_fail_config_dir_t", { config_dir: "~/gone/.claude" }));
+});
+
+test("stale: the fresh review scrolls its notice into view", async () => {
+  const calls = [];
+  const original = FElement.prototype.scrollIntoView;
+  FElement.prototype.scrollIntoView = function scrollIntoView(arg) { calls.push([this, arg]); };
+  try {
+    const stale = { error: "stale", changed: "file", changed_files: [], preview: bkPv({ base_file: "HASH2" }) };
+    const a = bkApp([rNewest()], { backend: { undoAnyway: async () => bad("stale", 409, stale) } });
+    a.page.media.matches = true;
+    await a.press(STRINGS.ed_anyway_btn);
+    const before = calls.length;
+    footButtons(a)[0].click();
+    await settle();
+    assert.equal(flowMod.S.back.stale, true);
+    assert.equal(calls.length, before + 1);
+    // The stale notice is drawn above the heading, so it is what scrolls.
+    const last = calls[calls.length - 1][0];
+    assert.ok(hasClass(last, "nt"));
+    assert.equal(last, byClass(a.rail(), "nt")[0]);
+  } finally {
+    if (original) FElement.prototype.scrollIntoView = original; else delete FElement.prototype.scrollIntoView;
+  }
+});
