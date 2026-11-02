@@ -20,7 +20,7 @@ sys.path.insert(0, REPO)
 import install as ins  # noqa: E402
 
 AGENTS = ["alpha", "beta", "gamma"]
-DEFAULTS = {"alpha": ("opus", "high"), "beta": ("sonnet", "medium"), "gamma": ("haiku", "low")}
+DEFAULTS = {"alpha": ("claude-opus-5-5", "high"), "beta": ("sonnet", "medium"), "gamma": ("haiku", "low")}
 
 
 def make_state(choices=None, saved=False):
@@ -64,17 +64,17 @@ class StateTests(unittest.TestCase):
         self.assertEqual(s.screen, "model")
         self.assertEqual(s.agent, "beta")
         self.assertEqual(s.cursor, ins.ALIASES.index("sonnet"))
-        press(s, ins.DOWN, ins.ENTER)  # opus
+        press(s, ins.DOWN, ins.ENTER)  # claude-opus-5-5
         self.assertEqual(s.screen, "effort")
-        self.assertEqual(s.choices["beta"], ("opus", "medium"))
+        self.assertEqual(s.choices["beta"], ("claude-opus-5-5", "medium"))
         self.assertEqual(s.cursor, ins.EFFORTS.index("medium"))
         press(s, ins.DOWN, ins.ENTER)  # high
         self.assertEqual(s.screen, "agents")
-        self.assertEqual(s.choices["beta"], ("opus", "high"))
+        self.assertEqual(s.choices["beta"], ("claude-opus-5-5", "high"))
         press(s, ins.DOWN, ins.DOWN, ins.ENTER)  # Done -> review
         self.assertEqual(s.screen, "review")
         s.press(ins.ENTER)  # Install
-        self.assertEqual(s.result["beta"], ("opus", "high"))
+        self.assertEqual(s.result["beta"], ("claude-opus-5-5", "high"))
         self.assertEqual(s.result["alpha"], DEFAULTS["alpha"])
 
     def test_typed_id_valid(self):
@@ -181,7 +181,7 @@ class StateTests(unittest.TestCase):
         goto_model(s, 1)
         press(s, ins.DOWN, ins.ENTER, ins.BACK)
         self.assertEqual(s.screen, "agents")
-        self.assertEqual(s.choices["beta"][0], "opus")
+        self.assertEqual(s.choices["beta"][0], "claude-opus-5-5")
 
     def test_reset_row(self):
         choices = dict(DEFAULTS, beta=("fable", "max"))
@@ -275,7 +275,7 @@ class StateTests(unittest.TestCase):
 
 class RenderTests(unittest.TestCase):
     def test_summary(self):
-        choices = dict(DEFAULTS, beta=("opus", "medium"))
+        choices = dict(DEFAULTS, beta=("claude-opus-5-5", "medium"))
         s = make_state(choices, saved=True)
         lines, sel, footer = ins.render_screen(s, preview)
         self.assertEqual(lines[0], "Model routing installer")
@@ -284,7 +284,7 @@ class RenderTests(unittest.TestCase):
         self.assertIn("MODEL", header)
         self.assertIn("EFFORT", header)
         beta = [l for l in lines if l.startswith("beta")][0]
-        self.assertIn("opus *", beta)
+        self.assertIn("claude-opus-5-5 *", beta)
         self.assertNotIn("medium *", beta)
         alpha = [l for l in lines if l.startswith("alpha")][0]
         self.assertNotIn("*", alpha)
@@ -299,7 +299,7 @@ class RenderTests(unittest.TestCase):
         self.assertNotIn("  Reset all to defaults", lines)
 
     def test_agents_screen(self):
-        choices = dict(DEFAULTS, beta=("opus", "max"))
+        choices = dict(DEFAULTS, beta=("claude-opus-5-5", "max"))
         s = make_state(choices)
         press(s, ins.DOWN, ins.ENTER)
         lines, sel, _ = ins.render_screen(s, preview)
@@ -315,7 +315,7 @@ class RenderTests(unittest.TestCase):
         goto_model(s, 0)
         lines, sel, _ = ins.render_screen(s, preview)
         self.assertEqual(lines[0], "alpha: model")
-        opus = [l for l in lines if " opus" in l][0]
+        opus = [l for l in lines if " claude-opus-5-5" in l][0]
         self.assertIn("(*)", opus)
         self.assertIn("default", opus)
         haiku = [l for l in lines if " haiku" in l][0]
@@ -324,7 +324,7 @@ class RenderTests(unittest.TestCase):
         self.assertIn(ins.FABLE_NOTE, fable)
         self.assertTrue(any(l.endswith("Other: type a model id") for l in lines))
         self.assertIn("inherit is not offered: the dispatch hook blocks it.", lines)
-        self.assertIn("opus", lines[sel])
+        self.assertIn("claude-opus-5-5", lines[sel])
 
     def test_typed_id_screen(self):
         s = make_state()
@@ -343,7 +343,7 @@ class RenderTests(unittest.TestCase):
         goto_model(s, 0)
         s.press(ins.ENTER)
         lines, sel, _ = ins.render_screen(s, preview)
-        self.assertEqual(lines[0], "alpha on opus: effort")
+        self.assertEqual(lines[0], "alpha on claude-opus-5-5: effort")
         high = [l for l in lines if " high" in l][0]
         self.assertIn("(*)", high)
         self.assertIn("default", high)
@@ -354,7 +354,7 @@ class RenderTests(unittest.TestCase):
         try:
             os.makedirs(tmp + "/agents")
             with open(tmp + "/agents/alpha.md", "wb") as fh:
-                fh.write(b"opus high")  # same as the preview
+                fh.write(b"claude-opus-5-5 high")  # same as the preview
             with open(tmp + "/agents/beta.md", "wb") as fh:
                 fh.write(b"different")
             s = make_state()
@@ -419,9 +419,9 @@ class PlainDriverTests(unittest.TestCase):
         self.assertEqual(s.result, DEFAULTS)
 
     def test_change_flow(self):
-        # Change, agent 2 (beta), model opus (3), effort max (5), Done (4), Install (1)
+        # Change, agent 2 (beta), model claude-opus-5-5 (3), effort max (5), Done (4), Install (1)
         s, out = self.run_plain(["2", "2", "3", "5", "4", "1"])
-        self.assertEqual(s.result["beta"], ("opus", "max"))
+        self.assertEqual(s.result["beta"], ("claude-opus-5-5", "max"))
         self.assertIn("beta: model", out)
 
     def test_typed_id_and_back(self):

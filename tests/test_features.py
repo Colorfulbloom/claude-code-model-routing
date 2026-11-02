@@ -163,6 +163,16 @@ class CustomizedInstall(SandboxCase):
         self.assertEqual(data["agents"]["judge"], {"model": "opus", "effort": "medium"})
         self.assertEqual(data["agents"]["scout"], {"model": "sonnet", "effort": "medium"})
 
+    def test_04b_default_install_pins_the_full_opus_id(self):
+        step = self.run_install("--yes")
+        self.assertEqual(step.code, 0, step.err)
+        for name in ("deep-reasoner", "designer", "verifier"):
+            self.assertEqual(repo_defaults()[name][0], "claude-opus-5-5", name)
+            self.assertIn(b"\nmodel: claude-opus-5-5\n", read(self.cpath("agents", name + ".md")), name)
+            self.assertNotIn(b"\nmodel: opus\n", read(self.cpath("agents", name + ".md")), name)
+        data = json.loads(read(self.cpath(CHOICES)))
+        self.assertEqual(data["agents"]["verifier"]["model"], "claude-opus-5-5")
+
     def test_05_uninstall_after_customized_install(self):
         self.run_install("--yes", "--agent", "scout=sonnet:medium")
         step = self.run_install("--uninstall")
@@ -435,6 +445,11 @@ class Units(unittest.TestCase):
 
     def test_08a_import_has_no_side_effects(self):
         self.assertTrue(callable(self.inst.main))
+
+    def test_08a2_opus_choice_is_the_full_id(self):
+        self.assertEqual(self.inst.ALIASES, ["haiku", "sonnet", "claude-opus-5-5", "fable"])
+        self.assertIn("claude-opus-5-5", self.inst.EFFORTS_BY_MODEL)
+        self.assertNotIn("opus", self.inst.EFFORTS_BY_MODEL)
 
     def test_08b_validate_model_accepts(self):
         for v in ["haiku", "sonnet", "opus", "fable", "claude-opus-5-5[1m]", "us.anthropic.claude-sonnet-5-5",
