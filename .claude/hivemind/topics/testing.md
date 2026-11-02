@@ -1,11 +1,11 @@
 # testing
 
-### T-7629 Full suite: 2750 tests, about 255 seconds
-fact: discover -s tests runs 2750 tests in about 255 s, 52 skipped: 50 need MR_E2E=1, owner only, 2 need MR_DOCS_LIVE=1 or MR_SUBAGENT_DOCS. Run it alone. A broken pty test can leave a hung process.
+### T-7629 Full suite: 2866 tests, about 260 seconds
+fact: discover -s tests runs 2866 tests in about 260 s, 52 skipped: 50 need MR_E2E=1, owner only, 2 need MR_DOCS_LIVE=1 or MR_SUBAGENT_DOCS. Run it alone. A broken pty test can leave a hung process.
 check: HOME=$(mktemp -d) /usr/bin/python3 -c "import unittest,sys; sys.path.insert(0,'tests'); print(unittest.TestLoader().discover('tests').countTestCases())"
 evidence: tests
-fp: 1768efdde400
-as_of: 7da3051 2026-11-01
+fp: 2e86e6109448
+as_of: 02a9206 2026-11-02
 author: deep-reasoner
 created: 2026-10-20
 last_used: 2026-11-01
@@ -17,11 +17,11 @@ fact: Dotted names (tests.test_x) fail with "No module named 'helpers'"; use dis
 check: /usr/bin/python3 -m unittest tests.test_parity 2>&1 | grep "No module named"
 evidence: tests/helpers.py
 fp: 99286733860d
-as_of: 7da3051 2026-11-01
+as_of: 02a9206 2026-11-02
 author: deep-reasoner
 created: 2026-10-20
-last_used: 2026-11-01
-uses: 85
+last_used: 2026-11-02
+uses: 89
 promote: approved
 
 ### T-d689 Installer messages need a parity allowance

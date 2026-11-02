@@ -41,19 +41,19 @@ fp: dffaaa3fd398
 as_of: 7da3051 2026-11-01
 author: designer
 created: 2026-11-01
-last_used: 2026-11-01
-uses: 0
+last_used: 2026-11-02
+uses: 2
 
-### S-2dda Three settings have no resolver rows
-fact: rules.json and resolve.py have no rows for alwaysThinkingEnabled, permissions.defaultMode or fallbackModel, checked case-insensitively, so a Settings cell for one needs resolver work first.
-check: grep -n -i "alwaysThinkingEnabled\|fallbackModel\|defaultMode" dashboard/rules.json dashboard/resolve.py
+### S-2dda permissions.defaultMode has no resolver row
+fact: rules.json and resolve.py have no row for permissions.defaultMode, checked case-insensitively, so a Settings cell for it needs resolver work first. alwaysThinkingEnabled, fallbackModel and availableModels got rows in 5bc775d.
+check: grep -n -i "defaultMode" dashboard/rules.json dashboard/resolve.py
 evidence: dashboard/resolve.py, dashboard/rules.json
-fp: 0d287eb331eb
-as_of: 0a1241f 2026-11-01
+fp: 91ac63ec40e3
+as_of: 02a9206 2026-11-02
 author: designer
 created: 2026-11-01
-last_used: 2026-11-01
-uses: 0
+last_used: 2026-11-02
+uses: 2
 
 ### S-9770 modelSettings effort lines: own model only, no becomes
 fact: The resolver adds a modelSettings.<name>.effortLevel line only for the row's own model, so none for another model or with no model set. That line never gets a becomes from a cap, because rule effort-lowered-by-cap has key effortLevel only. api_edit._runs_as lowers it, and it is the only place that does.

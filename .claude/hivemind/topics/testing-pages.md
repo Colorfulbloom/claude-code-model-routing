@@ -1,15 +1,15 @@
 # testing-pages
 
 ### P-db96 Static and node check traps
-fact: A new app.css block headed ' * Title' fails test_one_section_per_page_with_shared_first, so Settings CSS uses one-line comments inside "Settings and trail", and test_settings_page_layout_stays_inside_its_scope needs each selector to start with .s4-, .s5- or .s6-, so button.s4-x fails. Object.assign( on anything but an object literal in dashboard/static/js fails test_no_file_gets_around_the_link_helpers. fakedom createPage() swaps globalThis.document, so patch document after the page exists. edit_session_checks.mjs shows how to reach app.js's ctx from a copy. To prove a node check bites, mutate a scratch tar copy of the repo, not the tree.
+fact: A new app.css block headed ' * Title' fails test_one_section_per_page_with_shared_first, so Settings CSS uses one-line comments inside "Settings and trail", and test_settings_page_layout_stays_inside_its_scope needs each selector to start with .s4-, .s5- or .s6-, so button.s4-x fails. Object.assign( on anything but an object literal in dashboard/static/js fails test_no_file_gets_around_the_link_helpers. fakedom createPage() swaps globalThis.document, so patch document after the page exists. edit_session_checks.mjs shows how to reach app.js's ctx from a copy. To prove a node check bites, mutate a scratch tar copy of the whole repo, not the tree.
 check: grep -n "Object.s.*assign\|shared_first" tests/test_static_shell.py
 evidence: tests/test_static_shell.py, tests/js/fakedom.mjs, tests/js/edit_session_checks.mjs
-fp: c00975caf247
-as_of: 7da3051 2026-11-01
+fp: 22c518d54b17
+as_of: 02a9206 2026-11-02
 author: fast-worker
 created: 2026-11-01
-last_used: 2026-11-01
-uses: 0
+last_used: 2026-11-02
+uses: 4
 
 ### P-153a Card source lists hold seven files
 fact: CARD_FILES in test_edit_card_js.py and the source list in edit_card_checks.mjs hold edit_card, edit_flow, edit_pick, edit_review, edit_foot, edit_backup and edit_ui. A new card module joins both.
@@ -37,12 +37,12 @@ uses: 1
 fact: fakedom focus() ignores a disabled element. page.doc.documentElement is not the parent of the app tree, so find shell options with page.topbar.find.
 check: grep -n "app.topbar.find" tests/js/edit_session_checks.mjs
 evidence: tests/js/fakedom.mjs, tests/js/edit_session_checks.mjs
-fp: b9e301e5d28c
-as_of: 7da3051 2026-11-01
+fp: b6c04d49d16a
+as_of: 02a9206 2026-11-02
 author: fast-worker
 created: 2026-11-01
-last_used: 2026-11-01
-uses: 0
+last_used: 2026-11-02
+uses: 2
 
 ### P-71ad One live object binds once per window
 fact: A page that keeps one live object binds window and document listeners once, as band.js and trail.js do with boundTo, because createPage makes a new window for each test page.
