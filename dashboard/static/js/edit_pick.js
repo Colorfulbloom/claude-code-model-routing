@@ -74,3 +74,11 @@ export function settleRow(levelRow, currentLayer) {
   const file = levelRow.files.find((f) => f && f.target === target && f.pickable === true);
   return file ? file.layer : null;
 }
+
+// The rows of the history that the older backups list offers: every row but the first when Undo or Undo anyway reaches
+// it, in the order given. The foot draws the first row alone, so a later row of another file stays in the list even when
+// its own file could undo it. The row those two reach stays out, so one undo level holds. Empty when the history is missing.
+export function olderRows(history) {
+  const rows = history && Array.isArray(history.rows) ? history.rows : [];
+  return rows.filter((row, i) => row && !(i === 0 && (row.undoable === true || row.undo_anyway === true)));
+}

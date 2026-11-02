@@ -25,7 +25,9 @@
 // - A chosen level keeps its review in the rail and its Save and Cancel in the foot on every cell, and the body
 //   of any other cell is its read-only frame. One Save exists in the page, never a copy for a narrow window.
 // - One change at a time. A chosen level or a line chosen for removal holds the page: the picker is off, the rows
-//   lose their Remove line links, and the review and its Save and Cancel take the rail and the foot.
+//   lose their Remove line links, and the review and its Save and Cancel take the rail and the foot. The older backups
+//   list and the preview of an Undo anyway or a restore (edit_backup.js) hold it the same way, and they take the rail
+//   and the foot on every cell, and under the project lock, because Undo stays open there.
 // - A chosen level that can be saved, or a line to remove that nothing blocks, is Not saved. A choice made with no page render updates the Stat band
 //   (onNotSaved) and the project picker (ctx.edit.syncShell) by the callbacks the page and app.js pass in.
 // - The checked radio always equals the chosen level, and a row that goes grey takes no focus. A handler never
@@ -39,7 +41,9 @@ import { pickerState, railCase } from "./edit_pick.js";
 import {
   S, live, setLive, onRedraw, syncFlow, settle, targetsData, historyData, damagedFor, levelFile, isNotSaved, notSavedProjects,
   cancel, pick, pickRow, startRemove, doSave, doUndo, dismissStrip, dismissLedger, resetCard,
+  openOlder, closeBack, startBack, confirmBack,
 } from "./edit_flow.js";
+import { backFoot, backRail, olderRail, olderRows } from "./edit_backup.js";
 import { capsOf, limitLine, limitParas, review, reviewFacts, reviewFoot, stopPanel, waitingFoot } from "./edit_review.js";
 import { stripNodes as footNodes } from "./edit_foot.js";
 import {
@@ -109,7 +113,7 @@ function picker(T, mode) {
   const levels = levelsOf(T);
   const running = runningOf(T);
   // A line chosen for removal is a change in progress, so every radio is off and the running level stays checked.
-  const state = pickerState(levels, running, S.level, mode, { busy: S.busy || S.remove !== null, projectLock: T.project_lock, saveable: T.saveable });
+  const state = pickerState(levels, running, S.level, mode, { busy: S.busy || S.remove !== null || S.back !== null, projectLock: T.project_lock, saveable: T.saveable });
   const group = h("div", {
     class: "segs p2-segs s4-segs", role: "radiogroup", "aria-label": t("ed_level_group_sr"),
     "aria-describedby": T.levels_state === "model_unknown" ? NOTE_ID : null,
@@ -206,7 +210,7 @@ function removeLink(file) {
 // has a line with a target, and the server doesn't lock that removal (a repeated key still opens, to say why not).
 function canRemove(T, file) {
   if (live.ctx.edit.mode !== "ready" || T.enabled === false || T.saveable === false || T.project_lock) return false;
-  if (S.level !== null || S.remove !== null || !file.target) return false;
+  if (S.level !== null || S.remove !== null || S.back !== null || !file.target) return false;
   const entry = targetById(T, file.target);
   const lock = entry && entry.remove ? entry.remove.lock_reason : undefined;
   return Boolean(entry && entry.remove) && (lock === null || lock === undefined || lock === "repeated_key");
@@ -418,9 +422,14 @@ function situation() {
 const CHANGING = ["review", "pick_file", "stop", "nothing_level", "remove", "remove_blocked"];
 const changing = ({ mode, T, kase }) => mode === "ready" && T !== null && (S.level !== null || S.remove !== null)
   && CHANGING.includes(kase);
-const holding = () => changing(situation());
+// True when the older backups list, or the preview of an Undo anyway or a restore, is open.
+const backOpen = () => live.ctx.edit.mode === "ready" && S.back !== null;
+const holding = () => backOpen() || changing(situation());
 
 function railNodes() {
+  if (backOpen()) {
+    return [S.back.view === "list" ? olderRail(olderRows(historyData()), { startBack }) : backRail(S.back, {})];
+  }
   const sit = situation();
   const { mode, T, lv, kase } = sit;
   if (live.selected !== SETTING && !changing(sit)) return [live.restRail(null)];
@@ -449,6 +458,7 @@ function railNodes() {
 // one and Pick a file keep Save off, as the board a-lock draws it, with Cancel the way back. The stop rows carry
 // their own Cancel in the rail, and a result frame its own Dismiss.
 function changeFootNodes() {
+  if (backOpen()) return backFoot(S.back, { closeBack, confirmBack, rows: olderRows(historyData()) });
   const sit = situation();
   if (!changing(sit) || S.frame) return [];
   if (sit.kase === "pick_file" || ((sit.kase === "review" || sit.kase === "remove") && !S.pv)) return waitingFoot({ busy: S.busy, cancel });
@@ -472,6 +482,9 @@ function stripNodes() {
     history: mode === "ready" && live.selected === SETTING ? historyData() : null,
     doUndo,
     dismissStrip,
+    startBack,
+    openOlder,
+    closeBack,
   });
 }
 
@@ -512,9 +525,18 @@ function applyWant() {
   let target;
   if (S.want === "radio") target = fallbackFocus(slots, false);
   else {
-    // A remove link keeps its own key, "remove:<layer>". Every other wish names a button.
-    const key = S.want.startsWith("remove:") ? S.want : "btn:" + S.want;
-    target = slots.flatMap((slot) => walk(slot, (n) => keyOf(n) === key && !isOff(n)))[0] || null;
+    // A remove link keeps its own key, "remove:<layer>", a backup row "backup:<id>" and the Older backups link "older".
+    // Every other wish names a button.
+    const own = S.want.startsWith("remove:") || S.want.startsWith("backup:") || S.want === "older";
+    const find = (key) => slots.flatMap((slot) => walk(slot, (n) => keyOf(n) === key && !isOff(n)))[0] || null;
+    // Undo anyway and the Older backups link stand in for each other, because the link is not there when the row Undo
+    // anyway reaches was the only one. Past both, the level radios take focus.
+    if (S.want === "anyway") target = find("btn:anyway") || find("older");
+    else if (S.want === "older") target = find("older") || find("btn:anyway");
+    else target = find(own ? S.want : "btn:" + S.want);
+    if (!target && (S.want === "anyway" || S.want === "older")) target = fallbackFocus(slots, false);
+    // A row or a link that is gone will not come back with the next draw, so the wish ends here.
+    if (!target && (S.want.startsWith("backup:") || S.want === "anyway" || S.want === "older")) S.want = null;
   }
   if (!target) return false;
   S.want = null;

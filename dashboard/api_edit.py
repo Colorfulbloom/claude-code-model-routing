@@ -1,4 +1,5 @@
-"""The edit routes: what each effort level would do, a preview and a save (set a level or remove a line), an undo and the history.
+"""The edit routes: what each effort level would do, a preview and a save (set a level or remove a line), an undo
+(also an undo anyway), a restore of any visible row, their read-only backup preview and the history.
 
 A read route is a function (ctx, query) -> (status, payload), like the routes in
 api_settings. A write route is (ctx, body), where body is the parsed JSON
@@ -7,6 +8,9 @@ server started with --allow-edits, else None.
 
 A preview or save body holds the opaque target and an action, "set" (the default, with a value)
 or "remove" (no value, a line target only). No path or key name ever comes from a request.
+
+An undo anyway and a restore each follow a backup preview and carry its base_file, the HMAC of the
+file the owner saw. A restore counts as an undo under the repo lock, so neither new route consults it.
 
 Nothing here writes. Every write goes through edit_store.Store. The answers come
 from the real resolver run over overlays (api_settings.resolved), never from a
@@ -19,6 +23,7 @@ Standard library only, Python 3.9.
 import hashlib
 import hmac
 import json
+import math
 import os
 import re
 
@@ -1008,13 +1013,86 @@ def _ledger_damaged(store, target):
         return False
 
 
-def _row_out(ctx, target, rows, row):
-    """Return one history row: what the page shows for an edit and whether it can be undone."""
+_UNREAD = object()  # _row_out was not handed the file's hash
+
+
+def _parses(raw):
+    """True when the bytes are strict UTF-8 JSON with an object on top."""
+    try:
+        json_edit.parse_strict(raw)
+    except json_edit.Refused:
+        return False
+    return True
+
+
+def _value_in(raw, key_path):
+    """Return the value at key_path in these bytes, or None. Never raises.
+
+    None stands for no file, bytes that don't parse, a missing step, a parent that is not an
+    object, a step that is a secret name (so a hidden parent is left out) and a value that is
+    not a str, int, float or bool. The value is raw: the store's _make_row masks it.
+    """
+    if raw is None:
+        return None
+    try:
+        _text, node = json_edit.parse_strict(raw)
+    except json_edit.Refused:
+        return None
+    for step in key_path:
+        if collect.is_secret_name(step) or not isinstance(node, dict) or step not in node:
+            return None
+        node = node[step]
+    if isinstance(node, float) and not math.isfinite(node):
+        return None  # json.loads accepts NaN and Infinity, and a browser can't parse them in an answer
+    return node if isinstance(node, (str, int, float, bool)) else None
+
+
+def _undo_rule(rows, row):
+    """Raise NotUndoable unless the row is an edit row and the newest one of its file."""
+    if row.get("kind") == "undo":
+        raise edit_store.NotUndoable("undo_row")
+    if row.get("kind") == "restore":
+        raise edit_store.NotUndoable("restore_row")
+    if rows[-1].get("id") != row.get("id"):
+        raise edit_store.NotUndoable("not_newest")
+
+
+def _restore_state(store, target, row, current):
+    """Return why a row's backup can't be restored right now, or None. Reads only.
+
+    One of file_refused (the file can't be read), backup_pruned, backup_damaged, backup_unparsed
+    or same_as_file (the file already holds the backup).
+    """
+    if current is None:
+        return "file_refused"
+    try:
+        reason, data = store.backup_state(target, row)
+    except edit_store.StoreError:
+        return "backup_damaged"
+    if reason is not None:
+        return reason
+    if data is not None and not _parses(data):
+        return "backup_unparsed"
+    if row.get("before_sha256") == current:
+        return "same_as_file"
+    return None
+
+
+def _row_out(ctx, target, rows, row, current=_UNREAD):
+    """Return one history row: what the page shows for an edit and whether it can be undone or restored.
+
+    current is the target file's hash from store.file_hash, which history reads once per file.
+    """
     store = ctx.edit.store
+    if current is _UNREAD:
+        current = store.file_hash(target)
     key_path = list(row.get("key_path") or [])
     name = key_path[-1] if key_path else None
-    if row.get("kind") == "undo":
+    kind = row.get("kind")
+    if kind == "undo":
         reason = "undo_row"
+    elif kind == "restore":
+        reason = "restore_row"
     elif not rows or rows[-1].get("id") != row.get("id"):
         reason = "not_newest"
     else:
@@ -1022,24 +1100,30 @@ def _row_out(ctx, target, rows, row):
             reason = store.undo_state(target, row)
         except edit_store.StoreError:
             reason = "backup_damaged"
+    restore_state = _restore_state(store, target, row, current)
     out = {
         "id": row.get("id"),
-        "kind": row.get("kind"),
+        "kind": kind,
         "time": row.get("time"),
         "layer": target.layer,
         "file_display": _display(ctx, target.path),
         "op": row.get("op", "replace"),
         "key_path": key_path,
         "backup_display": _display_or_none(ctx, store.backup_path(target, row.get("backup"))),
+        "before_absent": row.get("before_sha256") == edit_store.ABSENT,
     }
     for field in ("old_value", "new_value"):  # a null value is left out, so it never reaches the page
         if row.get(field) is not None:
             out[field] = _masked(row[field], name)
-    if row.get("kind") == "undo":
+    if kind in ("undo", "restore"):
+        # A source row that prune removed is not named, so a row at rest never points at a backup that is gone.
+        source_kept = any(item.get("id") == row.get("restored_from") for item in rows)
         out["restored_from_display"] = _display_or_none(
-            ctx, store.backup_path(target, row.get("restored_from_backup")))
+            ctx, store.backup_path(target, row.get("restored_from_backup"))) if source_kept else None
     out["undoable"] = reason is None
     out["not_undoable_reason"] = reason
+    out["restore_state"] = restore_state
+    out["undo_anyway"] = reason == "changed_since_save" and restore_state is None
     return out
 
 
@@ -1051,10 +1135,96 @@ def _edit_out(ctx, target, row):
     return _row_out(ctx, target, rows, row)
 
 
+def _backup_gate(ctx, base_file):
+    """Return gate(raw, data) for a forced undo or a restore, run by the store under its lock.
+
+    It refuses a file that differs from the one the preview showed (Stale) and a backup that
+    isn't strict JSON (Refused). A marker (data None) has nothing to parse.
+    """
+    def gate(raw, data):
+        if _base_file(ctx, raw) != base_file:
+            if base_file == _base_file(ctx, None):
+                changed = "file_appeared"
+            else:
+                changed = "file_removed" if raw is None else "file"
+            raise edit_store.Stale(changed)
+        if data is not None and not _parses(data):
+            raise edit_store.Refused("backup_unparsed")
+    return gate
+
+
+def _backup_preview(ctx, listing, project, target, row, kind):
+    """Return the payload of putting a row's backup back, as an undo anyway or a restore. Reads only.
+
+    It makes no folder and no file. The runs are None under a repo lock, and a current file that
+    does not parse has no diff (file_unparsed), because the restore still runs over it.
+    """
+    store = ctx.edit.store
+    reason, data = store.backup_state(target, row)
+    if reason == "backup_pruned":
+        raise edit_store.NotUndoable("backup_pruned")
+    if reason == "backup_damaged":
+        raise edit_store.BackupDamaged(store.backup_path(target, row.get("backup")))
+    raw = edit_store.read_or_none(target)
+    data_text = None
+    if data is not None:
+        try:
+            data_text = json_edit.parse_strict(data)[0]
+        except json_edit.Refused:
+            raise edit_store.Refused("backup_unparsed") from None
+    raw_text = None
+    file_unparsed = False
+    if raw is not None:
+        try:
+            raw_text = json_edit.parse_strict(raw)[0]
+        except json_edit.Refused:
+            file_unparsed = True
+    display = _display(ctx, target.path)
+    diff = None if file_unparsed else json_edit.structured_diff(raw_text, data_text, display)
+    key_path = list(row.get("key_path") or [])
+    name = key_path[-1] if key_path else None
+    view = _view(ctx, listing, project)
+    runs_before = runs_after = None
+    if not (view.missing or view.repo_locked):
+        runs_before = _masked(view.runs_as)
+        # the {} stands for the deleted file, because an overlay path counts as present
+        overlay = {target.path: b"{}" if data is None else data}
+        entries, _collected = api_settings.resolved(ctx, project, overlay=overlay, listing=listing,
+                                                    reuse=view.collected)
+        runs_after = _masked(_runs_as(view, entries))
+    current = edit_store.ABSENT if raw is None else hashlib.sha256(raw).hexdigest()
+    payload = {
+        "edit": row.get("id"),
+        "kind": kind,
+        "layer": target.layer,
+        "shared": target.layer == "project",
+        "file_display": display,
+        "op": row.get("op", "replace"),
+        "result": "delete" if data is None else ("create" if raw is None else "replace"),
+        "no_change": raw == data,
+        "changed": row.get("after_sha256") != current,
+        "diff": diff,
+        "file_unparsed": file_unparsed,
+        "removes_dir": data is None and bool(row.get("made_dir")),
+        "creates_dir": raw is None and data is not None and _folder_missing(target),
+        "backup_display": _display_or_none(ctx, store.backup_path(target, row.get("backup"))),
+        "base_file": _base_file(ctx, raw),
+        "runs_before": runs_before,
+        "runs_after": runs_after,
+        "repo_locked": view.repo_locked,
+        "git_ignore": None,  # filled by _with_git, outside any lock
+    }
+    for field, value in (("old_value", _value_in(raw, key_path)), ("new_value", _value_in(data, key_path))):
+        if value is not None:  # a null never reaches the page
+            payload[field] = _masked(value, name)
+    return payload
+
+
 class _Request:
     """What an answer for a store exception needs to know about its request."""
 
-    def __init__(self, ctx, listing, project, target=None, value=None, undo=False, action="set"):
+    def __init__(self, ctx, listing, project, target=None, value=None, undo=False, action="set",
+                 backup=None):
         self.ctx = ctx
         self.listing = listing
         self.project = project
@@ -1062,6 +1232,7 @@ class _Request:
         self.value = value
         self.undo = undo
         self.action = action
+        self.backup = backup  # (row id, "undo" or "restore") for a forced undo or a restore
 
 
 def _store_target(req):
@@ -1083,6 +1254,17 @@ def _with_git(ctx, project, payload):
 
 def _fresh_preview(req):
     """Return the preview of the request from a new view, or None when the target is gone."""
+    if req.backup is not None:
+        edit_id, kind = req.backup
+        try:
+            target = _store_target(req)
+            row = req.ctx.edit.store.find(target, edit_id)
+            if row is None:
+                return None
+            return _with_git(req.ctx, req.project,
+                             _backup_preview(req.ctx, req.listing, req.project, target, row, kind))
+        except (_Answer, json_edit.Refused, edit_store.StoreError):
+            return None
     remove = req.action == "remove"
     if req.undo or (req.value is None and not remove):
         return None
@@ -1354,8 +1536,51 @@ def save(ctx, body):
         return _store_answer(req, exc)
 
 
+def _find_edit(ctx, project, edit_id):
+    """Return (store Target, row) of the visible row with this id in one of the project's three files.
+
+    Raises LedgerDamaged when a ledger that can't be read might hold it, else a 404 unknown_edit.
+    """
+    store = ctx.edit.store
+    found = None
+    damaged = None
+    for layer in edit_store.LAYERS:
+        try:
+            target = edit_store.target_for(ctx, project.key, layer)
+            row = store.find(target, edit_id)
+            if row is not None:
+                found = (target, row)
+                break
+            if _ledger_damaged(store, target):
+                damaged = target
+        except edit_store.StoreError:
+            continue
+    if found is None and damaged is not None:
+        raise edit_store.LedgerDamaged(store.ledger_path(damaged))  # its rows can't be searched
+    if found is None:
+        raise _Answer(404, {"error": "unknown_edit"})
+    return found
+
+
+def _restored_answer(ctx, listing, project, found, restored, forced):
+    """Return the 200 body of an undo or a restore. A forced one also says what it replaced."""
+    body = {"edit": _edit_out(ctx, found, restored.row),
+            "settings": api_settings.answer(ctx, listing, project),
+            "matches_backup": restored.matches_backup,
+            "restored_from_display": _display_or_none(ctx, restored.restored_from_path),
+            "removed_file": restored.removed_file, "removed_dir": restored.removed_dir}
+    if forced:
+        body["replaced_display"] = _display_or_none(ctx, restored.backup_path)
+        body["replaced_file"] = restored.row.get("before_sha256") != edit_store.ABSENT
+    return body
+
+
 def undo(ctx, body):
-    """POST /api/edit/undo: put an edit's backup back, only for the newest edit row of its file."""
+    """POST /api/edit/undo: put an edit's backup back, only for the newest edit row of its file.
+
+    With force true (and the base_file of a backup preview) it skips only the hash check, so it can
+    write over a file the owner changed by hand. A plain undo never reads base_file.
+    """
     if ctx.edit is None:
         return 400, {"error": "not_editable"}
     req = _Request(ctx, None, None, undo=True)
@@ -1364,41 +1589,72 @@ def undo(ctx, body):
         edit_id = body.get("edit")
         if not isinstance(edit_id, str):
             raise _Answer(400, {"error": "bad_request"})
+        forced = "force" in body
+        if forced and body["force"] is not True:
+            raise _Answer(400, {"error": "bad_request"})
+        base_file = body.get("base_file")
+        if forced and not isinstance(base_file, str):
+            raise _Answer(400, {"error": "bad_request"})
         store = ctx.edit.store
-        found = None
-        damaged = None
-        for layer in edit_store.LAYERS:
-            try:
-                target = edit_store.target_for(ctx, project.key, layer)
-                if store.find(target, edit_id) is not None:
-                    found = target
-                    break
-                if _ledger_damaged(store, target):
-                    damaged = target
-            except edit_store.StoreError:
-                continue
-        if found is None and damaged is not None:
-            raise edit_store.LedgerDamaged(store.ledger_path(damaged))  # its rows can't be searched
-        if found is None:
-            raise _Answer(404, {"error": "unknown_edit"})
-        req = _Request(ctx, listing, project, found, undo=True)
-
-        def check(rows, row):
-            if row.get("kind") == "undo":
-                raise edit_store.NotUndoable("undo_row")
-            if rows[-1].get("id") != row.get("id"):
-                raise edit_store.NotUndoable("not_newest")
-
-        restored = store.restore(found, edit_id, check)
-        return 200, {"edit": _edit_out(ctx, found, restored.row),
-                     "settings": api_settings.answer(ctx, listing, project),
-                     "matches_backup": restored.matches_backup,
-                     "restored_from_display": _display_or_none(ctx, restored.restored_from_path),
-                     "removed_file": restored.removed_file, "removed_dir": restored.removed_dir}
+        found, _row = _find_edit(ctx, project, edit_id)
+        req = _Request(ctx, listing, project, found, undo=True,
+                       backup=(edit_id, "undo") if forced else None)
+        if forced:
+            restored = store.restore(found, edit_id, _undo_rule, force=True,
+                                     gate=_backup_gate(ctx, base_file), value_of=_value_in)
+        else:
+            restored = store.restore(found, edit_id, _undo_rule)
+        return 200, _restored_answer(ctx, listing, project, found, restored, forced)
     except _CAUGHT as exc:
         if isinstance(exc, _Answer):
             return exc.status, exc.body
         return _store_answer(req, exc)
+
+
+def restore(ctx, body):
+    """POST /api/edit/restore: put the backup of any visible row back, as a new row of kind restore.
+
+    It needs the base_file of a backup preview and never consults the repo lock: it puts back bytes the
+    file held and takes its own backup, so it counts as an undo.
+    """
+    if ctx.edit is None:
+        return 400, {"error": "not_editable"}
+    req = _Request(ctx, None, None, undo=True)
+    try:
+        if not isinstance(body, dict):
+            raise _Answer(400, {"error": "bad_request"})
+        project_key, edit_id, base_file = body.get("project"), body.get("edit"), body.get("base_file")
+        if not all(isinstance(value, str) for value in (project_key, edit_id, base_file)):
+            raise _Answer(400, {"error": "bad_request"})
+        listing, project = _pick(ctx, [project_key])
+        found, _row = _find_edit(ctx, project, edit_id)
+        req = _Request(ctx, listing, project, found, undo=True, backup=(edit_id, "restore"))
+        restored = ctx.edit.store.restore(found, edit_id, None, force=True, kind="restore",
+                                          gate=_backup_gate(ctx, base_file), value_of=_value_in)
+        return 200, _restored_answer(ctx, listing, project, found, restored, True)
+    except _CAUGHT as exc:
+        if isinstance(exc, _Answer):
+            return exc.status, exc.body
+        return _store_answer(req, exc)
+
+
+def backup_preview(ctx, body):
+    """POST /api/edit/backup-preview: what an undo anyway or a restore of a row would change. Writes nothing."""
+    if ctx.edit is None:
+        return 400, {"error": "not_editable"}
+    try:
+        listing, project = _pick_body(ctx, body)
+        edit_id, kind = body.get("edit"), body.get("kind")
+        if not isinstance(edit_id, str) or not isinstance(kind, str) or kind not in ("undo", "restore"):
+            raise _Answer(400, {"error": "bad_request"})
+        target, row = _find_edit(ctx, project, edit_id)
+        if kind == "undo":
+            _undo_rule(ctx.edit.store.rows(target), row)
+        return 200, _with_git(ctx, project, _backup_preview(ctx, listing, project, target, row, kind))
+    except _CAUGHT as exc:
+        if isinstance(exc, _Answer):
+            return exc.status, exc.body
+        return _store_answer(_Request(ctx, None, None), exc)
 
 
 def history(ctx, query):
@@ -1421,8 +1677,10 @@ def history(ctx, query):
             damaged.append({"layer": layer, "file_display": _display(ctx, target.path),
                             "ledger_display": _display(ctx, store.ledger_path(target))})
         rows = _safe_rows(store, target)
+        current = store.file_hash(target)  # once per file, not once per row
         for row in rows:
-            found.append((row.get("time") or "", _seq(row.get("backup")), _row_out(ctx, target, rows, row)))
+            found.append((row.get("time") or "", _seq(row.get("backup")),
+                          _row_out(ctx, target, rows, row, current)))
     found.sort(key=lambda item: (item[0], item[1]), reverse=True)
     return 200, {"enabled": True, "project": project.key, "rows": [item[2] for item in found],
                  "damaged_ledgers": damaged}

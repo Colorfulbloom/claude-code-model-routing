@@ -12,6 +12,7 @@ import collections
 import dataclasses
 import datetime
 import filecmp
+import hashlib
 import json
 import os
 import re
@@ -1518,7 +1519,8 @@ class Save(Base):
         self.assertEqual(world.read("project"), old.replace(b'"low"', b'"high"'))
         edit = body["edit"]
         self.assertEqual(set(edit), {"id", "kind", "time", "layer", "file_display", "op", "key_path", "old_value",
-                                     "new_value", "backup_display", "undoable", "not_undoable_reason"})
+                                     "new_value", "backup_display", "before_absent", "undoable",
+                                     "not_undoable_reason", "restore_state", "undo_anyway"})
         self.assertEqual((edit["kind"], edit["layer"], edit["file_display"], edit["key_path"], edit["old_value"],
                           edit["new_value"], edit["time"]),
                          ("edit", "project", "project/.claude/settings.json", ["effortLevel"], "low", "high",
@@ -2105,8 +2107,8 @@ class History(Base):
         rows = world.history()["rows"]
         self.assertEqual(rows[0], undone)
         self.assertEqual(set(rows[0]), {"id", "kind", "time", "layer", "file_display", "op", "key_path", "old_value",
-                                        "new_value", "backup_display", "restored_from_display", "undoable",
-                                        "not_undoable_reason"})
+                                        "new_value", "backup_display", "before_absent", "restored_from_display",
+                                        "undoable", "not_undoable_reason", "restore_state", "undo_anyway"})
         self.assertNotIn("restored_from_display", rows[1])
         self.assertEqual(set(rows[1]), set(rows[0]) - {"restored_from_display"})
 
@@ -3702,6 +3704,915 @@ class GitIgnore(unittest.TestCase):
         _status, two = api_edit.preview(world.ctx, world.body(row["target"], "high"))
         for key in ("base_file", "base_trail", "base_others"):
             self.assertEqual(one[key], two[key])
+
+
+
+# --------------------------------------------------------------------------
+# Undo anyway and restore (#113): a backup preview, then a write that carries its base_file
+
+SECRETS = tuple(SECRET + "-" + name for name in ("a", "b", "c", "d", "e"))
+
+
+def sha_of(raw):
+    return hashlib.sha256(raw).hexdigest()
+
+
+class BackupBase(Base):
+    """A project file saved once, so there is a row whose backup holds the original bytes."""
+
+    def setUp(self):
+        self.world = World(self, user={"model": SONNET}, project={"effortLevel": "low"})
+        self.target = target_of(self.world.targets(), "project")["target"]
+        self.original = self.world.read("project")
+        self.store_target = edit_store.target_for(self.world.ctx, self.world.key, "project")
+        self.hand = dumps({"effortLevel": "xhigh", "by_hand": True}).encode()
+
+    # routes
+
+    def pv(self, edit_id, kind, world=None, **extra):
+        world = world or self.world
+        return api_edit.backup_preview(world.ctx, dict({"project": world.key, "edit": edit_id, "kind": kind}, **extra))
+
+    def restore(self, edit_id, base_file, world=None, **extra):
+        world = world or self.world
+        return api_edit.restore(world.ctx, dict({"project": world.key, "edit": edit_id, "base_file": base_file}, **extra))
+
+    def force(self, edit_id, base_file, world=None, **extra):
+        world = world or self.world
+        return world.undo(edit_id, force=True, base_file=base_file, **extra)
+
+    def base_of(self, raw, world=None):
+        return api_edit._base_file((world or self.world).ctx, raw)
+
+    def base_now(self, layer="project"):
+        return self.base_of(self.world.read(layer))
+
+    # arranging
+
+    def saved(self, value="high"):
+        return self.world.edit(self.target, value)["edit"]
+
+    def bak(self, edit):
+        return self.world.real(edit["backup_display"])
+
+    def forge_backup(self, edit, data):
+        """Put data in a row's backup and make the ledger row's before hash agree, so it reads healthy."""
+        with open(self.bak(edit), "wb") as fh:
+            fh.write(data)
+        path = self.world.store.ledger_path(self.store_target)
+        with open(path, encoding="utf-8") as fh:
+            doc = json.load(fh)
+        for row in doc["rows"]:
+            if row["id"] == edit["id"]:
+                row["before_sha256"] = sha_of(data)
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(doc, fh)
+
+    def row_of(self, edit_id, rows=None):
+        return [r for r in (rows or self.world.history()["rows"]) if r["id"] == edit_id][0]
+
+    def local_create(self, remove_claude=True):
+        """A world with no settings file, a local create saved. Returns (world, edit)."""
+        world = World(self, user={"model": SONNET})
+        if remove_claude:
+            shutil.rmtree(os.path.join(world.proj, ".claude"))
+        patcher = mock.patch.object(git_check, "ignore_state", return_value="not_ignored")
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        target = add_of(world.targets(), "local", TOP)["target"]
+        return world, world.edit(target, "high")["edit"]
+
+    def assert_no_secret(self, *bodies):
+        text = json.dumps(bodies)
+        for secret in SECRETS + (SECRET,):
+            self.assertNotIn(secret, text)
+        self.assertNotIn("sk-planted", text)
+
+
+class BackupPreviewShape(BackupBase):
+    def test_the_payload_of_an_undo_preview(self):
+        saved = self.saved()
+        status, body = self.pv(saved["id"], "undo")
+        self.assertEqual(status, 200, body)
+        self.assertEqual(set(body), {
+            "edit", "kind", "layer", "shared", "file_display", "op", "result", "no_change", "changed", "diff",
+            "file_unparsed", "old_value", "new_value", "removes_dir", "creates_dir", "backup_display",
+            "base_file", "runs_before", "runs_after", "repo_locked", "git_ignore"})
+        self.assertEqual((body["edit"], body["kind"], body["layer"], body["shared"]),
+                         (saved["id"], "undo", "project", True))
+        self.assertEqual((body["file_display"], body["op"], body["result"]),
+                         ("project/.claude/settings.json", "replace", "replace"))
+        self.assertEqual((body["no_change"], body["changed"], body["file_unparsed"]), (False, False, False))
+        self.assertEqual((body["old_value"], body["new_value"]), ("high", "low"))
+        self.assertEqual((body["removes_dir"], body["creates_dir"]), (False, False))
+        self.assertEqual(body["backup_display"], saved["backup_display"])
+        self.assertEqual(body["base_file"], self.base_now())
+        self.assertEqual((body["runs_before"], body["runs_after"]), ("high", "low"))
+        self.assertEqual((body["repo_locked"], body["git_ignore"]), (False, None))
+        lines = [line for hunk in body["diff"]["hunks"] for line in hunk["lines"]]
+        self.assertEqual([(l["kind"], l["text"]) for l in lines if l["kind"] != "context"],
+                         [("del", '  "effortLevel": "high"'), ("add", '  "effortLevel": "low"')])
+        self.assertEqual(body["diff"]["file_display"], "project/.claude/settings.json")
+
+    def test_the_restore_preview_differs_only_in_its_kind(self):
+        saved = self.saved()
+        _s, undo = self.pv(saved["id"], "undo")
+        status, restore = self.pv(saved["id"], "restore")
+        self.assertEqual(status, 200, restore)
+        self.assertEqual(restore, dict(undo, kind="restore"))
+
+    def test_a_local_preview_carries_the_git_result(self):
+        world = World(self, user={"model": SONNET}, local={"effortLevel": "low"})
+        patcher = mock.patch.object(git_check, "ignore_state", return_value="not_ignored")
+        state = patcher.start()
+        self.addCleanup(patcher.stop)
+        target = target_of(world.targets(), "local")["target"]
+        saved = world.edit(target, "high")["edit"]
+        status, body = self.pv(saved["id"], "undo", world=world)
+        self.assertEqual((status, body["layer"], body["shared"], body["git_ignore"]),
+                         (200, "local", False, "not_ignored"))
+        state.assert_called_with(world.proj, world.ctx.path_env, world.ctx.home,
+                                 world.ctx.shell_env.get("XDG_CONFIG_HOME"))
+
+    def test_a_preview_writes_nothing(self):
+        saved = self.saved()
+        for hand in (None, self.hand):
+            if hand is not None:
+                self.world.put(self.world.path("project"), hand)
+            before = self.world.snapshot()
+            for kind in ("undo", "restore"):
+                self.assertEqual(self.pv(saved["id"], kind)[0], 200)
+            self.assertEqual(self.world.snapshot(), before)
+
+    def test_a_preview_of_an_unknown_edit_makes_no_store_folder(self):
+        before = self.world.snapshot()
+        self.assertEqual(self.pv("0" * 16, "restore"), (404, {"error": "unknown_edit"}))
+        self.assertEqual(self.world.snapshot(), before)
+        self.assertFalse(os.path.exists(os.path.join(self.world.cfg, edit_store.STORE_DIR)))
+
+    def test_changed_is_true_when_the_file_is_not_what_the_row_saved(self):
+        saved = self.saved()
+        self.world.put(self.world.path("project"), self.hand)
+        status, body = self.pv(saved["id"], "undo")
+        self.assertEqual((status, body["changed"], body["no_change"]), (200, True, False))
+        self.assertEqual(body["base_file"], self.base_of(self.hand))
+        self.assertEqual((body["old_value"], body["new_value"]), ("xhigh", "low"))
+
+    def test_the_result_is_create_when_the_file_is_gone(self):
+        saved = self.saved()
+        os.unlink(self.world.path("project"))
+        status, body = self.pv(saved["id"], "restore")
+        self.assertEqual((status, body["result"], body["no_change"], body["changed"]), (200, "create", False, True))
+        self.assertEqual(body["base_file"], self.base_of(None))
+        self.assertEqual((body["creates_dir"], body["file_unparsed"]), (False, False))
+        self.assertNotIn("old_value", body)
+        self.assertEqual(body["new_value"], "low")
+        lines = [line for hunk in body["diff"]["hunks"] for line in hunk["lines"]]
+        self.assertEqual({l["kind"] for l in lines}, {"add"})
+
+    def test_a_missing_claude_folder_is_a_create_that_makes_the_folder(self):
+        saved = self.saved()
+        shutil.rmtree(os.path.join(self.world.proj, ".claude"))
+        status, body = self.pv(saved["id"], "restore")
+        self.assertEqual((status, body["result"], body["creates_dir"]), (200, "create", True))
+        self.assertFalse(os.path.exists(os.path.join(self.world.proj, ".claude")))
+
+    def test_the_result_is_delete_for_a_create_row_and_removes_the_folder_it_made(self):
+        world, edit = self.local_create()
+        for kind in ("undo", "restore"):
+            status, body = self.pv(edit["id"], kind, world=world)
+            self.assertEqual((status, body["result"], body["removes_dir"], body["backup_display"]),
+                             (200, "delete", True, None), kind)
+            self.assertEqual((body["op"], body["new_value"] if "new_value" in body else None), ("create", None))
+            self.assertEqual(body["old_value"], "high")
+            lines = [line for hunk in body["diff"]["hunks"] for line in hunk["lines"]]
+            self.assertEqual({l["kind"] for l in lines}, {"del"})
+            self.assertEqual((body["runs_after"] is None, body["runs_before"]), (False, "high"))
+
+    def test_a_create_row_in_an_existing_folder_does_not_remove_it(self):
+        world, edit = self.local_create(remove_claude=False)
+        status, body = self.pv(edit["id"], "restore", world=world)
+        self.assertEqual((status, body["result"], body["removes_dir"]), (200, "delete", False))
+
+    def test_no_change_when_the_file_already_holds_the_backup(self):
+        first = self.saved("medium")
+        self.saved("high")
+        self.world.put(self.world.path("project"), self.original)
+        status, body = self.pv(first["id"], "restore")
+        self.assertEqual((status, body["no_change"], body["result"]), (200, True, "replace"))
+        self.assertEqual(body["diff"]["hunks"], [])
+        self.assertEqual(body["runs_before"], body["runs_after"])
+
+    def test_the_runs_follow_the_overlay_not_the_disk(self):
+        saved = self.saved("xhigh")
+        os.unlink(self.world.path("project"))
+        status, body = self.pv(saved["id"], "restore")
+        self.assertEqual(status, 200)
+        self.assertEqual(body["runs_after"], "low")
+        self.assertNotEqual(body["runs_before"], "low")
+
+
+class BackupPreviewRefusals(BackupBase):
+    def test_a_bad_body(self):
+        saved = self.saved()
+        ctx = self.world.ctx
+        key = self.world.key
+        bad = ({"project": key, "edit": saved["id"]},
+               {"project": key, "edit": saved["id"], "kind": "save"},
+               {"project": key, "edit": saved["id"], "kind": None},
+               {"project": key, "edit": saved["id"], "kind": ["undo"]},
+               {"project": key, "edit": saved["id"], "kind": "Undo"},
+               {"project": key, "edit": 5, "kind": "undo"},
+               {"project": key, "kind": "undo"},
+               [], "x")
+        for body in bad:
+            self.assertEqual(api_edit.backup_preview(ctx, body), (400, {"error": "bad_request"}), body)
+        self.assertEqual(api_edit.backup_preview(ctx, {"project": "nope", "edit": "x", "kind": "undo"}),
+                         (404, {"error": "unknown_project"}))
+
+    def test_edits_off_is_not_editable(self):
+        world = World(self, user={"model": SONNET}, project={"effortLevel": "low"}, edit=False)
+        for route in (api_edit.backup_preview, api_edit.restore, api_edit.undo):
+            self.assertEqual(route(world.ctx, {"project": world.key, "edit": "x", "kind": "undo",
+                                               "base_file": "x", "force": True}),
+                             (400, {"error": "not_editable"}))
+
+    def test_the_undo_preview_follows_the_undo_rules(self):
+        first = self.saved("medium")
+        second = self.saved("high")
+        undone = self.world.undo(second["id"])[1]["edit"]
+        restored = self.restore(first["id"], self.base_now())[1]["edit"]
+        for edit_id, reason in ((first["id"], "not_newest"), (second["id"], "not_newest"),
+                                (undone["id"], "undo_row"), (restored["id"], "restore_row")):
+            self.assertEqual(self.pv(edit_id, "undo"), (409, {"error": "not_undoable", "reason": reason}))
+            self.assertEqual(self.pv(edit_id, "restore")[0], 200, edit_id)
+
+    def test_a_pruned_backup(self):
+        saved = self.saved()
+        os.unlink(self.bak(saved))
+        self.assertEqual(self.pv(saved["id"], "restore"), (409, {"error": "not_undoable", "reason": "backup_pruned"}))
+
+    def test_a_damaged_backup(self):
+        saved = self.saved()
+        with open(self.bak(saved), "wb") as fh:
+            fh.write(b"{")
+        self.assertEqual(self.pv(saved["id"], "undo"),
+                         (409, {"error": "backup_damaged", "backup_display": saved["backup_display"]}))
+
+    def test_a_backup_that_does_not_parse(self):
+        saved = self.saved()
+        self.forge_backup(saved, b"{ not json")
+        before = self.world.snapshot()
+        for kind in ("undo", "restore"):
+            self.assertEqual(self.pv(saved["id"], kind), (422, {"error": "backup_unparsed"}))
+        self.assertEqual(self.world.snapshot(), before)
+
+    def test_a_damaged_ledger(self):
+        saved = self.saved()
+        with open(self.world.store.ledger_path(self.store_target), "w") as fh:
+            fh.write("{")
+        status, body = self.pv(saved["id"], "undo")
+        self.assertEqual((status, body["error"]), (500, "ledger_damaged"))
+
+    def test_a_file_the_walk_refuses(self):
+        saved = self.saved()
+        os.unlink(self.world.path("project"))
+        os.mkdir(self.world.path("project"))
+        self.assertEqual(self.pv(saved["id"], "restore"), (422, {"error": "not_regular"}))
+
+    def test_a_current_file_that_does_not_parse_has_no_diff_and_the_restore_still_runs(self):
+        saved = self.saved()
+        broken = b'{ "effortLevel": "sk-planted-0123456789abcdef-a" '
+        self.world.put(self.world.path("project"), broken)
+        status, body = self.pv(saved["id"], "restore")
+        self.assertEqual(status, 200, body)
+        self.assertEqual((body["diff"], body["file_unparsed"], body["result"]), (None, True, "replace"))
+        self.assertNotIn("old_value", body)
+        self.assertEqual(body["new_value"], "low")
+        self.assertEqual(body["base_file"], self.base_of(broken))
+        self.assert_no_secret(body)
+        status, done = self.restore(saved["id"], body["base_file"])
+        self.assertEqual(status, 200, done)
+        self.assertEqual(self.world.read("project"), self.original)
+        with open(self.world.real(done["replaced_display"]), "rb") as fh:
+            self.assertEqual(fh.read(), broken)
+        self.assert_no_secret(done)
+        self.assert_no_secret(self.world.history())
+
+    def test_the_forced_undo_over_a_file_that_does_not_parse_runs_too(self):
+        saved = self.saved()
+        broken = b"{ nope"
+        self.world.put(self.world.path("project"), broken)
+        status, done = self.force(saved["id"], self.base_of(broken))
+        self.assertEqual(status, 200, done)
+        self.assertEqual(self.world.read("project"), self.original)
+        self.assertNotIn("old_value", done["edit"])
+
+
+class ForcedUndo(BackupBase):
+    def test_it_writes_over_a_hand_edit_and_says_what_it_replaced(self):
+        saved = self.saved()
+        self.world.put(self.world.path("project"), self.hand)
+        hand_copy = bytes(self.hand)
+        status, body = self.force(saved["id"], self.base_of(hand_copy))
+        self.assertEqual(status, 200, body)
+        self.assertEqual(set(body), {"edit", "settings", "matches_backup", "restored_from_display",
+                                     "removed_file", "removed_dir", "replaced_display", "replaced_file"})
+        self.assertEqual(self.world.read("project"), self.original)
+        with open(self.world.real(body["replaced_display"]), "rb") as fh:
+            self.assertEqual(fh.read(), hand_copy)
+        self.assertEqual(body["replaced_display"], body["edit"]["backup_display"])
+        self.assertIs(body["replaced_file"], True)
+        self.assertEqual((body["removed_file"], body["removed_dir"], body["matches_backup"]), (False, False, True))
+        self.assertEqual(body["restored_from_display"], saved["backup_display"])
+        edit = body["edit"]
+        self.assertEqual((edit["kind"], edit["undoable"], edit["not_undoable_reason"]), ("undo", False, "undo_row"))
+        self.assertEqual(main_effort(body["settings"])["value"], "low")
+
+    def test_the_hand_edited_value_comes_from_the_file_not_the_row(self):
+        saved = self.saved()
+        self.world.put(self.world.path("project"), self.hand)
+        _s, body = self.force(saved["id"], self.base_now())
+        self.assertEqual((body["edit"]["old_value"], body["edit"]["new_value"]), ("xhigh", "low"))
+        self.assertNotEqual(body["edit"]["old_value"], saved["new_value"])
+
+    def test_a_key_gone_from_the_hand_edited_file_leaves_old_value_out(self):
+        saved = self.saved()
+        self.world.put(self.world.path("project"), {"other": 1})
+        _s, body = self.force(saved["id"], self.base_now())
+        self.assertNotIn("old_value", body["edit"])
+        self.assertEqual(body["edit"]["new_value"], "low")
+        rows = self.world.history()["rows"]
+        self.assertNotIn("old_value", rows[0])
+
+    def test_a_plain_undo_is_unchanged_and_never_reads_base_file(self):
+        saved = self.saved()
+        status, body = self.world.undo(saved["id"], base_file=5)
+        self.assertEqual(status, 200)
+        self.assertEqual(set(body), {"edit", "settings", "matches_backup", "restored_from_display",
+                                     "removed_file", "removed_dir"})
+        self.assertEqual((body["edit"]["old_value"], body["edit"]["new_value"]), ("high", "low"))
+
+    def test_without_force_a_hand_edit_still_refuses(self):
+        saved = self.saved()
+        self.world.put(self.world.path("project"), self.hand)
+        status, body = self.world.undo(saved["id"], base_file=self.base_now())
+        self.assertEqual((status, body["error"]), (409, "changed_since_save"))
+        self.assertEqual(self.world.read("project"), self.hand)
+
+    def test_force_must_be_exactly_true_and_base_file_a_string(self):
+        saved = self.saved()
+        self.world.put(self.world.path("project"), self.hand)
+        before = self.world.snapshot()
+        base = self.base_now()
+        for force in (False, 1, 0, "true", None, [], {}):
+            self.assertEqual(self.world.undo(saved["id"], force=force, base_file=base),
+                             (400, {"error": "bad_request"}), repr(force))
+        for base_file in (None, 5, ["x"], {}, True):
+            self.assertEqual(self.world.undo(saved["id"], force=True, base_file=base_file),
+                             (400, {"error": "bad_request"}), repr(base_file))
+        self.assertEqual(self.world.undo(saved["id"], force=True), (400, {"error": "bad_request"}))
+        self.assertEqual(self.world.snapshot(), before)
+
+    def test_it_follows_the_undo_rules(self):
+        first = self.saved("medium")
+        second = self.saved("high")
+        undone = self.world.undo(second["id"])[1]["edit"]
+        restored = self.restore(first["id"], self.base_now())[1]["edit"]
+        self.world.put(self.world.path("project"), self.hand)
+        before = self.world.snapshot()
+        base = self.base_now()
+        for edit_id, reason in ((first["id"], "not_newest"), (second["id"], "not_newest"),
+                                (undone["id"], "undo_row"), (restored["id"], "restore_row")):
+            self.assertEqual(self.force(edit_id, base), (409, {"error": "not_undoable", "reason": reason}), edit_id)
+        self.assertEqual(self.world.snapshot(), before)
+
+    def test_force_never_reaches_a_damaged_or_pruned_backup(self):
+        saved = self.saved()
+        self.world.put(self.world.path("project"), self.hand)
+        base = self.base_now()
+        before = self.world.snapshot()
+        with open(self.bak(saved), "wb") as fh:
+            fh.write(b"{")
+        damaged = self.world.snapshot()
+        self.assertEqual(self.force(saved["id"], base),
+                         (409, {"error": "backup_damaged", "backup_display": saved["backup_display"]}))
+        self.assertEqual(self.restore(saved["id"], base),
+                         (409, {"error": "backup_damaged", "backup_display": saved["backup_display"]}))
+        self.assertEqual(self.world.snapshot(), damaged)
+        os.unlink(self.bak(saved))
+        self.assertEqual(self.force(saved["id"], base), (409, {"error": "not_undoable", "reason": "backup_pruned"}))
+        self.assertEqual(self.restore(saved["id"], base), (409, {"error": "not_undoable", "reason": "backup_pruned"}))
+        self.assertEqual(self.world.read("project"), self.hand)
+        self.assertNotEqual(before, damaged)
+
+    def test_a_backup_that_does_not_parse_writes_nothing(self):
+        saved = self.saved()
+        self.forge_backup(saved, b"{ not json")
+        self.world.put(self.world.path("project"), self.hand)
+        base = self.base_now()
+        before = self.world.snapshot()
+        self.assertEqual(self.force(saved["id"], base), (422, {"error": "backup_unparsed"}))
+        self.assertEqual(self.restore(saved["id"], base), (422, {"error": "backup_unparsed"}))
+        self.assertEqual(self.world.snapshot(), before)
+
+    def test_a_forced_undo_of_a_create_deletes_the_file_and_the_folder(self):
+        world, edit = self.local_create()
+        edited = world.read("local")
+        hand = dumps({"effortLevel": "low", "x": 1}).encode()
+        world.put(world.path("local"), hand)
+        status, body = self.force(edit["id"], self.base_of(hand, world), world=world)
+        self.assertEqual(status, 200, body)
+        self.assertEqual((body["removed_file"], body["removed_dir"], body["replaced_file"]), (True, True, True))
+        self.assertFalse(os.path.exists(world.path("local")))
+        self.assertFalse(os.path.exists(os.path.join(world.proj, ".claude")))
+        with open(world.real(body["replaced_display"]), "rb") as fh:
+            self.assertEqual(fh.read(), hand)
+        self.assertNotEqual(edited, hand)
+
+    def test_a_forced_undo_after_the_file_went_writes_it_back(self):
+        saved = self.saved()
+        os.unlink(self.world.path("project"))
+        status, body = self.force(saved["id"], self.base_of(None))
+        self.assertEqual(status, 200, body)
+        self.assertEqual(self.world.read("project"), self.original)
+        self.assertIs(body["replaced_file"], False)
+        self.assertIsNone(body["replaced_display"])
+        self.assertEqual((body["removed_file"], body["removed_dir"]), (False, False))
+        self.assertEqual(os.stat(self.world.path("project")).st_mode & 0o777, 0o600)
+        self.assertNotIn("old_value", body["edit"])
+
+    def test_the_repo_lock_does_not_stop_it(self):
+        saved = self.saved()
+        self.world.put(self.world.path("project"), self.hand)
+        lock_repo(self, self.world)
+        status, pv = self.pv(saved["id"], "undo")
+        self.assertEqual(status, 200, pv)
+        self.assertEqual((pv["repo_locked"], pv["runs_before"], pv["runs_after"]), (True, None, None))
+        status, body = self.force(saved["id"], pv["base_file"])
+        self.assertEqual(status, 200, body)
+        self.assertEqual(self.world.read("project"), self.original)
+
+
+class RestoreRoute(BackupBase):
+    def test_it_puts_back_the_backup_of_an_older_row(self):
+        first = self.saved("medium")
+        second = self.saved("high")
+        status, pv = self.pv(first["id"], "restore")
+        self.assertEqual(status, 200, pv)
+        status, body = self.restore(first["id"], pv["base_file"])
+        self.assertEqual(status, 200, body)
+        self.assertEqual(set(body), {"edit", "settings", "matches_backup", "restored_from_display",
+                                     "removed_file", "removed_dir", "replaced_display", "replaced_file"})
+        self.assertEqual(self.world.read("project"), self.original)
+        edit = body["edit"]
+        self.assertEqual((edit["kind"], edit["op"], edit["undoable"], edit["not_undoable_reason"]),
+                         ("restore", "replace", False, "restore_row"))
+        self.assertEqual(edit["restored_from_display"], first["backup_display"])
+        self.assertEqual(body["restored_from_display"], first["backup_display"])
+        self.assertEqual((edit["old_value"], edit["new_value"]), ("high", "low"))
+        with open(self.world.real(body["replaced_display"]), "rb") as fh:
+            self.assertEqual(fh.read(), dumps({"effortLevel": "high"}).encode())
+        self.assertIs(body["replaced_file"], True)
+        self.assertIs(body["matches_backup"], True)
+        self.assertEqual(second["id"], self.world.history()["rows"][1]["id"])
+
+    def test_the_hand_edited_value_comes_from_the_file_not_the_row(self):
+        saved = self.saved()
+        self.world.put(self.world.path("project"), self.hand)
+        _s, body = self.restore(saved["id"], self.base_now())
+        self.assertEqual((body["edit"]["old_value"], body["edit"]["new_value"]), ("xhigh", "low"))
+
+    def test_a_key_gone_from_the_hand_edited_file_leaves_old_value_out(self):
+        saved = self.saved()
+        self.world.put(self.world.path("project"), {"other": 1})
+        _s, body = self.restore(saved["id"], self.base_now())
+        self.assertNotIn("old_value", body["edit"])
+        self.assertEqual(body["edit"]["new_value"], "low")
+
+    def test_it_takes_a_row_of_any_kind(self):
+        first = self.saved("medium")
+        second = self.saved("high")
+        undone = self.world.undo(second["id"])[1]["edit"]
+        for edit_id in (undone["id"], first["id"], second["id"]):
+            status, pv = self.pv(edit_id, "restore")
+            self.assertEqual(status, 200, pv)
+            if pv["no_change"]:
+                self.assertEqual(self.restore(edit_id, pv["base_file"])[0], 400)
+                continue
+            status, body = self.restore(edit_id, pv["base_file"])
+            self.assertEqual(status, 200, (edit_id, body))
+            self.assertEqual(body["edit"]["kind"], "restore")
+
+    def test_a_restore_of_a_restore_row_is_a_round_trip(self):
+        first = self.saved("medium")
+        self.saved("high")
+        high = self.world.read("project")
+        _s, one = self.restore(first["id"], self.base_now())
+        self.assertEqual(self.world.read("project"), self.original)
+        status, two = self.restore(one["edit"]["id"], self.base_now())
+        self.assertEqual(status, 200, two)
+        self.assertEqual(self.world.read("project"), high)
+        self.assertEqual(two["edit"]["restored_from_display"], one["edit"]["backup_display"])
+
+    def test_a_restore_of_a_marker_row_is_a_delete(self):
+        world, edit = self.local_create()
+        status, pv = self.pv(edit["id"], "restore", world=world)
+        status, body = self.restore(edit["id"], pv["base_file"], world=world)
+        self.assertEqual(status, 200, body)
+        self.assertEqual((body["removed_file"], body["removed_dir"], body["replaced_file"]), (True, True, True))
+        self.assertFalse(os.path.exists(world.path("local")))
+        self.assertEqual(body["edit"]["kind"], "restore")
+        self.assertEqual(body["edit"]["op"], "create")
+
+    def test_a_restore_that_changes_nothing_is_no_change(self):
+        first = self.saved("medium")
+        self.saved("high")
+        self.world.put(self.world.path("project"), self.original)
+        before = self.world.snapshot()
+        self.assertEqual(self.restore(first["id"], self.base_now()), (400, {"error": "no_change"}))
+        self.assertEqual(self.world.snapshot(), before)
+
+    def test_a_marker_row_with_the_file_gone_is_not_a_row_any_more(self):
+        world, edit = self.local_create()
+        os.unlink(world.path("local"))
+        self.assertEqual(self.restore(edit["id"], self.base_of(None, world), world=world),
+                         (404, {"error": "unknown_edit"}))
+
+    def test_a_bad_body(self):
+        saved = self.saved()
+        base = self.base_now()
+        key = self.world.key
+        ctx = self.world.ctx
+        bad = ({"project": key, "edit": saved["id"]},
+               {"project": key, "base_file": base},
+               {"edit": saved["id"], "base_file": base},
+               {"project": key, "edit": saved["id"], "base_file": 5},
+               {"project": key, "edit": 5, "base_file": base},
+               {"project": 5, "edit": saved["id"], "base_file": base},
+               {"project": key, "edit": None, "base_file": base},
+               [], None)
+        before = self.world.snapshot()
+        for body in bad:
+            self.assertEqual(api_edit.restore(ctx, body), (400, {"error": "bad_request"}), body)
+        self.assertEqual(api_edit.restore(ctx, {"project": "nope", "edit": "x", "base_file": "y"}),
+                         (404, {"error": "unknown_project"}))
+        self.assertEqual(api_edit.restore(ctx, {"project": "all", "edit": "x", "base_file": "y"}),
+                         (400, {"error": "bad_request"}))
+        self.assertEqual(self.world.snapshot(), before)
+
+    def test_the_source_pruned_by_the_restore_has_no_restored_from_display(self):
+        saved = None
+        for n in range(edit_store.RETENTION):
+            edit = self.saved(("high", "xhigh", "low", "medium")[n % 4])
+            saved = saved or edit
+        rows = self.world.history()["rows"]
+        self.assertEqual(len(rows), edit_store.RETENTION)
+        oldest = rows[-1]
+        self.assertEqual(oldest["id"], saved["id"])
+        self.assertEqual(oldest["restore_state"] in (None, "same_as_file"), True)
+        status, pv = self.pv(oldest["id"], "restore")
+        self.assertEqual(status, 200, pv)
+        status, body = self.restore(oldest["id"], pv["base_file"])
+        self.assertEqual(status, 200, body)
+        self.assertIsNone(body["restored_from_display"])
+        self.assertIsNone(self.store_row(oldest["id"]))
+        with open(self.world.real(body["replaced_display"]), "rb") as fh:
+            self.assertTrue(fh.read())
+        # At rest the restore row names no backup either, because its source row is gone.
+        row = self.row_of(body["edit"]["id"])
+        self.assertEqual(row["kind"], "restore")
+        self.assertIsNone(row["restored_from_display"])
+        self.assertIs(row["before_absent"], False)
+
+    def store_row(self, edit_id):
+        return self.world.store.find(self.store_target, edit_id)
+
+    def test_the_repo_lock_does_not_stop_it(self):
+        saved = self.saved()
+        lock_repo(self, self.world)
+        status, pv = self.pv(saved["id"], "restore")
+        self.assertEqual((status, pv["repo_locked"], pv["runs_before"], pv["runs_after"]), (200, True, None, None))
+        status, body = self.restore(saved["id"], pv["base_file"])
+        self.assertEqual(status, 200, body)
+        self.assertEqual(self.world.read("project"), self.original)
+
+
+class BaseFile(BackupBase):
+    def test_a_wrong_base_is_stale_with_a_fresh_preview_and_writes_nothing(self):
+        saved = self.saved()
+        _s, pv = self.pv(saved["id"], "restore")
+        self.world.put(self.world.path("project"), self.hand)
+        before = self.world.snapshot()
+        for route, kind in ((self.restore, "restore"),
+                            (lambda i, b: self.force(i, b), "undo")):
+            status, body = route(saved["id"], pv["base_file"])
+            self.assertEqual(status, 409, body)
+            self.assertEqual((body["error"], body["changed"]), ("stale", "file"))
+            self.assertEqual(body["changed_files"], [{"layer": "project", "file_display": "project/.claude/settings.json"}])
+            fresh = body["preview"]
+            self.assertEqual((fresh["kind"], fresh["edit"], fresh["base_file"]), (kind, saved["id"], self.base_now()))
+            self.assertEqual(fresh["old_value"], "xhigh")
+            self.assertEqual(self.world.snapshot(), before)
+
+    def test_a_base_that_stands_for_no_file_while_the_file_is_there(self):
+        saved = self.saved()
+        before = self.world.snapshot()
+        for route in (self.restore, self.force):
+            status, body = route(saved["id"], self.base_of(None))
+            self.assertEqual((status, body["error"], body["changed"]), (409, "stale", "file_appeared"))
+        self.assertEqual(self.world.snapshot(), before)
+
+    def test_a_file_that_went_after_the_preview(self):
+        saved = self.saved()
+        _s, pv = self.pv(saved["id"], "restore")
+        os.unlink(self.world.path("project"))
+        for route in (self.restore, self.force):
+            status, body = route(saved["id"], pv["base_file"])
+            self.assertEqual((status, body["error"], body["changed"]), (409, "stale", "file_removed"))
+            self.assertEqual(body["preview"]["result"], "create")
+            self.assertEqual(body["preview"]["base_file"], self.base_of(None))
+        self.assertFalse(os.path.exists(self.world.path("project")))
+
+    def test_a_stale_answer_for_a_row_that_is_gone_has_no_preview(self):
+        saved = self.saved()
+        self.world.put(self.world.path("project"), self.hand)
+        with mock.patch.object(api_edit, "_backup_preview", side_effect=edit_store.WriteFailed("x")):
+            status, body = self.restore(saved["id"], "wrong")
+        self.assertEqual((status, body["error"], body["preview"]), (409, "stale", None))
+
+    def test_a_missing_or_wrong_type_base_file_is_a_bad_request(self):
+        saved = self.saved()
+        for bad in (None, 5, [], {}):
+            self.assertEqual(self.restore(saved["id"], bad), (400, {"error": "bad_request"}))
+        self.assertEqual(self.world.read("project"), dumps({"effortLevel": "high"}).encode())
+
+    def test_the_base_is_the_hmac_of_the_bytes_the_preview_read(self):
+        saved = self.saved()
+        _s, pv = self.pv(saved["id"], "undo")
+        self.assertEqual(pv["base_file"], api_edit._hmac(self.world.ctx, self.world.read("project")))
+        self.world.put(self.world.path("project"), self.hand)
+        _s, other = self.pv(saved["id"], "undo")
+        self.assertNotEqual(pv["base_file"], other["base_file"])
+
+
+class HistoryRows(BackupBase):
+    def test_a_restore_row_is_never_undoable(self):
+        first = self.saved("medium")
+        self.saved("high")
+        _s, body = self.restore(first["id"], self.base_now())
+        row = self.row_of(body["edit"]["id"])
+        self.assertEqual((row["kind"], row["undoable"], row["not_undoable_reason"]), ("restore", False, "restore_row"))
+        self.assertEqual(row["restored_from_display"], first["backup_display"])
+        self.assertIs(row["undo_anyway"], False)
+        self.assertEqual(row, body["edit"])
+        self.assertEqual(self.world.undo(row["id"]), (409, {"error": "not_undoable", "reason": "restore_row"}))
+
+    def test_a_plain_undo_row_keeps_its_shape(self):
+        saved = self.saved()
+        undone = self.world.undo(saved["id"])[1]["edit"]
+        self.assertEqual((undone["not_undoable_reason"], undone["restored_from_display"]),
+                         ("undo_row", saved["backup_display"]))
+        self.assertNotIn("restored_from_display", self.row_of(saved["id"]))
+
+    def test_restore_state_for_each_value(self):
+        first = self.saved("medium")
+        second = self.saved("high")
+        rows = self.world.history()["rows"]
+        self.assertEqual([self.row_of(i, rows)["restore_state"] for i in (first["id"], second["id"])], [None, None])
+        # same_as_file: the file holds the first row's backup bytes
+        self.world.put(self.world.path("project"), self.original)
+        self.assertEqual(self.row_of(first["id"])["restore_state"], "same_as_file")
+        self.assertIsNone(self.row_of(second["id"])["restore_state"])
+        self.world.put(self.world.path("project"), dumps({"effortLevel": "high"}).encode())
+        # backup_unparsed
+        self.forge_backup(first, b"{ nope")
+        self.assertEqual(self.row_of(first["id"])["restore_state"], "backup_unparsed")
+        # backup_damaged
+        with open(self.bak(second), "wb") as fh:
+            fh.write(b"{")
+        self.assertEqual(self.row_of(second["id"])["restore_state"], "backup_damaged")
+        # backup_pruned
+        os.unlink(self.bak(second))
+        self.assertEqual(self.row_of(second["id"])["restore_state"], "backup_pruned")
+        # file_refused
+        os.unlink(self.world.path("project"))
+        os.mkdir(self.world.path("project"))
+        for edit_id in (first["id"], second["id"]):
+            self.assertEqual(self.row_of(edit_id)["restore_state"], "file_refused")
+
+    def test_a_healthy_create_row_has_no_restore_state(self):
+        world, edit = self.local_create()
+        row = self.row_of(edit["id"], world.history()["rows"])
+        self.assertIsNone(row["restore_state"])
+        self.assertIs(row["before_absent"], True)
+
+    def test_undo_anyway_is_true_only_for_a_changed_newest_edit_row(self):
+        first = self.saved("medium")
+        second = self.saved("high")
+        rows = self.world.history()["rows"]
+        self.assertEqual([r["undo_anyway"] for r in rows], [False, False])
+        self.world.put(self.world.path("project"), self.hand)
+        rows = self.world.history()["rows"]
+        self.assertEqual({r["id"]: (r["not_undoable_reason"], r["undo_anyway"]) for r in rows},
+                         {second["id"]: ("changed_since_save", True), first["id"]: ("not_newest", False)})
+        os.unlink(self.bak(second))
+        row = self.row_of(second["id"])
+        self.assertEqual((row["not_undoable_reason"], row["restore_state"], row["undo_anyway"]),
+                         ("changed_since_save", "backup_pruned", False))
+
+    def test_undo_anyway_is_false_when_the_file_is_unreadable(self):
+        saved = self.saved()
+        os.unlink(self.world.path("project"))
+        os.mkdir(self.world.path("project"))
+        row = self.row_of(saved["id"])
+        self.assertEqual((row["not_undoable_reason"], row["restore_state"], row["undo_anyway"]),
+                         ("changed_since_save", "file_refused", False))
+
+    def test_the_file_is_hashed_once_per_file_for_a_whole_list(self):
+        for n in range(6):
+            self.saved(("medium", "high", "xhigh", "low")[n % 4])
+        real = edit_store.Store.file_hash
+        seen = []
+
+        def spy(store, target):
+            seen.append(target.path)
+            return real(store, target)
+        with mock.patch.object(edit_store.Store, "file_hash", autospec=True, side_effect=spy):
+            rows = self.world.history()["rows"]
+        self.assertEqual(len(rows), 6)
+        self.assertEqual(sorted(seen), sorted([self.world.path("user"), self.world.path("project"),
+                                               self.world.path("local")]))
+
+    def test_a_single_row_out_hashes_the_file_for_itself(self):
+        saved = self.saved()
+        seen = []
+        real = edit_store.Store.file_hash
+        with mock.patch.object(edit_store.Store, "file_hash", autospec=True,
+                               side_effect=lambda store, target: seen.append(1) or real(store, target)):
+            api_edit._edit_out(self.world.ctx, self.store_target, self.world.store.find(self.store_target, saved["id"]))
+        self.assertEqual(len(seen), 1)
+
+
+class ValueIn(unittest.TestCase):
+    def test_a_value_is_read_from_the_bytes(self):
+        raw = b'{"effortLevel": "high", "n": 3, "f": 1.5, "b": true, "m": {"x": {"effortLevel": "low"}}}'
+        self.assertEqual(api_edit._value_in(raw, ["effortLevel"]), "high")
+        self.assertEqual(api_edit._value_in(raw, ["n"]), 3)
+        self.assertEqual(api_edit._value_in(raw, ["f"]), 1.5)
+        self.assertIs(api_edit._value_in(raw, ["b"]), True)
+        self.assertEqual(api_edit._value_in(raw, ["m", "x", "effortLevel"]), "low")
+
+    def test_everything_else_is_none_and_nothing_raises(self):
+        raw = b'{"a": null, "l": [1], "d": {}, "s": "x", "m": {"x": 1}}'
+        for key_path in (["a"], ["l"], ["d"], ["nope"], ["s", "y"], ["m", "x", "y"], ["m", "z"], []):
+            self.assertIsNone(api_edit._value_in(raw, key_path), key_path)
+        for bad in (None, b"", b"{", b"[1]", b"\xff\xfe", b'{"a": 1,}', b"// c\n{}", "text", 5):
+            self.assertIsNone(api_edit._value_in(bad, ["a"]), bad)
+
+    def test_a_float_that_is_not_finite_is_none(self):
+        for literal in (b"NaN", b"Infinity", b"-Infinity"):
+            raw = b'{"n": ' + literal + b', "ok": 1.5}'
+            self.assertIsNone(api_edit._value_in(raw, ["n"]), literal)
+            self.assertEqual(api_edit._value_in(raw, ["ok"]), 1.5)
+
+    def test_a_secret_name_hides_the_value_and_everything_under_it(self):
+        raw = ('{"apiKey": "x", "env": {"API_TOKEN": {"effortLevel": "high"}, "NOTE": "sk-planted-1"}, '
+               '"secretBox": {"effortLevel": "low"}}').encode()
+        self.assertIsNone(api_edit._value_in(raw, ["apiKey"]))
+        self.assertIsNone(api_edit._value_in(raw, ["env", "API_TOKEN", "effortLevel"]))
+        self.assertIsNone(api_edit._value_in(raw, ["secretBox", "effortLevel"]))
+        # a plain name with a secret-looking value is returned raw, and the store masks it
+        self.assertEqual(api_edit._value_in(raw, ["env", "NOTE"]), "sk-planted-1")
+
+
+class Masking(BackupBase):
+    """A planted secret never reaches a preview, a row or the history."""
+
+    def seed(self):
+        """A project file with secrets in it, saved once. The backup holds the planted text."""
+        text = ('{\n  "effortLevel": "low",\n  "env": {\n    "API_TOKEN": "%s",\n    "API_TOKEN": "%s"\n  },\n'
+                '  "note": "%s", "inline": {"password": "%s"},\n  "last": "%s"}\n'
+                % (SECRETS[0], SECRETS[1], SECRETS[2], SECRETS[3], SECRETS[4]))
+        self.world.put(self.world.path("project"), text)
+        self.original = self.world.read("project")
+        return self.saved()
+
+    def test_the_secrets_in_the_backup_and_the_file_stay_out_of_every_answer(self):
+        saved = self.seed()
+        self.assertIn(SECRETS[0].encode(), self.world.read("project"))
+        answers = []
+        for kind in ("undo", "restore"):
+            answers.append(self.pv(saved["id"], kind)[1])
+        # a hand edit that repeats a key, ends on a secret member and keeps one on a single line
+        hand = ('{"effortLevel": "xhigh", "token": "%s", "token": "%s",\n'
+                '"inline": {"password": "%s"}, "tail": "%s"}' % (SECRETS[0], SECRETS[1], SECRETS[2], SECRETS[4])).encode()
+        self.world.put(self.world.path("project"), hand)
+        status, pv = self.pv(saved["id"], "undo")
+        self.assertEqual(status, 200, pv)
+        answers.append(pv)
+        answers.append(self.world.history())
+        status, body = self.force(saved["id"], pv["base_file"])
+        self.assertEqual(status, 200, body)
+        answers.append(body)
+        answers.append(self.world.history())
+        self.assert_no_secret(answers)
+
+    def test_a_secret_as_the_effort_value_is_hidden_in_the_preview_and_the_row(self):
+        saved = self.saved()
+        hand = dumps({"effortLevel": SECRETS[0]}).encode()
+        self.world.put(self.world.path("project"), hand)
+        status, pv = self.pv(saved["id"], "restore")
+        self.assertEqual((status, pv["old_value"]), (200, "hidden"))
+        status, body = self.restore(saved["id"], pv["base_file"])
+        self.assertEqual((status, body["edit"]["old_value"]), (200, "hidden"))
+        self.assert_no_secret(pv, body, self.world.history())
+
+    def test_a_hidden_parent_leaves_the_value_out(self):
+        saved = self.saved()
+        hand = dumps({"effortLevel": "xhigh", "secretKey": {"effortLevel": SECRETS[0]}}).encode()
+        self.world.put(self.world.path("project"), hand)
+        # a row on a path through a hidden parent: the value is left out of the preview
+        path = self.world.store.ledger_path(self.store_target)
+        with open(path, encoding="utf-8") as fh:
+            doc = json.load(fh)
+        doc["rows"][0]["key_path"] = ["secretKey", "effortLevel"]
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(doc, fh)
+        status, pv = self.pv(saved["id"], "restore")
+        self.assertEqual(status, 200, pv)
+        self.assertNotIn("old_value", pv)
+        self.assert_no_secret(pv)
+
+    def test_a_current_file_that_does_not_parse_leaks_no_byte_of_it(self):
+        saved = self.saved()
+        planted = ('{ "effortLevel": "%s", \n "env": {"API_TOKEN": "%s" ' % (SECRETS[0], SECRETS[1])).encode()
+        self.world.put(self.world.path("project"), planted)
+        answers = [self.pv(saved["id"], "undo"), self.pv(saved["id"], "restore"), self.world.history(),
+                   self.force(saved["id"], "wrong"), self.restore(saved["id"], "wrong")]
+        self.assert_no_secret(answers)
+        for answer in answers:
+            self.assertNotIn("API_TOKEN", json.dumps(answer))
+        status, body = self.restore(saved["id"], self.base_of(planted))
+        self.assertEqual(status, 200, body)
+        self.assert_no_secret(body)
+
+
+class ForgedRequests(BackupBase):
+    def test_an_id_that_is_a_path_is_unknown(self):
+        self.saved()
+        before = self.world.snapshot()
+        for edit_id in ("../../ledger", "../ledger.json", "/etc/passwd", "", "000001-" + "a" * 16 + ".bak"):
+            self.assertEqual(self.pv(edit_id, "restore"), (404, {"error": "unknown_edit"}), edit_id)
+            self.assertEqual(self.restore(edit_id, "x"), (404, {"error": "unknown_edit"}), edit_id)
+            self.assertEqual(self.force(edit_id, "x"), (404, {"error": "unknown_edit"}), edit_id)
+        self.assertEqual(self.world.snapshot(), before)
+
+    def test_a_row_of_another_project_cannot_be_reached(self):
+        world = World(self, user={"model": SONNET}, project={"effortLevel": "low"},
+                      listed=[{"name": "Main", "path": "{proj}"}, {"name": "Second", "path": "{root}/second"}])
+        second = os.path.join(world.root, "second")
+        os.makedirs(os.path.join(second, ".claude"))
+        with open(os.path.join(second, ".claude", "settings.json"), "w") as fh:
+            fh.write(dumps({"effortLevel": "low"}))
+        target = target_of(world.targets("second"), "project")["target"]
+        status, pv = api_edit.preview(world.ctx, {"project": "second", "target": target, "value": "high"})
+        self.assertEqual(status, 200, pv)
+        status, saved = api_edit.save(world.ctx, dict(world.save_body(pv, target, "high"), project="second"))
+        self.assertEqual(status, 200, saved)
+        edit_id = saved["edit"]["id"]
+        before = world.snapshot()
+        self.assertEqual(api_edit.backup_preview(world.ctx, {"project": "main", "edit": edit_id, "kind": "restore"}),
+                         (404, {"error": "unknown_edit"}))
+        self.assertEqual(api_edit.restore(world.ctx, {"project": "main", "edit": edit_id, "base_file": "x"}),
+                         (404, {"error": "unknown_edit"}))
+        self.assertEqual(api_edit.undo(world.ctx, {"project": "main", "edit": edit_id, "force": True,
+                                                   "base_file": "x"}), (404, {"error": "unknown_edit"}))
+        self.assertEqual(world.snapshot(), before)
+        status, ok = api_edit.backup_preview(world.ctx, {"project": "second", "edit": edit_id, "kind": "restore"})
+        self.assertEqual(status, 200, ok)
+
+    def test_extra_body_keys_change_nothing(self):
+        saved = self.saved()
+        self.world.put(self.world.path("project"), self.hand)
+        user = self.world.read("user")
+        other = os.path.join(self.world.root, "elsewhere.json")
+        with open(other, "w") as fh:
+            fh.write("keep")
+        extra = dict(path=other, backup="../../x.bak", file=other, layer="user", target="t-x", value="max")
+        status, pv = self.pv(saved["id"], "restore", **extra)
+        self.assertEqual((status, pv["layer"]), (200, "project"))
+        status, body = self.restore(saved["id"], pv["base_file"], **extra)
+        self.assertEqual(status, 200, body)
+        self.assertEqual(self.world.read("project"), self.original)
+        self.assertEqual(self.world.read("user"), user)
+        with open(other) as fh:
+            self.assertEqual(fh.read(), "keep")
+        again = self.saved("medium")
+        self.world.put(self.world.path("project"), self.hand)
+        status, body = self.force(again["id"], self.base_now(), **extra)
+        self.assertEqual(status, 200, body)
+        self.assertEqual(self.world.read("user"), user)
 
 
 if __name__ == "__main__":

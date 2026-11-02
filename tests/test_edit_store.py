@@ -2398,5 +2398,722 @@ class CreateDescriptorTests(CreateBase):
         self.assertEqual(before, fd_count())
 
 
+
+# Undo anyway (force) and restore (kind restore)
+
+HAND = b'{"effortLevel": "max", "env": {"NOTE": "by hand"}}\n'
+
+
+def mode_of(path):
+    return stat.S_IMODE(os.stat(path).st_mode)
+
+
+class ForceBase(CreateBase):
+    """Helpers for a forced undo and a restore. Every comparison is against a copy the test made."""
+
+    def edited(self, value="high"):
+        target = self.target("project")
+        row = self.store.save(target, effort_plan(value))
+        return target, row
+
+    def hand(self, data):
+        write(self.project_file, data)
+
+    def force(self, target, row, **kw):
+        return self.store.restore(target, row["id"], force=True, **kw)
+
+    def put_back(self, target, row, **kw):
+        return self.store.restore(target, row["id"], force=True, kind="restore", **kw)
+
+    def backup_bytes(self, target, name):
+        return read(os.path.join(self.store_dir(target), name))
+
+    def reset(self):
+        """A clean world: SETTINGS in all three files, an empty .claude, no store folder."""
+        helpers.rmtree_force(os.path.join(self.cfg, "routing-dashboard"))
+        helpers.rmtree_force(self.claude)
+        os.makedirs(self.claude)
+        write(self.project_file, SETTINGS)
+        self.store = es.Store(self.cfg)
+
+
+class ForceTests(ForceBase):
+    def test_force_writes_over_a_hand_edit_and_backs_the_hand_edit_up(self):
+        target, row = self.edited()
+        self.hand(HAND)
+        hand_copy = bytes(HAND)
+        result = self.force(target, row)
+        self.assertEqual(SETTINGS, read(self.project_file))
+        undo = result.row
+        self.assertEqual("undo", undo["kind"])
+        self.assertEqual(row["id"], undo["restored_from"])
+        self.assertEqual(row["backup"], undo["restored_from_backup"])
+        self.assertEqual(sha(hand_copy), undo["before_sha256"])
+        self.assertEqual(sha(SETTINGS), undo["after_sha256"])
+        self.assertEqual(hand_copy, self.backup_bytes(target, undo["backup"]))
+        self.assertEqual(hand_copy, read(result.backup_path))
+        self.assertTrue(result.matches_backup)
+        self.assertEqual([row, undo], self.store.rows(target))
+
+    def test_without_force_the_same_hand_edit_still_refuses(self):
+        target, row = self.edited()
+        self.hand(HAND)
+        with self.assertRaises(es.ChangedSinceSave):
+            self.store.restore(target, row["id"])
+        self.assertEqual(HAND, read(self.project_file))
+        self.assertEqual([row], self.store.rows(target))
+
+    def test_force_keeps_the_plain_row_values_without_value_of(self):
+        target, row = self.edited()
+        self.hand(HAND)
+        undo = self.force(target, row).row
+        self.assertEqual(row["new_value"], undo["old_value"])
+        self.assertEqual(row["old_value"], undo["new_value"])
+
+    def test_force_does_not_pass_a_pruned_backup(self):
+        target, row = self.edited()
+        self.hand(HAND)
+        os.unlink(os.path.join(self.store_dir(target), row["backup"]))
+        with self.assertRaises(es.NotUndoable) as ctx:
+            self.force(target, row)
+        self.assertEqual("backup_pruned", ctx.exception.reason)
+        self.assertEqual(HAND, read(self.project_file))
+        self.assertEqual([row], self.store.rows(target))
+
+    def test_force_does_not_pass_a_damaged_backup(self):
+        target, row = self.edited()
+        self.hand(HAND)
+        bak = os.path.join(self.store_dir(target), row["backup"])
+        write(bak, b"not what was saved")
+        with self.assertRaises(es.BackupDamaged) as ctx:
+            self.force(target, row)
+        self.assertEqual(bak, ctx.exception.backup_path)
+        self.assertEqual(HAND, read(self.project_file))
+        self.assertEqual([row], self.store.rows(target))
+
+    def test_force_still_runs_the_check_hook(self):
+        target, row = self.edited()
+        self.hand(HAND)
+
+        def check(rows, found):
+            raise es.NotUndoable("not_newest")
+        with self.assertRaises(es.NotUndoable):
+            self.force(target, row, check=check)
+        self.assertEqual(HAND, read(self.project_file))
+
+    def test_force_on_a_create_row_after_a_hand_edit_deletes_the_file(self):
+        target, row = self.made()
+        self.hand(HAND)
+        result = self.force(target, row)
+        self.assertFalse(os.path.exists(self.project_file))
+        self.assertTrue(result.removed_file)
+        self.assertTrue(result.removed_dir)
+        self.assertFalse(os.path.exists(self.claude))
+        self.assertTrue(BAK_RE.match(result.row["backup"]))
+        self.assertEqual(HAND, self.backup_bytes(target, result.row["backup"]))
+        self.assertEqual("undo", result.row["kind"])
+
+    def test_force_on_a_create_row_leaves_the_project_as_before_the_create(self):
+        self.bare()
+        before = tree_hash(self.proj)
+        target = self.target("project")
+        row = self.create(target)
+        self.hand(HAND)
+        self.force(target, row)
+        self.assertEqual(before, tree_hash(self.proj))
+
+    def test_force_on_a_create_row_keeps_a_claude_folder_that_holds_a_stray_file(self):
+        target, row = self.made()
+        self.hand(HAND)
+        stray = write(os.path.join(self.claude, "notes.txt"), b"mine")
+        result = self.force(target, row)
+        self.assertFalse(os.path.exists(self.project_file))
+        self.assertTrue(result.removed_file)
+        self.assertFalse(result.removed_dir)
+        self.assertEqual(b"mine", read(stray))
+
+    def test_force_on_a_replace_row_after_the_file_went_writes_it_back_and_marks_the_gap(self):
+        target, row = self.edited()
+        os.unlink(self.project_file)
+        result = self.force(target, row)
+        self.assertEqual(SETTINGS, read(self.project_file))
+        self.assertEqual("absent", result.row["before_sha256"])
+        self.assertTrue(result.row["backup"].endswith(".absent"))
+        self.assertEqual(b"", self.backup_bytes(target, result.row["backup"]))
+        self.assertNotIn("made_dir", result.row)
+        self.assertEqual(0o600, mode_of(self.project_file))  # a mode is not in a backup
+        self.assertFalse(result.removed_file)
+
+    def test_force_on_a_replace_row_after_the_folder_went_makes_it_again(self):
+        target, row = self.edited()
+        helpers.rmtree_force(self.claude)
+        result = self.force(target, row)
+        self.assertEqual(SETTINGS, read(self.project_file))
+        self.assertEqual("absent", result.row["before_sha256"])
+        self.assertTrue(result.row["made_dir"])
+        self.assertEqual(0o600, mode_of(self.project_file))
+        self.assertEqual(0o700, mode_of(self.claude))
+
+    def test_force_gives_the_gate_the_current_bytes_and_the_backup(self):
+        target, row = self.edited()
+        self.hand(HAND)
+        seen = []
+        self.force(target, row, gate=lambda raw, data: seen.append((raw, data)))
+        self.assertEqual([(HAND, SETTINGS)], seen)
+
+    def test_a_gate_that_raises_refuses_and_writes_nothing(self):
+        target, row = self.edited()
+        self.hand(HAND)
+        before = self.tree()
+
+        def gate(raw, data):
+            raise es.Stale("file")
+        with self.assertRaises(es.Stale):
+            self.force(target, row, gate=gate)
+        self.assertEqual(HAND, read(self.project_file))
+        self.assertEqual(before, self.tree())
+        self.assertEqual([row], self.store.rows(target))
+
+    def test_a_gate_sees_none_for_a_marker_and_for_an_absent_file(self):
+        target, row = self.made()
+        self.hand(HAND)
+        seen = []
+        self.force(target, row, gate=lambda raw, data: seen.append((raw, data)))
+        self.assertEqual([(HAND, None)], seen)
+        self.reset()
+        target, row = self.edited()
+        os.unlink(self.project_file)
+        seen = []
+        self.force(target, row, gate=lambda raw, data: seen.append((raw, data)))
+        self.assertEqual([(None, SETTINGS)], seen)
+
+
+class RestoreKindTests(ForceBase):
+    def two(self):
+        target = self.target("project")
+        first = self.store.save(target, effort_plan("mid"))
+        second = self.store.save(target, effort_plan("high"))
+        return target, first, second
+
+    def test_a_bad_kind_is_a_value_error(self):
+        target, row = self.edited()
+        for kind in ("save", "edit", "", None, "UNDO", "Restore"):
+            with self.assertRaises(ValueError):
+                self.store.restore(target, row["id"], kind=kind)
+        self.assertEqual(SETTINGS.replace(b'"low"', b'"high"'), read(self.project_file))
+        self.assertEqual([row], self.store.rows(target))
+
+    def test_restore_of_an_older_row_puts_its_backup_back(self):
+        target, first, second = self.two()
+        edited = read(self.project_file)
+        result = self.put_back(target, first)
+        self.assertEqual(SETTINGS, read(self.project_file))
+        row = result.row
+        self.assertEqual("restore", row["kind"])
+        self.assertEqual(first["id"], row["restored_from"])
+        self.assertEqual(first["backup"], row["restored_from_backup"])
+        self.assertEqual(first["op"], row["op"])
+        self.assertEqual(sha(edited), row["before_sha256"])
+        self.assertEqual(sha(SETTINGS), row["after_sha256"])
+        self.assertEqual(edited, self.backup_bytes(target, row["backup"]))
+        self.assertEqual(os.path.join(self.store_dir(target), first["backup"]), result.restored_from_path)
+        self.assertEqual([first, second, row], self.store.rows(target))
+
+    def test_restore_of_an_undo_row(self):
+        target, row = self.edited()
+        edited = read(self.project_file)
+        undo = self.store.restore(target, row["id"]).row
+        self.assertEqual(SETTINGS, read(self.project_file))
+        result = self.put_back(target, undo)
+        self.assertEqual(edited, read(self.project_file))
+        self.assertEqual("restore", result.row["kind"])
+        self.assertEqual(undo["id"], result.row["restored_from"])
+
+    def test_a_restore_of_a_restore_row_is_a_round_trip(self):
+        target, first, second = self.two()
+        after_two = read(self.project_file)
+        back = self.put_back(target, first).row
+        self.assertEqual(SETTINGS, read(self.project_file))
+        again = self.put_back(target, back).row
+        self.assertEqual(after_two, read(self.project_file))
+        self.assertEqual("restore", again["kind"])
+        self.assertEqual(back["id"], again["restored_from"])
+        self.assertEqual([first, second, back, again], self.store.rows(target))
+
+    def test_restore_of_a_marker_row_deletes_the_file_and_the_folder_it_made(self):
+        self.bare()
+        before = tree_hash(self.proj)
+        target = self.target("project")
+        row = self.create(target)
+        result = self.put_back(target, row)
+        self.assertFalse(os.path.exists(self.project_file))
+        self.assertTrue(result.removed_file)
+        self.assertTrue(result.removed_dir)
+        self.assertEqual("restore", result.row["kind"])
+        self.assertEqual("create", result.row["op"])
+        self.assertEqual(NEW, self.backup_bytes(target, result.row["backup"]))
+        self.assertEqual(before, tree_hash(self.proj))
+
+    def test_restore_of_a_marker_row_keeps_a_folder_it_did_not_make(self):
+        self.no_file()
+        target = self.target("project")
+        row = self.create(target)
+        self.assertNotIn("made_dir", row)
+        result = self.put_back(target, row)
+        self.assertTrue(result.removed_file)
+        self.assertFalse(result.removed_dir)
+        self.assertTrue(os.path.isdir(self.claude))
+
+    def test_restore_where_the_file_already_holds_the_backup_writes_nothing(self):
+        target, first, second = self.two()
+        self.hand(SETTINGS)  # the bytes first's backup holds
+        before = self.tree()
+        with self.assertRaises(es.Refused) as ctx:
+            self.put_back(target, first)
+        self.assertEqual("no_change", ctx.exception.code)
+        self.assertEqual(before, self.tree())
+        self.assertEqual(SETTINGS, read(self.project_file))
+        self.assertEqual([first, second], self.store.rows(target))
+
+    def test_a_newest_row_whose_backup_is_the_file_is_trimmed_so_it_cannot_be_restored(self):
+        target, row = self.edited()
+        self.hand(SETTINGS)
+        self.assertEqual([], self.store.rows(target))
+        with self.assertRaises(es.UnknownEdit):
+            self.put_back(target, row)
+
+    def test_a_marker_row_with_the_file_gone_is_not_a_row_any_more(self):
+        # before is "absent" and so is the file, so the row never applied as far as a read can tell
+        target, row = self.made()
+        os.unlink(self.project_file)
+        before = self.tree()
+        with self.assertRaises(es.UnknownEdit):
+            self.put_back(target, row)
+        self.assertEqual(before, self.tree())
+        self.assertTrue(os.path.isdir(self.claude))
+
+    def test_restore_onto_an_absent_file_with_the_folder_gone_makes_both(self):
+        target, row = self.edited()
+        helpers.rmtree_force(self.claude)
+        result = self.put_back(target, row)
+        self.assertEqual(SETTINGS, read(self.project_file))
+        self.assertTrue(result.row["made_dir"])
+        self.assertEqual(0o600, mode_of(self.project_file))
+
+    def test_the_values_come_from_value_of_when_it_is_given(self):
+        target, row = self.edited()
+        self.hand(HAND)
+        calls = []
+
+        def value_of(raw, key_path):
+            calls.append((raw, list(key_path)))
+            return "from-" + ("none" if raw is None else str(len(raw)))
+        result = self.put_back(target, row, value_of=value_of)
+        self.assertEqual([(HAND, ["effortLevel"]), (SETTINGS, ["effortLevel"])], calls)
+        self.assertEqual("from-%d" % len(HAND), result.row["old_value"])
+        self.assertEqual("from-%d" % len(SETTINGS), result.row["new_value"])
+
+    def test_a_value_of_that_gives_none_leaves_the_value_out(self):
+        target, row = self.edited()
+        result = self.put_back(target, row, value_of=lambda raw, key_path: None)
+        self.assertNotIn("old_value", result.row)
+        self.assertNotIn("new_value", result.row)
+
+    def test_value_of_gets_none_for_a_marker_and_the_values_are_masked(self):
+        target, row = self.made()
+        seen = []
+
+        def value_of(raw, key_path):
+            seen.append(raw)
+            return "sk-planted-v" if raw is not None else None
+        result = self.put_back(target, row, value_of=value_of)
+        self.assertEqual([NEW, None], seen)
+        self.assertEqual("hidden", result.row["old_value"])
+        self.assertNotIn("new_value", result.row)
+
+    def test_the_source_row_pruned_by_the_restore_leaves_no_source_path(self):
+        target = self.target("project")
+        rows = [self.store.save(target, effort_plan("v%d" % n)) for n in range(es.RETENTION)]
+        result = self.put_back(target, rows[0])
+        self.assertIsNone(result.restored_from_path)
+        self.assertIsNone(self.store.find(target, rows[0]["id"]))
+        self.assertEqual(result.row, self.store.rows(target)[-1])
+
+    def test_a_source_row_that_stays_keeps_its_path(self):
+        target = self.target("project")
+        rows = [self.store.save(target, effort_plan("v%d" % n)) for n in range(es.RETENTION)]
+        result = self.put_back(target, rows[1])
+        self.assertEqual(os.path.join(self.store_dir(target), rows[1]["backup"]), result.restored_from_path)
+
+    def test_an_undo_keeps_its_source_path_even_when_the_source_was_pruned(self):
+        target = self.target("project")
+        rows = [self.store.save(target, effort_plan("v%d" % n)) for n in range(es.RETENTION)]
+        self.hand(HAND)
+        result = self.force(target, rows[-1])
+        self.assertIsNotNone(result.restored_from_path)
+
+
+class ReadsForForceTests(ForceBase):
+    def test_backup_state_matches_undo_state_and_creates_nothing(self):
+        target, row = self.edited()
+        before = self.tree()
+        self.assertEqual((None, SETTINGS), self.store.backup_state(target, row))
+        self.assertEqual(before, self.tree())
+        os.unlink(os.path.join(self.store_dir(target), row["backup"]))
+        self.assertEqual(("backup_pruned", None), self.store.backup_state(target, row))
+
+    def test_backup_state_of_a_marker_row_has_no_bytes(self):
+        target, row = self.made()
+        self.assertEqual((None, None), self.store.backup_state(target, row))
+        write(os.path.join(self.store_dir(target), row["backup"]), b"x")
+        self.assertEqual(("backup_damaged", None), self.store.backup_state(target, row))
+
+    def test_backup_state_with_no_store_folder(self):
+        target = self.target("project")
+        row = {"id": "x", "backup": "000001-" + HEX16 + ".bak", "before_sha256": sha(SETTINGS),
+               "after_sha256": "1"}
+        before = self.tree()
+        self.assertEqual(("backup_pruned", None), self.store.backup_state(target, row))
+        half = dict(row, before_sha256="absent")
+        self.assertEqual(("backup_damaged", None), self.store.backup_state(target, half))
+        self.assertEqual(before, self.tree())
+        self.assertFalse(os.path.exists(os.path.join(self.cfg, "routing-dashboard")))
+
+    def test_file_hash_is_the_hash_or_absent_or_none(self):
+        target = self.target("project")
+        self.assertEqual(sha(SETTINGS), self.store.file_hash(target))
+        os.unlink(self.project_file)
+        self.assertEqual("absent", self.store.file_hash(target))
+        helpers.rmtree_force(self.claude)
+        self.assertEqual("absent", self.store.file_hash(target))
+        os.makedirs(self.claude)
+        os.mkdir(self.project_file)
+        self.assertIsNone(self.store.file_hash(target))
+
+
+class ForceTrimTests(ForceBase):
+    def test_a_crashed_forced_row_is_dropped_and_the_earlier_row_stays_changed_since_save(self):
+        target, row = self.edited()
+        self.hand(HAND)
+        self.crash_at("before_rename")
+        with self.assertRaises(Crash):
+            self.force(target, row)
+        self.store = es.Store(self.cfg)
+        self.assertEqual(2, len(self.ledger_rows(target)))
+        self.assertEqual([row], self.store.rows(target))
+        self.assertEqual("changed_since_save", self.store.undo_state(target, row))
+        self.assertEqual(HAND, read(self.project_file))
+
+    def test_a_hand_edit_back_to_the_before_bytes_of_a_restore_row_trims_only_that_row(self):
+        target = self.target("project")
+        first = self.store.save(target, effort_plan("mid"))
+        edited = read(self.project_file)
+        back = self.put_back(target, first).row
+        self.assertEqual([first, back], self.store.rows(target))
+        self.hand(edited)
+        self.assertEqual([first], self.store.rows(target))
+        self.assertIsNone(self.store.undo_state(target, first))
+
+    def test_no_applied_row_is_dropped_in_a_force_restore_restore_chain(self):
+        target = self.target("project")
+        first = self.store.save(target, effort_plan("mid"))
+        second = self.store.save(target, effort_plan("high"))
+        self.hand(HAND)
+        forced = self.force(target, second).row
+        self.assertEqual(read(self.project_file), self.backup_bytes(target, first["backup"]).replace(
+            b'"low"', b'"mid"'))
+        older = self.put_back(target, first).row
+        self.assertEqual(SETTINGS, read(self.project_file))
+        again = self.put_back(target, older).row
+        self.assertEqual([first, second, forced, older, again], self.store.rows(target))
+        self.assertEqual([first, second, forced, older, again],
+                         [row for row in self.ledger_rows(target)])
+
+
+class ForceHalfPairTests(ForceBase):
+    def blocked(self, target, row, name_of_state="backup_damaged"):
+        before = tree_hash(self.proj)
+        store_before = tree_hash(self.store_dir(target))
+        for kw in ({"force": True}, {"force": True, "kind": "restore"}):
+            with self.assertRaises(es.BackupDamaged):
+                self.store.restore(target, row["id"], **kw)
+        self.assertEqual(before, tree_hash(self.proj))
+        self.assertEqual(store_before, tree_hash(self.store_dir(target)))
+
+    def test_an_absent_before_hash_with_a_real_backup(self):
+        target, row = self.edited()
+        self.rewrite_ledger(target, lambda rows: rows[0].update(before_sha256="absent"))
+        row = self.store.rows(target)[0]
+        self.hand(read(self.project_file))
+        self.blocked(target, row)
+        helpers.rmtree_force(os.path.join(self.cfg, "routing-dashboard"))
+        self.assertEqual(("backup_damaged", None), self.store.backup_state(target, row))
+
+    def test_a_real_before_hash_with_an_absent_name(self):
+        target, row = self.made()
+        self.rewrite_ledger(target, lambda rows: rows[0].update(before_sha256=sha(b"x")))
+        row = self.store.rows(target)[0]
+        self.blocked(target, row)
+        helpers.rmtree_force(os.path.join(self.cfg, "routing-dashboard"))
+        self.assertEqual(("backup_damaged", None), self.store.backup_state(target, row))
+
+    def test_a_marker_with_bytes(self):
+        target, row = self.made()
+        write(os.path.join(self.store_dir(target), row["backup"]), b"x")
+        self.blocked(target, row)
+
+    def test_a_forced_undo_over_a_hand_edit_is_blocked_the_same_way(self):
+        target, row = self.made()
+        write(os.path.join(self.store_dir(target), row["backup"]), b"x")
+        self.hand(HAND)
+        self.blocked(target, row)
+        self.assertEqual(HAND, read(self.project_file))
+
+
+class ForgedRowTests(ForceBase):
+    """A forged ledger row must not read or write outside the store folder."""
+
+    def setUp(self):
+        super().setUp()
+        self.target_ = self.target("project")
+        self.row = self.store.save(self.target_, effort_plan("high"))
+        self.edited_bytes = read(self.project_file)
+        # a decoy outside the store folder that holds exactly the bytes the row's hash wants
+        self.decoy = write(os.path.join(self.cfg, "routing-dashboard", "x.bak"), SETTINGS)
+        self.decoy_far = write(os.path.join(self.root, "far.bak"), SETTINGS)
+        self.watch = {self.decoy: SETTINGS, self.decoy_far: SETTINGS}
+
+    def forge(self, name):
+        self.rewrite_ledger(self.target_, lambda rows: rows[0].update(backup=name))
+        return self.store.rows(self.target_)[0]
+
+    def run_both(self, row, errors=(es.NotUndoable, es.BackupDamaged)):
+        for hand in (False, True):
+            if hand:
+                self.hand(HAND)
+            else:
+                self.hand(self.edited_bytes)
+            before_proj = tree_hash(self.proj)
+            for kw in ({"force": True}, {"force": True, "kind": "restore"}):
+                with self.assertRaises(errors):
+                    self.store.restore(self.target_, row["id"], **kw)
+            self.assertEqual(before_proj, tree_hash(self.proj))
+        for path, data in self.watch.items():
+            self.assertEqual(data, read(path))
+        self.assertEqual(self.store.backup_state(self.target_, row)[1], None)
+
+    def test_a_relative_name_with_dots(self):
+        row = self.forge("../../x.bak")
+        self.assertEqual(("backup_pruned", None), self.store.backup_state(self.target_, row))
+        self.run_both(row)
+
+    def test_an_absolute_name(self):
+        row = self.forge(self.decoy_far)
+        self.assertEqual(("backup_pruned", None), self.store.backup_state(self.target_, row))
+        self.run_both(row)
+
+    def test_a_valid_name_followed_by_a_path(self):
+        row = self.forge("000001-aaaaaaaaaaaaaaaa.bak/../x")
+        self.assertEqual(("backup_pruned", None), self.store.backup_state(self.target_, row))
+        self.run_both(row)
+
+    def test_a_symlink_at_a_valid_name_that_points_outside(self):
+        bak = os.path.join(self.store_dir(self.target_), self.row["backup"])
+        os.unlink(bak)
+        os.symlink(self.decoy_far, bak)
+        row = self.store.rows(self.target_)[0]
+        self.assertEqual(("backup_damaged", None), self.store.backup_state(self.target_, row))
+        self.run_both(row)
+        self.assertTrue(os.path.islink(bak))
+
+    def test_a_folder_at_a_valid_name(self):
+        bak = os.path.join(self.store_dir(self.target_), self.row["backup"])
+        os.unlink(bak)
+        os.mkdir(bak)
+        row = self.store.rows(self.target_)[0]
+        self.assertEqual(("backup_damaged", None), self.store.backup_state(self.target_, row))
+        self.run_both(row)
+
+    def test_a_hard_link_to_a_file_with_other_bytes(self):
+        bak = os.path.join(self.store_dir(self.target_), self.row["backup"])
+        other = write(os.path.join(self.root, "other.bak"), b'{"effortLevel": "other"}\n')
+        os.unlink(bak)
+        os.link(other, bak)
+        row = self.store.rows(self.target_)[0]
+        self.assertEqual(("backup_damaged", None), self.store.backup_state(self.target_, row))
+        self.watch[other] = b'{"effortLevel": "other"}\n'
+        self.run_both(row)
+
+    def test_a_marker_name_that_points_outside(self):
+        row = self.forge("../../x.absent")
+        self.assertEqual(("backup_pruned", None), self.store.backup_state(self.target_, row))
+        self.run_both(row)
+
+
+class ForcePruneTests(ForceBase):
+    def test_every_kept_row_after_many_saves_restores_to_the_copy_the_test_kept(self):
+        target = self.target("project")
+        before = {}
+        rows = []
+        for n in range(25):
+            copy = read(self.project_file)
+            row = self.store.save(target, effort_plan("v%d" % n))
+            before[row["id"]] = copy
+            rows.append(row)
+        kept = self.store.rows(target)
+        self.assertEqual(es.RETENTION, len(kept))
+        self.assertEqual(rows[-es.RETENTION:], kept)
+        for row in kept:
+            reason, data = self.store.backup_state(target, row)
+            self.assertIsNone(reason)
+            self.assertEqual(before[row["id"]], data)
+        for row in (kept[3], kept[-1]):
+            self.put_back(target, row)
+            self.assertEqual(before[row["id"]], read(self.project_file))
+
+    def test_restoring_the_oldest_kept_row_drops_it_and_keeps_the_replaced_bytes(self):
+        target = self.target("project")
+        before = {}
+        for n in range(25):
+            copy = read(self.project_file)
+            row = self.store.save(target, effort_plan("v%d" % n))
+            before[row["id"]] = copy
+        oldest = self.store.rows(target)[0]
+        current = read(self.project_file)
+        result = self.put_back(target, oldest)
+        self.assertEqual(before[oldest["id"]], read(self.project_file))
+        self.assertIsNone(result.restored_from_path)
+        self.assertIsNone(self.store.find(target, oldest["id"]))
+        self.assertNotIn(oldest["backup"], self.baks(target))
+        self.assertEqual(current, self.backup_bytes(target, result.row["backup"]))
+        self.assertEqual(es.RETENTION, len(self.store.rows(target)))
+
+
+SEAMS_ALL = ("after_read", "before_backup", "after_backup", "after_ledger", "after_mkdir", "after_temp",
+             "before_recheck", "before_rename", "before_unlink", "after_rename", "after_unlink",
+             "dir_fsync", "reread", "before_rmdir", "after_rmdir")
+# the seams where the file has not changed yet
+BEFORE_LANDING = ("after_read", "before_backup", "after_backup", "after_ledger", "after_mkdir",
+                  "after_temp", "before_recheck", "before_rename", "before_unlink")
+
+
+class ForceCrashTests(ForceBase):
+    """A crash at each seam of a forced undo or a restore. The file is whole, the rows tell the truth."""
+
+    def later_save(self, target):
+        if os.path.exists(self.project_file):
+            return self.store.save(target, effort_plan("later"), allow_absent=True)
+        return self.store.save(target, create_plan, allow_absent=True)
+
+    def matrix(self, label, setup, run, seams, new_kind):
+        """setup() -> (target, source row, old bytes or None, new bytes or None). run(target, row) is the write."""
+        for seam_name in seams:
+            with self.subTest(write=label, seam=seam_name):
+                self.reset()
+                target, source, old, new = setup()
+                base_rows = self.store.rows(target)
+                self.crash_at(seam_name)
+                with self.assertRaises(Crash):
+                    run(target, source)
+                self.store = es.Store(self.cfg)
+                raw = es.read_or_none(target)
+                landed = seam_name not in BEFORE_LANDING
+                self.assertEqual(new if landed else old, raw)
+                rows = self.store.rows(target)
+                if landed:
+                    self.assertEqual(base_rows, rows[:-1])
+                    self.assertEqual(new_kind, rows[-1]["kind"])
+                    self.assertEqual(source["id"], rows[-1]["restored_from"])
+                    # the old bytes are still reachable, in the new row's backup
+                    self.assertIsNone(self.store.backup_state(target, rows[-1])[0])
+                    if old is None:
+                        self.assertTrue(rows[-1]["backup"].endswith(".absent"))
+                    else:
+                        self.assertEqual(old, self.backup_bytes(target, rows[-1]["backup"]))
+                    self.assertEqual(sha(new) if new is not None else "absent", rows[-1]["after_sha256"])
+                else:
+                    self.assertEqual(base_rows, rows)
+                    self.assertIsNone(self.store.find(target, source["id"] + "x"))
+                # no half state reads as undoable: an older row is undoable only while the file is its after bytes
+                current = self.store.file_hash(target)
+                for older in base_rows:
+                    expected = None if current == older["after_sha256"] else "changed_since_save"
+                    self.assertEqual(expected, self.store.undo_state(target, older))
+                # a retry, or a later save, works and sweeps the temp file
+                if not landed:
+                    retry = run(target, source)
+                    self.assertEqual(new, es.read_or_none(target))
+                    self.assertEqual(new_kind, retry.row["kind"])
+                if os.path.isdir(self.claude) or es.read_or_none(target) is None:
+                    self.later_save(target)
+                    self.assertEqual([], self.leftovers())
+                    self.assertTrue(os.path.exists(self.project_file))
+
+    def test_a_forced_undo_over_a_hand_edit_at_every_seam(self):
+        def setup():
+            target, row = self.edited()
+            self.hand(HAND)
+            return target, row, HAND, SETTINGS
+        seams = [n for n in SEAMS_ALL if n not in ("after_mkdir", "before_unlink", "after_unlink",
+                                                    "before_rmdir", "after_rmdir")]
+        self.matrix("force replace", setup, lambda t, r: self.force(t, r), seams, "undo")
+
+    def test_a_forced_undo_of_a_create_at_every_seam(self):
+        def setup():
+            self.bare()
+            target = self.target("project")
+            row = self.create(target)
+            self.hand(HAND)
+            return target, row, HAND, None
+        seams = [n for n in SEAMS_ALL if n not in ("after_mkdir", "after_temp", "before_rename",
+                                                    "after_rename")]
+        self.matrix("force create", setup, lambda t, r: self.force(t, r), seams, "undo")
+
+    def test_a_restore_of_a_real_backup_at_every_seam(self):
+        def setup():
+            target, row = self.edited()
+            return target, row, read(self.project_file), SETTINGS
+        seams = [n for n in SEAMS_ALL if n not in ("after_mkdir", "before_unlink", "after_unlink",
+                                                    "before_rmdir", "after_rmdir")]
+        self.matrix("restore real", setup, lambda t, r: self.put_back(t, r), seams, "restore")
+
+    def test_a_restore_of_a_marker_at_every_seam(self):
+        def setup():
+            self.bare()
+            target = self.target("project")
+            row = self.create(target)
+            return target, row, NEW, None
+        seams = [n for n in SEAMS_ALL if n not in ("after_mkdir", "after_temp", "before_rename",
+                                                    "after_rename")]
+        self.matrix("restore marker", setup, lambda t, r: self.put_back(t, r), seams, "restore")
+
+    def test_a_restore_onto_an_absent_file_with_the_folder_gone_at_every_seam(self):
+        def setup():
+            target, row = self.edited()
+            helpers.rmtree_force(self.claude)
+            return target, row, None, SETTINGS
+        seams = [n for n in SEAMS_ALL if n not in ("before_unlink", "after_unlink", "before_rmdir",
+                                                    "after_rmdir")]
+        self.matrix("restore onto absent", setup, lambda t, r: self.put_back(t, r), seams, "restore")
+
+
+class ForceDescriptorTests(ForceBase):
+    def test_no_descriptor_leaks_over_forced_and_restore_writes(self):
+        self.bare()
+        target = self.target("project")
+        row = self.create(target)
+        self.force(target, row)
+        before = fd_count()
+        for _ in range(3):
+            row = self.create(target)
+            self.hand(HAND)
+            self.force(target, row)
+            row = self.create(target)
+            self.put_back(target, row)
+            self.store.backup_state(target, row)
+            self.store.file_hash(target)
+        self.assertEqual(before, fd_count())
+
+
 if __name__ == "__main__":
     unittest.main()

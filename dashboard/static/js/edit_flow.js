@@ -13,11 +13,14 @@
 //   is in flight. The state survives that, and the answer draws into the nodes of the newest render.
 // - A row is named by its layer, because one file can hold two targets. The target id comes from the chosen
 //   level's row each time. Nothing moves to a shared file on its own, and nothing saves until Save.
+// - The older backups list, and the preview of an Undo anyway or a restore, are flow state too (back). A change in
+//   progress and an open back flow exclude each other. The preview writes nothing, and the confirm sends the hash
+//   of the file the preview showed, so a file that changed since is refused and the preview is drawn again.
 // - One change at a time. A level (with a row) or a line to remove is chosen, never both. A remove is a set with no
 //   value: its preview and save carry action "remove", and its flow field holds the line's target, layer and line.
 
 import { t } from "./format.js";
-import { overCap, settleRow } from "./edit_pick.js";
+import { olderRows, overCap, settleRow } from "./edit_pick.js";
 import { basename, bodyOf, codeOf, errorText, levelRow, lockText, runningOf, targetById, walk } from "./edit_ui.js";
 
 // ---------------------------------------------------------------- state
@@ -38,6 +41,7 @@ export function flow() {
     strip: null, // a result of this page's own press, shown in the foot
     stripBusy: false, // an undo is on its way
     token: null, // { where } a press found no live token
+    back: null, // the older backups flow: { view: "list" }, or { view: "review", kind, row, pv, busy, stale, from, shownAt }, or null
     want: null, // the control that takes focus on the next draw
     reloaded: null, // "target|value" of a preview whose op didn't match its row, so the targets were loaded once for it
   };
@@ -98,6 +102,7 @@ export function resetCard() {
   S.failedDir = null;
   S.failedLeft = false;
   S.reloaded = null;
+  S.back = null;
 }
 
 // Called by the page on every render with a payload, before anything is drawn. A mode change to off or locked
@@ -119,6 +124,8 @@ export function syncFlow(key, mode) {
     saved.busy = false;
     saved.stripBusy = false;
     saved.pending = null;
+    // A preview on its way is dropped with the sequence bump below, so a review waiting on it would never fill.
+    if (saved.back && saved.back.view === "review" && saved.back.pv === null) saved.back = null;
     // Not saved is read from the render that is still on screen, which is the flow's own, before the swap.
     saved.notSaved = isNotSaved();
     flows.set(S.project, saved);
@@ -282,7 +289,7 @@ function pickable(T) {
 
 // The owner picked a level. Pressing the running level, or any level while a save is on its way, does nothing.
 export function pick(value) {
-  if (S.busy || !live || S.remove !== null) return;
+  if (S.busy || !live || S.remove !== null || S.back !== null) return;
   const T = targetsData();
   if (!pickable(T)) return;
   const lv = levelRow(T, value);
@@ -304,7 +311,7 @@ export function pick(value) {
 
 // The owner picked a file row for the chosen level. Only that row's target is previewed.
 export function pickRow(layer) {
-  if (S.busy || !live || S.level === null || S.remove !== null) return;
+  if (S.busy || !live || S.level === null || S.remove !== null || S.back !== null) return;
   const T = targetsData();
   if (!pickable(T)) return;
   const file = levelFile(levelRow(T, S.level), layer);
@@ -327,7 +334,7 @@ export function pickRow(layer) {
 // target, or one the server locks for any reason but a repeated key, does nothing. A repeated key opens the blocked
 // rail and asks for no preview. Cancel is where focus goes, because the pressed link goes away.
 export function startRemove(file) {
-  if (S.busy || !live || S.level !== null || S.remove !== null) return;
+  if (S.busy || !live || S.level !== null || S.remove !== null || S.back !== null) return;
   const T = targetsData();
   if (!pickable(T) || !file || !file.target) return;
   const entry = targetById(T, file.target);
@@ -604,27 +611,31 @@ function undoOutcome(out, row) {
     return { strip: { kind: "unverified", stage: data.stage, path: data.backup_display || null, op: row.op }, want: "dismiss-strip" };
   }
   if (kind === "stale" || code === "stale") {
-    return { strip: { kind: "stale_undo", file, path: data.backup_display || null, op: row.op }, changed: true };
+    return { strip: { kind: "stale_undo", file, path: data.backup_display || null, op: row.op, row }, changed: true };
   }
   if (code === "unknown_edit") {
     // The history row is gone (a created file deleted by hand trims it), so the page loads the history again.
     return { strip: { kind: "error", text: errorText(out && out.res) }, changed: true };
   }
   if (code === "changed_since_save") {
-    return { strip: { kind: "stale_undo", file, path: data.backup_display || null, op: row.op }, changed: true };
+    return { strip: { kind: "stale_undo", file, path: data.backup_display || null, op: row.op, row }, changed: true };
   }
-  if (code === "backup_damaged") return { strip: { kind: "backup_damaged", path: data.backup_display || null }, want: "dismiss-strip" };
-  if (code === "not_undoable") return { strip: { kind: "not_undoable" }, want: "dismiss-strip" };
+  if (code === "backup_damaged") return { strip: { kind: "backup_damaged", path: data.backup_display || null }, want: "dismiss-strip", changed: true };
+  // A pruned backup is gone for good, so the answer says so and the page loads the history again to grey the row.
+  if (code === "not_undoable" && data.reason === "backup_pruned") {
+    return { strip: { kind: "error", text: t("ed_older_pruned") }, want: "dismiss-strip", changed: true };
+  }
+  if (code === "not_undoable") return { strip: { kind: "not_undoable" }, want: "dismiss-strip", changed: true };
   if (code === "config_dir_missing" && data.config_dir_display) {
-    return { strip: { kind: "config_dir_missing", path: data.config_dir_display }, want: "dismiss-strip" };
+    return { strip: { kind: "config_dir_missing", path: data.config_dir_display }, want: "dismiss-strip", changed: true };
   }
-  if (code === "write_failed") return { strip: { kind: "write_failed", file }, want: "dismiss-strip" };
-  if (code === "ledger_damaged") return { strip: { kind: "ledger", file, path: data.ledger_display || null }, want: "dismiss-strip" };
-  return { strip: { kind: "error", text: errorText(out && out.res) } };
+  if (code === "write_failed") return { strip: { kind: "write_failed", file, dirLeft: data.dir_left === true }, want: "dismiss-strip", changed: true };
+  if (code === "ledger_damaged") return { strip: { kind: "ledger", file, path: data.ledger_display || null }, want: "dismiss-strip", changed: true };
+  return { strip: { kind: "error", text: errorText(out && out.res) }, changed: true };
 }
 
 export async function doUndo(row) {
-  if (S.stripBusy || !live) return;
+  if (S.stripBusy || !live || S.back !== null) return;
   const epoch = S.epoch;
   const key = S.project; // whose flow this undo belongs to, read before the await
   S.stripBusy = true;
@@ -657,9 +668,201 @@ export async function doUndo(row) {
   if (result.changed) refreshEdit(); // the history still lists an Undo that no longer works, so Dismiss must not bring it back
 }
 
+// ---------------------------------------------------------------- older backups
+
+// The strip an Undo anyway or a restore answer leaves, and whether the page must load the history again. A written
+// file that matches its backup is a back_done strip. The refusals only the new routes make are worded here, and every
+// other answer is a plain undo's. pv is the preview the write was made from, or null for a refused preview.
+function backOutcome(out, row, kind, pv = null) {
+  const data = bodyOf(out);
+  const code = codeOf(out);
+  if (out && out.kind === "ok" && data.matches_backup === true) {
+    return {
+      strip: {
+        kind: "back_done",
+        back: kind,
+        edit: data.edit || row,
+        removedFile: data.removed_file === true,
+        removedDir: data.removed_dir === true,
+        replacedFile: data.replaced_file !== false,
+        replaced: data.replaced_display || null,
+        replacedUnparsed: pv !== null && pv.file_unparsed === true,
+        restored: data.restored_from_display || null,
+      },
+      want: "dismiss-strip",
+    };
+  }
+  // A forced write keeps the bytes it wrote over, so op doesn't say whether a backup exists. The backup is named when the
+  // answer names one, and a file that was absent before the write (result create) has none.
+  const created = pv !== null && pv.result === "create";
+  const kept = created ? null : data.backup_display || data.replaced_display || null;
+  if (out && (out.kind === "raced" || out.kind === "ok")) {
+    return { strip: { kind: "back_raced", file: basename(row.file_display), path: kept, created }, want: "dismiss-strip" };
+  }
+  if (out && out.kind === "unverified") {
+    return { strip: { kind: "back_unverified", stage: data.stage, path: kept }, want: "dismiss-strip" };
+  }
+  if (code === "backup_unparsed") return { strip: { kind: "error", text: t("ed_backup_unparsed_h") }, changed: true };
+  if (code === "no_change") return { strip: { kind: "error", text: t("ed_back_no_change_h") }, changed: true };
+  const result = undoOutcome(out, row);
+  const restoreKinds = ["write_failed", "backup_damaged", "config_dir_missing"];
+  if (kind === "restore" && restoreKinds.includes(result.strip.kind)) result.strip.restore = true;
+  return result;
+}
+
+// How long after a preview draws the confirm ignores a press. A property, so the browser-free checks can set it to 0.
+export const guard = { ms: 500 };
+
+// The list or the review closes the strip, so on a short window its heading can sit below the fold. At 1240 and under,
+// where the rail sits under the body, it scrolls into view and focus stays where it is. A notice drawn above the heading
+// is what scrolls, so the owner sees it too. A node with no scrollIntoView (an old browser, the test dom) is left alone.
+const DOCKED = "(max-width: 1240px)";
+function showBackHead() {
+  if (!live || !live.rail) return;
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function" || !window.matchMedia(DOCKED).matches) return;
+  const has = (n, name) => String(n.getAttribute("class") || "").split(/\s+/).includes(name);
+  const first = walk(live.rail, (n) => has(n, "s4-rh") || has(n, "nt"))[0];
+  if (first && typeof first.scrollIntoView === "function") first.scrollIntoView({ block: "start" });
+}
+
+// True when a back flow may not open: a save or an undo is on its way, or a change is in progress.
+const backBlocked = () => S.busy || S.stripBusy || !live || S.level !== null || S.remove !== null;
+
+// The key of the first row the list offers, or the Close button when none is.
+function firstBackFocus() {
+  const first = olderRows(historyData()).find((row) => row.restore_state === null || row.restore_state === undefined);
+  return first ? "backup:" + first.id : "older-close";
+}
+
+// The owner pressed Older backups. The list takes the rail and the foot, and the last change waits.
+export function openOlder() {
+  if (backBlocked()) return;
+  S.back = { view: "list" };
+  S.strip = null;
+  S.want = firstBackFocus();
+  redraw("card");
+  showBackHead();
+}
+
+// Close, or Cancel. A review opened from the list goes back to the list, with focus on its row. Any other goes back to
+// rest, with focus on the Older backups link. Nothing happens while a write is on its way.
+export function closeBack() {
+  const back = S.back;
+  if (back === null || back.busy === true) return;
+  if (back.view === "review" && back.from === "list") {
+    const row = olderRows(historyData()).find((r) => r.id === back.row.id && (r.restore_state === null || r.restore_state === undefined));
+    S.back = { view: "list" };
+    S.want = row ? "backup:" + row.id : "older-close";
+  } else {
+    S.back = null;
+    S.want = back.from === "foot" ? "anyway" : "older"; // the control that opened it, else the other
+  }
+  redraw("card");
+}
+
+// The owner picked a row (kind "restore", from the list) or pressed Undo anyway (kind "undo", from the foot). The review
+// opens with no preview, and the preview is asked for. An answer that comes after the review went away is dropped.
+export async function startBack(kind, row, from) {
+  if (backBlocked()) return;
+  S.strip = null;
+  bump();
+  const mine = S.seq;
+  const epoch = S.epoch;
+  const review = { view: "review", kind, row, pv: null, busy: false, stale: false, from, shownAt: 0 };
+  S.back = review;
+  S.want = "cancel";
+  redraw("card");
+  let out;
+  try {
+    out = await live.ctx.edit.backupPreview(row.id, kind);
+  } catch (err) {
+    out = { kind: "error", res: null };
+  }
+  // A lost token is told even when the review went away, as startPreview does.
+  if (out && out.kind === "locked") {
+    if (epoch === S.epoch && S.back === review) S.back = null;
+    tokenOutcome("strip");
+    return;
+  }
+  if (mine !== S.seq || epoch !== S.epoch || S.back !== review) return;
+  if (out && out.kind === "ok") {
+    review.pv = bodyOf(out);
+    review.shownAt = Date.now();
+    S.want = "cancel";
+    redraw("card");
+    showBackHead();
+    return;
+  }
+  const result = backOutcome(out, row, kind);
+  S.back = null;
+  S.strip = result.strip;
+  S.want = result.want || "dismiss-strip";
+  redraw();
+  if (result.changed) refreshEdit();
+}
+
+// The owner confirmed. The preview's hash goes with the write, so a file that changed since is refused (stale), and
+// the answer then carries the preview of the file as it is.
+export async function confirmBack() {
+  const back = S.back;
+  if (!live || back === null || back.view !== "review" || back.pv === null || back.busy) return;
+  // A double click on Undo anyway lands on the confirm that replaces it. A press this soon after the preview drew is
+  // dropped, with no sign, because the owner can't have read the preview yet.
+  if (Date.now() - back.shownAt < guard.ms) return;
+  const epoch = S.epoch;
+  const key = S.project; // whose flow this write belongs to, read before the await
+  const { kind, row } = back;
+  const baseFile = back.pv.base_file;
+  back.busy = true;
+  redraw("card");
+  let out;
+  try {
+    out = kind === "undo" ? await live.ctx.edit.undoAnyway(row.id, baseFile) : await live.ctx.edit.restore(row.id, baseFile);
+  } catch (err) {
+    out = { kind: "error", res: null };
+  }
+  if (out && out.kind === "locked") {
+    if (epoch === S.epoch) S.back = null;
+    tokenOutcome("strip");
+    return;
+  }
+  const stale = out && out.kind === "stale";
+  const fresh = stale && bodyOf(out).preview && typeof bodyOf(out).preview === "object" ? bodyOf(out).preview : null;
+  const result = stale ? { strip: { kind: "error", text: t("ed_back_gone_t") }, changed: true } : backOutcome(out, row, kind, back.pv);
+  if (epoch !== S.epoch) {
+    // The file may be written. The flow it belongs to shows the result in place of a review that is spent.
+    const holder = key === S.project ? S : flows.get(key);
+    if (holder) {
+      holder.strip = result.strip;
+      holder.back = null;
+      if (holder === S) redraw();
+    }
+    if (result.changed) refreshEdit();
+    return;
+  }
+  if (stale && fresh) {
+    // Nothing was written. The review shows the file as it is now, and the page loads the files again.
+    back.pv = fresh;
+    back.stale = true;
+    back.busy = false;
+    back.shownAt = Date.now();
+    S.want = "cancel";
+    redraw("card");
+    showBackHead();
+    refreshEdit();
+    return;
+  }
+  S.back = null;
+  S.strip = result.strip;
+  S.want = result.want || "dismiss-strip";
+  redraw();
+  if (result.changed) refreshEdit();
+}
+
 export function dismissStrip() {
   const wasLedger = S.strip && S.strip.kind === "ledger";
   S.strip = null;
+  S.want = "older"; // the row's own strip is back; focus goes to the Older backups link, else Undo anyway, else the levels
   redraw("strip");
   if (wasLedger) reloadEdit();
 }

@@ -1,4 +1,4 @@
-// The edit session. It holds the edit token for this tab, decides the edit mode and sends the three writes.
+// The edit session. It holds the edit token for this tab, decides the edit mode and sends the writes.
 // No DOM here: everything it touches comes in through createEditSession, so node can test it with fakes.
 //
 // The printed link carries the token as #/settings?edit=<token>. take() is the one function that reads it.
@@ -10,6 +10,7 @@
 // "locked" (enabled, but this tab holds no valid token) and "ready" (a token that matches this launch).
 //
 // A write is a set (a value for a line, the default) or a remove (action "remove", the line goes and there is no value).
+// The undo writes are a plain undo, an Undo anyway (force, with the hash of the file its preview showed) and a restore.
 
 const TOKEN_KEY = "mr_edit_token";
 const LAUNCH_KEY = "mr_edit_launch";
@@ -150,7 +151,7 @@ export function createEditSession({ api, storage, getHash, replaceHash, onChange
     if (res && res.ok) kind = "ok";
     else if (code === "raced") kind = "raced";
     else if (code === "unverified") kind = "unverified";
-    // Only a save or an undo can change a file, so only they drop data. A preview never does.
+    // Only a save, an undo or a restore can change a file, so only they drop data. A preview never does.
     const dropped = writes && (kind === "ok" || kind === "raced" || kind === "unverified");
     if (dropped && typeof onWrite === "function") {
       try {
@@ -177,5 +178,11 @@ export function createEditSession({ api, storage, getHash, replaceHash, onChange
         : { project, target, value, ...hashes }, true);
     },
     undo: (project, editId) => send(api.editUndo, { project, edit: editId }, true),
+    // A preview of Undo anyway or of a restore. It writes nothing, so it never drops data.
+    backupPreview: (project, editId, kind) => send(api.editBackupPreview, { project, edit: editId, kind }, false),
+    // base_file is the hash of the file the preview showed. A stale answer writes nothing.
+    undoAnyway: (project, editId, baseFile) =>
+      send(api.editUndo, { project, edit: editId, force: true, base_file: baseFile }, true),
+    restore: (project, editId, baseFile) => send(api.editRestore, { project, edit: editId, base_file: baseFile }, true),
   };
 }

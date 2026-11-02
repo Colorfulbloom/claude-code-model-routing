@@ -63,6 +63,8 @@ function mkSession({ hash = "", status = [{ ok: true, status: 200, data: { enabl
     editPreview: answer("preview"),
     editSave: answer("save"),
     editUndo: answer("undo"),
+    editBackupPreview: answer("backupPreview"),
+    editRestore: answer("restore"),
   };
   const session = createEditSession({
     api,
@@ -265,6 +267,72 @@ test("outcomes: save and undo ok, raced and unverified call onWrite once, awaite
   }
 });
 
+test("backup calls: the preview, the Undo anyway and the restore send the right body with the token", async () => {
+  const { session, box } = await ready();
+  await session.backupPreview("p1", "ed-9", "undo");
+  await session.backupPreview("p1", "ed-8", "restore");
+  await session.undoAnyway("p1", "ed-9", "HASH");
+  await session.restore("p1", "ed-8", "HASH2");
+  assert.deepEqual(box.posts.map((p) => [p.name, p.body]), [
+    ["backupPreview", { project: "p1", edit: "ed-9", kind: "undo" }],
+    ["backupPreview", { project: "p1", edit: "ed-8", kind: "restore" }],
+    ["undo", { project: "p1", edit: "ed-9", force: true, base_file: "HASH" }],
+    ["restore", { project: "p1", edit: "ed-8", base_file: "HASH2" }],
+  ]);
+  assert.ok(box.posts.every((p) => p.token === TOKEN));
+});
+
+test("backup calls: a preview never calls onWrite, whatever it answers", async () => {
+  for (const reply of [{ ok: true, status: 200, data: { ok: true } }, { ok: false, status: 500, data: { error: "unverified" } },
+    { ok: false, status: 409, data: { error: "raced" } }, { ok: false, status: 422, data: { error: "backup_unparsed" } }]) {
+    const { session, box } = await ready({ post: { backupPreview: () => reply } });
+    await session.backupPreview("p", "e1", "undo");
+    assert.equal(box.writes, 0);
+  }
+});
+
+test("backup calls: Undo anyway and restore call onWrite on ok, raced and unverified, awaited before the return", async () => {
+  const raced = () => ({ ok: false, status: 409, data: { error: "raced", edit: "e" } });
+  const unverified = () => ({ ok: false, status: 500, data: { error: "unverified", stage: "x", file_unchanged: false } });
+  const cases = [
+    ["undo", "ok", undefined, "ok"], ["restore", "ok", undefined, "ok"],
+    ["undo", "raced", raced, "raced"], ["restore", "raced", raced, "raced"],
+    ["undo", "unverified", unverified, "unverified"], ["restore", "unverified", unverified, "unverified"],
+  ];
+  for (const [route, label, fn, kind] of cases) {
+    const { session, box } = await ready(fn ? { post: { [route]: fn } } : {});
+    const out = route === "undo" ? await session.undoAnyway("p", "e1", "H") : await session.restore("p", "e1", "H");
+    assert.equal(out.kind, kind, route + " " + label);
+    assert.equal(box.writes, 1, route + " " + label);
+    assert.deepEqual(box.order.slice(-3), ["post " + route, "write start", "write end"], "onWrite finished before the return");
+  }
+});
+
+test("backup calls: a stale answer is its own outcome, drops nothing, and is not retried", async () => {
+  const stale = () => ({ ok: false, status: 409, data: { error: "stale", changed: "file", changed_files: [], preview: { base_file: "n" } } });
+  for (const route of ["undo", "restore"]) {
+    const { session, box } = await ready({ post: { [route]: stale } });
+    const out = route === "undo" ? await session.undoAnyway("p", "e1", "H") : await session.restore("p", "e1", "H");
+    assert.equal(out.kind, "stale", route);
+    assert.deepEqual(out.res.data.preview, { base_file: "n" });
+    assert.equal(box.posts.length, 1);
+    assert.equal(box.writes, 0);
+  }
+});
+
+test("backup calls: bad_token locks the session, and a locked session sends nothing", async () => {
+  const bad = () => ({ ok: false, status: 403, data: { error: "bad_token" } });
+  for (const route of ["backupPreview", "undo", "restore"]) {
+    const { session, box } = await ready({ post: { [route]: bad } });
+    const out = route === "backupPreview" ? await session.backupPreview("p", "e", "undo")
+      : route === "undo" ? await session.undoAnyway("p", "e", "H") : await session.restore("p", "e", "H");
+    assert.equal(out.kind, "locked", route);
+    assert.equal(session.mode(), "locked");
+    assert.equal((await session.restore("p", "e", "H")).kind, "locked");
+    assert.equal(box.posts.length, 1, "no second POST");
+  }
+});
+
 test("outcomes: a preview drops nothing, whatever it answers", async () => {
   for (const reply of [{ ok: true, status: 200, data: { ok: true } }, { ok: false, status: 500, data: { error: "unverified" } },
     { ok: false, status: 409, data: { error: "raced" } }]) {
@@ -386,7 +454,8 @@ test("api: the edit calls are never cached, dropProjects clears project keys and
   assert.deepEqual(paths, ["/api/edit", "/api/edit", "/api/edit/targets?project=a%20b", "/api/edit/targets?project=a%20b",
     "/api/edit/history?project=a%20b", "/api/edit/history?project=a%20b"]);
   await api.editPreview({ a: 1 }, "t"); await api.editSave({ b: 2 }, "t"); await api.editUndo({ c: 3 }, "t");
-  assert.deepEqual(posts.map((p) => p[0]), ["/api/edit/preview", "/api/edit/save", "/api/edit/undo"]);
+  await api.editBackupPreview({ d: 4 }, "t"); await api.editRestore({ e: 5 }, "t");
+  assert.deepEqual(posts.map((p) => p[0]), ["/api/edit/preview", "/api/edit/save", "/api/edit/undo", "/api/edit/backup-preview", "/api/edit/restore"]);
   paths.length = 0;
   await api.usage("k"); await api.usage("k"); await api.settings("k"); await api.rules(); await api.rules();
   assert.equal(paths.length, 3);
@@ -755,6 +824,24 @@ test("app: after a save, every project's settings and usage are fetched again an
   assert.equal(sent.headers["X-Dashboard-Token"], TOKEN);
   assert.equal(sent.headers["Content-Type"], "application/json");
   assert.deepEqual(sent.body, { project: "p1", target: "tgt", value: "max", base_file: "F", base_trail: "T", base_others: "O" });
+  assert.deepEqual(app.calls.filter((c) => c.url.includes(TOKEN)), []);
+});
+
+test("app: the three backup calls fill in the project, and a write drops the data the same way", async () => {
+  const { app, ctx, before } = await writeScenario();
+  assert.equal((await ctx.edit.backupPreview("edit-1", "restore")).kind, "ok");
+  assert.equal(app.posts[0].path, "/api/edit/backup-preview");
+  assert.deepEqual(app.posts[0].body, { project: "p1", edit: "edit-1", kind: "restore" });
+  assert.equal(app.count("/api/settings", "p1"), before.s1, "a preview drops nothing");
+  assert.equal((await ctx.edit.undoAnyway("edit-1", "HASH")).kind, "ok");
+  assert.equal(app.posts[1].path, "/api/edit/undo");
+  assert.deepEqual(app.posts[1].body, { project: "p1", edit: "edit-1", force: true, base_file: "HASH" });
+  assert.equal(app.count("/api/settings", "p1"), before.s1 + 1);
+  assert.equal((await ctx.edit.restore("edit-2", "HASH2")).kind, "ok");
+  assert.equal(app.posts[2].path, "/api/edit/restore");
+  assert.deepEqual(app.posts[2].body, { project: "p1", edit: "edit-2", base_file: "HASH2" });
+  assert.equal(app.count("/api/settings", "p1"), before.s1 + 2);
+  assert.equal(app.count("/api/usage", "p1"), before.u1 + 2);
   assert.deepEqual(app.calls.filter((c) => c.url.includes(TOKEN)), []);
 });
 

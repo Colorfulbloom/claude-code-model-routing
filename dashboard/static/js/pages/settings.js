@@ -229,6 +229,23 @@ function focusedSetting(root) {
   return null;
 }
 
+// At 1240 and under the rail's foot docks at the window's foot, and the rail pads its end by the foot's height, so a
+// foot that grows with a long result never covers the last lines. The height goes in --s4-foot on the rail (app.css
+// falls back to a fixed padding). One watcher at a time, because the page draws a new foot each render.
+let footWatch = null;
+
+function watchFoot(foot, rail) {
+  if (footWatch) footWatch.disconnect();
+  footWatch = null;
+  if (typeof ResizeObserver === "undefined") return;
+  footWatch = new ResizeObserver(() => {
+    const px = foot.offsetHeight;
+    if (px > 0) rail.style.setProperty("--s4-foot", px + "px");
+    else rail.style.removeProperty("--s4-foot");
+  });
+  footWatch.observe(foot);
+}
+
 export function render(root, ctx) {
   const keep = focusedSetting(root);
   const editKey = editCard.focusKey(); // an edit control that holds focus keeps it across this draw
@@ -253,8 +270,9 @@ export function render(root, ctx) {
     const body = h("div", { class: "s4-body", "data-slot": "body" },
       EDITABLE_SETTINGS.includes(selected) && edit.body ? edit.body : readFrame(ctx, payload, selected));
     const foot = h("div", { class: "s4-rf s5-rf", "data-slot": "foot" }, edit.foot);
-    page.appendChild(h("div", { class: "s5-w" }, body,
-      h("aside", { class: "s4-rail" }, edit.rail || railBody(ctx, payload, selected), foot)));
+    const rail = h("aside", { class: "s4-rail" }, edit.rail || railBody(ctx, payload, selected), foot);
+    page.appendChild(h("div", { class: "s5-w" }, body, rail));
+    watchFoot(foot, rail);
     refitBand();
     edit.done(root, editKey);
   }

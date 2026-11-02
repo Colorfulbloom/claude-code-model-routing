@@ -88,6 +88,8 @@ export function createApi(fetcher = fetchJSON, poster = postJSON) {
     editPreview: (body, token) => poster("/api/edit/preview", body, token),
     editSave: (body, token) => poster("/api/edit/save", body, token),
     editUndo: (body, token) => poster("/api/edit/undo", body, token),
+    editBackupPreview: (body, token) => poster("/api/edit/backup-preview", body, token),
+    editRestore: (body, token) => poster("/api/edit/restore", body, token),
     // Forgets every project's usage: and settings: answer. The shared keys stay.
     dropProjects: () => { perProject.clear(); },
     hasProject: (key) => perProject.has("usage:" + key) && perProject.has("settings:" + key),

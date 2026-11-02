@@ -166,7 +166,7 @@ function diffLine(line, parts) {
 }
 
 // newFile adds the New file tag to the caption, as board a-new of design-settings-6 draws it.
-function diffFigure(diff, target, newFile = false) {
+export function diffFigure(diff, target, newFile = false) {
   const name = basename(diff.file_display);
   const layer = target ? layerText({ layer: target.layer }) : "";
   return h("figure", { class: "p2-df" },
@@ -334,9 +334,17 @@ function closingNotes(pv, w, ledger, fileName, model) {
   if (w) out.push(nt("warn", warningHeading(w), warningParas(w, model)));
   if (ledger) out.push(nt("warn", t("ed_ledger_preview_t", { file: fileName }), []));
   if (pv.op === "remove" && pv.no_effect === true) out.push(nt("warn", t("ed_remove_noeffect_h"), [t("ed_remove_noeffect_t")]));
-  if (pv.op !== "remove" && pv.git_ignore === "not_ignored") out.push(nt("warn", t("ed_git_warn_h"), [t("ed_git_warn_t", { file: fileName })]));
-  if (pv.git_ignore === "unknown") out.push(h("p", { class: "s4-note" }, t("ed_git_unknown", { file: fileName })));
+  const git = gitIgnoreNote(pv.git_ignore, fileName, pv.op !== "remove");
+  if (git) out.push(git);
   return out;
+}
+
+// What git does with the file: a warning when the file is in git (not for a removal, which is the way out), a quiet
+// line when the dashboard can't tell, else null. A backup preview reuses it.
+export function gitIgnoreNote(state, fileName, warn = true) {
+  if (warn && state === "not_ignored") return nt("warn", t("ed_git_warn_h"), [t("ed_git_warn_t", { file: fileName })]);
+  if (state === "unknown") return h("p", { class: "s4-note" }, t("ed_git_unknown", { file: fileName }));
+  return null;
 }
 
 // The review in the rail: the change, what runs, the winner after saving, the exact line and the notes. env.lead is

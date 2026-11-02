@@ -511,6 +511,24 @@ class Run:
     def undo(self, edit_id, key="project"):
         return self.post("/api/edit/undo", self.undo_body(edit_id, key))
 
+    def backup_preview_body(self, edit_id, kind, key="project"):
+        return {"project": key, "edit": edit_id, "kind": kind}
+
+    def backup_preview(self, edit_id, kind, key="project"):
+        return self.post("/api/edit/backup-preview", self.backup_preview_body(edit_id, kind, key))
+
+    def restore_body(self, edit_id, base_file, key="project"):
+        return {"project": key, "edit": edit_id, "base_file": base_file}
+
+    def restore(self, edit_id, base_file, key="project"):
+        return self.post("/api/edit/restore", self.restore_body(edit_id, base_file, key))
+
+    def forced_undo_body(self, edit_id, base_file, key="project"):
+        return dict(self.undo_body(edit_id, key), force=True, base_file=base_file)
+
+    def forced_undo(self, edit_id, base_file, key="project"):
+        return self.post("/api/edit/undo", self.forced_undo_body(edit_id, base_file, key))
+
     def everything(self):
         """Every response body this run saw, plus the server's log, as one string."""
         return b"\n".join(self.bodies).decode("utf-8", "replace") + "\n" + self.proc.stderr()
@@ -631,7 +649,7 @@ class HeaderMatrix(RunCase):
             result = run.raw_post(target, payload, headers, **kwargs)
             self.assert_refused(result, status, error, "%s %s" % (label, name))
             self.assertEqual(run.snap(), before, "%s %s" % (label, name))
-            self.assertFalse(os.path.exists(run.store_folder()) and label != "undo", name)
+            self.assertFalse(os.path.exists(run.store_folder()) and label in ("preview", "save"), name)
 
     def test_every_case_is_refused_on_each_write_route_and_nothing_changes(self):
         run = Run(self, project=SIMPLE)
@@ -654,6 +672,54 @@ class HeaderMatrix(RunCase):
         status, undone = run.undo(saved["edit"]["id"])
         self.assertEqual(status, 200, undone)
         self.assertEqual(run.read("project"), original)
+
+    def test_every_case_is_refused_on_the_backup_routes_and_nothing_changes(self):
+        run = Run(self, project=SIMPLE)
+        original = run.read("project")
+        status, saved = run.save("project", "low")
+        self.assertEqual(status, 200, saved)
+        edit_id = saved["edit"]["id"]
+        by_hand = b'{"effortLevel": "high", "by_hand": true}\n'
+        run.put(run.path("project"), by_hand)
+        status, pv = run.backup_preview(edit_id, "undo")
+        self.assertEqual(status, 200, pv)
+        base = pv["base_file"]
+        before = run.snap()
+        self.run_matrix(run, "/api/edit/backup-preview", run.backup_preview_body(edit_id, "restore"),
+                        "backup-preview")
+        self.run_matrix(run, "/api/edit/restore", run.restore_body(edit_id, base), "restore")
+        self.run_matrix(run, "/api/edit/undo", run.forced_undo_body(edit_id, base), "forced undo")
+        self.assertEqual(run.snap(), before)
+        self.assertEqual(run.read("project"), by_hand)
+        # A preview with a good gate answers and still writes nothing.
+        status, again = run.backup_preview(edit_id, "restore")
+        self.assertEqual(status, 200, again)
+        self.assertEqual(run.snap(), before)
+        # The same forced undo with a good gate writes, so the refusals above held something back.
+        status, done = run.forced_undo(edit_id, base)
+        self.assertEqual(status, 200, done)
+        self.assertEqual(run.read("project"), original)
+        with open(run.real(done["replaced_display"]), "rb") as fh:
+            self.assertEqual(fh.read(), by_hand)
+        run.assert_only(self, before, ["project"])
+
+    def test_a_restore_with_a_good_gate_changes_only_the_target_and_the_store(self):
+        run = Run(self, project=SIMPLE)
+        original = run.read("project")
+        status, saved = run.save("project", "low")
+        self.assertEqual(status, 200, saved)
+        status, pv = run.backup_preview(saved["edit"]["id"], "restore")
+        self.assertEqual(status, 200, pv)
+        before = run.snap()
+        status, done = run.restore(saved["edit"]["id"], pv["base_file"])
+        self.assertEqual(status, 200, done)
+        self.assertEqual(run.read("project"), original)
+        run.assert_only(self, before, ["project"])
+        # a wrong base_file is stale, and writes nothing
+        after = run.snap()
+        status, stale = run.restore(saved["edit"]["id"], "0" * 64)
+        self.assertEqual((status, stale["error"]), (409, "stale"))
+        self.assertEqual(run.snap(), after)
 
     def test_a_refused_request_is_not_logged_with_its_token_or_body(self):
         run = Run(self, project=SIMPLE)

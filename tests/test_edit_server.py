@@ -38,7 +38,8 @@ FIELDS = resolve.load_agent_fields()
 SERVER_PY = os.path.join(helpers.REPO, "dashboard", "server.py")
 STATIC = os.path.join(helpers.REPO, "dashboard", "static")
 ECHO = "/api/edit/echo"
-WRITE_PATHS = ("/api/edit/preview", "/api/edit/save", "/api/edit/undo")
+WRITE_PATHS = ("/api/edit/backup-preview", "/api/edit/preview", "/api/edit/restore", "/api/edit/save",
+               "/api/edit/undo")
 READ_EDIT_PATHS = ("/api/edit", "/api/edit/targets", "/api/edit/history")
 LINK = re.compile(r"http://127\.0\.0\.1:\d+/#/settings\?edit=([A-Za-z0-9_-]{43})")
 LOG_LINE = re.compile(r"^[A-Za-z0-9_-]+ '[^']*' \d{3}$")
@@ -636,6 +637,25 @@ class DefaultLaunch(GateAssertions, unittest.TestCase):
                 self.assertEqual(heads["allow"], "GET, HEAD")
                 self.assertEqual(error_of(data), "method_not_allowed")
         self.assertEqual(ts.hash_tree(self.fixture), before)
+
+    def test_the_backup_routes_write_nothing_without_the_flag_and_the_answers_hold_no_write_handle(self):
+        before = ts.hash_tree(self.fixture)
+        token = secrets.token_urlsafe(32)
+        bodies = (json.dumps({"project": "x", "edit": "0" * 16, "kind": "restore"}).encode(),
+                  json.dumps({"project": "x", "edit": "0" * 16, "base_file": "y"}).encode(),
+                  json.dumps({"project": "x", "edit": "0" * 16, "force": True, "base_file": "y"}).encode())
+        for path in ("/api/edit/backup-preview", "/api/edit/restore", "/api/edit/undo"):
+            for body in bodies:
+                status, heads, data = send(self.port, "POST", path, good_headers(self.port, token), body)
+                self.assertEqual(status, 405, path)
+                self.assertEqual(heads["allow"], "GET, HEAD")
+                self.assertEqual(error_of(data), "method_not_allowed")
+        self.assertEqual(ts.hash_tree(self.fixture), before)
+        for path in ("/api/edit", "/api/edit/history", "/api/edit/targets"):
+            data = send(self.port, "GET", path)[2].decode("utf-8")
+            for handle in ("base_file", "restore_state", "undo_anyway", "backup_display", "restored_from",
+                           "token", "force"):
+                self.assertNotIn(handle, data, (path, handle))
 
     def test_a_get_on_a_write_path_is_a_plain_404(self):
         for path in WRITE_PATHS:
