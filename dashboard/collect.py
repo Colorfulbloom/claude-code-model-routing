@@ -280,7 +280,20 @@ def _merge_into(acc, where, new, new_where, path):
             _take_where(where, child, new_where)
 
 
-def collect_settings(config_dir, project_dir, managed_dir, overlay=None):
+def _merge_local(parts):
+    """Merge the (data, where) of the local files, lowest first, into one pair.
+
+    A list both files set is combined, and its `where` names the root file only
+    (_take_where above), a known limit the docs state.
+    """
+    merged = {}
+    merged_where = {}
+    for data, where in parts:
+        _merge_into(merged, merged_where, data, where, ())
+    return merged, merged_where
+
+
+def collect_settings(config_dir, project_dir, managed_dir, overlay=None, local_path=None):
     """Read the settings files.
 
     Returns {"sources": [...], "files": [...]}. "files" has one record per file
@@ -292,7 +305,15 @@ def collect_settings(config_dir, project_dir, managed_dir, overlay=None):
 
     overlay is {path: bytes}, keyed by the exact path string joined below. A
     file in it is read from the map, not the disk (see _read_settings_file).
+
+    local_path is the local settings file Claude Code uses (#104), as the exact
+    string local_root gives. None, or the project's own .claude/settings.local.json,
+    reads that one file. Otherwise the project's file (the leftover) and local_path
+    (the root file) are both read, each with its own record in "files", and merge
+    into one "local" source with the root file on top.
     """
+    start_local = os.path.join(project_dir, ".claude", "settings.local.json")
+    two_locals = local_path is not None and local_path != start_local
     files = []
     managed = []  # (data, where) of each ok managed file, in merge order
     if managed_dir is not None:
@@ -307,17 +328,32 @@ def collect_settings(config_dir, project_dir, managed_dir, overlay=None):
         if folder_record is not None:
             files.append(folder_record)
     plain = []
+    local_parts = []  # (data, where) of each ok local file, leftover first
+    local_slot = None
     for layer, path in (
-        ("local", os.path.join(project_dir, ".claude", "settings.local.json")),
+        ("local", start_local),
+        ("local", local_path if two_locals else None),
         ("project", os.path.join(project_dir, ".claude", "settings.json")),
         ("user", os.path.join(config_dir, "settings.json")),
     ):
+        if path is None:
+            continue
         record, data, where = _read_settings_file(layer, path, False, overlay)
         if record is None:
             continue
         files.append(record)
-        if data is not None:
+        if data is None:
+            continue
+        if two_locals and layer == "local":
+            local_parts.append((data, where))
+            if local_slot is None:
+                local_slot = len(plain)
+                plain.append(None)
+        else:
             plain.append({"layer": layer, "data": mask(data), "where": where})
+    if local_slot is not None:
+        data, where = _merge_local(local_parts)
+        plain[local_slot] = {"layer": "local", "data": mask(data), "where": where}
     sources = []
     if managed:
         merged = {}
@@ -408,14 +444,16 @@ def collect_rules_files(config_dir, project_dir):
     return out
 
 
-def collect(config_dir, project_dir, managed_dir, shell_env, rules, overlay=None, reuse=None):
+def collect(config_dir, project_dir, managed_dir, shell_env, rules, overlay=None, reuse=None,
+            local_path=None):
     """Run every collector. `rules` is the rules.json document.
 
     overlay is {path: bytes}, passed to collect_settings. reuse is an earlier
     collect() result: its agents and rules_files are taken as they are and those
     two collectors do not run. settings, settings_files and env always run.
+    local_path is passed to collect_settings.
     """
-    settings = collect_settings(config_dir, project_dir, managed_dir, overlay)
+    settings = collect_settings(config_dir, project_dir, managed_dir, overlay, local_path)
     names = [v["name"] for v in rules.get("variables", [])]
     return {
         "settings": settings["sources"],

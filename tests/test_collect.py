@@ -477,6 +477,94 @@ class SettingsFileTests(Tree):
         self.assertEqual(result["files"][0]["path"], os.path.join(self.config, "settings.json"))
 
 
+class TwoLocalFileTests(Tree):
+    """#104: a leftover local file in the project and the root's local file."""
+
+    def setUp(self):
+        super().setUp()
+        self.root_path = os.path.join(self.root, "repo", ".claude", "settings.local.json")
+        self.start_path = os.path.join(self.project, ".claude", "settings.local.json")
+
+    def two(self, overlay=None):
+        return collect.collect_settings(
+            self.config, self.project, self.managed, overlay, self.root_path)
+
+    def test_the_root_wins_a_key_both_set_and_where_names_each_key_file(self):
+        self.write(self.start_path, '{\n  "model": "leftover",\n  "theme": "dark"\n}')
+        self.write(self.root_path, {"model": "root"})
+        self.user({"model": "u"})
+        result = self.two()
+        self.assertEqual(self.layers(result), ["local", "user"])
+        local = self.source(result, "local")
+        self.assertEqual(local["data"], {"model": "root", "theme": "dark"})
+        self.assertEqual(local["where"][("model",)], {"path": self.root_path, "line": 2})
+        self.assertEqual(local["where"][("theme",)], {"path": self.start_path, "line": 3})
+
+    def test_both_files_are_listed_and_the_source_keeps_its_slot(self):
+        self.managed_file({"model": "m"})
+        self.write(self.start_path, {"a": 1})
+        self.write(self.root_path, {"b": 2})
+        proj = self.proj({"c": 3})
+        result = self.two()
+        self.assertEqual(self.layers(result), ["managed", "local", "project"])
+        self.assertEqual(
+            [(f["layer"], f["path"], f["status"]) for f in result["files"] if f["layer"] != "managed"],
+            [("local", self.start_path, "ok"), ("local", self.root_path, "ok"),
+             ("project", proj, "ok")])
+
+    def test_a_nested_model_settings_merge_keeps_both_and_each_where(self):
+        self.write(self.start_path, {
+            "modelSettings": {"claude-opus-5-5": {"effortLevel": "high"}}})
+        self.write(self.root_path, {
+            "modelSettings": {"claude-sonnet-5-5": {"effortLevel": "low"}}})
+        local = self.source(self.two(), "local")
+        self.assertEqual(local["data"]["modelSettings"], {
+            "claude-opus-5-5": {"effortLevel": "high"},
+            "claude-sonnet-5-5": {"effortLevel": "low"}})
+        where = local["where"]
+        self.assertEqual(where[("modelSettings", "claude-opus-5-5", "effortLevel")]["path"],
+                         self.start_path)
+        self.assertEqual(where[("modelSettings", "claude-sonnet-5-5", "effortLevel")]["path"],
+                         self.root_path)
+
+    def test_an_unparsed_root_file_leaves_the_leftover_as_the_source(self):
+        self.write(self.start_path, {"model": "leftover"})
+        self.write(self.root_path, "{ not json")
+        result = self.two()
+        local = self.source(result, "local")
+        self.assertEqual(local["data"], {"model": "leftover"})
+        self.assertEqual(local["where"][("model",)]["path"], self.start_path)
+        status = {f["path"]: f["status"] for f in result["files"]}
+        self.assertEqual(status, {self.start_path: "ok", self.root_path: "unparsed"})
+
+    def test_only_the_root_file_exists(self):
+        self.write(self.root_path, {"model": "root"})
+        result = self.two()
+        self.assertEqual([f["path"] for f in result["files"]], [self.root_path])
+        self.assertEqual(self.source(result, "local")["data"], {"model": "root"})
+
+    def test_a_list_both_set_is_combined_and_where_names_the_root_file(self):
+        self.write(self.start_path, {"permissions": {"allow": ["a"]}})
+        self.write(self.root_path, {"permissions": {"allow": ["b"]}})
+        local = self.source(self.two(), "local")
+        self.assertEqual(local["data"]["permissions"]["allow"], ["a", "b"])
+        self.assertEqual(local["where"][("permissions", "allow")]["path"], self.root_path)
+
+    def test_a_local_path_equal_to_the_start_path_behaves_as_before(self):
+        self.write(self.start_path, {"model": "l"})
+        plain = self.settings()
+        same = collect.collect_settings(
+            self.config, self.project, self.managed, None, str(self.start_path))
+        self.assertEqual(same, plain)
+        self.assertEqual([f["path"] for f in same["files"]], [self.start_path])
+
+    def test_collect_passes_local_path_through(self):
+        self.write(self.root_path, {"model": "root"})
+        got = collect.collect(self.config, self.project, self.managed, {}, load_rules(),
+                              local_path=self.root_path)
+        self.assertEqual(got["settings"][0]["where"][("model",)]["path"], self.root_path)
+
+
 class EnvTests(Tree):
     NAMES = ["ANTHROPIC_MODEL", "CLAUDE_CODE_EFFORT_LEVEL"]
 

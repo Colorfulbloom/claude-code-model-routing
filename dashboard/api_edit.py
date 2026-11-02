@@ -17,6 +17,14 @@ request, only a setting name that is checked against the table.
 An undo anyway and a restore each follow a backup preview and carry its base_file, the HMAC of the
 file the owner saw. A restore counts as an undo under the repo lock, so neither new route consults it.
 
+The local layer is the repo root's .claude/settings.local.json (#104), worked out once per request by
+local_root.for_project and held in the view (view.local). When the root is not the project folder, the
+project's own settings.local.json is the leftover file: its lines show, blocked as "start_local", and new
+lines go to the root file. The edit lock "not_repo_root" applies only when the root can't be worked out
+("unknown"). A save recomputes the root under the store's lock and refuses a moved root as stale. The
+history and the undo routes also reach the leftover file's old rows, and every project that shares a root
+file shows that file's rows.
+
 Nothing here writes. Every write goes through edit_store.Store. The answers come
 from the real resolver run over overlays (api_settings.resolved), never from a
 second copy of the precedence rules. The server keeps no preview: a save
@@ -37,6 +45,7 @@ import collect
 import edit_store
 import git_check
 import json_edit
+import local_root
 import projects
 import resolve
 import rules_schema
@@ -344,15 +353,15 @@ class _Target:
 class _View:
     """One reading of a project: its entries, the main row of one setting, and the targets and blocked rows."""
 
-    def __init__(self, ctx, listing, project, overlay, setting=SETTING):
+    def __init__(self, ctx, listing, project, overlay, setting=SETTING, local=None):
         self.ctx = ctx
         self.setting = SETTINGS[setting]
         self._cap_view = None
         self.listing = listing
         self.project = project
         self.overlay = overlay
+        self.local = local  # the project's local_root.Local, worked out once per request
         self.missing = False
-        self.repo_locked = False
         self.entries = []
         self.collected = None
         self.effort = []  # the main effort row, whatever the setting
@@ -373,7 +382,8 @@ class _View:
     def cap_view(self):
         """Return the view of the same project for the maxEffortLevel setting, built once."""
         if self._cap_view is None:
-            self._cap_view = _view(self.ctx, self.listing, self.project, self.overlay, CAP, reuse=self.collected)
+            self._cap_view = _view(self.ctx, self.listing, self.project, self.overlay, CAP, reuse=self.collected,
+                                   local=self.local)
         return self._cap_view
 
     def find(self, target_id):
@@ -415,8 +425,14 @@ def _classify(view, entry):
         return
     key = view.setting.key
     key_path = None if entry.get("path") else (key,)
+    local = view.local
+    if layer == "local" and local.leftover and entry.get("file") == _display(ctx, local.start_path):
+        # The starting folder's file is read-only. It shares a target id with the root file, so it adds
+        # no blocked_ids entry: that would lock the root file's line too.
+        _block(view, entry, "start_local")
+        return
     try:
-        target = edit_store.target_for(ctx, view.project.key, layer)
+        target = edit_store.target_for(ctx, view.project.key, layer, local)
         if view.overlay is not None and target.path in view.overlay:
             raw = view.overlay[target.path]
         else:
@@ -447,35 +463,29 @@ def _classify(view, entry):
     if not _key_allowed(key_path, key) or _display(ctx, target.path) != entry.get("file"):
         _block(view, entry, "unparsed", key_path)
         return
-    if view.repo_locked:
+    if local.locked:
         _block(view, entry, "not_repo_root", key_path)
         return
     view.targets.append(_Target(layer, key_path, target, raw, entry))
 
 
-def _repo_locked(project):
-    """True when the project is a repo subfolder, a worktree or a submodule: every write locks.
-
-    Claude Code reads settings.local.json at the repo root, so a root file the dashboard
-    can't see could beat any line written here. An unexpanded path is not walked.
-    """
-    if project.unexpanded:
-        return False
-    return git_check.repo_place(project.path) in ("subfolder", "linked")
-
-
-def _view(ctx, listing, project, overlay=None, setting=SETTING, reuse=None):
+def _view(ctx, listing, project, overlay=None, setting=SETTING, reuse=None, local=None):
     """Return the _View of one project for one setting. overlay is {path: bytes}, as for collect.
 
     reuse is the collected data of an earlier view of the same project, so the files are not read again.
+    local is the project's local_root.Local, worked out here once per view when None, so the whole
+    view (the entries, every target and every file row) sees one root. Claude Code reads
+    settings.local.json at the repo root, so a write targets that file, and a project whose root can't
+    be worked out ("unknown") locks every write (view.local.locked).
     """
-    view = _View(ctx, listing, project, overlay, setting)
+    if local is None:
+        local = local_root.for_project(ctx, project)
+    view = _View(ctx, listing, project, overlay, setting, local)
     if project.state == projects.STATE_MISSING and not project.implicit:
         view.missing = True
         return view
-    view.repo_locked = _repo_locked(project)
     view.entries, view.collected = api_settings.resolved(ctx, project, overlay=overlay, listing=listing,
-                                                         reuse=reuse)
+                                                         reuse=reuse, local=local)
     view.effort = _effort_row(view.entries)
     view.row = _main_row(view.entries, view.setting.key)
     for entry in view.effort:
@@ -604,7 +614,8 @@ def _simulation(view, target, key, make_raw):
             overlay = dict(view.overlay or {})
             overlay[target.path] = new_raw
             entries, _collected = api_settings.resolved(
-                view.ctx, view.project, overlay=overlay, listing=view.listing, reuse=view.collected)
+                view.ctx, view.project, overlay=overlay, listing=view.listing, reuse=view.collected,
+                local=view.local)
             view.sims[key] = entries
     return view.sims[key]
 
@@ -627,10 +638,11 @@ def _order(view, winner):
     return first + rest
 
 
-def _file_row(layer, file_display, state, line=None, value=None, status=None, target=None, lock_reason=None):
+def _file_row(layer, file_display, state, line=None, value=None, status=None, target=None, lock_reason=None,
+              outside_project=False):
     return {"layer": layer, "file_display": file_display, "state": state, "line": line, "value": value,
             "status": status, "target": target, "shared": layer == "project",
-            "lock_reason": lock_reason}
+            "lock_reason": lock_reason, "outside_project": outside_project}
 
 
 def _modelsettings_locked(view, data):
@@ -652,28 +664,29 @@ def _modelsettings_locked(view, data):
 def _empty_file_row(view, layer):
     """Return the file row of a layer that has no entry on the main trail of the setting."""
     ctx = view.ctx
+    outside = layer == "local" and view.local.outside_project
     try:
-        target = edit_store.target_for(ctx, view.project.key, layer)
+        target = edit_store.target_for(ctx, view.project.key, layer, view.local)
     except edit_store.Refused as exc:
-        return _file_row(layer, None, "locked", lock_reason=exc.code)
+        return _file_row(layer, None, "locked", lock_reason=exc.code, outside_project=outside)
     display = _display(ctx, target.path)
     try:
         raw = edit_store.read_target(target)
     except edit_store.Refused as exc:
         if exc.code != "file_missing":
-            return _file_row(layer, display, "locked", lock_reason=exc.code)
+            return _file_row(layer, display, "locked", lock_reason=exc.code, outside_project=outside)
         if not os.path.lexists(target.base):
-            return _file_row(layer, display, "locked", lock_reason="file_missing")
-        return _file_row(layer, display, "absent")
+            return _file_row(layer, display, "locked", lock_reason="file_missing", outside_project=outside)
+        return _file_row(layer, display, "absent", outside_project=outside)
     except OSError:
-        return _file_row(layer, display, "locked", lock_reason="unparsed")
+        return _file_row(layer, display, "locked", lock_reason="unparsed", outside_project=outside)
     try:
         _text, data = json_edit.parse_strict(raw)  # for the lock reason only, never for a value
     except json_edit.Refused:
-        return _file_row(layer, display, "locked", lock_reason="unparsed")
+        return _file_row(layer, display, "locked", lock_reason="unparsed", outside_project=outside)
     if view.setting.model_path and _modelsettings_locked(view, data):
-        return _file_row(layer, display, "locked", lock_reason="parent_not_object")
-    return _file_row(layer, display, "no_line")
+        return _file_row(layer, display, "locked", lock_reason="parent_not_object", outside_project=outside)
+    return _file_row(layer, display, "no_line", outside_project=outside)
 
 
 def _file_states(view):
@@ -681,26 +694,32 @@ def _file_states(view):
 
     A row says whether the file holds a line of the setting (has_line), holds none (no_line), is not
     there yet (absent) or can't be edited (locked). A value comes only from the trail, which is
-    masked, never from the file itself.
+    masked, never from the file itself. The local row is the root file: an entry of the read-only
+    leftover file never makes it, so a winning leftover line can't lock the root row's Add. Only the
+    local row can be outside_project.
     """
     if view.missing:
         return []
     by_ref = {t.ref: t for t in view.targets}
+    local_file = _display(view.ctx, view.local.path)
     rows = []
     for layer in sorted(edit_store.LAYERS, key=LAYER_ORDER.get):
-        entries = [e for e in view.row if e["layer"] == layer]
+        entries = [e for e in view.row if e["layer"] == layer and (layer != "local" or e.get("file") == local_file)]
+        outside = layer == "local" and view.local.outside_project
         found = next((e for e in entries if ref_of(e) in by_ref), None)
         if found is not None:
             rows.append(_file_row(layer, found.get("file"), "has_line", found.get("line"),
-                                  _masked(found.get("value"), found["key"]), found["status"], by_ref[ref_of(found)].id))
+                                  _masked(found.get("value"), found["key"]), found["status"], by_ref[ref_of(found)].id,
+                                  outside_project=outside))
         elif entries:
             first = entries[0]
             rows.append(_file_row(layer, first.get("file"), "locked", first.get("line"),
                                   _masked(first.get("value"), first["key"]), first["status"],
-                                  lock_reason=view.blocked_refs.get(ref_of(first), "unparsed")))
+                                  lock_reason=view.blocked_refs.get(ref_of(first), "unparsed"),
+                                  outside_project=outside))
         else:
             rows.append(_empty_file_row(view, layer))
-    if view.repo_locked:
+    if view.local.locked:
         for row in rows:
             row["lock_reason"] = "not_repo_root"
             row["target"] = None
@@ -740,9 +759,9 @@ def _make_adds(view):
     """Return the adds: a line to put in a file that holds none, tried at the top level, then under the model.
 
     The file is read again from the overlay or the disk. An absent file (raw None) gives creates.
-    Nothing is added to a locked row or in a repo subfolder, and a file that no longer parses gives none.
+    Nothing is added to a locked row or when the repo root is unknown, and a file that no longer parses gives none.
     """
-    if view.repo_locked or view.missing:
+    if view.local.locked or view.missing:
         return []
     ctx = view.ctx
     out = []
@@ -751,7 +770,7 @@ def _make_adds(view):
             continue
         layer = row["layer"]
         try:
-            target = edit_store.target_for(ctx, view.project.key, layer)
+            target = edit_store.target_for(ctx, view.project.key, layer, view.local)
             if view.overlay is not None and target.path in view.overlay:
                 raw = view.overlay[target.path]
             else:
@@ -1129,16 +1148,17 @@ class _Preview:
         self.layers = layers
 
 
-def _others(ctx, project, edited):
-    """Return ({display path: hash or marker}, {display path: layer}) for every other settings file."""
+def _others(ctx, view, edited):
+    """Return ({display path: hash or marker}, {display path: layer}) for every other settings file.
+
+    A file is the edited one when its path is the edited path, not when its layer is the edited layer: the
+    leftover file of a root edit has layer "local" too, and it is one of the others. Managed files stay.
+    """
     found = []
-    for layer in edit_store.LAYERS:
-        if layer == edited.layer:
+    for layer, target, _leftover in edit_store.project_files(ctx, view.project.key, view.local):
+        if target.path == edited.store_target.path:
             continue
-        try:
-            found.append((layer, edit_store.target_for(ctx, project.key, layer).path))
-        except edit_store.Refused:
-            continue
+        found.append((layer, target.path))
     if ctx.managed_dir is not None:
         for path in collect._managed_paths(ctx.managed_dir)[0]:
             found.append(("managed", path))
@@ -1308,10 +1328,11 @@ def _preview(ctx, view, edited, value, action="set"):
     new_raw = _removed_raw(edited) if remove else _new_raw(edited, value)
     no_change = new_raw == edited.raw  # a create has no raw, so it is never no change
     before = api_settings.answer(ctx, view.listing, view.project, overlay=view.overlay,
-                                 reuse=view.collected)
+                                 reuse=view.collected, local=view.local)
     overlay = dict(view.overlay or {})
     overlay[edited.path] = new_raw
-    after = api_settings.answer(ctx, view.listing, view.project, overlay=overlay, reuse=view.collected)
+    after = api_settings.answer(ctx, view.listing, view.project, overlay=overlay, reuse=view.collected,
+                                local=view.local)
     warning = None if remove else _warning(view, edited, value, before, after)
     key = view.setting.key
     runs_before = _masked(view.setting.runs_as(view, before["entries"]), key)
@@ -1322,8 +1343,10 @@ def _preview(ctx, view, edited, value, action="set"):
     if line is None:  # an add: the line the trail gives it after the edit
         line = next((item.get("line") for item in _main_row(after["entries"], key)
                      if ref_of(item) == edited.ref), None)
-    trail = json.dumps({"before": before["entries"], "after": after["entries"]}, sort_keys=True)
-    others, layers = _others(ctx, view.project, edited)
+    # The local file is part of the trail, so a create aimed at a root that moved since the preview is refused.
+    trail = json.dumps({"before": before["entries"], "after": after["entries"],
+                        "local_file": _display(ctx, view.local.path)}, sort_keys=True)
+    others, layers = _others(ctx, view, edited)
     payload = {
         "setting": key,
         "target": edited.id,
@@ -1346,6 +1369,7 @@ def _preview(ctx, view, edited, value, action="set"):
         "line": line,
         "ref": edited.ref,
         "git_ignore": None,  # filled by _with_git, outside the store's lock
+        "outside_project": edited.layer == "local" and view.local.outside_project,
         "new_file": edited.op == "create",
         "creates_dir": edited.op == "create" and _folder_missing(edited.store_target),
         "ledger_damaged": _ledger_damaged(ctx.edit.store, edited.store_target),
@@ -1559,11 +1583,13 @@ def _backup_gate(ctx, base_file):
     return gate
 
 
-def _backup_preview(ctx, listing, project, target, row, kind):
+def _backup_preview(ctx, listing, project, target, row, kind, local=None):
     """Return the payload of putting a row's backup back, as an undo anyway or a restore. Reads only.
 
     It makes no folder and no file. The runs are None under a repo lock, and a current file that
-    does not parse has no diff (file_unparsed), because the restore still runs over it.
+    does not parse has no diff (file_unparsed), because the restore still runs over it. The repo lock
+    is the view's: a root that can't be worked out ("unknown"). local is the request's Local, worked
+    out once by the route; None works it out here.
     """
     store = ctx.edit.store
     reason, data = store.backup_state(target, row)
@@ -1590,14 +1616,14 @@ def _backup_preview(ctx, listing, project, target, row, kind):
     key_path = list(row.get("key_path") or [])
     name = key_path[-1] if key_path else None
     setting = name if name in SETTINGS else SETTING  # the runs are the edited setting's, an old row's effort
-    view = _view(ctx, listing, project, setting=setting)
+    view = _view(ctx, listing, project, setting=setting, local=local)
     runs_before = runs_after = None
-    if not (view.missing or view.repo_locked):
+    if not (view.missing or view.local.locked):
         runs_before = _masked(view.runs_as, setting)
         # the {} stands for the deleted file, because an overlay path counts as present
         overlay = {target.path: b"{}" if data is None else data}
         entries, _collected = api_settings.resolved(ctx, project, overlay=overlay, listing=listing,
-                                                    reuse=view.collected)
+                                                    reuse=view.collected, local=view.local)
         runs_after = _masked(view.setting.runs_as(view, entries), setting)
     current = edit_store.ABSENT if raw is None else hashlib.sha256(raw).hexdigest()
     payload = {
@@ -1619,7 +1645,7 @@ def _backup_preview(ctx, listing, project, target, row, kind):
         "base_file": _base_file(ctx, raw),
         "runs_before": runs_before,
         "runs_after": runs_after,
-        "repo_locked": view.repo_locked,
+        "repo_locked": view.local.locked,
         "git_ignore": None,  # filled by _with_git, outside any lock
     }
     for field, value in (("old_value", _value_in(raw, key_path)), ("new_value", _value_in(data, key_path))):
@@ -1632,7 +1658,8 @@ class _Request:
     """What an answer for a store exception needs to know about its request."""
 
     def __init__(self, ctx, listing, project, target=None, value=None, undo=False, action="set",
-                 backup=None, setting=SETTING):
+                 backup=None, setting=SETTING, local=None):
+        self.local = local  # the request's local_root.Local, when a backup route worked it out
         self.setting = setting  # the key of the setting a save edits
         self.ctx = ctx
         self.listing = listing
@@ -1649,14 +1676,18 @@ def _store_target(req):
     return req.target.store_target if isinstance(req.target, _Target) else req.target
 
 
-def _with_git(ctx, project, payload):
+def _with_git(ctx, base, payload):
     """Add the git-ignore result to a preview of the local file, and return it.
+
+    base is the folder that holds the file's .claude folder: the store Target's base. That is the repo
+    root for a root file, and the starting folder for a backup preview of the leftover file, never
+    project.path. A base of None leaves git_ignore None.
 
     It starts a child process, so a route calls it, never _preview: _preview also runs inside
     save's plan, under the store's lock. It stays out of the base hashes, because it is advice.
     """
-    if payload is not None and payload.get("layer") == "local":
-        payload["git_ignore"] = git_check.ignore_state(project.path, ctx.path_env, ctx.home,
+    if payload is not None and base is not None and payload.get("layer") == "local":
+        payload["git_ignore"] = git_check.ignore_state(base, ctx.path_env, ctx.home,
                                                        ctx.shell_env.get("XDG_CONFIG_HOME"))
     return payload
 
@@ -1670,8 +1701,9 @@ def _fresh_preview(req):
             row = req.ctx.edit.store.find(target, edit_id)
             if row is None:
                 return None
-            return _with_git(req.ctx, req.project,
-                             _backup_preview(req.ctx, req.listing, req.project, target, row, kind))
+            return _with_git(req.ctx, target.base,
+                             _backup_preview(req.ctx, req.listing, req.project, target, row, kind,
+                                             local=req.local))
         except (_Answer, json_edit.Refused, edit_store.StoreError):
             return None
     remove = req.action == "remove"
@@ -1682,7 +1714,8 @@ def _fresh_preview(req):
         found = view.find(req.target.id)
         if remove and found.entry is None:
             return None  # the line went, so there is nothing left to remove
-        return _with_git(req.ctx, req.project, _preview(req.ctx, view, found, req.value, req.action).payload)
+        return _with_git(req.ctx, found.store_target.base,
+                         _preview(req.ctx, view, found, req.value, req.action).payload)
     except (_Answer, json_edit.Refused, edit_store.StoreError):
         return None
 
@@ -1691,8 +1724,9 @@ def _store_answer(req, exc):
     """Return (status, payload) for an exception from the store, json_edit or a signal."""
     ctx = req.ctx
     if isinstance(exc, _StaleSignal):
+        base = None if req.target is None else _store_target(req).base
         return 409, {"error": "stale", "changed": exc.changed, "changed_files": exc.files,
-                     "preview": _with_git(ctx, req.project, exc.preview)}
+                     "preview": _with_git(ctx, base, exc.preview)}
     if isinstance(exc, json_edit.Refused):
         if exc.code == "oracle_failed":
             return 500, {"error": "write_failed", "file_unchanged": True}
@@ -1840,7 +1874,8 @@ def _editable_view(ctx, listing, project, target_id, setting=SETTING):
 # ---------------------------------------------------------------- routes
 
 def _project_lock(view):
-    return "not_repo_root" if view.repo_locked else None
+    """Return "not_repo_root" when the repo root can't be worked out (every write locks), else None."""
+    return "not_repo_root" if view.local.locked else None
 
 
 def _read_only(view, project, file_rows):
@@ -1898,7 +1933,7 @@ def preview(ctx, body):
         view, edited = _editable_view(ctx, listing, project, target_id, setting)
         if action == "set":
             _require_pickable(view, edited, value)
-        return 200, _with_git(ctx, project, _preview(ctx, view, edited, value, action).payload)
+        return 200, _with_git(ctx, edited.store_target.base, _preview(ctx, view, edited, value, action).payload)
     except _CAUGHT as exc:
         if isinstance(exc, _Answer):
             return exc.status, exc.body
@@ -1939,6 +1974,10 @@ def save(ctx, body):
                                setting=setting)
             try:
                 fresh = fresh_view.find(target_id)
+                if fresh.store_target.path != edited.store_target.path:
+                    # The repo root moved since the page loaded, so the target is another file now.
+                    raise _StaleSignal("file", [{"layer": edited.layer, "file_display": _display(
+                        ctx, edited.store_target.path)}], None)
             except _Answer:
                 if raw is None and base_file != _base_file(ctx, None):
                     # The file went, and the target it held (an alias name, say) is not offered for a create.
@@ -1981,17 +2020,21 @@ def save(ctx, body):
         return _store_answer(req, exc)
 
 
-def _find_edit(ctx, project, edit_id):
-    """Return (store Target, row) of the visible row with this id in one of the project's three files.
+def _find_edit(ctx, project, edit_id, local=None):
+    """Return (store Target, row) of the visible row with this id in one of the project's settings files.
+
+    The files are edit_store.project_files: user, project, local, and the leftover local file when the
+    root is elsewhere. Rows of the root file are shared by every project with that root.
+
+    local is the request's Local; None lets project_files work it out.
 
     Raises LedgerDamaged when a ledger that can't be read might hold it, else a 404 unknown_edit.
     """
     store = ctx.edit.store
     found = None
     damaged = None
-    for layer in edit_store.LAYERS:
+    for _layer, target, _leftover in edit_store.project_files(ctx, project.key, local):
         try:
-            target = edit_store.target_for(ctx, project.key, layer)
             row = store.find(target, edit_id)
             if row is not None:
                 found = (target, row)
@@ -2041,9 +2084,10 @@ def undo(ctx, body):
         if forced and not isinstance(base_file, str):
             raise _Answer(400, {"error": "bad_request"})
         store = ctx.edit.store
-        found, _row = _find_edit(ctx, project, edit_id)
+        local = local_root.for_project(ctx, project)
+        found, _row = _find_edit(ctx, project, edit_id, local)
         req = _Request(ctx, listing, project, found, undo=True,
-                       backup=(edit_id, "undo") if forced else None)
+                       backup=(edit_id, "undo") if forced else None, local=local)
         if forced:
             restored = store.restore(found, edit_id, _undo_rule, force=True,
                                      gate=_backup_gate(ctx, base_file), value_of=_value_in)
@@ -2072,8 +2116,9 @@ def restore(ctx, body):
         if not all(isinstance(value, str) for value in (project_key, edit_id, base_file)):
             raise _Answer(400, {"error": "bad_request"})
         listing, project = _pick(ctx, [project_key])
-        found, _row = _find_edit(ctx, project, edit_id)
-        req = _Request(ctx, listing, project, found, undo=True, backup=(edit_id, "restore"))
+        local = local_root.for_project(ctx, project)
+        found, _row = _find_edit(ctx, project, edit_id, local)
+        req = _Request(ctx, listing, project, found, undo=True, backup=(edit_id, "restore"), local=local)
         restored = ctx.edit.store.restore(found, edit_id, None, force=True, kind="restore",
                                           gate=_backup_gate(ctx, base_file), value_of=_value_in)
         return 200, _restored_answer(ctx, listing, project, found, restored, True)
@@ -2092,10 +2137,12 @@ def backup_preview(ctx, body):
         edit_id, kind = body.get("edit"), body.get("kind")
         if not isinstance(edit_id, str) or not isinstance(kind, str) or kind not in ("undo", "restore"):
             raise _Answer(400, {"error": "bad_request"})
-        target, row = _find_edit(ctx, project, edit_id)
+        local = local_root.for_project(ctx, project)
+        target, row = _find_edit(ctx, project, edit_id, local)
         if kind == "undo":
             _undo_rule(ctx.edit.store.rows(target), row)
-        return 200, _with_git(ctx, project, _backup_preview(ctx, listing, project, target, row, kind))
+        return 200, _with_git(ctx, target.base,
+                              _backup_preview(ctx, listing, project, target, row, kind, local=local))
     except _CAUGHT as exc:
         if isinstance(exc, _Answer):
             return exc.status, exc.body
@@ -2103,7 +2150,11 @@ def backup_preview(ctx, body):
 
 
 def history(ctx, query):
-    """GET /api/edit/history: the ledgers of the project's three files, newest first."""
+    """GET /api/edit/history: the ledgers of the project's settings files, newest first.
+
+    The files are edit_store.project_files, so the leftover local file's old rows show, and a project
+    that shares its root file with another shows that file's rows with no label of where they were saved.
+    """
     if ctx.edit is None:
         return 200, {"enabled": False}
     try:
@@ -2113,11 +2164,7 @@ def history(ctx, query):
     store = ctx.edit.store
     found = []
     damaged = []
-    for layer in edit_store.LAYERS:
-        try:
-            target = edit_store.target_for(ctx, project.key, layer)
-        except edit_store.Refused:
-            continue
+    for layer, target, _leftover in edit_store.project_files(ctx, project.key):
         if _ledger_damaged(store, target):
             damaged.append({"layer": layer, "file_display": _display(ctx, target.path),
                             "ledger_display": _display(ctx, store.ledger_path(target))})

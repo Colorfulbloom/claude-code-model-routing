@@ -37,8 +37,32 @@ class SandboxError(Exception):
     pass
 
 
+def _refuse_git_tree(folder):
+    """Raise RuntimeError when folder, or any folder above its real path, holds a .git entry.
+
+    After #104 a project path inside a git work tree resolves to that repo's real
+    .claude/settings.local.json, so a test base must never sit in one.
+    """
+    here = os.path.realpath(folder)
+    while True:
+        try:
+            os.lstat(os.path.join(here, ".git"))
+        except (FileNotFoundError, NotADirectoryError):
+            pass
+        except OSError:
+            raise RuntimeError("refusing to run: cannot rule out a git repo at %s" % here)
+        else:
+            raise RuntimeError("refusing to run: the test temp base %s sits inside a git work tree at %s"
+                               % (folder, here))
+        parent = os.path.dirname(here)
+        if parent == here:
+            return
+        here = parent
+
+
 def _tmp_base():
     base = os.environ.get("MR_TEST_TMP") or None
+    _refuse_git_tree(base or tempfile.gettempdir())
     if base:
         os.makedirs(base, exist_ok=True)
     return base

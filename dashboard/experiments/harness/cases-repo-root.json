@@ -1,0 +1,62 @@
+[
+ {
+  "name": "rr-subfolder",
+  "cwd": "nested",
+  "git_init": true,
+  "prompt": "/effort status",
+  "start_project": {"model": "claude-opus-5-5"},
+  "local": {"effortLevel": "low"},
+  "start_local": {"effortLevel": "high"},
+  "expect": "low"
+ },
+ {
+  "name": "rr-worktree",
+  "cwd": "worktree",
+  "prompt": "/effort status",
+  "start_project": {"model": "claude-opus-5-5"},
+  "local": {"effortLevel": "low"},
+  "start_local": {"effortLevel": "high"},
+  "expect": "low"
+ },
+ {
+  "name": "rr-submodule-nested",
+  "cwd": "submodule_nested",
+  "prompt": "/effort status",
+  "start_project": {"model": "claude-opus-5-5"},
+  "local": {"effortLevel": "low"},
+  "sub_local": {"effortLevel": "medium"},
+  "start_local": {"effortLevel": "high"},
+  "expect": "medium"
+ },
+ {
+  "name": "rr-nested-ms-diff",
+  "cwd": "nested",
+  "git_init": true,
+  "prompt": "/effort status",
+  "start_project": {"model": "claude-opus-5-5"},
+  "local": {"modelSettings": {"claude-sonnet-5-5": {"effortLevel": "low"}}},
+  "start_local": {"modelSettings": {"claude-opus-5-5": {"effortLevel": "high"}}},
+  "expect": "high"
+ },
+ {
+  "name": "rr-nested-ms-same",
+  "cwd": "nested",
+  "git_init": true,
+  "prompt": "/effort status",
+  "start_project": {"model": "claude-opus-5-5"},
+  "local": {"modelSettings": {"claude-opus-5-5": {}}},
+  "start_local": {"modelSettings": {"claude-opus-5-5": {"effortLevel": "high"}}},
+  "expect": "high"
+ },
+ {
+  "name": "rr-home-root",
+  "cwd": "nested",
+  "git_init": true,
+  "home_is_root": true,
+  "prompt": "/effort status",
+  "start_project": {"model": "claude-opus-5-5"},
+  "local": {"effortLevel": "low"},
+  "start_local": {"effortLevel": "high"},
+  "expect": "high"
+ }
+]

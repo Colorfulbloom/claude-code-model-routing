@@ -19,6 +19,7 @@ sys.path.insert(0, os.path.join(helpers.REPO, "dashboard"))
 sys.path.insert(0, os.path.join(helpers.FIXTURES, "demo"))
 import api_settings  # noqa: E402
 import collect  # noqa: E402
+import local_root  # noqa: E402
 import build_demo  # noqa: E402
 import projects  # noqa: E402
 import resolve  # noqa: E402
@@ -32,7 +33,7 @@ ROUTE = server.ROUTES["/api/settings"]
 ANSWER_KEYS = {
     "project", "state", "entries", "no_user_settings", "shell_label", "path_display",
     "config_dir_display", "config_file_display", "models", "rows", "rules", "files", "installed", "attention",
-    "attention_equal"}
+    "attention_equal", "local_file_display"}
 REFERENCE_PAGE = os.path.join(helpers.REPO, "docs", "rules-reference.md")
 REFERENCE_URL = "https://github.com/Colorfulbloom/claude-code-model-routing/blob/main/docs/rules-reference.md"
 EXPERIMENT_BASE = "https://github.com/Colorfulbloom/claude-code-model-routing/blob/main/dashboard/"
@@ -114,6 +115,87 @@ class EveryFixture(unittest.TestCase):
         folder = os.path.join(FIXTURE_DIR, "settings-user-not-json-skipped")
         payload = call(context(folder))[1]
         self.assertIs(payload["no_user_settings"], False)
+
+
+class RootLocal(unittest.TestCase):
+    """#104: the local file Claude Code reads can sit at the repo root."""
+
+    def build(self):
+        root = new_dir(self)
+        config = os.path.join(root, "config")
+        project = os.path.join(root, "work")
+        os.makedirs(project)
+        write_json(os.path.join(config, projects.CONFIG_FILE),
+                   {"projects": [{"name": "Listed", "path": project}]})
+        write_json(os.path.join(config, "settings.json"), {"model": "claude-opus-5-5"})
+        self.start = os.path.join(project, ".claude", "settings.local.json")
+        self.root_file = os.path.join(root, "repo", ".claude", "settings.local.json")
+        write_json(self.start, {"model": "claude-sonnet-5-5"})
+        write_json(self.root_file, {"model": "claude-haiku-5"})
+        self.local = local_root.Local(
+            "worktree", os.path.join(root, "repo"), self.root_file, project, self.start,
+            True, False, True)
+        return context(root, config_dir=config, project_dir=project)
+
+    def test_a_passed_local_makes_the_entries_carry_the_root_file(self):
+        ctx = self.build()
+        listing = projects.load(ctx)
+        project = listing.find("listed")
+        payload = api_settings.answer(ctx, listing, project, local=self.local)
+        local_entries = [e for e in payload["entries"]
+                         if e["key"] == "model" and e["layer"] == "local"]
+        self.assertTrue(local_entries)
+        self.assertEqual(
+            {e["file"] for e in local_entries}, {api_settings._display(ctx, self.root_file)})
+        files = [f["path"] for f in payload["files"] if f["layer"] == "local"]
+        self.assertEqual(files, [api_settings._display(ctx, self.start),
+                                 api_settings._display(ctx, self.root_file)])
+
+    def test_local_file_display_names_the_root_file_only_for_a_leftover(self):
+        ctx = self.build()
+        listing = projects.load(ctx)
+        project = listing.find("listed")
+        payload = api_settings.answer(ctx, listing, project, local=self.local)
+        self.assertEqual(payload["local_file_display"], api_settings._display(ctx, self.root_file))
+        own = self.local._replace(leftover=False, path=self.start, outside_project=False)
+        self.assertIsNone(api_settings.answer(ctx, listing, project, local=own)["local_file_display"])
+
+    def test_local_file_display_of_a_subfolder_project_of_a_real_repo(self):
+        ctx = self.build()
+        root = ctx.root
+        repo = os.path.join(root, "repo")
+        sub = os.path.join(repo, "sub")
+        os.makedirs(os.path.join(repo, ".git"))
+        os.makedirs(sub)
+        other = os.path.join(root, "plain")
+        os.makedirs(other)
+        write_json(os.path.join(ctx.config_dir, projects.CONFIG_FILE),
+                   {"projects": [{"name": "Sub", "path": sub}, {"name": "Plain", "path": other},
+                                 {"name": "Top", "path": repo}]})
+        ctx = dataclasses.replace(ctx, claude_version="2.1.211", root=root)
+        listing = projects.load(ctx)
+        shown = {key: api_settings.answer(ctx, listing, listing.find(key))["local_file_display"]
+                 for key in ("sub", "plain", "top")}
+        self.assertEqual(shown["sub"], api_settings._display(ctx, os.path.join(repo, ".claude", "settings.local.json")))
+        self.assertIsNone(shown["plain"])
+        self.assertIsNone(shown["top"])
+
+    def test_a_missing_folder_answer_has_no_local_file_display(self):
+        ctx = self.build()
+        gone = os.path.join(ctx.root, "gone")
+        write_json(os.path.join(ctx.config_dir, projects.CONFIG_FILE), {"projects": [{"name": "Gone", "path": gone}]})
+        listing = projects.load(ctx)
+        payload = api_settings.answer(ctx, listing, listing.find("gone"))
+        self.assertEqual(payload["state"], "missing_folder")
+        self.assertIsNone(payload["local_file_display"])
+
+    def test_no_local_calls_for_project_once(self):
+        ctx = self.build()
+        listing = projects.load(ctx)
+        project = listing.find("listed")
+        with mock.patch.object(local_root, "for_project", return_value=self.local) as patched:
+            api_settings.answer(ctx, listing, project)
+        patched.assert_called_once_with(ctx, project)
 
 
 class ProjectStates(unittest.TestCase):

@@ -182,9 +182,11 @@ export function renderGuards(container, ctx) {
     return null;
   }
   if (payload.state === "no_claude_folder") {
-    container.appendChild(emptyState(t("es_noclaude_h"), t("es_noclaude_t", {
-      path: payload.path_display, config_dir: payload.config_dir_display,
-    })));
+    const rootFile = payload.local_file_display;
+    const text = rootFile
+      ? t("es_noclaude_root_t", { path: payload.path_display, config_dir: payload.config_dir_display, local_file: rootFile })
+      : t("es_noclaude_t", { path: payload.path_display, config_dir: payload.config_dir_display });
+    container.appendChild(emptyState(t("es_noclaude_h"), text));
   }
   if (payload.no_user_settings) {
     container.appendChild(emptyState(t("es_nouser_h"), t("es_nouser_t", { config_dir: payload.config_dir_display })));

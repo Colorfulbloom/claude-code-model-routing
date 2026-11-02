@@ -18,7 +18,7 @@ The harness only allows requests to `fakeapi.py` on 127.0.0.1.
 
 ## Case fields and output
 
-Six optional case fields change what a run does.
+Ten optional case fields change what a run does.
 
 - `prompt` is the text passed to `claude -p`. It's `"say hi"` by default, and the only other values allowed are `"/effort status"` and `"/autocompact"`. A `/effort status` case sends no request, so its answer shows up in `result`. `/autocompact` takes no argument, so `"/autocompact 200k"` and `"/autocompact auto"` are refused. It prints the window and its source, and makes no API call.
 - `text_reply` is `true` or `false`. When it's `true`, `fakeapi.py` sends a short text reply instead of an error. The session then finishes a turn and writes assistant rows to its transcript. The setting reaches `fakeapi.py` only, never Claude Code.
@@ -33,8 +33,18 @@ Six optional case fields change what a run does.
   - The substring checks under Safety apply.
 - `cwd` is `"project"` by default. `"nested"` runs `claude` in `<project>/sub`, which `runcase.py` creates if it's missing.
 - `git_init` is `true` or `false`. When it's `true`, `runcase.py` runs `git init -q` in the project before it starts `claude`. It has 20 seconds. If git fails, `runcase.py` removes the throwaway root and exits with code 1 without starting `claude`.
+- `cwd` also takes three repo layouts. In all of them the project folder is the repo root, so `user`, `project` and `local` still write there. Each layout builds its repos with the same closed git environment as `git_init`, 20 seconds per command, and refuses `git_init`.
+  - `"worktree"` runs `git init` and one commit in the project, then `git worktree add` of a sibling folder, and runs `claude` there. The project is the main checkout.
+  - `"submodule"` makes a source repo with one commit, makes the project a repo, adds the source as `<project>/sub` with `-c protocol.file.allow=always`, and runs `claude` in `sub`.
+  - `"submodule_nested"` builds the same, then runs `claude` in `<project>/sub/deep`.
+- `start_project` and `start_local` are objects written as `settings.json` and `settings.local.json` in the folder `claude` starts in. They get the same checks as the other settings layers, and they are refused with `cwd` `"project"`, where that folder is the root. Use `nested` with `git_init` to get a repo root above the starting folder.
+- `sub_local` is an object written as `settings.local.json` in the submodule top, `<project>/sub`. It is allowed only with `"submodule_nested"`, because with `"submodule"` the starting folder is that top and `start_local` is the file.
+- `home_is_root` is `true` or `false`. When it's `true`, the throwaway `HOME` is the project folder, so the repo root equals `HOME`. It is allowed only with `cwd` `"nested"`.
+- `expect` is not read by `runcase.py`. `cases-repo-root.json` uses it to record the effort each case should show.
 
-`runcase.py` refuses any other prompt, a `text_reply` or `git_init` that isn't a bool, a bad `agent_files` or `raw_settings` value or any other `cwd` before it makes a folder or starts a process.
+`agent_files` with `where` `"nested"` is refused with the three repo layouts, because `<project>/sub` is then a submodule.
+
+`runcase.py` refuses any other prompt, a `text_reply`, `git_init` or `home_is_root` that isn't a bool, a bad `agent_files`, `raw_settings` or start-folder settings value or any other `cwd` before it makes a folder or starts a process.
 
 Each case prints one JSON line. Next to `case`, `init_model`, `sent` and `stderr`, it has three keys for effort and agent checks.
 
@@ -67,3 +77,14 @@ The October 30 case `ms-cap-user-low-project-invalid` is in `cases-model-setting
 The October 29 invalid-file cases are in `cases-settings-invalid-json.json`. Compare their lines with `results-settings-invalid-json.jsonl`.
 
 The October 29 cases for an empty CLAUDE_CODE_EFFORT_LEVEL are in `cases-effort-env-empty.json`. Compare their lines with `results-effort-env-empty.jsonl`.
+
+## Repo root layouts (November 2, 2026)
+
+`cases-repo-root.json` holds six cases for which settings files Claude Code reads when it starts below the repo root. Each case has an `expect` field with the effort `/effort status` should show. The record is `results-2026-11-02-repo-root.jsonl` in this folder, run with Claude Code 2.1.302. It came from a one-off probe with the same isolation (fake key, throwaway `HOME`, no request sent), not from `runbatch.py`.
+
+- Nested `modelSettings` in the two local files deep-merge, with the repo root's file on top. A starting-folder `claude-opus-5-5` effort of `high` showed `high` whether the root's file held another model or an empty `claude-opus-5-5` object.
+- A project in a submodule subfolder uses the submodule top's file. With the superproject at `low`, the submodule top at `medium` and the starting folder at `high`, the answer was `medium`.
+- A repo made with `--separate-git-dir` has its work tree as its root, so the root's `low` won over the starting folder's `high`.
+- When the root equals `HOME`, the starting folder's file is kept. The answer was `high`, not the root's `low`.
+
+An earlier plan probe (subfolder, worktree, submodule top, and a leftover-only case) backed the same rule, that the repo root's local file beats a file in the starting folder.

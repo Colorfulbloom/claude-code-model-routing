@@ -184,6 +184,37 @@ class Masking(Sandbox):
         self.assertNotIn("marker-9f3", blob)
 
 
+class TwoLocalOverlay(Sandbox):
+    def setUp(self):
+        super().setUp()
+        self.root_file = os.path.join(self.root, "repo", ".claude", "settings.local.json")
+        self.start_file = os.path.join(self.project, ".claude", "settings.local.json")
+        os.makedirs(os.path.dirname(self.root_file))
+        for path, data in ((self.start_file, {"model": "leftover"}),
+                           (self.root_file, {"model": "root"})):
+            with open(path, "w", encoding="utf-8") as fh:
+                json.dump(data, fh)
+
+    def local_source(self, got):
+        return next(s for s in got["settings"] if s["layer"] == "local")
+
+    def test_an_overlay_keyed_on_the_root_path_replaces_the_root_file(self):
+        got = self.collect(local_path=self.root_file,
+                           overlay={self.root_file: b'{"model": "edited"}'})
+        local = self.local_source(got)
+        self.assertEqual("edited", local["data"]["model"])
+        self.assertEqual(self.root_file, local["where"][("model",)]["path"])
+
+    def test_an_overlay_keyed_on_the_leftover_path_replaces_the_leftover(self):
+        with open(self.root_file, "w", encoding="utf-8") as fh:
+            json.dump({"theme": "dark"}, fh)
+        got = self.collect(local_path=self.root_file,
+                           overlay={self.start_file: b'{"model": "edited"}'})
+        local = self.local_source(got)
+        self.assertEqual({"model": "edited", "theme": "dark"}, local["data"])
+        self.assertEqual(self.start_file, local["where"][("model",)]["path"])
+
+
 class Reuse(Sandbox):
     def test_reuse_skips_the_agent_and_rules_collectors(self):
         first = self.collect()
