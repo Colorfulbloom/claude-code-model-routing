@@ -15,8 +15,8 @@ uses: 2
 fact: _target_id hashes layer and key path, so once a line goes its id names an add, and a remove checks entry is not None twice. At the route, a line already gone answers 400 not_editable, not 409 stale. Inside plan, under the lock, a line gone since the route's read raises _StaleSignal with no preview.
 check: grep -n "fresh.entry is None" dashboard/api_edit.py
 evidence: dashboard/api_edit.py
-fp: a9b1beba0ee5
-as_of: 7da3051 2026-11-01
+fp: c67b1e71cf8e
+as_of: 6206393 2026-11-02
 author: deep-reasoner
 created: 2026-11-01
 last_used: 2026-11-01
@@ -26,30 +26,19 @@ uses: 0
 fact: The route refuses a preview or save for a row that is not pickable, so a test that needs a wont_apply payload calls inner_preview(world, target, value) in test_api_edit.py. The user file's top-level effortLevel is not read with Sonnet or Opus set, so those rows are wont_apply and edit-route tests use the modelSettings add. A browser-free check of a world uses build_fixture, ts.start and EditApi get and post. A remove body has "action":"remove" and no "value" key. An insert diff shows the previous last line as deleted, because it gains a comma.
 check: grep -n "def inner_preview" tests/test_api_edit.py; grep -n "class EditApi" tests/test_edit_e2e.py
 evidence: tests/test_api_edit.py, tests/test_edit_e2e.py, dashboard/static/js/edit_session.js
-fp: 893a4f2c78d8
-as_of: 7da3051 2026-11-01
+fp: 099acc63933b
+as_of: 6206393 2026-11-02
 author: fast-worker
 created: 2026-11-01
 last_used: 2026-11-01
 uses: 3
 
-### C-3cbd Real-git tests: wrapper git, partial clone
-fact: ignore_state builds its own env, so real-git tests use a wrapper git script in a throwaway bin dir that sets GIT_CONFIG_NOSYSTEM and execs the real git by absolute path. To prove a lazy-fetch safeguard, clone --filter=blob:none --no-checkout from a file:// bare repo with uploadpack.allowFilter and allowAnySHA1InWant true, then read-tree HEAD and update-index --skip-worktree .gitignore. A raw check-ignore then fires core.sshCommand, and with --no-lazy-fetch it doesn't.
-check: /usr/bin/python3 -m unittest discover -s tests -p test_git_check.py
-evidence: tests/test_git_check.py, dashboard/git_check.py
-fp: e60d478c4804
-as_of: c5bce3a 2026-11-01
-author: fast-worker
-created: 2026-11-01
-last_used: 2026-11-01
-uses: 0
-
 ### C-06bf Repo copies for probes: .claude, throwaway HOME
 fact: A probe copy of the repo excludes .claude, or rsync carries the owner's settings.local.json into it. A shell that exports a throwaway HOME also makes git status show that file as untracked, because the global ignore lives under the real HOME. Run git without the export. To probe edit_card_checks.mjs, insert checks before the MR_ONLY runner line in the copy and run test_edit_card_js.py there, because it builds MR_PAYLOADS.
 check: git check-ignore -v .claude/settings.local.json
 evidence: .gitignore, tests/test_edit_card_js.py
-fp: 025c75d589df
-as_of: 7da3051 2026-11-01
+fp: 7a42fe8261ef
+as_of: 6206393 2026-11-02
 author: verifier
 created: 2026-11-01
 last_used: 2026-11-01

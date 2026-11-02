@@ -31,7 +31,7 @@ as_of: 02a9206 2026-11-02
 author: deep-reasoner
 created: 2026-11-02
 last_used: 2026-11-02
-uses: 0
+uses: 2
 
 ### R-8829 MAX_THINKING_TOKENS is never a secret name
 fact: collect.NOT_SECRET_NAMES exempts MAX_THINKING_TOKENS from secret-name masking, so is_secret_name is false for it everywhere, api_edit and json_edit included. A value with an sk- or Bearer prefix still hides.
@@ -49,8 +49,9 @@ fact: Adding or removing a rule in rules.json breaks test_api_rules until the Al
 check: /usr/bin/python3 -m unittest discover -s tests -p test_api_rules.py
 evidence: tests/e2e_checks/rules.json, tests/test_api_rules.py, dashboard/reference_page.py
 fp: 6f9fb210c51f
-as_of: 02a9206 2026-11-02
+as_of: 6206393 2026-11-02
 author: deep-reasoner
 created: 2026-11-02
 last_used: 2026-11-02
 uses: 0
+promote: approved

@@ -4,19 +4,19 @@
 fact: A new app.css block headed ' * Title' fails test_one_section_per_page_with_shared_first, so Settings CSS uses one-line comments inside "Settings and trail", and test_settings_page_layout_stays_inside_its_scope needs each selector to start with .s4-, .s5- or .s6-, so button.s4-x fails. Object.assign( on anything but an object literal in dashboard/static/js fails test_no_file_gets_around_the_link_helpers. fakedom createPage() swaps globalThis.document, so patch document after the page exists. edit_session_checks.mjs shows how to reach app.js's ctx from a copy. To prove a node check bites, mutate a scratch tar copy of the whole repo, not the tree.
 check: grep -n "Object.s.*assign\|shared_first" tests/test_static_shell.py
 evidence: tests/test_static_shell.py, tests/js/fakedom.mjs, tests/js/edit_session_checks.mjs
-fp: 22c518d54b17
-as_of: 02a9206 2026-11-02
+fp: e319ec8a866d
+as_of: 6206393 2026-11-02
 author: fast-worker
 created: 2026-11-01
 last_used: 2026-11-02
 uses: 4
 
-### P-153a Card source lists hold seven files
-fact: CARD_FILES in test_edit_card_js.py and the source list in edit_card_checks.mjs hold edit_card, edit_flow, edit_pick, edit_review, edit_foot, edit_backup and edit_ui. A new card module joins both.
+### P-153a Card source lists: nine in Python, seven in node
+fact: CARD_FILES in test_edit_card_js.py holds edit_card, edit_flow, edit_pick, edit_review, edit_foot, edit_backup, edit_ui, edit_setting and edit_words. The text-nodes source list in edit_card_checks.mjs still holds the first seven, so the node no-markup scan skips edit_setting and edit_words. A new card module joins both lists.
 check: grep -n "edit_pick" tests/test_edit_card_js.py tests/js/edit_card_checks.mjs
 evidence: tests/test_edit_card_js.py, tests/js/edit_card_checks.mjs
-fp: 018285c58eee
-as_of: 7da3051 2026-11-01
+fp: 1aaf04404247
+as_of: 6206393 2026-11-02
 author: deep-reasoner
 created: 2026-11-01
 last_used: 2026-11-01
@@ -26,8 +26,8 @@ uses: 1
 fact: edit_card_checks.mjs drives the Settings page with a unique project key per app and targets stamped with it, because targetsData returns null on a project mismatch. Flows persist between checks, so a check on notSavedProjects starts with fresh(), an off render. reviewFacts reads layer, ref, line and shared from the preview, so a hand-made preview must carry them. applyWant in edit_card.js matches "btn:"+want, except remove:<layer>, the raw data-edit-focus.
 check: grep -n "function fresh" tests/js/edit_card_checks.mjs
 evidence: tests/js/edit_card_checks.mjs, dashboard/static/js/edit_flow.js, dashboard/static/js/edit_review.js, dashboard/static/js/edit_card.js
-fp: 90550b18cf4d
-as_of: 7da3051 2026-11-01
+fp: 1be2facc4a74
+as_of: 6206393 2026-11-02
 author: deep-reasoner
 created: 2026-11-01
 last_used: 2026-11-01
@@ -37,8 +37,8 @@ uses: 1
 fact: fakedom focus() ignores a disabled element. page.doc.documentElement is not the parent of the app tree, so find shell options with page.topbar.find.
 check: grep -n "app.topbar.find" tests/js/edit_session_checks.mjs
 evidence: tests/js/fakedom.mjs, tests/js/edit_session_checks.mjs
-fp: b6c04d49d16a
-as_of: 02a9206 2026-11-02
+fp: 7f8f43adb0ec
+as_of: 6206393 2026-11-02
 author: fast-worker
 created: 2026-11-01
 last_used: 2026-11-02
@@ -48,20 +48,9 @@ uses: 2
 fact: A page that keeps one live object binds window and document listeners once, as band.js and trail.js do with boundTo, because createPage makes a new window for each test page.
 check: grep -n boundTo dashboard/static/js/pages/band.js dashboard/static/js/pages/trail.js
 evidence: dashboard/static/js/pages/band.js, dashboard/static/js/pages/trail.js
-fp: ade7c2ced682
-as_of: 0a1241f 2026-11-01
+fp: 13e5d5d9c16d
+as_of: 6206393 2026-11-02
 author: deep-reasoner
 created: 2026-11-01
 last_used: 2026-11-01
 uses: 0
-
-### P-c029 e2e_checks JSON also feeds the node pages test
-fact: pages.mjs reads every tests/e2e_checks/*.json through test_pages_js.py as well as the browser sweep, so a text change updates that file. In the E2E rail .s4-note also matches the shared-file and still-holds notes, so waits match Pick a file by text (PICK_NOTE). The E2E fixture (project line, no local file) preselects a local create, so no Pick a file shows there: waits use positive signs (picked row, diff, New file tag, Save on).
-check: grep -n PICK_NOTE tests/test_edit_e2e.py
-evidence: tests/js/pages.mjs, tests/test_edit_e2e.py, dashboard/static/js/edit_review.js
-fp: 4c9dda5d6703
-as_of: 7da3051 2026-11-01
-author: fast-worker
-created: 2026-11-01
-last_used: 2026-11-01
-uses: 1

@@ -39,7 +39,10 @@
     "dashboard-page",
     "testing-edit-undo",
     "dashboard-resolver",
-    "testing-node"
+    "testing-node",
+    "testing-install",
+    "dashboard-browser",
+    "dashboard-git"
   ],
   "id_prefix": {
     "testing": "T",
@@ -53,7 +56,10 @@
     "dashboard-page": "K",
     "testing-edit-undo": "U",
     "dashboard-resolver": "R",
-    "testing-node": "N"
+    "testing-node": "N",
+    "testing-install": "I",
+    "dashboard-browser": "X",
+    "dashboard-git": "G"
   },
   "slices": {
     "deep-reasoner": [
