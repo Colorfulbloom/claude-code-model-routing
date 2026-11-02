@@ -79,14 +79,15 @@ function fileText(entry, payload) {
 // ---------------------------------------------------------------- nodes
 
 // One row: who sets it (name, and the file when set), the value with its status chip or the none word, and a
-// third cell for an action, empty at rest. name, file and none are text. Live rows (the Effort body once a level is
+// third cell for an action, empty at rest. note is a second small line under the file line. name, file, note and none are text. Live rows (the Effort body once a level is
 // chosen) are labels around a hidden radio: radio is { name, value, checked, disabled, focus, onChange }, pick marks
 // the picked row and no a row that can't be picked.
-export function rowNode({ name, file = null, value = null, none = null, status = null, act = null, cls = null, radio = null, pick = false, no = false }) {
+export function rowNode({ name, file = null, note = null, value = null, none = null, status = null, act = null, cls = null, radio = null, pick = false, no = false }) {
   const cells = [
     h("span", { class: "s6-who" },
       h("span", { class: "s4-ln" }, name),
-      file ? h("span", { class: "s4-f" }, file) : null),
+      file ? h("span", { class: "s4-f" }, file) : null,
+      note ? h("span", { class: "s4-f" }, note) : null),
     h("span", { class: "s4-lvv" },
       none !== null && none !== undefined
         ? h("span", { class: "s4-none" }, none)

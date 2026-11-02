@@ -329,6 +329,14 @@ function fileValue(file, setting, payload) {
   return text(file.value);
 }
 
+// The leftover local file's line when it holds the value in effect for the setting, else null. The payload names the root
+// file only for a worktree or submodule project, so a project that keeps its own local file never has a leftover.
+function leftoverWinner(payload, setting) {
+  const root = payload ? payload.local_file_display : null;
+  if (!root) return null;
+  return mainEntries(payload, setting).find((e) => e.layer === "local" && e.file !== root && e.status === "in_effect") || null;
+}
+
 // One file row. lv is the chosen level's row when the rows are live, else null. setting is the open cell's.
 function fileRow(T, file, lv, setting) {
   const payload = settingsPayload();
@@ -336,7 +344,8 @@ function fileRow(T, file, lv, setting) {
   const via = Boolean(lv) && lv.via === "cap";
   const shown = via ? capFile(file, lf, payload) : file;
   const about = via ? CAP : setting;
-  const common = { name: placeOf(file.layer), file: fileLine(shown, about) };
+  const note = file.layer === "local" && leftoverWinner(payload, about) ? t("ed_row_lock_start_local") : null;
+  const common = { name: placeOf(file.layer), file: fileLine(shown, about), note };
   const hasValue = shown.value !== null && shown.value !== undefined && shown.value !== "";
   const cells = hasValue
     ? { value: fileValue(shown, about, payload), status: shown.status || null }

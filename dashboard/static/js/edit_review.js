@@ -414,6 +414,7 @@ export function review(T, state, env) {
     fileNotes(pv, fileName, env.failedLeft),
     stillNotes(pv, target),
     target.shared === true ? h("p", { class: "s4-note" }, t("ed_shared")) : null,
+    pv.outside_project === true ? h("p", { class: "s4-note" }, t("ed_shared_local")) : null,
     settingOf(pv) === EFFORT && level && level.certain === false ? h("p", { class: "s4-note" }, t("ed_certain_note")) : null,
     pv.allow === "unclear" || (level && level.allow === "unclear") ? h("p", { class: "s4-note" }, t("ed_allow_unclear_t")) : null,
     alsoChanges(pv),

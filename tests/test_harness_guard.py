@@ -884,5 +884,197 @@ class RawSettings(GuardTestBase):
         self.assertNotIn("project/.claude/settings.local.json", files)
 
 
+class RepoRootLayouts(GuardTestBase):
+    """cwd worktree, submodule and submodule_nested, start_* files and home_is_root."""
+
+    def tree_claude(self):
+        self.tree_marker = os.path.join(self.tmp, "tree.json")
+        with open(os.path.join(self.bin, "claude"), "w") as fh:
+            fh.write(TREE_CLAUDE % self.tree_marker)
+
+    def read_tree(self):
+        with open(self.tree_marker) as fh:
+            return json.load(fh)
+
+    def run_ok(self, case):
+        self.tree_claude()
+        r = self.run_case(case)
+        self.assertEqual(r.returncode, 0, "stdout=%r stderr=%r" % (r.stdout, r.stderr))
+        return self.read_tree()
+
+    def test_check_case_accepts_the_new_fields(self):
+        runcase = load_runcase()
+        for case in (
+            {"name": "t", "cwd": "worktree", "start_local": {"effortLevel": "high"},
+             "start_project": {"model": "claude-opus-5-5"}},
+            {"name": "t", "cwd": "submodule", "start_local": {}},
+            {"name": "t", "cwd": "submodule_nested", "start_local": {"effortLevel": "high"},
+             "sub_local": {"effortLevel": "medium"}},
+            {"name": "t", "cwd": "nested", "git_init": True, "home_is_root": True,
+             "start_local": {"effortLevel": "high"}},
+            {"name": "t", "cwd": "nested", "home_is_root": False},
+            {"name": "t", "cwd": "project", "home_is_root": False},
+        ):
+            with self.subTest(case=case):
+                runcase.check_case(case)
+
+    def test_check_case_refuses_bad_new_fields(self):
+        runcase = load_runcase()
+        bad = (
+            ({"cwd": "worktrees"}, "cwd"),
+            ({"cwd": ["worktree"]}, "cwd"),
+            ({"cwd": "worktree", "start_local": []}, "start_local"),
+            ({"cwd": "worktree", "start_local": "{}"}, "start_local"),
+            ({"cwd": "worktree", "start_project": 5}, "start_project"),
+            ({"cwd": "submodule_nested", "sub_local": [1]}, "sub_local"),
+            ({"cwd": "worktree", "start_local": {"hooks": {}}}, "start_local"),
+            ({"cwd": "worktree", "start_local": {"mcpServers": {}}}, "start_local"),
+            ({"cwd": "worktree", "start_local": {"env": {"PATH": "/x"}}}, "start_local"),
+            ({"cwd": "nested", "home_is_root": "yes"}, "home_is_root"),
+            ({"cwd": "nested", "home_is_root": 1}, "home_is_root"),
+            ({"cwd": "worktree", "home_is_root": True}, "home_is_root"),
+            ({"home_is_root": True}, "home_is_root"),
+            ({"start_local": {"effortLevel": "high"}}, "start_local"),
+            ({"cwd": "project", "start_local": {}}, "start_local"),
+            ({"cwd": "project", "start_project": {}}, "start_project"),
+            ({"cwd": "submodule", "sub_local": {}}, "sub_local"),
+            ({"cwd": "nested", "sub_local": {}}, "sub_local"),
+            ({"cwd": "worktree", "git_init": True}, "git_init"),
+            ({"cwd": "submodule", "git_init": True}, "git_init"),
+            ({"cwd": "submodule_nested", "git_init": True}, "git_init"),
+            ({"cwd": "submodule",
+              "agent_files": [agent_file("nested", "n.md")]}, "agent_files"),
+        )
+        for extra, word in bad:
+            with self.subTest(extra=extra):
+                case = dict({"name": "t"}, **extra)
+                with contextlib.redirect_stderr(io.StringIO()) as err, \
+                        self.assertRaises(SystemExit) as ctx:
+                    runcase.check_case(case)
+                self.assertEqual(ctx.exception.code, 2)
+                self.assertIn(word, err.getvalue())
+
+    def test_new_field_refusals_make_no_folder_and_start_no_claude(self):
+        for extra, word in (({"cwd": "worktree", "start_local": []}, "start_local"),
+                            ({"cwd": "nested", "home_is_root": "yes"}, "home_is_root"),
+                            ({"cwd": "project", "start_local": {}}, "start_local"),
+                            ({"cwd": "bogus"}, "cwd")):
+            with self.subTest(extra=extra):
+                self.assert_refused(dict({"name": "t"}, **extra), mention=word)
+
+    def test_nested_writes_start_files_in_the_sub_folder(self):
+        tree = self.run_ok({
+            "name": "ok", "cwd": "nested", "git_init": True,
+            "local": {"effortLevel": "low"}, "start_project": {"model": "m"},
+            "start_local": {"effortLevel": "high"}})
+        files = tree["tree"]
+        self.assertEqual(tree["cwd"], os.path.join("project", "sub"))
+        self.assertEqual(json.loads(files["project/.claude/settings.local.json"]),
+                         {"effortLevel": "low"})
+        self.assertEqual(json.loads(files["project/sub/.claude/settings.local.json"]),
+                         {"effortLevel": "high"})
+        self.assertEqual(json.loads(files["project/sub/.claude/settings.json"]), {"model": "m"})
+
+    def test_worktree_runs_in_a_sibling_checkout_of_the_project(self):
+        tree = self.run_ok({"name": "ok", "cwd": "worktree",
+                            "local": {"effortLevel": "low"},
+                            "start_local": {"effortLevel": "high"}})
+        files = tree["tree"]
+        self.assertEqual(tree["cwd"], "worktree")
+        self.assertEqual(json.loads(files["project/.claude/settings.local.json"]),
+                         {"effortLevel": "low"})
+        self.assertEqual(json.loads(files["worktree/.claude/settings.local.json"]),
+                         {"effortLevel": "high"})
+        self.assertTrue(files["worktree/.git"].startswith("gitdir: "), files["worktree/.git"])
+
+    def test_submodule_runs_in_the_submodule_top(self):
+        tree = self.run_ok({"name": "ok", "cwd": "submodule",
+                            "local": {"effortLevel": "low"},
+                            "start_local": {"effortLevel": "medium"}})
+        files = tree["tree"]
+        self.assertEqual(tree["cwd"], os.path.join("project", "sub"))
+        self.assertTrue(files["project/sub/.git"].startswith("gitdir: "))
+        self.assertEqual(files["project/sub/README"], "submodule source\n")
+        self.assertIn("project/.gitmodules", files)
+        self.assertEqual(json.loads(files["project/sub/.claude/settings.local.json"]),
+                         {"effortLevel": "medium"})
+        self.assertEqual(json.loads(files["project/.claude/settings.local.json"]),
+                         {"effortLevel": "low"})
+
+    def test_submodule_nested_runs_below_the_submodule_top(self):
+        tree = self.run_ok({"name": "ok", "cwd": "submodule_nested",
+                            "local": {"effortLevel": "low"},
+                            "sub_local": {"effortLevel": "medium"},
+                            "start_local": {"effortLevel": "high"}})
+        files = tree["tree"]
+        self.assertEqual(tree["cwd"], os.path.join("project", "sub", "deep"))
+        self.assertEqual(json.loads(files["project/sub/.claude/settings.local.json"]),
+                         {"effortLevel": "medium"})
+        self.assertEqual(json.loads(files["project/sub/deep/.claude/settings.local.json"]),
+                         {"effortLevel": "high"})
+        self.assertEqual(json.loads(files["project/.claude/settings.local.json"]),
+                         {"effortLevel": "low"})
+
+    def test_home_is_root_makes_the_project_the_home(self):
+        r = self.run_case({"name": "ok", "cwd": "nested", "git_init": True, "home_is_root": True})
+        self.assertEqual(r.returncode, 0, "stdout=%r stderr=%r" % (r.stdout, r.stderr))
+        with open(self.marker) as fh:
+            env = json.load(fh)
+        self.assertEqual(os.path.basename(env["HOME"]), "project")
+        self.assertEqual(os.path.dirname(env["HOME"]), os.path.dirname(env["CLAUDE_CONFIG_DIR"]))
+
+    def test_home_is_not_root_by_default(self):
+        for case in ({"name": "ok", "cwd": "nested"},
+                     {"name": "ok", "cwd": "nested", "home_is_root": False}):
+            with self.subTest(case=case):
+                r = self.run_case(case)
+                self.assertEqual(r.returncode, 0, "stdout=%r stderr=%r" % (r.stdout, r.stderr))
+                with open(self.marker) as fh:
+                    self.assertEqual(os.path.basename(json.load(fh)["HOME"]), "home")
+
+    def test_repo_layouts_use_the_closed_git_environment(self):
+        # A wrapper git records each call's environment, then runs the real git.
+        log = os.path.join(self.tmp, "git-calls.jsonl")
+        wrapper = os.path.join(self.bin, "git")
+        with open(wrapper, "w") as fh:
+            fh.write("#!/usr/bin/python3\nimport json, os, subprocess, sys\n"
+                     "with open(%r, 'a') as fh:\n"
+                     "    fh.write(json.dumps({'argv': sys.argv[1:], 'env': dict(os.environ)}) + '\\n')\n"
+                     "sys.exit(subprocess.call(['/usr/bin/git'] + sys.argv[1:]))\n" % log)
+        os.chmod(wrapper, os.stat(wrapper).st_mode | stat.S_IXUSR)
+        self.tree_claude()
+        r = self.run_case({"name": "ok", "cwd": "submodule"},
+                          {"GIT_DIR": "/leak", "GIT_AUTHOR_NAME": "leak", "HTTPS_PROXY": "http://leak"})
+        self.assertEqual(r.returncode, 0, "stdout=%r stderr=%r" % (r.stdout, r.stderr))
+        with open(log) as fh:
+            calls = [json.loads(line) for line in fh]
+        self.assertGreaterEqual(len(calls), 5)
+        add = [c for c in calls if "submodule" in c["argv"]]
+        self.assertEqual(len(add), 1)
+        self.assertEqual(add[0]["argv"][:2], ["-c", "protocol.file.allow=always"])
+        for call in calls:
+            env = call["env"]
+            self.assertEqual(env["GIT_CONFIG_NOSYSTEM"], "1")
+            self.assertEqual(env["GIT_CONFIG_GLOBAL"], "/dev/null")
+            self.assertEqual(os.path.basename(env["HOME"]), "home")
+            extra = set(env) - {"PATH", "TMPDIR", "LANG", "HOME", "GIT_CONFIG_NOSYSTEM",
+                                "GIT_CONFIG_GLOBAL"} - SYSTEM_ADDED
+            self.assertEqual(extra, set(), call["argv"])
+
+    def test_a_failing_layout_command_removes_the_root(self):
+        self.tree_claude()
+        wrapper = os.path.join(self.bin, "git")
+        with open(wrapper, "w") as fh:
+            fh.write("#!/usr/bin/python3\nimport subprocess, sys\n"
+                     "sys.exit(7 if 'worktree' in sys.argv else "
+                     "subprocess.call(['/usr/bin/git'] + sys.argv[1:]))\n")
+        os.chmod(wrapper, os.stat(wrapper).st_mode | stat.S_IXUSR)
+        r = self.run_case({"name": "ok", "cwd": "worktree"})
+        self.assertEqual(r.returncode, 1, "stdout=%r stderr=%r" % (r.stdout, r.stderr))
+        self.assertIn("git worktree add", r.stderr)
+        self.assertFalse(os.path.exists(self.marker), "claude started")
+        self.assertEqual(os.listdir(self.scratch), [], "throwaway root left behind")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -374,6 +374,10 @@ python3 /path/to/claude-code-model-routing/dashboard/server.py --allow-edits
 
 An edit changes `effortLevel` or `modelSettings.<name>.effortLevel` in a user, project or local settings file. It can change a line, add one, remove one or create the file, making `.claude` if it's missing, and it leaves every other byte alone. It never touches managed settings, and it refuses a symlink, a hard link, a file over 1 MiB or a save that would pass that size.
 
+Claude Code 2.1.211 and later keep `.claude/settings.local.json` at the git repo root, and in a worktree that's the main checkout's root. So the dashboard reads and writes the root file for a project in a repo subfolder, a worktree or a submodule. A submodule counts as its own root. With older versions it uses the folder Claude Code starts in. A local file left in the project's own folder still loads, but the root file wins any key both set. The dashboard shows its lines read-only and writes new lines to the root file, and Undo and Older backups still work for rows it saved there earlier. When the dashboard can't work out the repo root, it locks edits instead.
+
+The root file is shared. The main checkout and every subfolder and worktree of the repo read it, so one save changes all of them, and History shows rows from every project that shares it. A worktree session started from the desktop app reads all project settings from the main checkout. The dashboard can't tell how a session started, so it follows the CLI rule. One limit remains. When both local files set a list, such as a permissions list, Claude Code combines them, but the Where it's set line names only the root file.
+
 The flag prints a different link, `http://127.0.0.1:8377/#/settings?edit=<key>`, with a key in the URL fragment. Only that link unlocks editing. The key lasts one launch, so the plain address, a bookmark or a link from an earlier launch stays read-only. A browser doesn't send a fragment to any server, and the server never logs the key.
 
 Every save writes a backup first, to `routing-dashboard/backups/<target-id>/` in your config folder. Project and local files back up there too, so a backup never lands in a repo.

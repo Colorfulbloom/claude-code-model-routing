@@ -1,7 +1,9 @@
 """The only module that writes: one settings edit, backed up first, atomic.
 
 A target is one of three settings files, derived from a project key and a layer
-(user, project or local). No path ever arrives from a client. Every open,
+(user, project or local). The local layer is the repo root's settings.local.json
+(#104, see local_root), and project_files adds the starting folder's own file as a
+read-only leftover. No path ever arrives from a client. Every open,
 write, rename, unlink, mkdir and rmdir on a target or on the backup store goes
 through a directory descriptor, so nothing can be swapped between a check and a use.
 A symlink, a hard link, a FIFO, a file that is not ours, a file over 1 MiB and
@@ -61,6 +63,7 @@ except ImportError:  # a platform without fcntl can still import this module
     fcntl = None
 
 import collect
+import local_root
 import projects
 
 LAYERS = ("user", "project", "local")
@@ -204,8 +207,14 @@ class Target:
         self.managed_real = managed_real
 
 
-def target_for(ctx, project_key, layer):
-    """Return the Target for a project key and a layer. Never takes a path."""
+def target_for(ctx, project_key, layer, local=None):
+    """Return the Target for a project key and a layer. Never takes a path.
+
+    The local layer's base is local.base, the folder that holds the .claude
+    folder Claude Code reads settings.local.json from (#104). local is the
+    project's local_root.Local, worked out here when None. The user and project
+    layers don't use it.
+    """
     if layer not in LAYERS:
         raise Refused("not_editable")
     project = projects.load(ctx).find(project_key)
@@ -217,12 +226,48 @@ def target_for(ctx, project_key, layer):
         if project.unexpanded:
             raise Refused("file_missing")
         base, rel = project.path, (".claude",)
+        if layer == "local":
+            if local is None:
+                local = local_root.for_project(ctx, project)
+            base = local.base
     name = "settings.local.json" if layer == "local" else "settings.json"
     managed = ctx.managed_dir
     managed_real = os.path.realpath(managed) if managed is not None else None
     target = Target(layer, base, rel, name, managed_real)
     _check_managed(target)
     return target
+
+
+def project_files(ctx, project_key, local=None):
+    """Return [(layer, Target, leftover)] for a project's settings files, in LAYERS order.
+
+    The local layer is the root file (or the starting folder's file under the
+    version rule). When local.leftover is true, the starting folder's own
+    settings.local.json follows as a fourth entry with layer "local" and
+    leftover True. It is read-only to the edit routes but undo and restore reach
+    its old rows. A layer whose target_for raises Refused is skipped.
+    """
+    project = projects.load(ctx).find(project_key)
+    if project is None:
+        return []
+    if local is None and not project.unexpanded:
+        local = local_root.for_project(ctx, project)
+    out = []
+    for layer in LAYERS:
+        try:
+            out.append((layer, target_for(ctx, project_key, layer, local), False))
+        except Refused:
+            continue
+    if local is not None and local.leftover and not project.unexpanded:
+        managed = ctx.managed_dir
+        managed_real = os.path.realpath(managed) if managed is not None else None
+        target = Target("local", project.path, (".claude",), "settings.local.json", managed_real)
+        try:
+            _check_managed(target)
+        except Refused:
+            return out
+        out.append(("local", target, True))
+    return out
 
 
 def _check_managed(target):

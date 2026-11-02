@@ -732,7 +732,7 @@ class FlagOn(GateAssertions, unittest.TestCase):
         self.assertEqual([row["layer"] for row in body["files"]], ["local", "project", "user"])
         for row in body["files"]:
             self.assertEqual(set(row), {"layer", "file_display", "state", "line", "value", "status", "target",
-                                        "shared", "lock_reason"})
+                                        "shared", "lock_reason", "outside_project"})
             self.assertIn(row["state"], ("has_line", "no_line", "absent", "locked"))
         for level in body["levels"]:
             self.assertNotIn("target", level)

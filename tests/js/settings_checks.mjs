@@ -608,6 +608,20 @@ test("states: no .claude folder and no user settings file both show above the ba
   assert.equal(cellsOf(root).length, 8);
 });
 
+test("states: no .claude folder words the repo root's local file when the payload names it", () => {
+  const plain = show(handPayload(EIGHT, { state: "no_claude_folder", local_file_display: null }));
+  const plainBody = text(plain.find((n) => hasClass(n, "es-t"))[0]);
+  assert.equal(plainBody, STRINGS.es_noclaude_t.replace("{path}", "~/work/app").replace("{config_dir}", "~/.claude"));
+  assert.ok(plainBody.includes("local settings"), plainBody);
+  const root = show(handPayload(EIGHT, { state: "no_claude_folder", local_file_display: "~/work/.claude/settings.local.json" }));
+  assert.deepEqual(root.find((n) => hasClass(n, "cd-h")).map(text), ["No .claude folder"]);
+  const body = text(root.find((n) => hasClass(n, "es-t"))[0]);
+  assert.equal(body, STRINGS.es_noclaude_root_t.replace("{path}", "~/work/app").replace("{config_dir}", "~/.claude")
+    .replace("{local_file}", "~/work/.claude/settings.local.json"));
+  assert.ok(body.includes("still reads the repo root's local settings file, ~/work/.claude/settings.local.json"), body);
+  assert.ok(!body.includes("no project settings, local settings"), body);
+});
+
 test("states: one message alone, and none when both files are there", () => {
   const noUser = show(handPayload(EIGHT, { no_user_settings: true }));
   assert.deepEqual(noUser.find((n) => hasClass(n, "cd-h")).map(text), ["No user settings file"]);

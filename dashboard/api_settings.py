@@ -15,6 +15,7 @@ import os
 
 import agent_frontmatter
 import collect
+import local_root
 import projects
 import resolve
 import version
@@ -250,15 +251,19 @@ def settings(ctx, query):
     return 200, answer(ctx, listing, project)
 
 
-def resolved(ctx, project, overlay=None, listing=None, reuse=None):
+def resolved(ctx, project, overlay=None, listing=None, reuse=None, local=None):
     """Return (entries, collected): collect, then resolve, for one listed project.
 
     overlay and reuse go to collect.collect (see there), so a preview can
     resolve edited bytes in memory. listing is the projects listing, loaded
-    here when None. It writes nothing.
+    here when None. local is the project's local_root.Local, worked out here
+    once when None; its path goes to collect.collect as local_path. It writes
+    nothing.
     """
     if listing is None:
         listing = projects.load(ctx)
+    if local is None:
+        local = local_root.for_project(ctx, project)
     collected = collect.collect(
         config_dir=ctx.config_dir,
         project_dir=project.path,
@@ -266,7 +271,8 @@ def resolved(ctx, project, overlay=None, listing=None, reuse=None):
         shell_env=ctx.shell_env,
         rules=ctx.rules,
         overlay=overlay,
-        reuse=reuse)
+        reuse=reuse,
+        local_path=local.path)
     extra = {} if ctx.shell_label is None else {"shell_label": ctx.shell_label}
     inputs = resolve.Inputs(
         collected=collected,
@@ -279,22 +285,27 @@ def resolved(ctx, project, overlay=None, listing=None, reuse=None):
     return resolve.resolve(inputs, ctx.rules, ctx.agent_fields), collected
 
 
-def answer(ctx, listing, project, overlay=None, reuse=None):
+def answer(ctx, listing, project, overlay=None, reuse=None, local=None):
     """Return the settings payload dict for one listed project (the 200 body of settings).
 
     A folder that is missing carries the display fields and no entries.
-    overlay and reuse go to resolved. It writes nothing.
+    overlay, reuse and local go to resolved. local_file_display is the display path of the local
+    settings file when it is not the starting folder's own (the repo root's file, #104), else None.
+    It writes nothing.
     """
     if project.state == projects.STATE_MISSING and not project.implicit:
         out = {"project": project.key, "state": project.state, "entries": [],
                "rows": [], "rules": {}, "files": [], "installed": version.installed(ctx),
-               "attention": [], "attention_equal": 0}
+               "attention": [], "attention_equal": 0, "local_file_display": None}
         out.update(_display_fields(ctx, project))
         return out
-    entries, collected = resolved(ctx, project, overlay, listing, reuse)
+    if local is None:
+        local = local_root.for_project(ctx, project)
+    entries, collected = resolved(ctx, project, overlay, listing, reuse, local)
     rows = _rows(entries)
     installed = version.installed(ctx)
     out = {"project": project.key, "state": project.state, "entries": entries,
+           "local_file_display": _display(ctx, local.path) if local.leftover else None,
            "no_user_settings": not any(
                record["layer"] == "user" for record in collected["settings_files"]),
            "rows": rows, "rules": _rules_for(ctx, rows, installed),

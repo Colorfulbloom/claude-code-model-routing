@@ -1037,6 +1037,83 @@ test("rows: an unknown effect and a row that won't change what runs each say so 
   assert.equal(/ed_row_lock_/.test(c.root.textContent), false);
 });
 
+// A settings payload whose winner is a leftover local file: the root file is named and one local entry sits in another file.
+function withLeftover(settings, status = "in_effect") {
+  const out = clone(settings);
+  const own = out.entries.find((e) => e.layer === "local" && e.key === "effortLevel");
+  // the real local entry (if any) is the root file's; the leftover is another file, and it ranks above
+  out.local_file_display = own ? own.file : "~/main/.claude/settings.local.json";
+  if (own) own.status = "overridden";
+  const row = out.rows.find((r) => r.agent === "@main" && r.setting === "effortLevel");
+  out.entries.push({ key: "effortLevel", scope: "main", value: "high", layer: "local", file: "~/wt/.claude/settings.local.json", status, reason: "r", rule_ids: [], line: 2 });
+  row.entries = [out.entries.length - 1, ...row.entries];
+  return out;
+}
+const rowByName = (a, name) => byClass(a.root, "s6-r").find((r) => text(byClass(r, "s4-ln")[0]) === name);
+const localRow = (a) => rowByName(a, STRINGS.place_local);
+
+test("leftover local line: the local row gets a note naming the leftover file only when that file holds the value in effect", () => {
+  const withNote = app({ data: baseData({ settings: withLeftover(S.start.settings) }) });
+  const row = localRow(withNote);
+  const lines = byClass(row, "s4-f").map(text);
+  assert.ok(lines.includes(STRINGS.ed_row_lock_start_local), "the note uses the existing leftover string");
+  // the other rows get no note
+  for (const name of [STRINGS.place_project, STRINGS.place_user]) assert.equal(byClass(rowByName(withNote, name), "s4-f").map(text).includes(STRINGS.ed_row_lock_start_local), false);
+  // a leftover line that loses, a payload with no leftover, and a project that keeps its own local file all draw no note
+  const lost = app({ data: baseData({ settings: withLeftover(S.start.settings, "overridden") }) });
+  assert.equal(byClass(localRow(lost), "s4-f").map(text).includes(STRINGS.ed_row_lock_start_local), false);
+  const none = app({ data: baseData() });
+  assert.equal(byClass(localRow(none), "s4-f").map(text).includes(STRINGS.ed_row_lock_start_local), false);
+  const own = clone(S.start.settings);
+  own.local_file_display = null;
+  const mine = app({ data: baseData({ settings: own }) });
+  assert.equal(byClass(localRow(mine), "s4-f").map(text).includes(STRINGS.ed_row_lock_start_local), false);
+});
+
+test("leftover local line: the note stays on the local row while a level is chosen", async () => {
+  const a = app({ data: baseData({ settings: withLeftover(S.start.settings) }) });
+  await a.choose("medium");
+  assert.ok(byClass(localRow(a), "s4-f").map(text).includes(STRINGS.ed_row_lock_start_local));
+});
+
+test("start_local lock: a locked local row shows its own short line, and a limit shows its own long line", async () => {
+  assert.equal(uiMod.rowLockText("start_local"), STRINGS.ed_row_lock_start_local);
+  assert.equal(uiMod.lockText("start_local"), STRINGS.ed_lock_start_local);
+  assert.notEqual(STRINGS.ed_lock_start_local, STRINGS.ed_lock_not_repo_root);
+  assert.notEqual(STRINGS.ed_row_lock_start_local, STRINGS.ed_row_lock_not_repo_root);
+  const targets = trio();
+  Object.assign(fileOf(targets, "medium", "local"), { lock_reason: "start_local", pickable: false });
+  const a = app({ data: baseData({ targets: recount(targets) }) });
+  await a.choose("medium");
+  const row = rowOf(rowIn(a.root, "local"));
+  assert.equal(text(byClass(row, "s6-act")[0]), STRINGS.ed_row_lock_start_local);
+  assert.ok(off(rowIn(a.root, "local")) && hasClass(row, "is-no"));
+  // a limit that cannot be edited because of the leftover file
+  const w = worldData("lowered");
+  const lim = clone(w.targets);
+  levelOf(lim, "high").cap_first = false;
+  shut(lim, "high");
+  levelOf(lim, "high").limits = [{ kind: "winner", value: "xhigh", layer: "local", file_display: "settings.local.json", line: 3, editable: false, target: null, lock_reason: "start_local" }];
+  const b = app({ data: { ...w, targets: lim }, backend: { preview: async () => { throw new Error("no preview"); } } });
+  await b.choose("high");
+  const warn = nts(b.rail(), "warn")[0];
+  assert.deepEqual(tag(warn, "p").map(text), [T("ed_limit_winner", { value: "xhigh", file: "settings.local.json", line: 3 }), STRINGS.ed_lock_start_local]);
+});
+
+test("outside project: a local row outside the project folder with no lock still offers its Add", async () => {
+  const plain = trioLocal();
+  const outside = clone(plain);
+  Object.assign(rowOfFiles(outside, "local"), { outside_project: true });
+  const a = app({ data: baseData({ targets: recount(plain) }) });
+  await a.choose("medium");
+  const b = app({ data: baseData({ targets: recount(outside) }) });
+  await b.choose("medium");
+  assert.equal(off(rowIn(b.root, "local")), false, "the row can be picked");
+  assert.deepEqual(wordsOf(b.root), wordsOf(a.root), "the same words as a row inside the project");
+  assert.equal(b.root.textContent.includes("ed_row_lock_"), false);
+  assert.ok(rowInputs(b.root).length >= 1);
+});
+
 // ---------------------------------------------------------------- the review
 
 test("review: a certain false level adds the hint and the headline note, and Save is on", async () => {
@@ -1059,6 +1136,21 @@ test("review: a preview of the project file says the file is shared", async () =
   await a.pickRow("project");
   assert.deepEqual(a.log.preview, [["t-proj", "high"]]);
   assert.ok(byClass(a.rail(), "s4-note").some((n) => text(n) === STRINGS.ed_shared), "the note is a rail note");
+});
+
+test("review: ed_shared_local shows only when the preview says the file is outside the project folder", async () => {
+  const pvs = real("project_only").previews.project;
+  const run = async (patch) => {
+    const a = app({ data: baseData({ targets: trio() }), backend: { preview: async (t, v) => ok({ ...clone(pvs[v]), ...patch }) } });
+    await a.choose("high");
+    await a.pickRow("project");
+    return noteTexts(a.rail());
+  };
+  assert.ok((await run({ outside_project: true })).includes(STRINGS.ed_shared_local), "true shows it");
+  assert.equal((await run({ outside_project: false })).includes(STRINGS.ed_shared_local), false, "false hides it");
+  const absent = clone(pvs.high); delete absent.outside_project;
+  assert.equal((await run({})).includes(STRINGS.ed_shared_local), false, "absent hides it");
+  assert.ok((await run({ outside_project: true })).includes(STRINGS.ed_shared), "the shared line stays");
 });
 
 test("review: pressing the project row removes the Pick a file line only, so the rail keeps a note (the e2e waits on that line by text)", async () => {

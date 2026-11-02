@@ -33,6 +33,7 @@ import api_settings  # noqa: E402
 import edit_store  # noqa: E402
 import git_check  # noqa: E402
 import json_edit  # noqa: E402
+import local_root  # noqa: E402
 import projects  # noqa: E402
 import resolve  # noqa: E402
 import server  # noqa: E402
@@ -64,11 +65,15 @@ class World:
 
     def __init__(self, case, user=None, project=None, local=None, managed=None, agents=None,
                  shell_env=None, listed=None, edit=True):
-        # A MR_TEST_TMP inside a repo must not lock every edit test. A test that wants a lock
-        # sets its own return value on self.place.
+        # A MR_TEST_TMP inside a repo must not lock every edit test, and no test may reach a real repo's
+        # settings.local.json. A test that wants another root sets its own return value on self.place
+        # (the older repo_place) or self.root_patch (git_check.repo_root, which local_root asks).
         self.place = mock.patch.object(git_check, "repo_place", return_value="no_repo")
         self.place.start()
         case.addCleanup(self.place.stop)
+        self.root_patch = mock.patch.object(git_check, "repo_root", return_value=("no_repo", None))
+        self.root_patch.start()
+        case.addCleanup(self.root_patch.stop)
         self.root = os.path.realpath(tempfile.mkdtemp(prefix="mr-api-edit-", dir=helpers._tmp_base()))
         case.addCleanup(helpers.rmtree_force, self.root)
         self.cfg = os.path.join(self.root, "config")
@@ -173,12 +178,15 @@ class World:
         return body
 
 
-def lock_repo(case, world, place="subfolder"):
-    """Make the world's project a repo subfolder (or "linked"), so every write locks."""
-    world.place.stop()
-    world.place = mock.patch.object(git_check, "repo_place", return_value=place)
-    world.place.start()
-    case.addCleanup(world.place.stop)
+def lock_repo(case, world, place="unknown"):
+    """Make the world's repo root unknown (#104), so every write locks.
+
+    "unknown" is the one place git_check.repo_root answers that locks the edit routes.
+    """
+    world.root_patch.stop()
+    world.root_patch = mock.patch.object(git_check, "repo_root", return_value=(place, None))
+    world.root_patch.start()
+    case.addCleanup(world.root_patch.stop)
 
 
 def target_of(body, layer, ends=None):
@@ -848,7 +856,8 @@ def inner_preview(world, target, value):
 
 
 class FileStates(Base):
-    ROW_KEYS = {"layer", "file_display", "state", "line", "value", "status", "target", "shared", "lock_reason"}
+    ROW_KEYS = {"layer", "file_display", "state", "line", "value", "status", "target", "shared", "lock_reason",
+                "outside_project"}
 
     def files(self, world):
         return world.targets()["files"]
@@ -868,7 +877,7 @@ class FileStates(Base):
         self.assertEqual(row, {"layer": "project", "file_display": "project/.claude/settings.json",
                                "state": "has_line", "line": 2, "value": "high", "status": "in_effect",
                                "target": target_of(body, "project")["target"], "shared": True,
-                               "lock_reason": None})
+                               "lock_reason": None, "outside_project": False})
 
     def test_no_line_when_the_file_holds_no_effort_line(self):
         world = World(self, user={"model": SONNET}, project={"effortLevel": "high"})
@@ -1158,7 +1167,8 @@ class Preview(Base):
         self.assertEqual(set(pv), {"git_ignore", "target", "old_value", "new_value", "no_change", "before", "after",
                                    "changes", "warning", "diff", "base_file", "base_trail", "base_others",
                                    "op", "layer", "shared", "line", "ref", "new_file", "creates_dir",
-                                   "ledger_damaged", "runs_before", "runs_after", "no_effect", "last_line", "setting"})
+                                   "ledger_damaged", "runs_before", "runs_after", "no_effect", "last_line", "setting",
+                                   "outside_project"})
         self.assertEqual(pv["setting"], "effortLevel")
         self.assertEqual((pv["target"], pv["old_value"], pv["new_value"], pv["no_change"]),
                          (target, "low", "high", False))
@@ -1198,7 +1208,8 @@ class Preview(Base):
         target = target_of(world.targets(), "project")["target"]
         status, pv = world.preview(target, "high")
         self.assertEqual(status, 200)
-        trail = json.dumps({"before": pv["before"]["entries"], "after": pv["after"]["entries"]}, sort_keys=True)
+        trail = json.dumps({"before": pv["before"]["entries"], "after": pv["after"]["entries"],
+                            "local_file": "project/.claude/settings.local.json"}, sort_keys=True)
         self.assertEqual(pv["base_file"], api_edit._hmac(world.ctx, world.read("project")))
         self.assertEqual(pv["base_trail"], api_edit._hmac(world.ctx, trail.encode("utf-8")))
         self.assertEqual(set(pv["base_others"]), {"config/settings.json", "project/.claude/settings.local.json",
@@ -2021,68 +2032,67 @@ class Undo(Base):
 
 
 class RepoLock(Base):
-    """A project that is a repo subfolder, a worktree or a submodule locks every write (T23)."""
+    """A project whose repo root can't be worked out locks every write (T23, reworked for #104).
+
+    A repo subfolder, a worktree and a submodule no longer lock: their local file is the root's.
+    """
 
     def make(self):
         return World(self, user={"model": SONNET, "effortLevel": "high"}, project={"effortLevel": "low"},
                      local={"effortLevel": "medium"})
 
     def lock(self, world, place):
-        world.place.stop()
-        world.place = mock.patch.object(git_check, "repo_place", return_value=place)
-        world.place.start()
-        self.addCleanup(world.place.stop)
+        world.root_patch.stop()
+        world.root_patch = mock.patch.object(git_check, "repo_root", return_value=(place, None))
+        world.root_patch.start()
+        self.addCleanup(world.root_patch.stop)
 
-    def test_subfolder_and_linked_lock_every_row(self):
-        for place in ("subfolder", "linked"):
-            with self.subTest(place=place):
-                world = self.make()
-                before = world.targets()
-                ids = [t["target"] for t in before["targets"]]
-                self.assertTrue(ids)
-                self.assertIsNone(before["project_lock"])
-                self.lock(world, place)
-                after = world.targets()
-                self.assertEqual(after["project_lock"], "not_repo_root")
-                self.assertEqual(after["targets"], [])
-                self.assertEqual(len(after["blocked"]), len(before["targets"]))
-                self.assertEqual({b["reason"] for b in after["blocked"]}, {"not_repo_root"})
-                self.assertIs(after["saveable"], False)
-                self.assertEqual({f["layer"] for f in after["files"]}, {"user", "project", "local"})
-                for row in after["files"]:
-                    self.assertEqual(row["lock_reason"], "not_repo_root")
-                    self.assertIsNone(row["target"])
-                self.assertEqual(file_of(after["files"], "user")["state"], "locked")
-                for level in after["levels"]:
-                    self.assertIs(level["saveable"], False)
-                    self.assertIsNone(level["preselect"])
-                    for row in level["files"]:
-                        self.assertEqual(row["lock_reason"], "not_repo_root")
-                        self.assertIs(row["pickable"], False)
-                for target in ids:
-                    status, body = world.preview(target, "xhigh")
-                    self.assertEqual((status, body), (422, {"error": "not_repo_root"}))
+    def test_unknown_locks_every_row(self):
+        world = self.make()
+        before = world.targets()
+        ids = [t["target"] for t in before["targets"]]
+        self.assertTrue(ids)
+        self.assertIsNone(before["project_lock"])
+        self.lock(world, "unknown")
+        after = world.targets()
+        self.assertEqual(after["project_lock"], "not_repo_root")
+        self.assertEqual(after["targets"], [])
+        self.assertEqual(len(after["blocked"]), len(before["targets"]))
+        self.assertEqual({b["reason"] for b in after["blocked"]}, {"not_repo_root"})
+        self.assertIs(after["saveable"], False)
+        self.assertEqual({f["layer"] for f in after["files"]}, {"user", "project", "local"})
+        for row in after["files"]:
+            self.assertEqual(row["lock_reason"], "not_repo_root")
+            self.assertIsNone(row["target"])
+        self.assertEqual(file_of(after["files"], "user")["state"], "locked")
+        for level in after["levels"]:
+            self.assertIs(level["saveable"], False)
+            self.assertIsNone(level["preselect"])
+            for row in level["files"]:
+                self.assertEqual(row["lock_reason"], "not_repo_root")
+                self.assertIs(row["pickable"], False)
+        for target in ids:
+            status, body = world.preview(target, "xhigh")
+            self.assertEqual((status, body), (422, {"error": "not_repo_root"}))
 
     def test_a_missing_file_keeps_its_state_but_locks(self):
         world = World(self, user={"model": SONNET})
-        self.lock(world, "subfolder")
+        self.lock(world, "unknown")
         rows = world.targets()["files"]
         self.assertEqual(file_of(rows, "local")["state"], "absent")
         self.assertEqual(file_of(rows, "local")["lock_reason"], "not_repo_root")
         self.assertEqual(file_of(rows, "project")["lock_reason"], "not_repo_root")
 
     def test_a_forced_save_is_refused_and_the_file_is_untouched(self):
-        for place in ("subfolder", "linked"):
-            with self.subTest(place=place):
-                world = self.make()
-                target = target_of(world.targets(), "local")["target"]
-                status, pv = world.preview(target, "low")
-                self.assertEqual(status, 200)
-                before = world.snapshot()
-                self.lock(world, place)
-                status, body = world.save(pv, target, "low")
-                self.assertEqual((status, body), (422, {"error": "not_repo_root"}))
-                self.assertEqual(world.snapshot(), before)
+        world = self.make()
+        target = target_of(world.targets(), "local")["target"]
+        status, pv = world.preview(target, "low")
+        self.assertEqual(status, 200)
+        before = world.snapshot()
+        self.lock(world, "unknown")
+        status, body = world.save(pv, target, "low")
+        self.assertEqual((status, body), (422, {"error": "not_repo_root"}))
+        self.assertEqual(world.snapshot(), before)
 
     def test_a_repo_lock_that_appears_between_the_check_and_the_write_is_refused(self):
         world = self.make()
@@ -2091,11 +2101,12 @@ class RepoLock(Base):
         self.assertEqual(status, 200)
         # The store makes its own folder before it plans, so only the settings files are compared.
         before = {k: v for k, v in world.snapshot().items() if "routing-dashboard" not in k}
-        world.place.stop()
-        # The view before the lock sees no repo, the view the write plan reads again sees a subfolder.
-        world.place = mock.patch.object(git_check, "repo_place", side_effect=["no_repo", "subfolder"])
-        world.place.start()
-        self.addCleanup(world.place.stop)
+        world.root_patch.stop()
+        # The view before the lock sees no repo, the view the write plan reads again sees an unknown root.
+        world.root_patch = mock.patch.object(git_check, "repo_root",
+                                             side_effect=[("no_repo", None), ("unknown", None)])
+        world.root_patch.start()
+        self.addCleanup(world.root_patch.stop)
         status, body = world.save(pv, target, "low")
         self.assertEqual((status, body), (422, {"error": "not_repo_root"}))
         after = {k: v for k, v in world.snapshot().items() if "routing-dashboard" not in k}
@@ -2106,14 +2117,14 @@ class RepoLock(Base):
         original = world.read("project")
         target = target_of(world.targets(), "project")["target"]
         saved = world.edit(target, "high")
-        self.lock(world, "subfolder")
+        self.lock(world, "unknown")
         status, body = world.undo(saved["edit"]["id"])
         self.assertEqual(status, 200)
         self.assertIs(body["matches_backup"], True)
         self.assertEqual(world.read("project"), original)
 
-    def test_root_and_no_repo_lock_nothing(self):
-        for place in ("root", "no_repo"):
+    def test_root_no_repo_and_start_folder_lock_nothing(self):
+        for place in ("root", "no_repo", "start_folder"):
             with self.subTest(place=place):
                 world = self.make()
                 self.lock(world, place)
@@ -2125,12 +2136,30 @@ class RepoLock(Base):
                 target = target_of(body, "local")["target"]  # the local line wins, so it takes a pick
                 self.assertEqual(world.preview(target, "low")[0], 200)
 
+    def test_subfolder_worktree_and_submodule_do_not_lock_and_target_the_root(self):
+        for place in ("subfolder", "worktree", "submodule"):
+            with self.subTest(place=place):
+                world = self.make()
+                repo = os.path.join(world.root, "repo-" + place)
+                os.makedirs(os.path.join(repo, ".claude"))
+                world.put(os.path.join(repo, ".claude", "settings.local.json"), {"effortLevel": "xhigh"})
+                world.root_patch.stop()
+                world.root_patch = mock.patch.object(git_check, "repo_root", return_value=(place, repo))
+                world.root_patch.start()
+                self.addCleanup(world.root_patch.stop)
+                body = world.targets()
+                self.assertIsNone(body["project_lock"])
+                local = file_of(body["files"], "local")
+                self.assertEqual(local["file_display"], "repo-%s/.claude/settings.local.json" % place)
+                self.assertEqual(local["state"], "has_line")
+                self.assertIsNone(local["lock_reason"])
+                self.assertIs(local["outside_project"], True)  # the repo sits beside the project folder
+
     def test_an_unexpanded_project_is_not_walked(self):
-        project = projects.Project("x", "~/nowhere", unexpanded=True) if hasattr(projects, "Project") else None
-        if project is None:
-            self.skipTest("no Project class")
-        with mock.patch.object(git_check, "repo_place", side_effect=AssertionError("walked")):
-            self.assertIs(api_edit._repo_locked(project), False)
+        world = World(self, user={"model": SONNET})
+        project = projects.Project("x", "~/nowhere", unexpanded=True)
+        with mock.patch.object(git_check, "repo_root", side_effect=AssertionError("walked")):
+            self.assertIs(local_root.for_project(world.ctx, project).locked, False)
 
 
 class History(Base):
@@ -3679,30 +3708,35 @@ class ReadOnlyTargets(Base):
         self.assertEqual(body["levels_state"], "model_unknown")
         self.assertEqual([row["level"] for row in body["levels"]], list(LEVELS))
 
-    def test_a_repo_subfolder_sets_the_project_lock_and_locks_the_file_rows(self):
-        for place in ("subfolder", "linked"):
-            with self.subTest(place=place):
-                world = self.world(user={"model": SONNET}, project={"effortLevel": "low"})
-                world.place.stop()
-                world.place = mock.patch.object(git_check, "repo_place", return_value=place)
-                world.place.start()
-                self.addCleanup(world.place.stop)
-                body = world.targets()
-                self.assertEqual(body["project_lock"], "not_repo_root")
-                for row in body["files"]:
-                    self.assertEqual(row["lock_reason"], "not_repo_root")
-                    self.assertNotIn("target", row)
+    def test_an_unknown_repo_root_sets_the_project_lock_and_locks_the_file_rows(self):
+        world = self.world(user={"model": SONNET}, project={"effortLevel": "low"})
+        lock_repo(self, world)
+        body = world.targets()
+        self.assertEqual(body["project_lock"], "not_repo_root")
+        for row in body["files"]:
+            self.assertEqual(row["lock_reason"], "not_repo_root")
+            self.assertNotIn("target", row)
+
+    def test_a_subfolder_does_not_set_the_project_lock(self):
+        world = self.world(user={"model": SONNET}, project={"effortLevel": "low"})
+        repo = os.path.join(world.root, "repo")
+        os.makedirs(repo)
+        world.root_patch.stop()
+        world.root_patch = mock.patch.object(git_check, "repo_root", return_value=("subfolder", repo))
+        world.root_patch.start()
+        self.addCleanup(world.root_patch.stop)
+        body = world.targets()
+        self.assertIsNone(body["project_lock"])
+        self.assertEqual(file_of(body["files"], "local")["file_display"], "repo/.claude/settings.local.json")
+        self.assertIs(file_of(body["files"], "local")["outside_project"], True)
 
     def test_the_project_lock_matches_the_full_answer(self):
-        for place in ("no_repo", "subfolder"):
+        for place in ("no_repo", "unknown"):
             with self.subTest(place=place):
                 on = World(self, user={"model": SONNET}, project={"effortLevel": "low"})
                 off = self.world(user={"model": SONNET}, project={"effortLevel": "low"})
                 for world in (on, off):
-                    world.place.stop()
-                    world.place = mock.patch.object(git_check, "repo_place", return_value=place)
-                    world.place.start()
-                    self.addCleanup(world.place.stop)
+                    lock_repo(self, world, place)
                 on_body, off_body = on.targets(), off.targets()
                 self.assertEqual(on_body["project_lock"], off_body["project_lock"])
                 self.assertEqual([{k: v for k, v in row.items() if k != "target"} for row in on_body["files"]],
@@ -4697,6 +4731,410 @@ class ForgedRequests(BackupBase):
         status, body = self.force(again["id"], self.base_now(), **extra)
         self.assertEqual(status, 200, body)
         self.assertEqual(self.world.read("user"), user)
+
+
+GIT = shutil.which("git")
+
+
+@unittest.skipIf(GIT is None, "git was not found")
+class RepoRootEdits(Base):
+    """The edit side reads and writes the repo root's settings.local.json (#104).
+
+    Every repo is built with real git under the world's temp root, with a closed environment (a throwaway
+    HOME, no system config, a minimal PATH). The World's default repo_root patch is stopped, and
+    ctx.root = world.root bounds the walk (git_check.repo_root bound=), so a .git outside the temp root
+    is never opened and no test reaches a real repo's file.
+    """
+
+    def world_for(self, listed, **kwargs):
+        kwargs.setdefault("user", {"model": SONNET})
+        world = World(self, listed=listed, **kwargs)
+        world.root_patch.stop()  # the real git_check.repo_root answers from here on
+        self.githome = os.path.join(world.root, "githome")
+        os.makedirs(self.githome)
+        return world
+
+    def git(self, cwd, *args):
+        env = {"PATH": "/usr/bin:/bin", "HOME": self.githome, "GIT_CONFIG_NOSYSTEM": "1",
+               "GIT_TERMINAL_PROMPT": "0"}
+        done = subprocess.run([GIT, "-c", "user.name=t", "-c", "user.email=t@example.invalid", *args],
+                              cwd=cwd, env=env, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                              stderr=subprocess.STDOUT, check=False)
+        self.assertEqual(done.returncode, 0, done.stdout.decode("utf-8", "replace"))
+
+    def repo(self, world, *parts):
+        path = os.path.join(world.root, *parts)
+        os.makedirs(path, exist_ok=True)
+        self.git(path, "init", "-q", "-b", "main")
+        self.git(path, "commit", "-q", "--allow-empty", "-m", "seed")
+        return path
+
+    def worktree(self, main, name):
+        path = os.path.join(os.path.dirname(main), name)
+        self.git(main, "worktree", "add", "-q", "-b", "branch-" + name, path)
+        return path
+
+    @staticmethod
+    def local_of(folder):
+        return os.path.join(folder, ".claude", "settings.local.json")
+
+    @staticmethod
+    def raw(path):
+        with open(path, "rb") as fh:
+            return fh.read()
+
+    def settings_files(self, world):
+        """Return every file in the world except the dashboard's own store, as {path: bytes}."""
+        return {k: v for k, v in world.snapshot().items() if "routing-dashboard" not in k and ".git" not in k}
+
+    def version_ctx(self, world, version):
+        world.ctx = dataclasses.replace(world.ctx, claude_version=version)
+
+    # a. a worktree
+
+    def test_a_worktree_save_writes_the_main_checkouts_file_and_not_the_leftover(self):
+        world = self.world_for([{"name": "Wt", "path": "{root}/wt"}])
+        main = self.repo(world, "main")
+        wt = self.worktree(main, "wt")
+        World.put(self.local_of(main), {"effortLevel": "medium"})
+        World.put(self.local_of(wt), {"effortLevel": "low"})
+        world.key = "wt"
+        body = world.targets()
+        # The root file holds the same key, so the leftover's line is shadowed and the trail doesn't list it.
+        self.assertEqual(body["blocked"], [])
+        target = target_of(body, "local")["target"]
+        status, pv = world.preview(target, "high")
+        self.assertEqual(status, 200, pv)
+        self.assertEqual(pv["diff"]["file_display"], "main/.claude/settings.local.json")
+        self.assertIs(pv["outside_project"], True)
+        original, leftover = self.raw(self.local_of(main)), self.raw(self.local_of(wt))
+        status, saved = world.save(pv, target, "high")
+        self.assertEqual(status, 200, saved)
+        after = self.raw(self.local_of(main))
+        # The bytes on disk are the preview diff's context and added lines, and nothing else changed.
+        rebuilt = "".join(line["text"] + "\n" for hunk in pv["diff"]["hunks"] for line in hunk["lines"]
+                          if line["kind"] != "del")
+        self.assertEqual(after.decode("utf-8"), rebuilt)
+        self.assertEqual(after, json_edit.replace_value(original, ("effortLevel",), "high"))
+        self.assertEqual(self.raw(self.local_of(wt)), leftover)
+        self.assertEqual(saved["edit"]["file_display"], "main/.claude/settings.local.json")
+
+    # b. a repo subfolder with a root line
+
+    def test_a_subfolder_runs_as_the_root_files_value(self):
+        world = self.world_for([{"name": "App", "path": "{root}/repo/app"}])
+        repo = self.repo(world, "repo")
+        os.makedirs(os.path.join(repo, "app"))
+        World.put(self.local_of(repo), {"effortLevel": "medium"})
+        world.key = "app"
+        body = world.targets()
+        self.assertEqual(body["runs_as"], "medium")
+        self.assertIsNone(body["project_lock"])
+        self.assertEqual(file_of(body["files"], "local")["file_display"], "repo/.claude/settings.local.json")
+        target = target_of(body, "local")["target"]
+        status, pv = world.preview(target, "high")
+        self.assertEqual(status, 200, pv)
+        self.assertEqual((pv["runs_before"], pv["runs_after"], pv["outside_project"]), ("medium", "high", True))
+        status, saved = world.save(pv, target, "high")
+        self.assertEqual(status, 200, saved)
+        self.assertEqual(json.loads(self.raw(self.local_of(repo)))["effortLevel"], "high")
+        self.assertEqual(world.targets()["runs_as"], "high")
+        self.assertFalse(os.path.exists(self.local_of(os.path.join(repo, "app"))))
+
+    # c. a winning leftover line
+
+    def test_a_leftover_line_blocks_as_start_local_and_the_root_row_stays_open(self):
+        world = self.world_for([{"name": "App", "path": "{root}/repo/app"}])
+        repo = self.repo(world, "repo")
+        app = os.path.join(repo, "app")
+        World.put(self.local_of(app), {"effortLevel": "low", "maxEffortLevel": "medium"})
+        World.put(self.local_of(repo), {"language": "en"})
+        world.key = "app"
+        body = world.targets()
+        leftover_display = "repo/app/.claude/settings.local.json"
+        self.assertEqual([(b["layer"], b["file_display"], b["reason"]) for b in body["blocked"]],
+                         [("local", leftover_display, "start_local")])
+        self.assertEqual(body["targets"], [])
+        local = file_of(body["files"], "local")
+        self.assertEqual((local["file_display"], local["state"], local["lock_reason"]),
+                         ("repo/.claude/settings.local.json", "no_line", None))
+        add = add_of(body, "local", TOP)
+        self.assertEqual(add["file_display"], "repo/.claude/settings.local.json")
+        status, pv = world.preview(add["target"], "high")
+        self.assertEqual(status, 200, pv)
+        # The leftover's cap still limits the level, and says why it can't be edited here.
+        caps = [limit for limit in level_of(body, "high")["limits"] if limit["kind"] == "cap"]
+        self.assertEqual([(c["layer"], c["file_display"], c["editable"], c["lock_reason"]) for c in caps],
+                         [("local", leftover_display, False, "start_local")])
+
+    # d. the root moves between the preview and the save
+
+    def move_after_first_view(self, other):
+        """Patch repo_root so the first answer is real and every later one names `other` as the root."""
+        real = git_check.repo_root
+        calls = []
+
+        def moving(path, home=None, bound=None):
+            calls.append(path)
+            if len(calls) >= 2:
+                return "subfolder", other
+            return real(path, home, bound)
+
+        patcher = mock.patch.object(git_check, "repo_root", side_effect=moving)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def refuse_a_moved_root(self, create):
+        world = self.world_for([{"name": "App", "path": "{root}/repo/app"}])
+        repo = self.repo(world, "repo")
+        os.makedirs(os.path.join(repo, "app"))
+        other = os.path.join(world.root, "other")
+        os.makedirs(os.path.join(other, ".claude"))
+        if not create:
+            World.put(self.local_of(repo), {"effortLevel": "medium"})
+            World.put(self.local_of(other), {"effortLevel": "medium"})
+        world.key = "app"
+        body = world.targets()
+        target = add_of(body, "local", TOP)["target"] if create else target_of(body, "local")["target"]
+        status, pv = world.preview(target, "high")
+        self.assertEqual(status, 200, pv)
+        before = self.settings_files(world)
+        self.move_after_first_view(other)
+        status, answer = world.save(pv, target, "high")
+        self.assertEqual((status, answer["error"], answer["changed"]), (409, "stale", "file"), answer)
+        self.assertEqual(answer["changed_files"],
+                         [{"layer": "local", "file_display": "repo/.claude/settings.local.json"}])
+        self.assertEqual(self.settings_files(world), before)
+
+    def test_a_root_that_moves_makes_an_edit_stale(self):
+        self.refuse_a_moved_root(create=False)
+
+    def test_a_root_that_moves_makes_a_create_stale(self):
+        self.refuse_a_moved_root(create=True)
+
+    # e. the leftover changes between the preview and the save
+
+    def test_a_changed_leftover_file_makes_the_save_stale_on_the_trail(self):
+        world = self.world_for([{"name": "Wt", "path": "{root}/wt"}])
+        main = self.repo(world, "main")
+        wt = self.worktree(main, "wt")
+        World.put(self.local_of(main), {"effortLevel": "medium"})
+        World.put(self.local_of(wt), {"effortLevel": "low"})
+        world.key = "wt"
+        target = target_of(world.targets(), "local")["target"]
+        status, pv = world.preview(target, "high")
+        self.assertEqual(status, 200, pv)
+        self.assertIn("wt/.claude/settings.local.json", pv["base_others"])
+        World.put(self.local_of(wt), {"effortLevel": "xhigh"})
+        root_before = self.raw(self.local_of(main))
+        status, answer = world.save(pv, target, "high")
+        self.assertEqual((status, answer["error"], answer["changed"]), (409, "stale", "trail"), answer)
+        self.assertEqual(answer["changed_files"], [{"layer": "local", "file_display": "wt/.claude/settings.local.json"}])
+        self.assertEqual(self.raw(self.local_of(main)), root_before)
+
+    # f. an unparsed root file and a leftover line
+
+    def test_an_unparsed_root_file_never_answers_start_local(self):
+        world = self.world_for([{"name": "App", "path": "{root}/repo/app"}])
+        repo = self.repo(world, "repo")
+        World.put(self.local_of(os.path.join(repo, "app")), {"effortLevel": "low"})
+        World.put(self.local_of(repo), "{ not json")
+        world.key = "app"
+        body = world.targets()
+        self.assertEqual([b["reason"] for b in body["blocked"]], ["start_local"])
+        local = file_of(body["files"], "local")
+        self.assertEqual((local["file_display"], local["state"], local["lock_reason"]),
+                         ("repo/.claude/settings.local.json", "locked", "unparsed"))
+        target = api_edit._target_id("local", ("effortLevel",))  # the id the leftover and the root file share
+        before = self.settings_files(world)
+        status, answer = world.preview(target, "high")
+        self.assertNotEqual(answer.get("error"), "start_local")
+        self.assertEqual((status, answer), (400, {"error": "not_editable"}))
+        status, answer = world.save({"base_file": "x", "base_trail": "x", "base_others": {}}, target, "high")
+        self.assertNotEqual(answer.get("error"), "start_local")
+        self.assertEqual(self.settings_files(world), before)
+
+    # g. undo and restore of an old leftover-file row
+
+    def old_rule_row(self):
+        """Save a line of the starting folder's file under the old rule, then switch to the root rule."""
+        world = self.world_for([{"name": "App", "path": "{root}/repo/app"}])
+        repo = self.repo(world, "repo")
+        app = os.path.join(repo, "app")
+        World.put(self.local_of(app), {"effortLevel": "medium"})
+        world.key = "app"
+        self.version_ctx(world, "2.1.210")
+        target = target_of(world.targets(), "local")["target"]
+        original = self.raw(self.local_of(app))
+        saved = world.edit(target, "high")["edit"]
+        self.assertEqual(saved["file_display"], "repo/app/.claude/settings.local.json")
+        self.assertEqual(json.loads(self.raw(self.local_of(app)))["effortLevel"], "high")
+        self.version_ctx(world, "2.1.211")
+        return world, repo, app, original, saved
+
+    def test_an_old_leftover_row_shows_in_the_history_and_undoes(self):
+        world, repo, app, original, saved = self.old_rule_row()
+        rows = world.history()["rows"]
+        self.assertEqual([(r["id"], r["layer"], r["file_display"], r["undoable"]) for r in rows],
+                         [(saved["id"], "local", "repo/app/.claude/settings.local.json", True)])
+        status, body = world.undo(saved["id"])
+        self.assertEqual(status, 200, body)
+        self.assertEqual(self.raw(self.local_of(app)), original)
+        self.assertFalse(os.path.exists(self.local_of(repo)))
+
+    def test_an_old_leftover_row_restores(self):
+        world, repo, app, original, saved = self.old_rule_row()
+        self.version_ctx(world, "2.1.210")
+        world.store.fixed_now = FIXED + datetime.timedelta(minutes=1)
+        again = world.edit(target_of(world.targets(), "local")["target"], "low")["edit"]
+        self.assertEqual(json.loads(self.raw(self.local_of(app)))["effortLevel"], "low")
+        self.version_ctx(world, "2.1.211")
+        status, pv = api_edit.backup_preview(world.ctx, {"project": "app", "edit": saved["id"], "kind": "restore"})
+        self.assertEqual((status, pv["file_display"], pv["layer"]), (200, "repo/app/.claude/settings.local.json", "local"), pv)
+        status, body = api_edit.restore(world.ctx, {"project": "app", "edit": saved["id"], "base_file": pv["base_file"]})
+        self.assertEqual(status, 200, body)
+        self.assertEqual(self.raw(self.local_of(app)), original)
+        self.assertEqual(body["edit"]["kind"], "restore")
+        self.assertNotEqual(again["id"], body["edit"]["id"])
+
+    def test_a_backup_preview_works_the_root_out_once(self):
+        world = self.world_for([{"name": "App", "path": "{root}/repo/app"}])
+        repo = self.repo(world, "repo")
+        os.makedirs(os.path.join(repo, "app"))
+        World.put(self.local_of(repo), {"effortLevel": "medium"})
+        world.key = "app"
+        saved = world.edit(target_of(world.targets(), "local")["target"], "high")["edit"]
+        for kind in ("undo", "restore"):
+            with mock.patch.object(api_edit.local_root, "for_project", wraps=api_edit.local_root.for_project) as spy:
+                status, pv = api_edit.backup_preview(world.ctx, {"project": "app", "edit": saved["id"], "kind": kind})
+            self.assertEqual(status, 200, pv)
+            self.assertEqual(spy.call_count, 1, kind)
+
+    # h. two projects that share one root file
+
+    def test_two_projects_share_the_root_files_history_and_the_newest_row_rule(self):
+        world = self.world_for([{"name": "One", "path": "{root}/repo/one"}, {"name": "Two", "path": "{root}/repo/two"}])
+        repo = self.repo(world, "repo")
+        os.makedirs(os.path.join(repo, "one"))
+        os.makedirs(os.path.join(repo, "two"))
+        World.put(self.local_of(repo), {"effortLevel": "medium"})
+        world.key = "one"
+        first = world.edit(target_of(world.targets(), "local")["target"], "high")["edit"]
+        world.key = "two"
+        world.store.fixed_now = FIXED + datetime.timedelta(minutes=1)
+        second = world.edit(target_of(world.targets(), "local")["target"], "low")["edit"]
+        for key in ("one", "two"):
+            rows = world.history(key)["rows"]
+            self.assertEqual([r["id"] for r in rows], [second["id"], first["id"]], key)
+            self.assertEqual({r["file_display"] for r in rows}, {"repo/.claude/settings.local.json"})
+            self.assertEqual([r["undoable"] for r in rows], [True, False])
+        # The older row is refused by the newest-row rule, from either project.
+        for key in ("one", "two"):
+            status, body = api_edit.undo(world.ctx, {"project": key, "edit": first["id"]})
+            self.assertEqual((status, body), (409, {"error": "not_undoable", "reason": "not_newest"}), key)
+        self.assertEqual(json.loads(self.raw(self.local_of(repo)))["effortLevel"], "low")
+        status, body = api_edit.undo(world.ctx, {"project": "one", "edit": second["id"]})
+        self.assertEqual(status, 200, body)
+        self.assertEqual(json.loads(self.raw(self.local_of(repo)))["effortLevel"], "high")
+
+    # i. the version rule
+
+    def test_the_version_rule_picks_the_starting_folder_or_the_root(self):
+        world = self.world_for([{"name": "App", "path": "{root}/repo/app"}])
+        repo = self.repo(world, "repo")
+        app = os.path.join(repo, "app")
+        os.makedirs(app)
+        for version, folder, leftover in (("2.1.210", app, False), ("2.0.0", app, False),
+                                          ("2.1.211", repo, True), ("2.1.302", repo, True), (None, repo, True)):
+            with self.subTest(version=version):
+                self.version_ctx(world, version)
+                self.assertEqual(edit_store.target_for(world.ctx, "app", "local").path, self.local_of(folder))
+                found = [(layer, target.path, left) for layer, target, left in edit_store.project_files(world.ctx, "app")]
+                expected = [("user", os.path.join(world.cfg, "settings.json"), False),
+                            ("project", os.path.join(app, ".claude", "settings.json"), False),
+                            ("local", self.local_of(folder), False)]
+                if leftover:
+                    expected.append(("local", self.local_of(app), True))
+                self.assertEqual(found, expected)
+                files = world.targets()["files"]
+                self.assertEqual(file_of(files, "local")["file_display"],
+                                 ("repo/app" if folder == app else "repo") + "/.claude/settings.local.json")
+
+    # j. outside_project
+
+    def test_outside_project_is_true_for_a_subfolder_and_a_worktree_only(self):
+        world = self.world_for([{"name": "Main", "path": "{root}/main"}, {"name": "Wt", "path": "{root}/wt"},
+                                {"name": "Sub", "path": "{root}/repo2/sub"}, {"name": "Plain", "path": "{root}/plain"}])
+        main = self.repo(world, "main")
+        self.worktree(main, "wt")
+        repo2 = self.repo(world, "repo2")
+        os.makedirs(os.path.join(repo2, "sub"))
+        os.makedirs(os.path.join(world.root, "plain", ".claude"))
+        for key, outside in (("main", False), ("wt", True), ("sub", True), ("plain", False)):
+            with self.subTest(project=key):
+                world.key = key
+                body = world.targets()
+                self.assertEqual([f["outside_project"] for f in body["files"] if f["layer"] != "local"], [False, False])
+                self.assertIs(file_of(body["files"], "local")["outside_project"], outside)
+                status, pv = world.preview(add_of(body, "local", TOP)["target"], "high")
+                self.assertEqual((status, pv["outside_project"]), (200, outside), pv)
+                other = [a for a in body["adds"] if a["layer"] == "project"]
+                status, pv = world.preview(other[0]["target"], "high")
+                self.assertEqual((status, pv["outside_project"]), (200, False), pv)
+
+    # k. the folder _with_git asks about
+
+    def test_the_git_ignore_check_gets_the_folder_that_holds_the_file(self):
+        world = self.world_for([{"name": "App", "path": "{root}/repo/app"}])
+        repo = self.repo(world, "repo")
+        os.makedirs(os.path.join(repo, "app"))
+        world.key = "app"
+        patcher = mock.patch.object(git_check, "ignore_state", return_value="not_ignored")
+        state = patcher.start()
+        self.addCleanup(patcher.stop)
+        target = add_of(world.targets(), "local", TOP)["target"]
+        status, pv = world.preview(target, "high")
+        self.assertEqual((status, pv["git_ignore"]), (200, "not_ignored"))
+        self.assertEqual(state.call_args[0][0], repo)  # the root, not the project folder
+        # A backup preview of the leftover file asks about the starting folder.
+        state.reset_mock()
+        app = os.path.join(repo, "app")
+        World.put(self.local_of(app), {"effortLevel": "medium"})
+        self.version_ctx(world, "2.1.210")
+        saved = world.edit(target_of(world.targets(), "local")["target"], "high")["edit"]
+        self.version_ctx(world, "2.1.211")
+        state.reset_mock()
+        status, pv = api_edit.backup_preview(world.ctx, {"project": "app", "edit": saved["id"], "kind": "restore"})
+        self.assertEqual((status, pv["git_ignore"]), (200, "not_ignored"), pv)
+        self.assertEqual(state.call_args[0][0], app)
+        # A backup preview of the root file asks about the root again.
+        state.reset_mock()
+        World.put(self.local_of(repo), {"effortLevel": "low"})
+        world.store.fixed_now = FIXED + datetime.timedelta(minutes=1)
+        root_saved = world.edit(target_of(world.targets(), "local")["target"], "xhigh")["edit"]
+        state.reset_mock()
+        status, pv = api_edit.backup_preview(world.ctx, {"project": "app", "edit": root_saved["id"], "kind": "restore"})
+        self.assertEqual(status, 200, pv)
+        self.assertEqual(state.call_args[0][0], repo)
+
+    # l. the fixture bound
+
+    def test_a_root_outside_the_context_root_locks_the_project(self):
+        world = self.world_for([{"name": "App", "path": "{root}/repo/app"}])
+        repo = self.repo(world, "repo")
+        os.makedirs(os.path.join(repo, "app"))
+        World.put(self.local_of(repo), {"effortLevel": "medium"})
+        bound = os.path.join(world.root, "bound")
+        os.makedirs(bound)
+        world.key = "app"
+        before = self.settings_files(world)
+        self.assertIsNone(world.targets()["project_lock"])
+        world.ctx = dataclasses.replace(world.ctx, root=bound)
+        body = world.targets()
+        self.assertEqual(body["project_lock"], "not_repo_root")
+        for row in body["files"]:
+            self.assertEqual(row["lock_reason"], "not_repo_root")
+        self.assertEqual(self.settings_files(world), before)
 
 
 if __name__ == "__main__":

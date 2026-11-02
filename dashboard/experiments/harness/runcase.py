@@ -7,7 +7,8 @@ case.json: {"name": ..., "user": {...}, "project": {...}, "local": {...},
             "agents": {"<name>": "<agent file text>"}, "agent_input": {...},
             "agent_files": [{"where": "user", "path": "a.md", "text": "..."}],
             "cwd": "project", "git_init": false,
-            "prompt": "say hi", "text_reply": false}
+            "start_project": {...}, "start_local": {...}, "sub_local": {...},
+            "home_is_root": false, "prompt": "say hi", "text_reply": false}
 
 prompt is optional and must be exactly one of PROMPT_ALLOWLIST ("say hi", the
 default, "/effort status", or "/autocompact" with no argument); it is the -p
@@ -28,6 +29,25 @@ claude in <project>/sub. git_init is optional and must be a bool. When true, `gi
 -q` runs in <project> first, with only the pass-through variables, HOME set to the
 throwaway home, GIT_CONFIG_NOSYSTEM=1 and GIT_CONFIG_GLOBAL=/dev/null. Claude Code gets
 the same two GIT_CONFIG variables.
+
+Repo-root layouts (cwd). <project> is always the repo root: "user", "project" and "local"
+keep writing there (for "worktree" it is the main checkout, for the submodule layouts the
+superproject). The other values build their own repos, with the same closed git
+environment, stdin on /dev/null and GIT_TIMEOUT per command, and refuse git_init:
+  "worktree"          `git init`, one commit, `git worktree add` of <root>/worktree; claude runs there.
+  "submodule"         <root>/src is a repo with one commit; <project> is a repo that adds it as
+                      <project>/sub with `-c protocol.file.allow=always`; claude runs in sub.
+  "submodule_nested"  the same, but claude runs in <project>/sub/deep.
+start_project, start_local and sub_local are optional objects, checked like the other
+settings layers. start_project and start_local are the settings.json and settings.local.json
+in the folder claude starts in, and are refused when cwd is "project". sub_local is the
+settings.local.json in the submodule top (<project>/sub) and is allowed only with
+"submodule_nested", because with "submodule" start_local is that file. "nested" with
+git_init is the way to get a repo root above the starting folder. agent_files "nested"
+is refused with the three new layouts, because <project>/sub is then a submodule.
+home_is_root is optional and must be a bool, allowed only with cwd "nested". When true the
+throwaway HOME is <project> itself, so the root equals HOME. An "expect" key in a case file
+is ignored by runcase.py; it only records the answer the case is meant to show.
 
 Agent text ("agents" values and agent_files text) goes through check_frontmatter.
 It refuses any of NUL, \\v, \\f, \\r, the other C0 controls except \\n and \\t, DEL,
@@ -125,7 +145,11 @@ AGENT_FILE_KEYS = ("where", "path", "text")
 AGENT_FILE_MAX = 8
 AGENT_FILE_SUFFIXES = (".md", ".md.bak")
 SEGMENT_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}")
-CWD_CHOICES = ("project", "nested")
+CWD_CHOICES = ("project", "nested", "worktree", "submodule", "submodule_nested")
+# Layouts that build their own git repos, and the layers that need a starting folder
+# other than the project root.
+GIT_LAYOUTS = ("worktree", "submodule", "submodule_nested")
+START_LAYERS = ("start_project", "start_local", "sub_local")
 INIT_AGENT_MAX = 100
 CLAUDE_TIMEOUT = 90
 GIT_TIMEOUT = 20
@@ -392,8 +416,27 @@ def check_case(case):
     if "git_init" in case and not isinstance(case["git_init"], bool):
         refuse("case git_init is not a bool")
     if "cwd" in case and (not isinstance(case["cwd"], str) or case["cwd"] not in CWD_CHOICES):
-        refuse("case cwd is not project or nested")
-    for layer in FILE_LAYERS:
+        refuse("case cwd is not one of %s" % ", ".join(CWD_CHOICES))
+    cwd = case.get("cwd", "project")
+    if "home_is_root" in case:
+        if not isinstance(case["home_is_root"], bool):
+            refuse("case home_is_root is not a bool")
+        if case["home_is_root"] and cwd != "nested":
+            refuse("case home_is_root needs cwd nested")
+    if cwd == "project":
+        for layer in ("start_project", "start_local", "sub_local"):
+            if layer in case:
+                refuse("case %s needs a cwd other than project" % layer)
+    if "sub_local" in case and cwd != "submodule_nested":
+        refuse("case sub_local needs cwd submodule_nested")
+    if cwd in GIT_LAYOUTS:
+        if case.get("git_init"):
+            refuse("case git_init is not allowed with cwd %s, which builds its own repo" % cwd)
+        items = case.get("agent_files")
+        for item in items if isinstance(items, list) else []:
+            if isinstance(item, dict) and item.get("where") == "nested":
+                refuse("agent_files nested is not allowed with cwd %s" % cwd)
+    for layer in FILE_LAYERS + START_LAYERS:
         data = case.get(layer)
         if data is None:
             continue
@@ -492,6 +535,61 @@ def pass_through():
     return {k: os.environ[k] for k in CALLER_PASSTHROUGH if k in os.environ}
 
 
+def git_env(home):
+    """The closed environment every git command runs in."""
+    genv = pass_through()
+    genv.update({"HOME": home, "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": "/dev/null"})
+    return genv
+
+
+# Options in front of every git command that makes a commit or a clone, so no hook,
+# signing setting or identity comes from outside.
+GIT_QUIET = ("-c", "user.name=probe", "-c", "user.email=probe@example.invalid",
+             "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null")
+
+
+def run_git(root, genv, cwd, args, label):
+    """Run one git command; on a failure remove the throwaway root and exit 1."""
+    try:
+        g = subprocess.run(["git"] + list(args), cwd=cwd, env=genv, capture_output=True,
+                           text=True, timeout=GIT_TIMEOUT, stdin=subprocess.DEVNULL)
+        failed = None if g.returncode == 0 else "exit %d: %s" % (g.returncode, g.stderr.strip()[-200:])
+    except (OSError, subprocess.SubprocessError) as exc:
+        failed = "%s: %s" % (type(exc).__name__, exc)
+    if failed:
+        shutil.rmtree(root, True)
+        sys.stderr.write("runcase failed: %s did not finish (%s)\n" % (label, failed))
+        sys.exit(1)
+
+
+def build_git_layout(root, proj, genv, layout):
+    """Build the repos for a GIT_LAYOUTS cwd and return the folder claude starts in."""
+    commit = list(GIT_QUIET) + ["commit", "-q", "--allow-empty", "-m", "init"]
+    run_git(root, genv, proj, ["init", "-q"], "git init in the project")
+    if layout == "worktree":
+        run_git(root, genv, proj, commit, "git commit in the project")
+        work = os.path.join(root, "worktree")
+        run_git(root, genv, proj, ["worktree", "add", "-q", "-b", "probe-wt", work],
+                "git worktree add")
+        return work
+    src = os.path.join(root, "src")
+    os.makedirs(src)
+    run_git(root, genv, src, ["init", "-q"], "git init in the submodule source")
+    with open(os.path.join(src, "README"), "w") as fh:
+        fh.write("submodule source\n")
+    run_git(root, genv, src, ["add", "README"], "git add in the submodule source")
+    run_git(root, genv, src, commit, "git commit in the submodule source")
+    run_git(root, genv, proj, ["-c", "protocol.file.allow=always", "submodule", "add", "-q",
+                               src, "sub"], "git submodule add")
+    run_git(root, genv, proj, commit, "git commit in the project")
+    top = os.path.join(proj, "sub")
+    if layout == "submodule":
+        return top
+    deep = os.path.join(top, "deep")
+    os.makedirs(deep)
+    return deep
+
+
 def main():
     for name in CALLER_FORBIDDEN:
         if os.environ.get(name):
@@ -505,8 +603,11 @@ def main():
 
     root = tempfile.mkdtemp(prefix="mr-exp-", dir=os.environ.get("TMPDIR"))
     home, cfg, proj = (os.path.join(root, d) for d in ("home", "config", "project"))
-    for d in (home, cfg, os.path.join(proj, ".claude")):
-        os.makedirs(d)
+    # home_is_root makes the repo root the HOME, so no separate home folder is made.
+    if case.get("home_is_root"):
+        home = proj
+    for d in {home, cfg, os.path.join(proj, ".claude")}:
+        os.makedirs(d, exist_ok=True)
 
     def put(path, data):
         if data is not None:
@@ -533,22 +634,23 @@ def main():
         with open(target, "w") as fh:
             fh.write(text)
     workdir = proj
-    if case.get("cwd") == "nested":
+    cwd = case.get("cwd", "project")
+    if cwd == "nested":
         workdir = os.path.join(proj, "sub")
         os.makedirs(workdir, exist_ok=True)
+    genv = git_env(home)
     if case.get("git_init"):
-        genv = pass_through()
-        genv.update({"HOME": home, "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": "/dev/null"})
-        try:
-            g = subprocess.run(["git", "init", "-q"], cwd=proj, env=genv, capture_output=True,
-                               text=True, timeout=GIT_TIMEOUT, stdin=subprocess.DEVNULL)
-            failed = None if g.returncode == 0 else "exit %d: %s" % (g.returncode, g.stderr.strip()[-200:])
-        except (OSError, subprocess.SubprocessError) as exc:
-            failed = "%s: %s" % (type(exc).__name__, exc)
-        if failed:
-            shutil.rmtree(root, True)
-            sys.stderr.write("runcase failed: git init in the project did not finish (%s)\n" % failed)
-            sys.exit(1)
+        run_git(root, genv, proj, ["init", "-q"], "git init in the project")
+    if cwd in GIT_LAYOUTS:
+        workdir = build_git_layout(root, proj, genv, cwd)
+    # The starting folder's own files, written after any repo is built.
+    if cwd != "project":
+        os.makedirs(os.path.join(workdir, ".claude"), exist_ok=True)
+        put(os.path.join(workdir, ".claude", "settings.json"), case.get("start_project"))
+        put(os.path.join(workdir, ".claude", "settings.local.json"), case.get("start_local"))
+    if case.get("sub_local") is not None:
+        os.makedirs(os.path.join(proj, "sub", ".claude"), exist_ok=True)
+        put(os.path.join(proj, "sub", ".claude", "settings.local.json"), case["sub_local"])
     args = ["claude", "-p", case.get("prompt", DEFAULT_PROMPT), "--output-format", "stream-json", "--verbose"]
     if case.get("cli_settings") is not None:
         path = os.path.join(root, "cli-settings.json")
