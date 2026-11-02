@@ -1,0 +1,23 @@
+{
+  "fixture": "agent-effort-cap-model-unknown-max-lowers-nothing",
+  "rule_ids": [
+    "agent-effort-order"
+  ],
+  "note": "A top-level cap of max is the highest level, so it lowers no agent effort.",
+  "confidence": "documented",
+  "source": "https://code.claude.com/docs/en/settings-reference#maxeffortlevel",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "effort",
+      "value": "high",
+      "status": "in_effect",
+      "layer": "agent",
+      "file": "config/agents/probe.md",
+      "line": 4,
+      "scope": "agent",
+      "agent": "probe",
+      "rule_id": "agent-effort-order"
+    }
+  ]
+}

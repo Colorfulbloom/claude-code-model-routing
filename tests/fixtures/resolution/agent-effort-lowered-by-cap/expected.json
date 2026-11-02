@@ -1,0 +1,25 @@
+{
+  "fixture": "agent-effort-lowered-by-cap",
+  "rule_ids": [
+    "agent-effort-lowered-by-cap"
+  ],
+  "note": "The agent names a known model, so the model-aware rule applies and the row carries the model. The top-level maxEffortLevel lowers the frontmatter effort.",
+  "confidence": "tested",
+  "source": "dashboard/experiments/2026-10-29-effort-cap-transcript.json",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "effort",
+      "value": "high",
+      "status": "lowered",
+      "layer": "agent",
+      "file": "config/agents/probe.md",
+      "line": 5,
+      "scope": "agent",
+      "agent": "probe",
+      "model": "claude-haiku-5-5",
+      "becomes": "low",
+      "rule_id": "agent-effort-lowered-by-cap"
+    }
+  ]
+}
