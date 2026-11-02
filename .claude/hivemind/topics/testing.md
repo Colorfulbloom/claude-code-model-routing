@@ -1,15 +1,15 @@
 # testing
 
-### T-7629 Full suite runs 2609 tests in about 270 seconds
-fact: discover -s tests runs 2609 tests in about 270 s, 46 skipped: 44 need MR_E2E=1, owner only, 2 need MR_DOCS_LIVE=1 or MR_SUBAGENT_DOCS. Run it alone. A broken pty test can leave a hung process.
-check: /usr/bin/python3 -c "import unittest,sys; sys.path.insert(0,'tests'); print(unittest.TestLoader().discover('tests').countTestCases())"
+### T-7629 Full suite: 2750 tests, about 255 seconds
+fact: discover -s tests runs 2750 tests in about 255 s, 52 skipped: 50 need MR_E2E=1, owner only, 2 need MR_DOCS_LIVE=1 or MR_SUBAGENT_DOCS. Run it alone. A broken pty test can leave a hung process.
+check: HOME=$(mktemp -d) /usr/bin/python3 -c "import unittest,sys; sys.path.insert(0,'tests'); print(unittest.TestLoader().discover('tests').countTestCases())"
 evidence: tests
-fp: 62e64d26d461
-as_of: 6cba148 2026-11-01
+fp: 1768efdde400
+as_of: 7da3051 2026-11-01
 author: deep-reasoner
 created: 2026-10-20
 last_used: 2026-11-01
-uses: 22
+uses: 23
 promote: approved
 
 ### T-5589 Subsets: discover -k; dotted names fail
@@ -17,11 +17,11 @@ fact: Dotted names (tests.test_x) fail with "No module named 'helpers'"; use dis
 check: /usr/bin/python3 -m unittest tests.test_parity 2>&1 | grep "No module named"
 evidence: tests/helpers.py
 fp: 99286733860d
-as_of: c5bce3a 2026-11-01
+as_of: 7da3051 2026-11-01
 author: deep-reasoner
 created: 2026-10-20
 last_used: 2026-11-01
-uses: 79
+uses: 85
 promote: approved
 
 ### T-d689 Installer messages need a parity allowance
