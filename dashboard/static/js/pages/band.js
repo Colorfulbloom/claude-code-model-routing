@@ -16,7 +16,7 @@
 // Every value comes from the server as data, so it goes in as text through h.js, never as markup.
 
 import { h, clear } from "../h.js";
-import { t } from "../format.js";
+import { t, withCommas } from "../format.js";
 import { icon } from "../icons.js";
 import { chip } from "../components.js";
 import { fit, merge, move, sameOrder, dropIndex } from "../band_order.js";
@@ -37,8 +37,6 @@ let current = null;
 let boundTo = null;
 
 // ---------------------------------------------------------------- one cell
-
-const withCommas = (digits) => digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
 // The value of a cell as { plain, node }: the words a screen reader says, and what the cell shows. A setting the
 // payload has no entry for, a null value and a value the page hides read as "Not known". An effort cap with no

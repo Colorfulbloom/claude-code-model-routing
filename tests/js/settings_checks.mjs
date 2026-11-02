@@ -151,6 +151,15 @@ test("band: the compact window shows thousands commas, and the screen reader hea
   assert.equal(text(sub(cellFor(small, "autoCompactWindow"), "s4-sv")), "500");
 });
 
+test("where: a Where it's set row shows the compact window with thousands commas, and other numbers stay as they are", () => {
+  const payload = handPayload([entry({ key: "autoCompactWindow", value: 200000, status: "in_effect", layer: "user", file: "/u/settings.json", line: 3 })]);
+  const row = where.entryRow(payload.entries[0], payload);
+  assert.equal(text(sub(row, "s4-v")), "200,000");
+  assert.equal(settings.valueString({ key: "autoCompactWindow", value: "300000" }, payload, true), "300,000");
+  assert.equal(settings.valueString({ key: "autoCompactWindow", value: 500 }, payload, true), "500");
+  assert.equal(settings.valueString({ key: "maxThinkingTokens", value: 200000 }, payload, true), "200000", "only the compact window is grouped");
+});
+
 test("band: the effort cap reads Not set with no value or with only the default, and Not known with no entry", () => {
   const root = show(handPayload(EIGHT));
   assert.equal(text(sub(cellFor(root, "maxEffortLevel"), "s4-sv")), "Not set");
@@ -516,7 +525,7 @@ test("helpers: layers, setting words and values", () => {
   const p = handPayload([]);
   assert.equal(settings.valueText(entry({ key: "model", value: "claude-opus-5-5" }), p), "Opus 5.5 (claude-opus-5-5)");
   assert.equal(settings.valueText(entry({ key: "model", value: "opus" }), p), "Opus 5.5 (opus)");
-  assert.equal(settings.valueText(entry({ key: "autoCompactWindow", value: 1000000 }), p), "1000000");
+  assert.equal(settings.valueText(entry({ key: "autoCompactWindow", value: 1000000 }), p), "1,000,000");
   assert.equal(settings.valueText(entry({ value: null }), p), null);
   assert.equal(settings.valueText(entry({ value: "" }), p), "empty");
 });
