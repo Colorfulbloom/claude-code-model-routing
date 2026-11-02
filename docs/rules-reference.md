@@ -165,6 +165,7 @@ Some sources change a session after it starts, and others sit outside what the d
 | model-settings-effort-values | modelSettings | model | Tested | 2.1.302 |
 | effort-flag-values | effortLevel | main | Tested | 2.1.302 |
 | effort-lowered-by-cap | effortLevel | main | Tested | 2.1.302 |
+| effort-lowered-by-cap-model-unknown | effortLevel | main | Documented | 2.1.302 |
 | effort-lowered-unsupported-level | effortLevel | main | Tested | 2.1.302 |
 | effort-ignored-no-effort-support | effortLevel | main | Tested | 2.1.302 |
 | agent-effort-order | effort | agent | Tested | 2.1.302 |
@@ -852,6 +853,31 @@ Quotes:
 
 - Experiment record: [../dashboard/experiments/2026-10-29-effort-cap-transcript.json](../dashboard/experiments/2026-10-29-effort-cap-transcript.json)
 - Confidence: Tested
+- Verified on: Claude Code 2.1.302, October 29, 2026
+
+### effort-lowered-by-cap-model-unknown
+
+- Key: effortLevel
+- Scope: main
+- Combine: highest_layer
+- Layer order (highest first): env, flag, managed, cli, local, project, user, default
+
+Reason:
+
+> {value} from {file} runs as {becomes}, because the top-level maxEffortLevel caps it at {becomes}. The dashboard doesn't know the session's model, so a per-model cap in modelSettings could change that.
+
+Quotes:
+
+- [https://code.claude.com/docs/en/settings-reference#maxeffortlevel](https://code.claude.com/docs/en/settings-reference#maxeffortlevel)
+
+> Any higher level runs at the cap instead, including one from `/effort`, the `/model` picker, `--effort`, `CLAUDE_CODE_EFFORT_LEVEL`, a skill's or subagent's `effort` frontmatter, or the model's own default.
+
+- [https://code.claude.com/docs/en/settings-reference#maxeffortlevel](https://code.claude.com/docs/en/settings-reference#maxeffortlevel)
+
+> When several scopes set a cap, the lowest applies, so a cap set in one scope can't be raised from another
+
+- Experiment record: none
+- Confidence: Documented
 - Verified on: Claude Code 2.1.302, October 29, 2026
 
 ### effort-lowered-unsupported-level

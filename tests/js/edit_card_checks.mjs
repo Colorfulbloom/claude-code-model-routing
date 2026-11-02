@@ -1267,31 +1267,19 @@ test("warning: Start with the cap in a warning drops the pick and opens the Effo
   assert.equal(a.log.preview.length, 1, "no preview for the cap yet");
 });
 
-test("warning: no model and a cap below the level says the cap still applies", async () => {
+test("warning: no model and a cap below the level shows the cap warning", async () => {
   const c = real("nomodel_cap");
   const targets = clone(c.targets);
   pickableLevel(targets, "high", ["project"]);
   const a = app({ data: { settings: c.settings, targets, history: c.history }, backend: { preview: async (t, v) => ok(c.previews.project[v]) } });
   await a.choose("high");
   await a.pickRow("project");
-  assert.equal(c.previews.project.high.warning.status, "in_effect");
-  assert.equal(tag(byClass(a.rail(), "p2-nt-warn")[0], "p").map(text)[0], STRINGS.ed_warn_nomodel_cap_t);
+  assert.equal(c.previews.project.high.warning.status, "lowered");
+  assert.equal(c.previews.project.high.warning.model_known, false);
+  const warn = byClass(a.rail(), "p2-nt-warn")[0];
+  assert.equal(tag(warn, "p").map(text)[0], STRINGS.ed_warn_cap_t, "the user file's cap can be changed, as with a model set");
   assert.equal(text(byClass(a.rail(), "p2-nt-h")[0]), "▲" + STRINGS.ed_warn_h);
-  assert.deepEqual(tag(byClass(a.rail(), "p2-nt-warn")[0], "button").map(text), [], "the no-model line does not offer Start with the cap");
-});
-
-test("warning: a cap that bites when a model is set does not say that no model is set", async () => {
-  const c = real("nomodel_cap");
-  const targets = clone(c.targets);
-  pickableLevel(targets, "high", ["project"]);
-  const pv = clone(c.previews.project.high);
-  pv.warning.model_known = true;
-  const a = app({ data: { settings: c.settings, targets, history: c.history }, backend: { preview: async () => ok(pv) } });
-  await a.choose("high");
-  await a.pickRow("project");
-  const lines = tag(byClass(a.rail(), "p2-nt-warn")[0], "p").map(text);
-  assert.equal(lines.includes(STRINGS.ed_warn_nomodel_cap_t), false);
-  assert.equal(lines[0], STRINGS.ed_warn_cap_t);
+  assert.deepEqual(tag(warn, "button").map(text), [STRINGS.ed_start_cap], "the warning offers Start with the cap");
 });
 
 test("warning: a model limit and each winner status use their own text", async () => {
