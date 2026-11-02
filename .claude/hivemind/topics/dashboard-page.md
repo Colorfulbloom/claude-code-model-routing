@@ -66,3 +66,4 @@ author: fast-worker
 created: 2026-11-01
 last_used: 2026-11-02
 uses: 9
+promote: approved

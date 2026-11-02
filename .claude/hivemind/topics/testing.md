@@ -57,6 +57,7 @@ author: deep-reasoner
 created: 2026-10-30
 last_used: 2026-10-31
 uses: 7
+promote: approved
 
 ### T-d32f Copied server tree needs install.py
 fact: api_settings imports install.py at import, so tests/test_server.py copy_tree copies it.

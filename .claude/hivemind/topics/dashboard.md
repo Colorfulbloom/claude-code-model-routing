@@ -10,6 +10,7 @@ author: fast-worker
 created: 2026-10-30
 last_used: 2026-11-02
 uses: 12
+promote: approved
 
 ### W-f6ed macOS traps in server tests: bytecode prefix, second bind
 fact: /usr/bin/python3 3.9.6 sets sys.pycache_prefix under $HOME/Library/Caches, so a no-writes test that hashes source folders passes even with dont_write_bytecode False. Run the child with -X pycache_prefix=, as NoWrites does; -B would defeat it. A second bind to 0.0.0.0 fails even for a loopback-only socket, so check with lsof -nP -a -p <pid> -iTCP -sTCP:LISTEN -Fn.

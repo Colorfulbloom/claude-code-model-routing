@@ -79,3 +79,4 @@ author: deep-reasoner
 created: 2026-10-30
 last_used: 2026-10-30
 uses: 7
+promote: approved
