@@ -8,8 +8,8 @@ fp: 87b70513655e
 as_of: c5bce3a 2026-11-01
 author: deep-reasoner
 created: 2026-11-01
-last_used: 2026-11-01
-uses: 3
+last_used: 2026-11-02
+uses: 4
 
 ### G-b77c Real-git tests: wrapper git, partial clone
 fact: ignore_state builds its own env, so real-git tests use a wrapper git script in a throwaway bin dir that sets GIT_CONFIG_NOSYSTEM and execs the real git by absolute path. To prove a lazy-fetch safeguard, clone --filter=blob:none --no-checkout from a file:// bare repo with uploadpack.allowFilter and allowAnySHA1InWant true, then read-tree HEAD and update-index --skip-worktree .gitignore. A raw check-ignore then fires core.sshCommand, and with --no-lazy-fetch it doesn't.
@@ -19,5 +19,16 @@ fp: e60d478c4804
 as_of: c5bce3a 2026-11-01
 author: fast-worker
 created: 2026-11-01
-last_used: 2026-11-01
+last_used: 2026-11-02
+uses: 5
+
+### G-c2d7 A bare repo named .git reads unknown
+fact: git_check.repo_root reads the common dir's config (at most 64 KiB, _MAX_CONFIG) and treats core.bare true as a refusal, so a worktree of a bare repo in a folder named .git reads unknown and locks. A missing config is not bare, because hand-made test worktrees have none.
+check: /usr/bin/python3 -m unittest discover -s tests -p test_git_check.py -k bare
+evidence: dashboard/git_check.py, tests/test_git_check.py
+fp: e9f9618b6092
+as_of: 057353e 2026-11-02
+author: fast-worker
+created: 2026-11-02
+last_used: 2026-11-02
 uses: 0

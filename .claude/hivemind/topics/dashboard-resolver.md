@@ -48,10 +48,10 @@ uses: 0
 fact: Adding or removing a rule in rules.json breaks test_api_rules until the All, Tested, Documented and Assumed texts in tests/e2e_checks/rules.json change and docs/rules-reference.md is rebuilt with /usr/bin/python3 dashboard/reference_page.py.
 check: /usr/bin/python3 -m unittest discover -s tests -p test_api_rules.py
 evidence: tests/e2e_checks/rules.json, tests/test_api_rules.py, dashboard/reference_page.py
-fp: 6f9fb210c51f
-as_of: 6206393 2026-11-02
+fp: 95e2d621a37d
+as_of: 399f865 2026-11-02
 author: deep-reasoner
 created: 2026-11-02
 last_used: 2026-11-02
-uses: 0
+uses: 2
 promote: approved

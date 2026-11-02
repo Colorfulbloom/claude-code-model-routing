@@ -1,15 +1,15 @@
 # testing
 
-### T-7629 Full suite: 2982 tests, about 265 seconds
-fact: discover -s tests runs 2982 tests in about 265 s, 58 skipped: 56 need MR_E2E=1, owner only, 1 needs MR_DOCS_LIVE=1 and 1 needs MR_SUBAGENT_DOCS (a runtime skipTest). Run it alone. A broken pty test can leave a hung process.
+### T-7629 Full suite: 3110 tests, about 283 seconds
+fact: discover -s tests runs 3110 tests in about 283 s, 60 skipped: 58 need MR_E2E=1, owner only, 1 needs MR_DOCS_LIVE=1 and 1 needs MR_SUBAGENT_DOCS (a runtime skipTest). Run it alone. A broken pty test can leave a hung process.
 check: HOME=$(mktemp -d) /usr/bin/python3 -c "import unittest,sys; sys.path.insert(0,'tests'); print(unittest.TestLoader().discover('tests').countTestCases())"
 evidence: tests
-fp: 98afd901c014
-as_of: 6206393 2026-11-02
+fp: 4f9b50382cb6
+as_of: 057353e 2026-11-02
 author: deep-reasoner
 created: 2026-10-20
-last_used: 2026-11-01
-uses: 23
+last_used: 2026-11-02
+uses: 26
 promote: approved
 
 ### T-5589 Subsets: discover -k; dotted names fail
@@ -17,11 +17,11 @@ fact: Dotted names (tests.test_x) fail with "No module named 'helpers'"; use dis
 check: /usr/bin/python3 -m unittest tests.test_parity 2>&1 | grep "No module named"
 evidence: tests/helpers.py
 fp: 99286733860d
-as_of: 3cd3124 2026-11-02
+as_of: 399f865 2026-11-02
 author: deep-reasoner
 created: 2026-10-20
 last_used: 2026-11-02
-uses: 90
+uses: 98
 promote: approved
 
 ### T-07ef Settings harness: no real API call
@@ -29,11 +29,11 @@ fact: dashboard/experiments/harness/ runs claude -p in a throwaway HOME against 
 check: grep -n "PROMPT_ALLOWLIST = " dashboard/experiments/harness/runcase.py
 evidence: dashboard/experiments/harness/README.md, dashboard/experiments/harness/runcase.py, dashboard/experiments/harness/results-step2-compact.jsonl
 fp: b8cce11c735d
-as_of: 0766733 2026-10-31
+as_of: 399f865 2026-11-02
 author: deep-reasoner
 created: 2026-10-29
-last_used: 2026-10-31
-uses: 11
+last_used: 2026-11-02
+uses: 17
 promote: approved
 
 ### T-6b2f Collector where maps have tuple keys
@@ -45,7 +45,7 @@ as_of: 6206393 2026-11-02
 author: deep-reasoner
 created: 2026-10-29
 last_used: 2026-11-02
-uses: 5
+uses: 6
 
 ### T-3ad1 tests/*.py: no home paths, no imported TestCase
 fact: NoHomePathsInTestsTest bans home path prefixes in tests/*.py, so sample paths start at /work/. tests/fixtures/ is not scanned. Import a test module whole (import test_x as x): from test_x import TestClass makes discover run that class twice.

@@ -61,8 +61,8 @@ fact: tests/test_static_strings.py counts a string as used only in a literal t("
 check: /usr/bin/python3 -m unittest discover -s tests -k strings
 evidence: tests/test_static_strings.py, dashboard/static/js/edit_foot.js
 fp: 1c20ccb57cd5
-as_of: 6206393 2026-11-02
+as_of: 399f865 2026-11-02
 author: fast-worker
 created: 2026-11-01
 last_used: 2026-11-02
-uses: 6
+uses: 9
