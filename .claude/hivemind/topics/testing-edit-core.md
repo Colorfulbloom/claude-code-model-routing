@@ -54,3 +54,4 @@ author: verifier
 created: 2026-11-01
 last_used: 2026-11-01
 uses: 2
+promote: approved

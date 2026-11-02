@@ -9,3 +9,6 @@ Owner-approved facts promoted from HiveMind. Only deep-reasoner edits this file,
 - T-07ef Settings harness: `dashboard/experiments/harness/` measures precedence with no real API call (fakeapi.py on 127.0.0.1, throwaway HOME). `claude -p "/effort status"` and `"/autocompact"` send no request. Never run a batch as a check.
 - D-1534 Doc anchors: check code.claude.com anchors against the rendered HTML `id="..."` attributes, not .md heading slugs. Python urllib needs a custom User-Agent; the default gets 403.
 - D-b739 Fixture ignores: a global gitignore can drop `.claude/settings.local.json`; the repo `.gitignore` negates it for `tests/fixtures/**`. Check with `git check-ignore -v`.
+- K-6860 Nested `:has()`: it is invalid CSS, so the browser drops the whole rule with no error. Check Settings rail padding by computed value, not by `--s4-foot`.
+- U-0aa1 Undo history: edit ledgers are per file, and history merges the layers by (time, seq). Server `rows[-1]` is one file's newest row and page `rows[0]` is the project's newest, so a row with `undoable` or `undo_anyway` can still sit in Older backups.
+- C-06bf Probe copies: exclude `.claude`, or rsync carries the owner's `settings.local.json` into the copy. A shell that exports a throwaway HOME also shows that file as untracked in `git status`, so run git without the export.

@@ -21,6 +21,7 @@ author: designer
 created: 2026-11-01
 last_used: 2026-11-01
 uses: 0
+promote: approved
 
 ### K-9709 Settings rail needs grid-auto-rows max-content
 fact: .s4-rb is a height-bound grid and .p2-df has overflow hidden, so without grid-auto-rows max-content on the pane a diff can shrink and clip with no scroll at 1241 and up. Fixture diffs of a few lines hide this.

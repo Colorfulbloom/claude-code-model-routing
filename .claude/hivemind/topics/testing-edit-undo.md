@@ -10,6 +10,7 @@ author: verifier
 created: 2026-11-01
 last_used: 2026-11-01
 uses: 0
+promote: approved
 
 ### U-7c6a The confirm ignores presses for guard.ms
 fact: The confirm of an Undo anyway or restore ignores presses for guard.ms (500) after the preview draws. Node checks set guard.ms to 0 at the top and put 500 back around the double-click check. E2E waits 0.6 s in wait_back_review.
