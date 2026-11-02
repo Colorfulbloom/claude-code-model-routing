@@ -174,5 +174,45 @@ class RequireAgentModelMessageTests(unittest.TestCase):
         self.assertNotIn("the session's effort", err)
 
 
+class FullModelIdTests(unittest.TestCase):
+    """A full model id such as claude-opus-5-5 passes both hooks, in frontmatter and in a dispatch."""
+    MODEL = "claude-opus-5-5"
+
+    def setUp(self):
+        self.sb = Sandbox("new")
+        self.addCleanup(self.sb.cleanup)
+        self.agents = os.path.join(self.sb.cfg, "agents")
+        os.makedirs(self.agents)
+        os.makedirs(self.sb.p("proj"))
+        with open(os.path.join(self.agents, "pinned.md"), "w") as fh:
+            fh.write(agent("pinned", self.MODEL, "high"))
+
+    def dispatch(self, **tool_input):
+        env = self.sb.base_env(True)
+        env["CLAUDE_CONFIG_DIR"] = self.sb.cfg
+        env["CLAUDE_PROJECT_DIR"] = self.sb.p("proj")
+        payload = json.dumps({"tool_name": "Agent", "tool_input": tool_input})
+        proc = subprocess.run(["/usr/bin/python3", os.path.join(REPO, "hooks", "require-agent-model.py")],
+                              input=payload.encode(), env=env, cwd=self.sb.p("proj"),
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60)
+        return proc.returncode, proc.stderr.decode("utf-8", "replace")
+
+    def test_pinned_full_id_in_frontmatter_passes(self):
+        code, err = self.dispatch(subagent_type="pinned")
+        self.assertEqual((code, err), (0, ""))
+
+    def test_full_id_passed_in_a_dispatch_passes(self):
+        code, err = self.dispatch(subagent_type="pinned", model=self.MODEL)
+        self.assertEqual((code, err), (0, ""))
+        code, err = self.dispatch(subagent_type="Explore", model=self.MODEL)
+        self.assertEqual((code, err), (0, ""))
+
+    def test_startup_hook_lists_full_id_as_pinned(self):
+        code, out, err = self.sb.run_hook("new", self.sb.cfg, self.sb.p("proj"))
+        self.assertEqual(code, 0, err)
+        self.assertNotIn("no model or effort", out)
+        self.assertIn("pinned=%s/high" % self.MODEL, out)
+
+
 if __name__ == "__main__":
     unittest.main()

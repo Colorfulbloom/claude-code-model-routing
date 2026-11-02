@@ -1,7 +1,7 @@
 ---
 name: deep-reasoner
 description: "Lead and deep reasoner. Use as the lead for any multi-step feature (plans, dispatches workers and scouts, verifies, returns one summary) and for single hard questions: architecture, complex debugging, algorithm design, novel or high-risk code."
-model: opus
+model: claude-opus-5-5
 effort: high
 experimental:
   cacheTtl: 1h
