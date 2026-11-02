@@ -16,34 +16,35 @@ fact: /usr/bin/python3 adds CPATH, LIBRARY_PATH, SDKROOT, MANPATH and __CF_USER_
 check: printf 'FIVE\n' | sed 's/\bFIVE\b/X/'
 evidence: tests/test_harness_guard.py
 fp: 33743e0d54ce
-as_of: 02a9206 2026-11-02
+as_of: 6206393 2026-11-02
 author: fast-worker
 created: 2026-10-29
-last_used: 2026-10-29
-uses: 1
+last_used: 2026-11-02
+uses: 2
+promote: approved
 
 ### D-1534 Doc anchors and quotes need the rendered page and curl
 fact: code.claude.com headings carry custom ids, so check anchors against the rendered HTML id="..." attributes, not .md slugs. urllib needs a custom User-Agent, as tests/test_doc_anchors.py sends. WebFetch summarises, so confirm a new quote with curl -sL <url>.md | grep.
 check: curl -sL https://code.claude.com/docs/en/sub-agents | grep -o 'id="supported-frontmatter-fields"'
 evidence: tests/test_doc_anchors.py, dashboard/rules.json
 fp: 554682f2ae64
-as_of: 02a9206 2026-11-02
+as_of: 3cd3124 2026-11-02
 author: verifier
 created: 2026-10-29
 last_used: 2026-11-02
-uses: 15
+uses: 16
 promote: approved
 
 ### D-6bed Patching os.stat alone misses pathlib on Python 3.9
 fact: Python 3.9 pathlib keeps its own reference to os.stat, so patching os.stat misses Path.exists, Path.read_text and Path.iterdir; a home guard wraps the Path methods directly, as tests/test_resolve.py does.
 check: /usr/bin/python3 -m unittest discover -s tests -p 'test_resolve.py' -k Guard
 evidence: tests/test_resolve.py
-fp: 49fd95a17782
-as_of: 47fab08 2026-10-31
+fp: 35abeb69ec5c
+as_of: 6206393 2026-11-02
 author: fast-worker
 created: 2026-10-29
-last_used: 2026-10-29
-uses: 4
+last_used: 2026-11-02
+uses: 5
 
 ### D-b739 A global gitignore hides fixture settings.local.json files
 fact: The owner's global git ignore lists **/.claude/settings.local.json, which would leave fixture local layers out of commits; line 5 of the repo .gitignore negates it for tests/fixtures/**. git check-ignore -v shows which rule wins.

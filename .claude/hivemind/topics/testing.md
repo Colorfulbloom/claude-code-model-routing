@@ -1,11 +1,11 @@
 # testing
 
-### T-7629 Full suite: 2866 tests, about 260 seconds
-fact: discover -s tests runs 2866 tests in about 260 s, 52 skipped: 50 need MR_E2E=1, owner only, 2 need MR_DOCS_LIVE=1 or MR_SUBAGENT_DOCS. Run it alone. A broken pty test can leave a hung process.
+### T-7629 Full suite: 2982 tests, about 265 seconds
+fact: discover -s tests runs 2982 tests in about 265 s, 58 skipped: 56 need MR_E2E=1, owner only, 1 needs MR_DOCS_LIVE=1 and 1 needs MR_SUBAGENT_DOCS (a runtime skipTest). Run it alone. A broken pty test can leave a hung process.
 check: HOME=$(mktemp -d) /usr/bin/python3 -c "import unittest,sys; sys.path.insert(0,'tests'); print(unittest.TestLoader().discover('tests').countTestCases())"
 evidence: tests
-fp: 2e86e6109448
-as_of: 02a9206 2026-11-02
+fp: 98afd901c014
+as_of: 6206393 2026-11-02
 author: deep-reasoner
 created: 2026-10-20
 last_used: 2026-11-01
@@ -17,34 +17,12 @@ fact: Dotted names (tests.test_x) fail with "No module named 'helpers'"; use dis
 check: /usr/bin/python3 -m unittest tests.test_parity 2>&1 | grep "No module named"
 evidence: tests/helpers.py
 fp: 99286733860d
-as_of: 02a9206 2026-11-02
+as_of: 3cd3124 2026-11-02
 author: deep-reasoner
 created: 2026-10-20
 last_used: 2026-11-02
-uses: 89
+uses: 90
 promote: approved
-
-### T-d689 Installer messages need a parity allowance
-fact: A new installer message needs an allowance in apply_allowances (tests/helpers.py) and a HarnessSelfTests case: parity tests diff stdout with install_old.sh.
-check: grep -n "def apply_allowances" tests/helpers.py
-evidence: tests/helpers.py, tests/test_parity.py
-fp: 961803e83ac4
-as_of: 203ae0d 2026-10-30
-author: deep-reasoner
-created: 2026-10-21
-last_used: 2026-10-29
-uses: 1
-
-### T-2160 A resumed round starts at a real brief
-fact: promptId follows the parent's prompt. A brief is a user row with origin.kind coordinator, human, or peer from an agent the transcript did not launch.
-check: grep -n "def is_brief" hooks/hivemind_lib.py
-evidence: hooks/hivemind_lib.py, tests/fixtures/rounds/README.md
-fp: 3a06f4c51c50
-as_of: 72a81f7 2026-10-29
-author: deep-reasoner
-created: 2026-10-21
-last_used: 2026-10-29
-uses: 3
 
 ### T-07ef Settings harness: no real API call
 fact: dashboard/experiments/harness/ runs claude -p in a throwaway HOME against fakeapi.py on 127.0.0.1. "/effort status" and "/autocompact" send no request. Never run a batch as a check. Only text_reply true cases write normal assistant rows, so only they can back a claim about the top-level effort field. With no model set a case starts on claude-opus-5-5, where a user top-level effortLevel doesn't count and the request carries medium, so a case for another model sets it.
@@ -62,12 +40,12 @@ promote: approved
 fact: collect.py where maps use tuple keys (modelSettings names hold dots); json.dumps needs jsonable() from tests/test_collect.py.
 check: grep -n "def jsonable" tests/test_collect.py
 evidence: dashboard/collect.py, tests/test_collect.py
-fp: 75d9e963b7d4
-as_of: 0766733 2026-10-31
+fp: 3d6f1fdcb632
+as_of: 6206393 2026-11-02
 author: deep-reasoner
 created: 2026-10-29
-last_used: 2026-10-31
-uses: 4
+last_used: 2026-11-02
+uses: 5
 
 ### T-3ad1 tests/*.py: no home paths, no imported TestCase
 fact: NoHomePathsInTestsTest bans home path prefixes in tests/*.py, so sample paths start at /work/. tests/fixtures/ is not scanned. Import a test module whole (import test_x as x): from test_x import TestClass makes discover run that class twice.

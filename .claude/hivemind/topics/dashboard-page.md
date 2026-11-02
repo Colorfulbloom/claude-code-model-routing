@@ -15,8 +15,8 @@ uses: 2
 fact: Nested :has() is invalid CSS, so the browser drops the whole rule with no error. The Settings rail padding was dead this way while pages/settings.js set --s4-foot correctly. Check rail padding by computed value, not by the variable. test_the_rail_foot_docks_by_itself_at_1240_and_the_page_holds_no_second_dock pins the fixed selector.
 check: /usr/bin/python3 -m unittest discover -s tests -p test_static_shell.py -k the_rail_foot_docks
 evidence: dashboard/static/app.css, dashboard/static/js/pages/settings.js, tests/test_static_shell.py
-fp: 367091f9dfac
-as_of: 7da3051 2026-11-01
+fp: bc8a98ebb069
+as_of: 6206393 2026-11-02
 author: designer
 created: 2026-11-01
 last_used: 2026-11-02
@@ -27,8 +27,8 @@ promote: approved
 fact: .s4-rb is a height-bound grid and .p2-df has overflow hidden, so without grid-auto-rows max-content on the pane a diff can shrink and clip with no scroll at 1241 and up. Fixture diffs of a few lines hide this.
 check: grep -n "^\.s4-rb{\|^\.p2-df{" dashboard/static/app.css
 evidence: dashboard/static/app.css
-fp: 6a9363d1d0fa
-as_of: 7da3051 2026-11-01
+fp: ae21f4eededb
+as_of: 6206393 2026-11-02
 author: designer
 created: 2026-11-01
 last_used: 2026-11-02
@@ -38,8 +38,8 @@ uses: 1
 fact: edit_flow.js must not import a file that reaches pages/settings.js (edit_review.js and edit_backup.js do). That closes an import cycle through edit_card.js, and node checks fail with "Cannot access 'redrawer' before initialization". Pure rules the flow needs go in edit_pick.js.
 check: grep -n "^import" dashboard/static/js/edit_flow.js
 evidence: dashboard/static/js/edit_flow.js, dashboard/static/js/edit_pick.js
-fp: 2850a90cb901
-as_of: 7da3051 2026-11-01
+fp: b7e691421e2e
+as_of: 6206393 2026-11-02
 author: fast-worker
 created: 2026-11-01
 last_used: 2026-11-02
@@ -49,8 +49,8 @@ uses: 1
 fact: .s6-r rows have three columns with the third empty at rest, so a list value would wrap one name per line. where.js adds s6-wide for an array value. rowNode puts cls in a class array, so pass a flat string: a nested array renders ",s6-wide".
 check: grep -n 's6-wide' dashboard/static/js/pages/where.js dashboard/static/app.css
 evidence: dashboard/static/js/pages/where.js, dashboard/static/app.css
-fp: 59ca9ab746b7
-as_of: 02a9206 2026-11-02
+fp: 8f24b8704751
+as_of: 6206393 2026-11-02
 author: deep-reasoner
 created: 2026-11-02
 last_used: 2026-11-02
@@ -60,8 +60,8 @@ uses: 0
 fact: tests/test_static_strings.py counts a string as used only in a literal t("key" or tn("key" call, so a key passed to a helper such as pathLine("key", ...) reads as unused.
 check: /usr/bin/python3 -m unittest discover -s tests -k strings
 evidence: tests/test_static_strings.py, dashboard/static/js/edit_foot.js
-fp: 678a44757e97
-as_of: 02a9206 2026-11-02
+fp: 1c20ccb57cd5
+as_of: 6206393 2026-11-02
 author: fast-worker
 created: 2026-11-01
 last_used: 2026-11-02
