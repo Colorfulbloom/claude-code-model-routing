@@ -915,13 +915,15 @@ def _computed_becomes(ctx, row, cand, kind):
     value = cand["value"]
     if not isinstance(value, str) or value not in levels:
         return None
-    model = ctx.models.get(row.get("model"))
-    if model is None:
-        return None
     if kind == "cap":
-        cap = _effort_cap(ctx, row["model"])
+        # With no model known, only the top-level caps count (no modelSettings
+        # line has a model to match). A "max" or invalid cap lowers nothing.
+        cap = _effort_cap(ctx, row.get("model"))
         if cap in levels and levels.index(value) > levels.index(cap):
             return cap
+        return None
+    model = ctx.models.get(row.get("model"))
+    if model is None:
         return None
     offered = model["effort_levels"]
     if not offered or value in offered:
@@ -988,6 +990,11 @@ def _condition_matches(ctx, row, cand, cond):
     if "name_form" in cond and cand.get("name_form") != cond["name_form"]:
         return False
     becomes = cond.get("becomes")
+    if isinstance(becomes, dict) and becomes["computed"] == "cap" \
+            and cond.get("when") != "model_unknown" and _model_unknown(ctx, row):
+        # With no model, the model_unknown cap rule alone lowers the row. The
+        # other cap rules keep their old answer (nothing lowered).
+        return False
     if isinstance(becomes, dict) and _computed_becomes(
             ctx, row, cand, becomes["computed"]) is None:
         return False

@@ -771,9 +771,9 @@ class NoModelTable(Base):
             limit = row["limits"][0]
             self.assertEqual((limit["value"], limit["layer"], limit["lock_reason"], limit["editable"]),
                              ("low", "user", None, True))
-        # The resolver alone says in_effect here. The helper is what finds the cap.
+        # The resolver lowers the level under the top-level cap even with no model, so the trail agrees.
         project = target_of(body, "project")
-        self.assertEqual(project["status"], "in_effect")
+        self.assertEqual(project["status"], "lowered")
 
     def test_a_project_target_is_reachable_with_certain_false_when_no_cap_is_below(self):
         world = World(self, project={"effortLevel": "high"}, user={"maxEffortLevel": "xhigh"})
@@ -1395,6 +1395,44 @@ class Preview(Base):
             os.chmod(world.path("local"), 0o600)
 
 
+class NoModelCapAgreement(Base):
+    """With no model set, the trail, the table and the preview agree on a top-level cap (issue 91)."""
+
+    def view(self, world):
+        listing = projects.load(world.ctx)
+        return api_edit._view(world.ctx, listing, listing.find(world.key))
+
+    def main_winner(self, world):
+        return api_edit._winner(api_edit._effort_row(self.view(world).entries))
+
+    def test_a_cap_below_the_level_lowers_the_winner_and_every_part_agrees(self):
+        world = World(self, user={"maxEffortLevel": "low"}, project={"effortLevel": "high"})
+        self.assertEqual(world.targets()["runs_as"], "low")
+        winner = self.main_winner(world)
+        self.assertEqual((winner["status"], winner["value"], winner["becomes"]), ("lowered", "high", "low"))
+        self.assertEqual(winner["rule_id"], "effort-lowered-by-cap-model-unknown")
+        view = self.view(world)
+        limits = api_edit.limits_for(view, "high", view.entries)
+        self.assertEqual([(l["kind"], l["value"]) for l in limits], [("cap", "low")])
+        target = target_of(world.targets(), "project")["target"]
+        pv = api_edit._preview(world.ctx, view, view.find(target), "high").payload
+        self.assertEqual(pv["warning"]["status"], "lowered")
+        self.assertEqual([(l["kind"], l["value"]) for l in pv["warning"]["limits"]], [("cap", "low")])
+        self.assertIs(pv["warning"]["model_known"], False)
+
+    def test_a_max_cap_lowers_nothing(self):
+        world = World(self, user={"maxEffortLevel": "max"}, project={"effortLevel": "high"})
+        self.assertEqual(world.targets()["runs_as"], "high")
+        winner = self.main_winner(world)
+        self.assertEqual((winner["status"], winner["value"], winner.get("becomes")), ("in_effect", "high", None))
+
+    def test_an_invalid_cap_lowers_nothing(self):
+        world = World(self, user={"maxEffortLevel": "turbo"}, project={"effortLevel": "high"})
+        self.assertEqual(world.targets()["runs_as"], "high")
+        winner = self.main_winner(world)
+        self.assertEqual((winner["status"], winner["value"], winner.get("becomes")), ("in_effect", "high", None))
+
+
 class Warnings(Base):
     def preview(self, world, layer, value, ends=None):
         """Return the preview payload of a target's edit, built by _preview.
@@ -1411,11 +1449,11 @@ class Warnings(Base):
         world = World(self, user={"model": SONNET}, project={"effortLevel": "low"})
         self.assertIsNone(self.preview(world, "project", "high")["warning"])
 
-    def test_in_effect_with_a_limit_carries_the_limits_in_the_no_model_case(self):
+    def test_lowered_by_a_cap_carries_the_cap_limit_in_the_no_model_case(self):
         world = World(self, user={"maxEffortLevel": "low"}, project={"effortLevel": "low"})
         warning = self.preview(world, "project", "high")["warning"]
         self.assertEqual(set(warning), {"status", "reason", "rule_ids", "in_effect_changes", "model_known", "limits"})
-        self.assertEqual(warning["status"], "in_effect")
+        self.assertEqual(warning["status"], "lowered")
         self.assertEqual(kinds(warning), ["cap"])
         self.assertEqual(warning["limits"][0]["value"], "low")
         self.assertIs(warning["in_effect_changes"], False)

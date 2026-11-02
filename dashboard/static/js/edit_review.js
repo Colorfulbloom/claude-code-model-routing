@@ -104,12 +104,11 @@ export function winnerWarning(status, setting = EFFORT) {
 }
 
 // What a cap below the level means for the warning: "cap" when a cap line can be changed from the Effort cap cell, "locked"
-// when none can, "nomodel" when no model is set and the cap still applies, else null.
+// when none can, else null. With no model set the resolver still lowers the level under a top-level cap, so that case needs no word of its own.
 export function capWarning(warning) {
   const limits = Array.isArray(warning.limits) ? warning.limits : [];
   const caps = capsOf(limits);
   if (!caps.length) return null;
-  if (warning.status === "in_effect" && warning.model_known !== true) return "nomodel";
   return caps.some((l) => l.editable === true) ? "cap" : "locked";
 }
 
@@ -119,7 +118,6 @@ export function warningParas(warning, model = null, setting = EFFORT) {
   const cap = capWarning(warning);
   if (cap === "cap") paras.push(t("ed_warn_cap_t"));
   else if (cap === "locked") paras.push(t("ed_warn_cap_locked_t"));
-  else if (cap === "nomodel") paras.push(t("ed_warn_nomodel_cap_t"));
   if (limits.some((l) => l.kind === "model")) paras.push(t("ed_warn_model_t"));
   paras.push(winnerWarning(warning.status, setting));
   return paras.filter(Boolean).concat(limitParas(limits, model, setting));

@@ -1,0 +1,29 @@
+{
+  "fixture": "effort-lowered-by-cap-model-unknown",
+  "rule_ids": [
+    "effort-lowered-by-cap-model-unknown",
+    "max-effort-level-lowest-cap"
+  ],
+  "confidence": "documented",
+  "source": "https://code.claude.com/docs/en/settings-reference#maxeffortlevel",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "effortLevel",
+      "value": "high",
+      "status": "lowered",
+      "layer": "project",
+      "file": "project/.claude/settings.json",
+      "scope": "main",
+      "becomes": "low"
+    },
+    {
+      "key": "maxEffortLevel",
+      "value": "low",
+      "status": "in_effect",
+      "layer": "user",
+      "file": "config/settings.json",
+      "scope": "main"
+    }
+  ]
+}

@@ -198,10 +198,11 @@ def _caps_below(entries, level):
 def _runs_as(view, entries):
     """Return the level the main effort row runs at, or None when it is unknown.
 
-    The resolver sets no "becomes" for a winner it did not lower: with no model it
-    applies no cap, and a modelSettings line (key effortLevel) never gets one under a
-    cap (resolve.py, _computed_becomes). So a level above a top-level cap is lowered
-    here, whenever the winner has no "becomes". This is the only place that does.
+    The resolver lowers a winner under a top-level cap even with no model (rule
+    effort-lowered-by-cap-model-unknown). It still sets no "becomes" for a
+    modelSettings line (key effortLevel) under a cap (resolve.py, _computed_becomes). So
+    a level above a top-level cap is also lowered here, whenever the winner has no
+    "becomes". That code path stays for the modelSettings line.
     """
     winner = _winner(_effort_row(entries))
     if winner is None or winner["status"] == "unknown":

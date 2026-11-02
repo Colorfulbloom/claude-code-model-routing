@@ -14,6 +14,9 @@ import { t } from "./format.js";
 const STATES = ["differs", "mixed", "overridden", "cannot_check", "matches_lowered", "matches"];
 
 const endsWith = (text, tail) => typeof text === "string" && text.endsWith(tail);
+const isModelUnknown = (value) => value === null || value === undefined;
+// The rule ids that say a top-level cap lowered the level, with or without a known model.
+const isCapRule = (id) => endsWith(id, "lowered-by-cap") || endsWith(id, "lowered-by-cap-model-unknown");
 
 // A value that may be missing: the word "Unknown" in place of null or undefined, so no slot prints "null".
 const orUnknown = (value) => (value === null || value === undefined ? t("status_unknown") : value);
@@ -72,10 +75,12 @@ function settingSentences(u, kind, setting, pin) {
     if (lowered && e.reason && !usedReason) out.push(e.reason);
   } else if (setting.state === "overridden") {
     const cap = setting.cap;
-    if (lowered && endsWith(e.rule_id, "lowered-by-cap") && source) {
-      out.push(t("pin_runs_match_cap_sentence", {
-        setting: label, source, model: modelWord(cap ? cap.model : e.model), expected,
-      }));
+    const capModel = cap ? cap.model : e.model;
+    if (lowered && isCapRule(e.rule_id) && source) {
+      // With no model the cap is the top-level maxEffortLevel, and a modelSettings cap could still apply.
+      out.push(isModelUnknown(capModel)
+        ? t("pin_runs_match_cap_sentence_model_unknown", { setting: label, source, expected })
+        : t("pin_runs_match_cap_sentence", { setting: label, source, model: modelWord(capModel), expected }));
     } else if (source) {
       out.push(t("pin_runs_match_sentence", { setting: label, source, expected }));
     } else {
@@ -83,14 +88,20 @@ function settingSentences(u, kind, setting, pin) {
     }
   } else if (setting.state === "matches" && setting.runs_match_pin) {
     const cap = setting.cap;
-    const model = modelWord(cap ? cap.model : e.model);
+    const capModel = cap ? cap.model : e.model;
+    const model = modelWord(capModel);
     const from = capSource(cap);
+    const unknownModel = isModelUnknown(capModel);
     if (endsWith(e.rule_id, "unsupported-level")) {
       out.push(t("pin_runs_match_unsupported_sentence", { model, value: orUnknown(setting.pinned.value), expected }));
     } else if (cap && cap.file) {
-      out.push(t("pin_runs_match_lowered_sentence", { model, expected, source: from }));
+      out.push(unknownModel
+        ? t("pin_runs_match_lowered_sentence_model_unknown", { expected, source: from })
+        : t("pin_runs_match_lowered_sentence", { model, expected, source: from }));
     } else {
-      out.push(t("pin_runs_match_lowered_sentence_no_source", { model, expected }));
+      out.push(unknownModel
+        ? t("pin_runs_match_lowered_sentence_model_unknown_no_source", { expected })
+        : t("pin_runs_match_lowered_sentence_no_source", { model, expected }));
     }
   } else if (setting.state === "matches_lowered") {
     if (e.reason) out.push(e.reason);
