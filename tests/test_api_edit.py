@@ -129,8 +129,11 @@ class World:
 
     # routes
 
-    def targets(self, project=None):
-        status, body = api_edit.targets(self.ctx, {"project": [project or self.key]})
+    def targets(self, project=None, setting=None):
+        query = {"project": [project or self.key]}
+        if setting is not None:
+            query["setting"] = [setting]
+        status, body = api_edit.targets(self.ctx, query)
         assert status == 200, (status, body)
         return body
 
@@ -211,6 +214,13 @@ def main_effort(payload):
 class Base(unittest.TestCase):
     def assert_limits(self, limits):
         for limit in limits:
+            if limit["kind"] == "cap" and limit["editable"]:
+                # A cap that is a line of the cap view: editable, with its target and via "cap".
+                self.assertEqual(set(limit), LIMIT_KEYS | {"via"})
+                self.assertEqual(limit["via"], "cap")
+                self.assertRegex(limit["target"], r"^t-[0-9a-f]{16}$")
+                self.assertIsNone(limit["lock_reason"])
+                continue
             self.assertEqual(set(limit), LIMIT_KEYS)
             self.assertIs(limit["editable"], False)
             self.assertIsNone(limit["target"])
@@ -536,12 +546,13 @@ class Levels(Base):
         project = target_of(body, "project")["target"]
         for row in body["levels"]:
             self.assertEqual(set(row), {"level", "result", "runs_as", "certain", "limits", "files",
-                                        "preselect", "saveable"})
+                                        "preselect", "saveable", "via", "cap_first"})
             self.assertIs(row["certain"], True)
             self.assertEqual(row["limits"], [])
         self.assertEqual(level_of(body, "high"), {"level": "high", "result": "now", "runs_as": "high",
                                                   "certain": True, "limits": [], "files": [],
-                                                  "preselect": None, "saveable": False})
+                                                  "preselect": None, "saveable": False,
+                                                  "via": None, "cap_first": False})
         for name in ("low", "medium", "xhigh"):
             row = level_of(body, name)
             # The absent local file is a create that applies, so it is the preselect.
@@ -587,6 +598,7 @@ class Levels(Base):
     def test_a_level_that_needs_two_changes_is_stopped_and_points_to_the_cap(self):
         world = World(self, user={"model": SONNET, "maxEffortLevel": "low"}, project={"effortLevel": "low"})
         body = world.targets()
+        cap_body = world.targets(setting="maxEffortLevel")
         self.assertEqual(level_of(body, "low")["result"], "now")
         for name in ("medium", "high", "xhigh"):
             row = level_of(body, name)
@@ -595,8 +607,12 @@ class Levels(Base):
             self.assertEqual(len(row["limits"]), 1)
             limit = row["limits"][0]
             self.assertEqual((limit["kind"], limit["value"], limit["layer"], limit["file_display"], limit["line"],
-                              limit["lock_reason"]), ("cap", "low", "user", "config/settings.json", 3, "cap_later"))
-            self.assert_limits(row["limits"])
+                              limit["lock_reason"]), ("cap", "low", "user", "config/settings.json", 3, None))
+            # The cap line is an editable target of the cap setting, so the level waits for the cap first.
+            self.assertEqual((limit["editable"], limit["via"]), (True, "cap"))
+            self.assertEqual(limit["target"], target_of(cap_body, "user")["target"])
+            self.assertEqual((row["via"], row["cap_first"], row["saveable"], row["preselect"]),
+                             (None, True, True, None))
 
     def test_a_cap_lists_every_cap_below_the_level_lowest_first(self):
         world = World(self, user={"model": SONNET, "maxEffortLevel": "high"},
@@ -606,7 +622,9 @@ class Levels(Base):
         self.assertEqual(row["result"], "stopped")
         self.assertEqual([(l["layer"], l["value"]) for l in row["limits"]],
                          [("local", "low"), ("project", "medium"), ("user", "high")])
-        self.assertEqual([l["lock_reason"] for l in row["limits"]], ["cap_later"] * 3)
+        self.assertEqual([l["lock_reason"] for l in row["limits"]], [None] * 3)
+        self.assertEqual([l["editable"] for l in row["limits"]], [True] * 3)
+        self.assertTrue(row["cap_first"])
         medium = level_of(world.targets(), "medium")
         self.assertEqual([(l["layer"], l["value"]) for l in medium["limits"]], [("local", "low")])
 
@@ -735,10 +753,16 @@ class NoModelTable(Base):
         self.assertEqual((low["result"], low["certain"]), ("now", False))
         for name in ("medium", "high", "xhigh"):
             row = level_of(body, name)
-            self.assertEqual((row["result"], row["runs_as"], row["certain"]), ("stopped", "low", False), name)
+            # The project line already holds high, so one change to the cap reaches it (via the cap).
+            result = "reachable" if name == "high" else "stopped"
+            self.assertEqual((row["result"], row["runs_as"], row["certain"]),
+                             (result, "low" if name != "high" else "high", False), name)
+            self.assertEqual((row["via"], row["cap_first"]),
+                             ("cap", False) if name == "high" else (None, True), name)
             self.assertEqual(kinds(row), ["cap"], name)
             limit = row["limits"][0]
-            self.assertEqual((limit["value"], limit["layer"], limit["lock_reason"]), ("low", "user", "cap_later"))
+            self.assertEqual((limit["value"], limit["layer"], limit["lock_reason"], limit["editable"]),
+                             ("low", "user", None, True))
         # The resolver alone says in_effect here. The helper is what finds the cap.
         project = target_of(body, "project")
         self.assertEqual(project["status"], "in_effect")
@@ -1021,8 +1045,9 @@ class LevelFiles(Base):
         local = file_of(row, "local")
         self.assertEqual((local["effect"], local["runs_as"], local["lock_reason"], local["pickable"]),
                          ("wont_apply", "low", None, False))
-        self.assertEqual((row["preselect"], row["saveable"]), (None, False))
-        self.assertIs(body["saveable"], False)
+        # The user cap is an editable line that stops the level, so the picker stays on for it (#119).
+        self.assertEqual((row["preselect"], row["saveable"], row["cap_first"]), (None, True, True))
+        self.assertIs(body["saveable"], True)
 
     def test_an_overridden_line_reads_wont_apply(self):
         world = World(self, user={"model": SONNET}, project={"effortLevel": "low"}, local={"effortLevel": "high"})
@@ -1133,7 +1158,8 @@ class Preview(Base):
         self.assertEqual(set(pv), {"git_ignore", "target", "old_value", "new_value", "no_change", "before", "after",
                                    "changes", "warning", "diff", "base_file", "base_trail", "base_others",
                                    "op", "layer", "shared", "line", "ref", "new_file", "creates_dir",
-                                   "ledger_damaged", "runs_before", "runs_after", "no_effect", "last_line"})
+                                   "ledger_damaged", "runs_before", "runs_after", "no_effect", "last_line", "setting"})
+        self.assertEqual(pv["setting"], "effortLevel")
         self.assertEqual((pv["target"], pv["old_value"], pv["new_value"], pv["no_change"]),
                          (target, "low", "high", False))
         self.assertNotIn("new_raw", pv)
@@ -2910,8 +2936,8 @@ class EveryFixture(Base):
     def tearDownClass(cls):
         helpers.rmtree_force(cls.root)
 
-    def answer(self, ctx):
-        status, body = api_edit.targets(ctx, {})
+    def answer(self, ctx, setting=None):
+        status, body = api_edit.targets(ctx, {} if setting is None else {"setting": [setting]})
         self.assertEqual(status, 200, body)
         return body
 
@@ -2939,13 +2965,19 @@ class EveryFixture(Base):
         for name, ctx in self.cases.items():
             body = self.answer(ctx)
             layers = {t["target"]: t["layer"] for t in body["targets"] + body["adds"]}
+            cap_body = self.answer(ctx, "maxEffortLevel")
+            layers.update({t["target"]: t["layer"] for t in cap_body["targets"] + cap_body["adds"]})
             self.assertEqual([f["layer"] for f in body["files"]],
                              ["local", "project", "user"] if body["files"] else [], name)
             for row in body["levels"]:
                 self.assertNotIn("target", row, name)
                 self.assertEqual(set(row), {"level", "result", "runs_as", "certain", "limits", "files",
-                                            "preselect", "saveable"}, name)
-                self.assertEqual(row["saveable"], any(f["pickable"] for f in row["files"]), name)
+                                            "preselect", "saveable", "via", "cap_first"}, name)
+                self.assertIn(row["via"], (None, "cap"), name)
+                if row["via"] == "cap":
+                    self.assertEqual((row["result"], row["cap_first"]), ("reachable", False), name)
+                # A level an editable cap stops counts as saveable, whatever its rows say (#119).
+                self.assertEqual(row["saveable"], any(f["pickable"] for f in row["files"]) or row["cap_first"], name)
                 if row["result"] == "now":
                     self.assertEqual((row["files"], row["preselect"], row["saveable"]), ([], None, False), name)
                     continue
@@ -2977,6 +3009,8 @@ class EveryFixture(Base):
             body = self.answer(ctx)
             entries = self.plain_entries(ctx)
             ids = {t["target"]: t for t in body["targets"] + body["adds"]}
+            cap_body = self.answer(ctx, "maxEffortLevel")
+            cap_ids = {t["target"]: t for t in cap_body["targets"] + cap_body["adds"]}
             if body["levels_state"] == "no_effort_support":
                 self.assertEqual(body["levels"], [], name)
             else:
@@ -2990,6 +3024,17 @@ class EveryFixture(Base):
                     reached += 1
                     applies = [f for f in row["files"] if f["effect"] == "applies"]
                     self.assertTrue(applies, name)
+                    if row["via"] == "cap":
+                        # The change goes through the cap setting, and the effort level then runs at the level.
+                        for item in applies:
+                            self.assertIn(item["target"], cap_ids, name)
+                            status, pv = api_edit.preview(ctx, {"setting": "maxEffortLevel",
+                                                                "target": item["target"], "value": level})
+                            self.assertEqual(status, 200, name)
+                            self.assertEqual(api_edit._runs_as(None, pv["after"]["entries"]), level, name)
+                            self.assertEqual(item["runs_as"], level)
+                        self.assertEqual(row["runs_as"], level)
+                        continue
                     for item in applies:
                         self.assertIn(item["target"], ids, name)
                         status, pv = api_edit.preview(ctx, {"target": item["target"], "value": level})
@@ -3148,8 +3193,8 @@ class Removes(Base):
         """Run change after a save's first view and before its locked recheck, as a second writer would."""
         real = api_edit._editable_view
 
-        def late(ctx, listing, project, target_id):
-            found = real(ctx, listing, project, target_id)
+        def late(ctx, listing, project, target_id, *rest):
+            found = real(ctx, listing, project, target_id, *rest)
             change()
             return found
         return mock.patch.object(api_edit, "_editable_view", late)
@@ -3796,11 +3841,11 @@ class BackupPreviewShape(BackupBase):
         status, body = self.pv(saved["id"], "undo")
         self.assertEqual(status, 200, body)
         self.assertEqual(set(body), {
-            "edit", "kind", "layer", "shared", "file_display", "op", "result", "no_change", "changed", "diff",
-            "file_unparsed", "old_value", "new_value", "removes_dir", "creates_dir", "backup_display",
+            "edit", "kind", "setting", "layer", "shared", "file_display", "op", "result", "no_change", "changed",
+            "diff", "file_unparsed", "old_value", "new_value", "removes_dir", "creates_dir", "backup_display",
             "base_file", "runs_before", "runs_after", "repo_locked", "git_ignore"})
-        self.assertEqual((body["edit"], body["kind"], body["layer"], body["shared"]),
-                         (saved["id"], "undo", "project", True))
+        self.assertEqual((body["edit"], body["kind"], body["setting"], body["layer"], body["shared"]),
+                         (saved["id"], "undo", "effortLevel", "project", True))
         self.assertEqual((body["file_display"], body["op"], body["result"]),
                          ("project/.claude/settings.json", "replace", "replace"))
         self.assertEqual((body["no_change"], body["changed"], body["file_unparsed"]), (False, False, False))

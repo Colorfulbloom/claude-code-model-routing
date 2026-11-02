@@ -387,6 +387,34 @@ test("remove: the bodies carry the action and no value key, and the preview's ba
   ]);
 });
 
+test("setting: the bodies name the setting when one is given, and leave it out when none is", async () => {
+  const { session, box } = await ready();
+  await session.preview("p1", "tgt", "high", "set", "maxEffortLevel");
+  await session.save("p1", { base_file: "F", base_trail: "T", base_others: "O" }, "tgt", "high", "set", "maxEffortLevel");
+  await session.preview("p1", "tgt", null, "remove", "model");
+  await session.save("p1", { base_file: "F", base_trail: "T", base_others: "O" }, "tgt", null, "remove", "autoCompactWindow");
+  await session.preview("p1", "tgt", 300000, "set", undefined);
+  assert.deepEqual(box.posts.map((p) => p.body), [
+    { project: "p1", setting: "maxEffortLevel", target: "tgt", value: "high" },
+    { project: "p1", setting: "maxEffortLevel", target: "tgt", value: "high", base_file: "F", base_trail: "T", base_others: "O" },
+    { project: "p1", setting: "model", target: "tgt", action: "remove" },
+    { project: "p1", setting: "autoCompactWindow", target: "tgt", action: "remove", base_file: "F", base_trail: "T", base_others: "O" },
+    { project: "p1", target: "tgt", value: 300000 },
+  ]);
+});
+
+test("api: the targets call names the setting for every cell but Effort, whose address stays as it was", async () => {
+  const paths = [];
+  const api = createApi(async (p) => { paths.push(p); return { ok: true, status: 200, data: {} }; }, async () => ({ ok: true, status: 200, data: {} }));
+  await api.editTargets("a b");
+  await api.editTargets("a b", "effortLevel");
+  await api.editTargets("a b", "maxEffortLevel");
+  await api.editTargets("a b", "model");
+  await api.editTargets("a b", "autoCompactWindow");
+  assert.deepEqual(paths, ["/api/edit/targets?project=a%20b", "/api/edit/targets?project=a%20b", "/api/edit/targets?project=a%20b&setting=maxEffortLevel",
+    "/api/edit/targets?project=a%20b&setting=model", "/api/edit/targets?project=a%20b&setting=autoCompactWindow"]);
+});
+
 test("remove: a save goes through the write path, onWrite included, and a preview drops nothing", async () => {
   for (const [label, fn, kind] of [["ok", undefined, "ok"],
     ["raced", () => ({ ok: false, status: 409, data: { error: "raced", edit: "e" } }), "raced"],
@@ -886,6 +914,45 @@ test("app: raced and unverified drop the data like a save", async () => {
   assert.equal(unverified.app.count("/api/edit/history", "p1"), unverified.before.h + 1);
 });
 
+const targetCalls = (app) => app.calls.filter((c) => c.method === "GET" && c.key.startsWith("/api/edit/targets")).map((c) => c.key);
+
+test("app: Settings loads the targets of the open editing cell, fresh, and again when the open cell changes", async () => {
+  const ready = { preset: { mr_edit_token: TOKEN, mr_edit_launch: "L1" } };
+  const effort = await boot({ hash: SETTINGS, ...ready });
+  assert.deepEqual(targetCalls(effort), ["/api/edit/targets?project=p1"]);
+  await effort.go(SETTINGS + "&setting=model");
+  assert.deepEqual(targetCalls(effort), ["/api/edit/targets?project=p1", "/api/edit/targets?project=p1&setting=model"]);
+  await effort.go(SETTINGS + "&setting=autoCompactWindow");
+  await effort.go(SETTINGS + "&setting=maxEffortLevel");
+  await effort.go(SETTINGS + "&setting=effortLevel");
+  assert.deepEqual(targetCalls(effort).slice(2), ["/api/edit/targets?project=p1&setting=autoCompactWindow",
+    "/api/edit/targets?project=p1&setting=maxEffortLevel", "/api/edit/targets?project=p1"]);
+  // A cell the page does not edit keeps the Effort targets, so going between the two asks for nothing.
+  const before = targetCalls(effort).length;
+  await effort.go(SETTINGS + "&setting=promptCacheTtl");
+  assert.equal(targetCalls(effort).length, before, "Cache lifetime reuses the Effort targets");
+  await effort.go(SETTINGS + "&setting=effortLevel");
+  assert.equal(targetCalls(effort).length, before, "and so does Effort");
+  // A page opened on the cap asks for the cap at once.
+  const cap = await boot({ hash: SETTINGS + "&setting=maxEffortLevel", ...ready });
+  assert.deepEqual(targetCalls(cap), ["/api/edit/targets?project=p1&setting=maxEffortLevel"]);
+  const cache = await boot({ hash: SETTINGS + "&setting=promptCacheTtl", ...ready });
+  assert.deepEqual(targetCalls(cache), ["/api/edit/targets?project=p1"]);
+});
+
+test("app: ctx.edit.openSetting moves the address to that cell and ctx.edit.preview and save carry the setting", async () => {
+  const { app, ctx } = await writeScenario(() => [200, { ok: true, base_file: "F" }]);
+  assert.equal(typeof ctx.edit.openSetting, "function");
+  await ctx.edit.preview("tgt", "high", "set", "maxEffortLevel");
+  await ctx.edit.save({ base_file: "F" }, "tgt", "high", "set", "maxEffortLevel");
+  assert.equal(app.posts[0].body.setting, "maxEffortLevel");
+  assert.equal(app.posts[1].body.setting, "maxEffortLevel");
+  ctx.edit.openSetting("model");
+  await tick(30);
+  assert.ok(app.win.location.hash.includes("setting=model"), app.win.location.hash);
+  assert.ok(targetCalls(app).includes("/api/edit/targets?project=p1&setting=model"));
+});
+
 test("app: a preview drops nothing and fetches nothing", async () => {
   const { app, ctx, before } = await writeScenario(() => [200, { ok: true, base_file: "F" }]);
   const out = await ctx.edit.preview("tgt", "max");
@@ -939,10 +1006,13 @@ test("app: the Settings page draws the band and no edit state line, and only the
   assert.equal(settingsText(locked).includes(STRINGS.ed_locked), true);
   assert.equal(settingsText(ready).includes(STRINGS.ed_off) || settingsText(ready).includes(STRINGS.ed_locked), false);
   // A read-only cell never promises that --allow-edits or the printed link would make it editable.
+  const offCache = await boot({ hash: SETTINGS + "&setting=promptCacheTtl", edit: [200, { enabled: false, launch_id: null }] });
+  assert.equal(settingsText(offCache).includes(STRINGS.ed_off), false);
+  const lockedCache = await boot({ hash: SETTINGS + "&setting=promptCacheTtl" });
+  assert.equal(settingsText(lockedCache).includes(STRINGS.ed_locked), false);
+  // The model, the effort cap and the compact window are editing cells, so their rails say it.
   const offModel = await boot({ hash: SETTINGS + "&setting=model", edit: [200, { enabled: false, launch_id: null }] });
-  assert.equal(settingsText(offModel).includes(STRINGS.ed_off), false);
-  const lockedModel = await boot({ hash: SETTINGS + "&setting=model" });
-  assert.equal(settingsText(lockedModel).includes(STRINGS.ed_locked), false);
+  assert.equal(settingsText(offModel).includes(STRINGS.ed_off), true);
 });
 
 test("app: a level chosen on Settings marks its project in the picker and the band, a switch and back keeps it, and Cancel clears it", async () => {

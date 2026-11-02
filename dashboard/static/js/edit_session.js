@@ -10,7 +10,8 @@
 // "locked" (enabled, but this tab holds no valid token) and "ready" (a token that matches this launch).
 //
 // A write is a set (a value for a line, the default) or a remove (action "remove", the line goes and there is no value).
-// The undo writes are a plain undo, an Undo anyway (force, with the hash of the file its preview showed) and a restore.
+// It names the setting it is for (effort, the effort cap, the model, the compact window) when it is given one. The undo
+// writes are a plain undo, an Undo anyway (force, with the hash of the file its preview showed) and a restore.
 
 const TOKEN_KEY = "mr_edit_token";
 const LAUNCH_KEY = "mr_edit_launch";
@@ -163,19 +164,22 @@ export function createEditSession({ api, storage, getHash, replaceHash, onChange
     return { kind, res };
   }
 
+  const named = (setting) => (typeof setting === "string" && setting !== "" ? { setting } : {});
+
   return {
     take,
     refresh,
     mode: () => mode,
     // action "remove" sends the line to take out and no value. Any other action is a set, and sends what it always sent.
-    preview: (project, target, value, action) =>
-      send(api.editPreview, action === "remove" ? { project, target, action } : { project, target, value }, false),
-    save: (project, preview, target, value, action) => {
+    // setting names the setting the write is for, and is left out when none is given (the server reads that as effort).
+    preview: (project, target, value, action, setting) =>
+      send(api.editPreview, { project, ...named(setting), ...(action === "remove" ? { target, action } : { target, value }) }, false),
+    save: (project, preview, target, value, action, setting) => {
       const base = preview && typeof preview === "object" ? preview : {};
       const hashes = { base_file: base.base_file, base_trail: base.base_trail, base_others: base.base_others };
-      return send(api.editSave, action === "remove"
-        ? { project, target, action, ...hashes }
-        : { project, target, value, ...hashes }, true);
+      return send(api.editSave, {
+        project, ...named(setting), ...(action === "remove" ? { target, action } : { target, value }), ...hashes,
+      }, true);
     },
     undo: (project, editId) => send(api.editUndo, { project, edit: editId }, true),
     // A preview of Undo anyway or of a restore. It writes nothing, so it never drops data.

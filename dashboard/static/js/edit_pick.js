@@ -1,6 +1,6 @@
-// The pure rules of the Effort picker and its rail: which level radio is checked and which are off, which of the
-// eleven rail cases the page is in, and where the picked row lands after a refresh. No DOM, no state, no copy. What
-// the flow knows comes in as arguments, and the answers are plain values.
+// The pure rules of the pickers (the level radios, the model pop-up, the compact window box) and the rail: which level
+// radio is checked and which are off, which of the twelve rail cases the page is in, and where the picked row lands
+// after a refresh. No DOM, no state, no copy. What the flow knows comes in as arguments, and the answers are plain values.
 //
 // Owner rules these functions keep.
 // - Nothing moves to a shared file on its own. preselect is the local file or null, and settleRow never lands on
@@ -11,6 +11,11 @@
 // - The checked radio always equals the chosen level, so a handler never has to put it back.
 
 const name = (level) => (level !== null && typeof level === "object" ? level.level : level);
+
+// True when no control of a picker may take a press: edits are not on, the project takes no save, nothing can be saved, or a
+// save is on its way. The model pop-up and the window box use it as the level radios do.
+export const controlsOff = (mode, { busy = false, projectLock = null, saveable = true } = {}) =>
+  mode !== "ready" || Boolean(projectLock) || saveable === false || busy;
 
 // True for a level row that a cap holds and nothing can be saved at (a level a cap only lowers can be saved, so it
 // stays pressable and opens the review with its warning): the picker shows it as over cap and turns it
@@ -24,7 +29,7 @@ export const overCap = (level) => Boolean(level) && typeof level === "object" &&
 export function pickerState(levels, running, chosen, mode, { busy = false, projectLock = null, saveable = true } = {}) {
   const names = (Array.isArray(levels) ? levels : []).map(name);
   const now = running === undefined ? null : running;
-  if (mode !== "ready" || projectLock || saveable === false) return { checked: now, disabled: names.slice() };
+  if (controlsOff(mode, { projectLock, saveable })) return { checked: now, disabled: names.slice() };
   const picked = chosen !== undefined && chosen !== null && chosen !== now ? chosen : null;
   const checked = picked !== null ? picked : now;
   if (busy) return { checked, disabled: names.slice() };
@@ -42,6 +47,7 @@ const limitsOf = (levelRow) => (levelRow && Array.isArray(levelRow.limits) ? lev
 //   remove_blocked  the chosen line can't be removed here (the setting is in the file more than once)
 //   nothing_project nothing can be saved at project level
 //   rest            no level is chosen
+//   two_changes     the chosen level needs a change to a cap first (cap_first), so there is nothing to save yet
 //   review          the chosen level has a row to save to
 //   pick_file       the chosen level can be saved, but no row is picked yet
 //   stop            the chosen level is stopped by a cap or by the model
@@ -54,6 +60,7 @@ export function railCase({ mode, projectLock, saveable, level, row, levelRow, re
   if (remove !== null && remove !== undefined) return remove.blocked === true ? "remove_blocked" : "remove";
   if (saveable === false) return "nothing_project";
   if (level === null || level === undefined || level === "") return "rest";
+  if (levelRow && levelRow.cap_first === true) return "two_changes";
   const can = Boolean(levelRow && levelRow.saveable === true);
   if (can && row !== null && row !== undefined && row !== "") return "review";
   if (can) return "pick_file";

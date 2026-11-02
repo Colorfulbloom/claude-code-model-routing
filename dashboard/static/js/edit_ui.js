@@ -8,6 +8,7 @@
 
 import { h, s } from "./h.js";
 import { t } from "./format.js";
+import { SUFFIX, badValue } from "./edit_words.js";
 
 export const MARKS = { ok: "✓", warn: "▲", err: "✕" };
 // A path slot is written into the text as a marker, then drawn as a .pa element. See draw().
@@ -39,8 +40,14 @@ export function draw(line, paths = {}) {
 }
 
 // The text of ed_lock_<reason>, or null. A null or empty reason never builds a key, and a reason with no key shows nothing.
-export function lockText(reason) {
+// A setting with its own variant of the line (ed_lock_env_shell_model, for one) reads that, else the plain line.
+export function lockText(reason, setting = null) {
   if (!isString(reason)) return null;
+  const suffix = SUFFIX[setting];
+  if (suffix) {
+    const own = t("ed_lock_" + reason + suffix);
+    if (own !== "ed_lock_" + reason + suffix) return own;
+  }
   const line = t("ed_lock_" + reason);
   return line === "ed_lock_" + reason ? null : line;
 }
@@ -53,15 +60,17 @@ export function rowLockText(reason) {
 }
 
 // The text for an error answer. A status of 0 or an answer with no code is the network line. A 422 with a
-// blocked reason is that reason's lock line. Any other code is its ed_err_ line.
-export function errorText(res) {
+// blocked reason is that reason's lock line. A bad value is worded for the setting it was sent for. Any other code is
+// its ed_err_ line.
+export function errorText(res, setting = null) {
   const status = res && typeof res.status === "number" ? res.status : 0;
   const code = res && res.data && typeof res.data === "object" && isString(res.data.error) ? res.data.error : "";
   if (!status || !code) return t("ed_err_network");
   if (status === 422) {
-    const lock = lockText(code);
+    const lock = lockText(code, setting);
     if (lock) return lock;
   }
+  if (code === "bad_value") return badValue(setting);
   const line = t("ed_err_" + code);
   return line === "ed_err_" + code ? t("ed_err_forbidden") : line;
 }

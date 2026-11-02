@@ -1,5 +1,6 @@
-// The pure builders of the Change effort review (round 6 design, board a-norm): limits and warnings, the stop
-// panel, the review that sits in the rail, the diff figure, and the foot with Save and Cancel. Nothing here holds
+// The pure builders of the review of a change (round 6 design, board a-norm): limits and warnings, the stop
+// panel, the two-change panel, the review that sits in the rail, the diff figure, and the foot with Save and Cancel.
+// The review words itself for the setting the preview is for (its "setting" field). Nothing here holds
 // state or imports it. What the flow knows comes in as arguments, and the presses go out through the handlers the
 // caller passes ({ save, cancel }).
 //
@@ -16,8 +17,8 @@ import { editRef } from "./edit_ref.js";
 import { layerText, valueString, valueText } from "./pages/settings.js";
 import { placeName, shortFile } from "./pages/where.js";
 import { basename, button, draw, isString, levelRow, lockText, mark, nt, text } from "./edit_ui.js";
-
-const SETTING = "effortLevel";
+import { EFFORT, capLimits, settingOf } from "./edit_setting.js";
+import { runsWord, shown, stopHeading, stopWinner, warnUnknown } from "./edit_words.js";
 
 // ---------------------------------------------------------------- limits, the stop panel and the warning
 
@@ -47,62 +48,88 @@ export function limitLine(limit, model = null) {
   return null;
 }
 
-// Each limit's line, then why it can't be changed here. cap_later is left out, because the panel's own text says it.
-export function limitParas(limits, model = null) {
+// Each limit's line, then why it can't be changed here. setting is the setting the lock lines are worded for.
+export function limitParas(limits, model = null, setting = EFFORT) {
   const out = [];
   for (const limit of limits) {
     out.push(limitLine(limit, model));
-    if (limit.lock_reason !== "cap_later") out.push(lockText(limit.lock_reason));
+    out.push(lockText(limit.lock_reason, setting));
   }
   return out.filter(Boolean);
 }
 
 export const capsOf = (limits) => limits.filter((l) => l.kind === "cap");
-export const allCapLater = (caps) => caps.length > 0 && caps.every((l) => l.lock_reason === "cap_later");
 
-// A level a cap holds is off in the picker (edit_pick.js overCap), so this panel is for the model, the winner and
-// the unknown model.
-export function stopPanel(level, value, { cancel, model = null }) {
+// A level a cap holds with no row to save to is off in the picker (edit_pick.js overCap), so this panel is for the model,
+// the winner and the unknown model. setting is the setting of the cell the level is on.
+export function stopPanel(level, value, { cancel, model = null, setting = EFFORT }) {
   const limits = Array.isArray(level && level.limits) ? level.limits : [];
   const paras = [];
   if (limits.some((l) => l.kind === "model")) paras.push(t("ed_stop_model_t", { level: value, runs_as: text(level.runs_as) }));
-  if (limits.some((l) => l.kind === "winner")) paras.push(t("ed_stop_winner_t", { level: value }));
+  if (limits.some((l) => l.kind === "winner")) paras.push(stopWinner(setting, { level: value }));
   const unknown = limits.some((l) => l.kind === "model_unknown");
   if (unknown) paras.push(t("ed_stop_unknown_t", { level: value }));
-  const heading = unknown ? t("ed_stop_unknown_h", { level: value }) : t("ed_stop_h", { level: value });
-  return h("div", { class: "s4-rb" }, nt("warn", heading, paras.concat(limitParas(limits, model)),
+  const heading = unknown ? t("ed_stop_unknown_h", { level: value }) : stopHeading(setting, { level: value });
+  return h("div", { class: "s4-rb" }, nt("warn", heading, paras.concat(limitParas(limits, model, setting)),
     [button(t("ed_cancel"), { focus: "cancel", onClick: cancel })]));
 }
 
-// One literal t() call per status, so the string checks can see every key.
-export function winnerWarning(status) {
+// A level the effort line can't reach until a cap is raised first: two changes, and this screen makes one at a time. The
+// panel says which, and Start with the cap opens the cap cell with the level chosen. cap is the lowest cap's value and
+// effortLine the value of the effort line. Two caps or more below the level need one Start with the cap each.
+export function twoChangesPanel(level, value, { cancel, startCap, effortLine = null }) {
+  const caps = capLimits(level && level.limits);
+  const first = text(effortLine) !== "" ? text(effortLine) : text(level && level.runs_as);
+  const paras = [
+    caps.length >= 2
+      ? t("ed_two_several_t", { level: value })
+      : t("ed_two_t", { cap: text(caps[0] && caps[0].value), line: first, level: value }),
+    t("ed_two_undo_t"),
+  ];
+  return h("div", { class: "s4-rb" }, nt("warn", t("ed_two_h", { level: value }), paras, [
+    button(t("ed_start_cap"), { focus: "startcap", onClick: startCap }),
+    button(t("ed_cancel"), { focus: "cancel", onClick: cancel }),
+  ]));
+}
+
+// One literal t() call per status, so the string checks can see every key. The unknown line is worded for the setting.
+export function winnerWarning(status, setting = EFFORT) {
   switch (status) {
     case "overridden": return t("ed_warn_overridden_t");
     case "ignored": return t("ed_warn_ignored_t");
     case "invalid": return t("ed_warn_invalid_t");
-    case "unknown": return t("ed_warn_unknown_t");
+    case "unknown": return warnUnknown(setting);
     default: return null;
   }
 }
 
-export function warningParas(warning, model = null) {
+// What a cap below the level means for the warning: "cap" when a cap line can be changed from the Effort cap cell, "locked"
+// when none can, "nomodel" when no model is set and the cap still applies, else null.
+export function capWarning(warning) {
   const limits = Array.isArray(warning.limits) ? warning.limits : [];
   const caps = capsOf(limits);
+  if (!caps.length) return null;
+  if (warning.status === "in_effect" && warning.model_known !== true) return "nomodel";
+  return caps.some((l) => l.editable === true) ? "cap" : "locked";
+}
+
+export function warningParas(warning, model = null, setting = EFFORT) {
+  const limits = Array.isArray(warning.limits) ? warning.limits : [];
   const paras = [];
-  if (caps.length) {
-    if (warning.status === "in_effect") paras.push(warning.model_known === true ? t("ed_warn_cap_t") : t("ed_warn_nomodel_cap_t"));
-    else if (allCapLater(caps)) paras.push(t("ed_warn_cap_t"));
-  }
+  const cap = capWarning(warning);
+  if (cap === "cap") paras.push(t("ed_warn_cap_t"));
+  else if (cap === "locked") paras.push(t("ed_warn_cap_locked_t"));
+  else if (cap === "nomodel") paras.push(t("ed_warn_nomodel_cap_t"));
   if (limits.some((l) => l.kind === "model")) paras.push(t("ed_warn_model_t"));
-  paras.push(winnerWarning(warning.status));
-  return paras.filter(Boolean).concat(limitParas(limits, model));
+  paras.push(winnerWarning(warning.status, setting));
+  return paras.filter(Boolean).concat(limitParas(limits, model, setting));
 }
 
 // ---------------------------------------------------------------- the review
 
-export function mainEntries(payload) {
+export function mainEntries(payload, setting = EFFORT) {
   const rows = payload && Array.isArray(payload.rows) ? payload.rows : [];
-  const row = rows.find((r) => r.agent === MAIN_KEY && r.setting === SETTING);
+  const row = rows.find((r) => r.agent === MAIN_KEY && r.setting === setting);
   const entries = row && payload.entries ? row.entries.map((i) => payload.entries[i]).filter(Boolean) : [];
   return entries;
 }
@@ -186,52 +213,57 @@ const FILE_LAYERS = ["local", "project", "user"];
 // The statuses a line in another file keeps after the change, so the review says so.
 const STILL = ["overridden", "ignored", "invalid"];
 
-const soleValue = (value) => h("div", { class: "s4-chg" }, h("span", { class: "s4-to" }, text(value)));
+// A value as the change line words it, with the payload's models map for a model's display name.
+const lineValue = (setting, value, payload) => shown(setting, value, payload && payload.models);
+
+const soleValue = (value, setting, payload) => h("div", { class: "s4-chg" }, h("span", { class: "s4-to" }, lineValue(setting, value, payload)));
+
+// The change from one value to another, with the arrow a screen reader reads as "to".
+const arrowLine = (before, after, setting, payload) => h("div", { class: "s4-chg" },
+  h("span", { class: "s4-was" }, lineValue(setting, before, payload)),
+  h("span", { "aria-hidden": "true" }, "→"),
+  h("span", { class: "sr" }, t("ed_to")),
+  h("span", { class: "s4-to" }, lineValue(setting, after, payload)));
 
 // A removal's change line. A line that changes nothing shows the one value that runs. When the value after is not
 // known, the value before stands alone. With neither there is no value to show, and no empty one is drawn.
 function removeLine(pv) {
+  const setting = settingOf(pv);
   const before = has(pv.runs_before) ? pv.runs_before : null;
   const after = has(pv.runs_after) ? pv.runs_after : null;
-  if (pv.no_effect === true || after === null) return before === null ? null : soleValue(before);
-  if (before === null || before === after) return soleValue(after);
-  return h("div", { class: "s4-chg" },
-    h("span", { class: "s4-was" }, text(before)),
-    h("span", { "aria-hidden": "true" }, "→"),
-    h("span", { class: "sr" }, t("ed_to")),
-    h("span", { class: "s4-to" }, text(after)));
+  if (pv.no_effect === true || after === null) return before === null ? null : soleValue(before, setting, pv.after);
+  if (before === null || before === after) return soleValue(after, setting, pv.after);
+  return arrowLine(before, after, setting, pv.after);
 }
 
 // The change that runs: what ran before, an arrow, what runs after. A change that leaves what runs as it was, and
 // a change with no known before, shows one value.
 function changeLine(pv) {
   if (pv.op === "remove") return removeLine(pv);
+  const setting = settingOf(pv);
   const before = has(pv.runs_before) ? pv.runs_before : null;
   const after = has(pv.runs_after) ? pv.runs_after : pv.new_value;
-  if (before === null || before === after) return soleValue(after);
-  return h("div", { class: "s4-chg" },
-    h("span", { class: "s4-was" }, text(before)),
-    h("span", { "aria-hidden": "true" }, "→"),
-    h("span", { class: "sr" }, t("ed_to")),
-    h("span", { class: "s4-to" }, text(after)));
+  if (before === null || before === after) return soleValue(after, setting, pv.after);
+  return arrowLine(before, after, setting, pv.after);
 }
 
 // The line under the change. A warning that says nothing moves, or that the dashboard can't tell, comes first.
 function runsNote(pv, level) {
+  const setting = settingOf(pv);
   if (pv.op === "remove") {
     if (pv.no_effect === true) return t("ed_nochange");
-    return has(pv.runs_after) ? t("ed_runs") : t("ed_nochange_unknown");
+    return has(pv.runs_after) ? runsWord(setting) : t("ed_nochange_unknown");
   }
   const warning = pv.warning;
   if (warning && warning.status === "unknown") return t("ed_nochange_unknown");
   if (warning && warning.in_effect_changes === false) return t("ed_nochange");
-  if (level && level.certain === false) return t("ed_runs_uncertain", { level: text(pv.new_value) });
-  return t("ed_runs");
+  if (setting === EFFORT && level && level.certain === false) return t("ed_runs_uncertain", { level: text(pv.new_value) });
+  return runsWord(setting);
 }
 
 // After saving: the value that wins and where it comes from. No winner, no list.
 function afterList(pv) {
-  const winner = mainEntries(pv.after)[0];
+  const winner = mainEntries(pv.after, settingOf(pv))[0];
   if (!winner) return null;
   const value = valueText(winner, pv.after, true);
   return h("dl", { class: "s4-dl" },
@@ -250,7 +282,7 @@ function stillLine(entry, payload) {
 
 // One line for each other file that still holds a value this change doesn't make win.
 function stillNotes(pv, target) {
-  return mainEntries(pv.after)
+  return mainEntries(pv.after, settingOf(pv))
     .filter((e) => FILE_LAYERS.includes(e.layer) && STILL.includes(e.status) && !(target && editRef(e) === target.ref))
     .map((e) => h("p", { class: "s4-note" }, stillLine(e, pv.after)));
 }
@@ -293,7 +325,7 @@ export function reviewFacts(T, state, env) {
     pv,
     target,
     fileName: basename(file),
-    level: levelRow(T, state.value),
+    level: levelRow(T, env.level !== undefined ? env.level : state.value),
     ledger: Boolean(env.damaged(file, target.layer)) || pv.ledger_damaged === true,
   };
 }
@@ -329,9 +361,14 @@ const parentOf = (path) => {
 
 // The notices that close a review whose write did not fail: the warning, the damaged record, a removal that changes
 // nothing, and what git does with the file. A file in git is a warning, and the dashboard not knowing is a quiet line.
-function closingNotes(pv, w, ledger, fileName, model) {
+function closingNotes(pv, w, ledger, fileName, model, env) {
   const out = [];
-  if (w) out.push(nt("warn", warningHeading(w), warningParas(w, model)));
+  // An effort warning about a cap that a cap line can be changed for offers Start with the cap, with the text that names it.
+  const startCap = w && settingOf(pv) === EFFORT && capWarning(w) === "cap" && typeof env.startCap === "function";
+  if (w) {
+    out.push(nt("warn", warningHeading(w), warningParas(w, model, settingOf(pv)),
+      startCap ? [button(t("ed_start_cap"), { focus: "startcap", onClick: env.startCap })] : []));
+  }
   if (ledger) out.push(nt("warn", t("ed_ledger_preview_t", { file: fileName }), []));
   if (pv.op === "remove" && pv.no_effect === true) out.push(nt("warn", t("ed_remove_noeffect_h"), [t("ed_remove_noeffect_t")]));
   const git = gitIgnoreNote(pv.git_ignore, fileName, pv.op !== "remove");
@@ -366,7 +403,7 @@ export function review(T, state, env) {
       : t("ed_fail_t", { file: fileName });
     closing.push(nt("err", t("ed_fail_h"), [why]));
   } else if (pv.no_change !== true) {
-    closing.push(...closingNotes(pv, w, ledger, fileName, env.model));
+    closing.push(...closingNotes(pv, w, ledger, fileName, env.model, env));
   }
   return h("div", { class: "s4-rb" },
     env.lead || [],
@@ -379,7 +416,8 @@ export function review(T, state, env) {
     fileNotes(pv, fileName, env.failedLeft),
     stillNotes(pv, target),
     target.shared === true ? h("p", { class: "s4-note" }, t("ed_shared")) : null,
-    level && level.certain === false ? h("p", { class: "s4-note" }, t("ed_certain_note")) : null,
+    settingOf(pv) === EFFORT && level && level.certain === false ? h("p", { class: "s4-note" }, t("ed_certain_note")) : null,
+    pv.allow === "unclear" || (level && level.allow === "unclear") ? h("p", { class: "s4-note" }, t("ed_allow_unclear_t")) : null,
     alsoChanges(pv),
     closing);
 }

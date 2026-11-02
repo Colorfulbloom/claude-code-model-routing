@@ -83,7 +83,9 @@ export function createApi(fetcher = fetchJSON, poster = postJSON) {
     // True once both of a project's payloads were asked for.
     // The edit routes never go through the cache, so a save is never followed by an old answer.
     editStatus: () => fetcher("/api/edit"),
-    editTargets: (key) => fetcher("/api/edit/targets" + projectQuery(key)),
+    // setting names the setting the answer is for. Effort is the server's default, so its address stays as it was.
+    editTargets: (key, setting) => fetcher("/api/edit/targets" + projectQuery(key)
+      + (setting && setting !== "effortLevel" ? "&setting=" + encodeURIComponent(setting) : "")),
     editHistory: (key) => fetcher("/api/edit/history" + projectQuery(key)),
     editPreview: (body, token) => poster("/api/edit/preview", body, token),
     editSave: (body, token) => poster("/api/edit/save", body, token),

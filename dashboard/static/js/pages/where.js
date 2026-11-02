@@ -117,11 +117,12 @@ export function entryRow(entry, payload, cls = null) {
 }
 
 // The list: heading, the bordered rows, the tail (rows outside the box, such as Claude Code's default) and, only
-// when asked, the line about what can beat these files. live makes the box a radio group of the file rows.
-export function whereList(heading, rowNodes, tailNodes = [], beyond = false, live = false) {
+// when asked, the line about what can beat these files. live makes the box a radio group of the file rows. beyondText
+// is that line for a setting that has its own (the cap, the model, the compact window), else Effort's.
+export function whereList(heading, rowNodes, tailNodes = [], beyond = false, live = false, beyondText = null) {
   return h("div", { class: "s6-lvs" },
     h("p", { class: "s4-lab" }, heading),
     h("div", { class: ["s6-rows", live && "is-live"], role: live ? "radiogroup" : "group", "aria-label": heading }, rowNodes),
     tailNodes,
-    beyond ? h("p", { class: "s4-beyond" }, t("where_beyond")) : null);
+    beyond ? h("p", { class: "s4-beyond" }, beyondText || t("where_beyond")) : null);
 }

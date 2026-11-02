@@ -31,9 +31,10 @@ export const TILES = [
   { key: "availableModels", label: () => t("f_allowed") },
 ];
 
-// The settings the Settings page can change in Stage 1. Any other setting rests in the read-only frame
-// (pages/read_frame.js). A ticket that makes another setting editable adds its key here.
-export const EDITABLE_SETTINGS = ["effortLevel"];
+// The settings the Settings page can change: the model, effort, the effort cap and the compact window. Any other setting
+// (cache lifetime, extended thinking, fallback and allowed models) rests in the read-only frame (pages/read_frame.js). A
+// ticket that makes another setting editable adds its key here.
+export const EDITABLE_SETTINGS = ["model", "effortLevel", "maxEffortLevel", "autoCompactWindow"];
 
 // The setting that is open when the address names none.
 export const DEFAULT_SETTING = "effortLevel";
@@ -232,6 +233,13 @@ export function selectedSetting(ctx) {
   return BAND_SETTINGS.includes(wanted) ? wanted : DEFAULT_SETTING;
 }
 
+// The setting whose edit targets the page loads for an address query: the open cell when the page edits it, else Effort
+// (a cell the page does not edit still draws the rail and the foot of a change made on Effort).
+export function targetsSetting(query) {
+  const wanted = query ? query.setting : null;
+  return EDITABLE_SETTINGS.includes(wanted) ? wanted : DEFAULT_SETTING;
+}
+
 // The rail at rest, whichever setting is open: why the value is what it is, in the winner's own reason, and a link
 // to the trail of the row. A setting the payload has no entry for has the heading alone. notes is a list of lines
 // that sit under the reason (the editing-is-off line, a lock), each a string or nodes, or null for none.
@@ -286,12 +294,13 @@ export function render(root, ctx) {
   if (payload) {
     const selected = selectedSetting(ctx);
     page.classList.add("s5-lock");
-    // The edit card hands back the Effort frame, the rail and the foot, drawn again without a page render when a level
-    // or a row is picked, and the Set of settings with a change waiting on Save, for the band. A setting that cannot be
-    // edited fills the body with the read-only frame, and its rail is the rail at rest unless a change is in progress.
+    // The edit card hands back the body of an editing cell, the rail and the foot, drawn again without a page render when a
+    // level or a row is picked, and the Set of settings with a change waiting on Save, for the band. A setting that cannot
+    // be edited fills the body with the read-only frame, and its rail is the rail at rest unless a change is in progress.
     // With no edit session the page draws as before.
     const edit = editCard.begin(ctx, {
-      restRail: (notes) => railBody(ctx, payload, selected, notes), selected, onNotSaved: setNotSaved,
+      restRail: (notes) => railBody(ctx, payload, selected, notes), selected,
+      editable: EDITABLE_SETTINGS.includes(selected), onNotSaved: setNotSaved,
     });
     page.appendChild(bandFor(ctx, payload, selected, edit.notSaved));
     // The Arrange button sits at the top right of the head, and only a page with a band has one.

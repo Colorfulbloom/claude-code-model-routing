@@ -10,8 +10,10 @@
 
 import { h } from "./h.js";
 import { t, fmtTime } from "./format.js";
-import { MARKS, basename, button, draw, mark, nt, text, tokenNt, undoIcon } from "./edit_ui.js";
+import { MARKS, basename, button, draw, mark, nt, tokenNt, undoIcon } from "./edit_ui.js";
 import { olderRows } from "./edit_backup.js";
+import { settingOfEdit } from "./edit_setting.js";
+import * as words from "./edit_words.js";
 
 const OK_CLASS = { ok: "s4-ok", warn: "s4-ok s4-ok-warn" };
 
@@ -33,24 +35,28 @@ const pathLine = (key, path) => (path ? draw(t(key, { path: mark("path") }), { p
 
 // ---------------------------------------------------------------- the strip
 
-// The line of a history row. One literal t() call for each kind, so the string checks can see every key. A row leaves
-// out the value it never had (a create has no old one, a remove no new one), and only the value a line prints is read.
+// The line of a history row, worded for the setting the row changed (the last part of its key path), whatever cell is open.
+// A row leaves out the value it never had (a create has no old one, a remove no new one), and only the value a line prints
+// is read. The words for each kind are in edit_words.js, one literal t() call for each key.
 function lastLine(row) {
   const file = basename(row.file_display);
   const when = fmtTime(row.time);
+  const setting = settingOfEdit(row);
+  const old = () => words.shown(setting, row.old_value);
+  const next = () => words.shown(setting, row.new_value);
   if (row.kind === "restore") return t("ed_last_restored_t", { when, file });
   if (row.kind === "undo" && row.op && row.op !== "replace") return t("ed_last_undone_t", { when, file });
   // A replace row with no old value (effortLevel was null) has no "from" to print, and its undo has no "to".
   const has = (v) => v !== undefined && v !== null && v !== "";
   if (row.kind === "undo" && (!has(row.old_value) || !has(row.new_value))) return t("ed_last_undone_t", { when, file });
   if (row.kind !== "undo" && (!row.op || row.op === "replace") && !has(row.old_value)) {
-    return t("ed_last_added_t", { when, file, new: text(row.new_value) });
+    return words.lastAdded(setting, { when, file, new: next() });
   }
   switch (row.kind === "undo" ? "replace" : row.op) {
-    case "insert": return t("ed_last_added_t", { when, file, new: text(row.new_value) });
-    case "create": return t("ed_last_created_t", { when, file, new: text(row.new_value) });
-    case "remove": return t("ed_last_removed_t", { when, file, old: text(row.old_value) });
-    default: return t("ed_last_t", { when, file, old: text(row.old_value), new: text(row.new_value) });
+    case "insert": return words.lastAdded(setting, { when, file, new: next() });
+    case "create": return words.lastCreated(setting, { when, file, new: next() });
+    case "remove": return words.lastRemoved(setting, { when, file, old: old() });
+    default: return words.lastReplaced(setting, { when, file, old: old(), new: next() });
   }
 }
 
@@ -112,33 +118,38 @@ export function anywayButton(row, env) {
 
 const has = (value) => value !== null && value !== undefined;
 
-// A remove tells what a new session runs now. runsAfter comes from the preview the save was made from.
-function removedLine(f, file) {
-  if (f.noEffect === true) return t("ed_saved_removed_no_effect_t", { file });
-  if (!has(f.runsAfter)) return t("ed_saved_removed_unknown_t", { file });
-  return t("ed_saved_removed_t", { file, level: text(f.runsAfter) });
+// The setting a result is worded for: the one the save was made for, else the one its edit changed.
+const settingOfResult = (f) => f.setting || settingOfEdit(f.edit);
+
+// A remove tells what runs now. runsAfter comes from the preview the save was made from.
+function removedLine(f, file, setting) {
+  if (f.noEffect === true) return words.savedRemovedNoEffect(setting, { file });
+  if (!has(f.runsAfter)) return words.savedRemovedUnknown(setting, { file });
+  return words.savedRemoved(setting, { file, level: words.shown(setting, f.runsAfter) });
 }
 
-// One literal t() call per line, so the string checks can see every key. f is the saved result: the edit, the saved
-// preview's warning, and for a remove whether it changed nothing and what runs after.
+// The line of a saved result, worded for the setting the edit changed. f is the saved result: the edit, the saved
+// preview's warning, and for a remove whether it changed nothing and what runs after. level is the value written.
 export function savedLine(f, slots) {
   const warning = f.warning;
-  if (f.edit && f.edit.op === "remove") return removedLine(f, slots.file);
-  if (!warning && f.edit && f.edit.op === "create") return t("ed_saved_created_t", slots);
-  if (!warning) return t("ed_saved_t", slots);
-  if (warning.status === "unknown") return t("ed_saved_unknown_t", slots);
-  if (warning.in_effect_changes === true) return t("ed_saved_part_t", slots);
-  if (warning.in_effect_changes === false) return t("ed_saved_no_effect_t", slots);
-  return t("ed_saved_t", slots);
+  const setting = settingOfResult(f);
+  if (f.edit && f.edit.op === "remove") return removedLine(f, slots.file, setting);
+  if (!warning && f.edit && f.edit.op === "create") return words.savedCreated(setting, slots);
+  if (!warning) return words.savedLine(setting, slots);
+  if (warning.status === "unknown") return words.savedUnknown(setting, slots);
+  if (warning.in_effect_changes === true) return words.savedPart(setting, slots);
+  if (warning.in_effect_changes === false) return words.savedNoEffect(setting, slots);
+  return words.savedLine(setting, slots);
 }
 
-// The line of an Undo anyway or a restore that was written. One literal t() call for each line.
+// The line of an Undo anyway or a restore that was written, worded for the setting of its edit.
 function backDoneLine(f) {
   const file = basename(f.edit.file_display);
-  if (f.removedDir) return t("ed_back_done_deleted_both_t", { file });
-  if (f.removedFile) return t("ed_back_done_deleted_t", { file });
-  if (f.replacedFile === false) return t("ed_back_done_created_t", { file });
-  return f.back === "undo" ? t("ed_back_done_undo_t", { file }) : t("ed_back_done_restored_t", { file });
+  const setting = settingOfEdit(f.edit);
+  if (f.removedDir) return words.backDoneDeletedBoth(setting, { file });
+  if (f.removedFile) return words.backDoneDeleted(setting, { file });
+  if (f.replacedFile === false) return words.backDoneCreated(setting, { file });
+  return f.back === "undo" ? words.backDoneUndo(setting, { file }) : words.backDoneRestored(setting, { file });
 }
 
 // Under it, the backup that holds what the file had before (when the write replaced a file), then the backup the file
@@ -160,13 +171,14 @@ export function stripResult(f, env) {
   switch (f.kind) {
     case "saved": {
       const file = basename(f.edit.file_display);
-      return strip("ok", savedLine(f, { file, level: text(f.edit.new_value) }),
+      return strip("ok", savedLine(f, { file, level: words.shown(settingOfResult(f), f.edit.new_value) }),
         f.edit.undoable === true ? [undoButton(f.edit, env)] : [], "status", pathLine("ed_saved_backup", f.edit.backup_display));
     }
     case "undone": {
       const file = basename(f.edit.file_display);
-      const line = f.removedDir ? t("ed_undone_removed_both_t", { file })
-        : f.removedFile ? t("ed_undone_removed_file_t", { file }) : t("ed_undone_t", { file });
+      const setting = settingOfEdit(f.edit);
+      const line = f.removedDir ? words.undoneRemovedBoth(setting, { file })
+        : f.removedFile ? words.undoneRemovedFile(setting, { file }) : words.undone(setting, { file });
       return strip("ok", line, [dismiss(true)], "status", pathLine("ed_undone_path", f.restored));
     }
     case "back_done": return strip("ok", backDoneLine(f), [dismiss(true)], "status", ...backDoneBelow(f));

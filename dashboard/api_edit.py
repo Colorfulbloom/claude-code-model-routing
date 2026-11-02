@@ -1,13 +1,18 @@
-"""The edit routes: what each effort level would do, a preview and a save (set a level or remove a line), an undo
-(also an undo anyway), a restore of any visible row, their read-only backup preview and the history.
+"""The edit routes: what each level of a setting would do, a preview and a save (set a value or remove a line), an
+undo (also an undo anyway), a restore of any visible row, their read-only backup preview and the history.
+
+One table (SETTINGS) lists the settings the routes edit: effortLevel, maxEffortLevel (the effort cap), model and
+autoCompactWindow. A targets query, a preview body and a save body name one of them ("setting", effortLevel when
+missing). Nothing else is editable: no env, hooks, permissions, apiKeyHelper or agent file is in the table.
 
 A read route is a function (ctx, query) -> (status, payload), like the routes in
 api_settings. A write route is (ctx, body), where body is the parsed JSON
 object the server's gate already checked. ctx.edit is an EditState when the
 server started with --allow-edits, else None.
 
-A preview or save body holds the opaque target and an action, "set" (the default, with a value)
-or "remove" (no value, a line target only). No path or key name ever comes from a request.
+A preview or save body holds the opaque target, an action, "set" (the default, with a value)
+or "remove" (no value, a line target only), and the setting. No path or key name ever comes from a
+request, only a setting name that is checked against the table.
 
 An undo anyway and a restore each follow a backup preview and carry its base_file, the HMAC of the
 file the owner saw. A restore counts as an undo under the repo lock, so neither new route consults it.
@@ -38,6 +43,12 @@ import rules_schema
 
 MAIN_AGENT = api_settings.MAIN_AGENT
 SETTING = "effortLevel"
+CAP = "maxEffortLevel"
+COMPACT = "autoCompactWindow"
+COMPACT_MIN = 100000
+COMPACT_MAX = 1000000
+COMPACT_LEVELS = ("auto", "number")  # the two rows of the window picker
+COMPACT_PROBES = (200000, 300000)  # the number the "number" row simulates, the second when the first runs now
 LEVELS = ("low", "medium", "high", "xhigh")  # tests tie this to rule effort-level-settings-values
 RANKS = rules_schema.EFFORT_LEVELS  # low to max, for comparing levels and caps
 REPLACED_RULE = "max-effort-level-replaced-in-file"
@@ -118,22 +129,30 @@ def _display_or_none(ctx, path):
     return None if path is None else _display(ctx, path)
 
 
-def _key_allowed(key_path):
-    """The editable table: effortLevel and modelSettings.<name>.effortLevel, nothing else."""
+def _key_allowed(key_path, setting=SETTING):
+    """The editable table for one setting: its key, and modelSettings.<name>.<key> when the setting has that path."""
     key_path = tuple(key_path)
-    if key_path == (SETTING,):
+    spec = SETTINGS.get(setting)
+    if spec is None:
+        return False
+    if key_path == (spec.key,):
         return True
-    return (len(key_path) == 3 and key_path[0] == "modelSettings"
-            and isinstance(key_path[1], str) and key_path[2] == SETTING)
+    return (spec.model_path and len(key_path) == 3 and key_path[0] == "modelSettings"
+            and isinstance(key_path[1], str) and key_path[2] == spec.key)
 
 
-def _masked(value, name=SETTING):
+def _masked(value, name):
     return collect.mask(value, name)
 
 
-def _effort_row(entries):
+def _main_row(entries, key):
+    """Return the main row of a setting: its entries with scope main and no agent, in trail order."""
     return [e for e in entries
-            if e["key"] == SETTING and e.get("scope") == "main" and not e.get("agent")]
+            if e["key"] == key and e.get("scope") == "main" and not e.get("agent")]
+
+
+def _effort_row(entries):
+    return _main_row(entries, SETTING)
 
 
 def _winner(row):
@@ -155,7 +174,7 @@ def _caps_below(entries, level):
     caps = []
     for entry in entries:
         value = entry.get("value")
-        if entry["key"] != "maxEffortLevel" or entry.get("scope") != "main" or entry.get("agent"):
+        if entry["key"] != CAP or entry.get("scope") != "main" or entry.get("agent"):
             continue
         if not isinstance(value, str) or value not in RANKS or value == "max":
             continue
@@ -186,10 +205,104 @@ def _runs_as(view, entries):
     return value
 
 
+def _cap_runs_as(view, entries):
+    """Return the cap the main maxEffortLevel row sets, "max" when no cap is set (the docs: max sets no cap), else None."""
+    winner = _winner(_main_row(entries, CAP))
+    if winner is None or winner["status"] == "unknown":
+        return None
+    if winner["layer"] == "default":
+        return "max"
+    value = winner["value"]
+    return value if isinstance(value, str) and value in RANKS else None
+
+
+def _model_runs_as(view, entries):
+    """Return the raw value of the winning model line, or None when the model is unknown."""
+    winner = _winner(_main_row(entries, "model"))
+    if winner is None or winner["status"] == "unknown":
+        return None
+    return winner["value"]
+
+
+def _compact_runs_as(view, entries):
+    """Return what the window runs as: the winner's "becomes" or its value, None when unknown."""
+    winner = _winner(_main_row(entries, COMPACT))
+    if winner is None or winner["status"] == "unknown":
+        return None
+    return winner.get("becomes", winner["value"])
+
+
+# ---------------------------------------------------------------- the settings table
+
+def _model_values(ctx):
+    """Return the catalog ids and aliases in catalog order, each id followed by its aliases."""
+    out = []
+    for model in ctx.rules.get("models", []):
+        out.append(model["id"])
+        out.extend(alias for alias in (model.get("aliases") or []) if alias not in out)
+    return out
+
+
+def _level_ok(ctx, value, nested):
+    return isinstance(value, str) and value in LEVELS
+
+
+def _rank_ok(ctx, value, nested):
+    return isinstance(value, str) and value in RANKS
+
+
+def _model_ok(ctx, value, nested):
+    return isinstance(value, str) and value in _model_values(ctx)
+
+
+def _compact_ok(ctx, value, nested):
+    """A whole number from 100000 to 1000000 on either path, and "auto" only under modelSettings.
+
+    nested is True for a modelSettings path, False for the top level, None when the path is not known yet.
+    """
+    if isinstance(value, bool):
+        return False
+    if isinstance(value, int):
+        return COMPACT_MIN <= value <= COMPACT_MAX
+    return isinstance(value, str) and value == "auto" and nested is not False
+
+
+class _Setting:
+    """One editable setting: its key, whether modelSettings.<name>.<key> is a key path, its value check,
+    the levels the picker lists and what the main row runs as.
+
+    effort_bound says the levels follow the model's effort support (levels_state).
+    """
+
+    __slots__ = ("key", "model_path", "effort_bound", "_ok", "_levels", "runs_as")
+
+    def __init__(self, key, model_path, effort_bound, ok, levels, runs_as):
+        self.key = key
+        self.model_path = model_path
+        self.effort_bound = effort_bound
+        self._ok = ok
+        self._levels = levels
+        self.runs_as = runs_as
+
+    def accepts(self, ctx, value, nested=None):
+        return self._ok(ctx, value, nested)
+
+    def levels(self, ctx):
+        return self._levels(ctx)
+
+
+SETTINGS = {
+    SETTING: _Setting(SETTING, True, True, _level_ok, lambda ctx: list(LEVELS), _runs_as),
+    CAP: _Setting(CAP, True, True, _rank_ok, lambda ctx: list(RANKS), _cap_runs_as),
+    "model": _Setting("model", False, False, _model_ok, _model_values, _model_runs_as),
+    COMPACT: _Setting(COMPACT, True, False, _compact_ok, lambda ctx: list(COMPACT_LEVELS), _compact_runs_as),
+}
+
+
 # ---------------------------------------------------------------- one reading of a project
 
 class _Target:
-    """One value that can be edited: a line on the main effort trail, or an add (entry None).
+    """One value that can be edited: a line on the main trail of the setting, or an add (entry None).
 
     An add is a key the file doesn't hold yet (op insert), one that holds null (op replace), or a
     whole file that isn't there (op create, raw None).
@@ -199,7 +312,7 @@ class _Target:
 
     __slots__ = ("id", "ref", "layer", "key_path", "store_target", "raw", "entry", "op", "file_display")
 
-    def __init__(self, layer, key_path, store_target, raw, entry, op="replace", file_display=None):
+    def __init__(self, layer, key_path, store_target, raw, entry, op="replace", file_display=None, key=SETTING):
         self.id = _target_id(layer, key_path)
         self.layer = layer
         self.key_path = tuple(key_path)
@@ -212,7 +325,7 @@ class _Target:
             self.ref = ref_of(entry)
         else:
             self.file_display = file_display
-            self.ref = ref_of({"key": SETTING, "layer": layer, "file": file_display,
+            self.ref = ref_of({"key": key, "layer": layer, "file": file_display,
                                "path": None if len(self.key_path) == 1 else ".".join(self.key_path)})
 
     @property
@@ -229,10 +342,12 @@ class _Target:
 
 
 class _View:
-    """One reading of a project: its entries, the main effort row, and the targets and blocked rows."""
+    """One reading of a project: its entries, the main row of one setting, and the targets and blocked rows."""
 
-    def __init__(self, ctx, listing, project, overlay):
+    def __init__(self, ctx, listing, project, overlay, setting=SETTING):
         self.ctx = ctx
+        self.setting = SETTINGS[setting]
+        self._cap_view = None
         self.listing = listing
         self.project = project
         self.overlay = overlay
@@ -240,7 +355,8 @@ class _View:
         self.repo_locked = False
         self.entries = []
         self.collected = None
-        self.effort = []
+        self.effort = []  # the main effort row, whatever the setting
+        self.row = []  # the main row of the setting
         self.model = None
         self.offered = []
         self.levels_state = "model_unknown"
@@ -253,6 +369,12 @@ class _View:
         self.blocked_refs = {}
         self.blocked_ids = {}
         self.sims = {}
+
+    def cap_view(self):
+        """Return the view of the same project for the maxEffortLevel setting, built once."""
+        if self._cap_view is None:
+            self._cap_view = _view(self.ctx, self.listing, self.project, self.overlay, CAP, reuse=self.collected)
+        return self._cap_view
 
     def find(self, target_id):
         """Return the target or add with this id, or raise 422 (it is blocked now) or 400 not_editable."""
@@ -278,7 +400,7 @@ def _block(view, entry, reason, key_path=None):
     if ref not in view.blocked_refs:
         view.blocked_refs[ref] = reason
         view.blocked.append({"ref": ref, "layer": entry["layer"], "file_display": entry.get("file"),
-                             "line": entry.get("line"), "value": _masked(entry.get("value")),
+                             "line": entry.get("line"), "value": _masked(entry.get("value"), entry["key"]),
                              "reason": reason})
     if key_path is not None:
         view.blocked_ids[_target_id(entry["layer"], key_path)] = reason
@@ -291,7 +413,8 @@ def _classify(view, entry):
     if layer not in edit_store.LAYERS:
         _block(view, entry, _layer_reason(entry) or "not_editable")
         return
-    key_path = None if entry.get("path") else (SETTING,)
+    key = view.setting.key
+    key_path = None if entry.get("path") else (key,)
     try:
         target = edit_store.target_for(ctx, view.project.key, layer)
         if view.overlay is not None and target.path in view.overlay:
@@ -315,13 +438,13 @@ def _classify(view, entry):
         table = data.get("modelSettings")
         if isinstance(table, dict):
             for name in table:  # never split the path, a model id can hold dots
-                if "modelSettings.%s.%s" % (name, SETTING) == entry["path"]:
-                    key_path = ("modelSettings", name, SETTING)
+                if "modelSettings.%s.%s" % (name, key) == entry["path"]:
+                    key_path = ("modelSettings", name, key)
                     break
         if key_path is None:
             _block(view, entry, "unparsed")
             return
-    if not _key_allowed(key_path) or _display(ctx, target.path) != entry.get("file"):
+    if not _key_allowed(key_path, key) or _display(ctx, target.path) != entry.get("file"):
         _block(view, entry, "unparsed", key_path)
         return
     if view.repo_locked:
@@ -341,15 +464,20 @@ def _repo_locked(project):
     return git_check.repo_place(project.path) in ("subfolder", "linked")
 
 
-def _view(ctx, listing, project, overlay=None):
-    """Return the _View of one project. overlay is {path: bytes}, as for collect."""
-    view = _View(ctx, listing, project, overlay)
+def _view(ctx, listing, project, overlay=None, setting=SETTING, reuse=None):
+    """Return the _View of one project for one setting. overlay is {path: bytes}, as for collect.
+
+    reuse is the collected data of an earlier view of the same project, so the files are not read again.
+    """
+    view = _View(ctx, listing, project, overlay, setting)
     if project.state == projects.STATE_MISSING and not project.implicit:
         view.missing = True
         return view
     view.repo_locked = _repo_locked(project)
-    view.entries, view.collected = api_settings.resolved(ctx, project, overlay=overlay, listing=listing)
+    view.entries, view.collected = api_settings.resolved(ctx, project, overlay=overlay, listing=listing,
+                                                         reuse=reuse)
     view.effort = _effort_row(view.entries)
+    view.row = _main_row(view.entries, view.setting.key)
     for entry in view.effort:
         if entry.get("model"):
             view.model = entry["model"]
@@ -357,14 +485,16 @@ def _view(ctx, listing, project, overlay=None):
     for model in ctx.rules.get("models", []):
         if model["id"] == view.model:
             view.offered = list(model.get("effort_levels") or [])
-    if view.model is None:
+    if not view.setting.effort_bound:
+        view.levels_state = "ok"  # the model, the cap's neighbours and the window do not depend on effort support
+    elif view.model is None:
         view.levels_state = "model_unknown"
     elif not view.offered:
         view.levels_state = "no_effort_support"
     else:
         view.levels_state = "ok"
-    view.runs_as = _runs_as(view, view.entries)
-    for entry in view.effort:
+    view.runs_as = view.setting.runs_as(view, view.entries)
+    for entry in view.row:
         _classify(view, entry)
     view.files = _file_states(view)
     if ctx.edit is not None:
@@ -395,9 +525,23 @@ def _limit(kind, value, layer, file_display, line, lock_reason):
 
 
 def _cap_limit(view, entry):
+    """Return the limit a cap makes. It is editable when the cap is a line of the cap view, with via "cap".
+
+    Else the lock reason is the cap view's blocked reason for that line, or the reason of its layer.
+    """
     layer = entry["layer"]
-    reason = "cap_later" if layer in edit_store.LAYERS else (_layer_reason(entry) or "unknown")
-    return _limit("cap", _masked(entry.get("value")), layer, entry.get("file"), entry.get("line"), reason)
+    ref = ref_of(entry)
+    capview = view.cap_view()
+    value = _masked(entry.get("value"), entry["key"])
+    for target in capview.targets:
+        if target.ref == ref:
+            limit = _limit("cap", value, layer, entry.get("file"), entry.get("line"), None)
+            limit.update(editable=True, target=target.id, via="cap")
+            return limit
+    reason = capview.blocked_refs.get(ref)
+    if reason is None:
+        reason = "unknown" if layer in edit_store.LAYERS else (_layer_reason(entry) or "unknown")
+    return _limit("cap", value, layer, entry.get("file"), entry.get("line"), reason)
 
 
 def _model_limit(view, level):
@@ -410,7 +554,7 @@ def _model_unknown_limit():
 
 
 def _winner_limit(view, entry):
-    return _limit("winner", _masked(entry.get("value")), entry["layer"], entry.get("file"),
+    return _limit("winner", _masked(entry.get("value"), entry["key"]), entry["layer"], entry.get("file"),
                   entry.get("line"), _lock_reason(view, entry))
 
 
@@ -506,7 +650,7 @@ def _modelsettings_locked(view, data):
 
 
 def _empty_file_row(view, layer):
-    """Return the file row of a layer that has no entry on the main effort trail."""
+    """Return the file row of a layer that has no entry on the main trail of the setting."""
     ctx = view.ctx
     try:
         target = edit_store.target_for(ctx, view.project.key, layer)
@@ -527,7 +671,7 @@ def _empty_file_row(view, layer):
         _text, data = json_edit.parse_strict(raw)  # for the lock reason only, never for a value
     except json_edit.Refused:
         return _file_row(layer, display, "locked", lock_reason="unparsed")
-    if _modelsettings_locked(view, data):
+    if view.setting.model_path and _modelsettings_locked(view, data):
         return _file_row(layer, display, "locked", lock_reason="parent_not_object")
     return _file_row(layer, display, "no_line")
 
@@ -535,7 +679,7 @@ def _empty_file_row(view, layer):
 def _file_states(view):
     """Return one row per layer (local, project, user) for the files the page can draw. Empty for a missing folder.
 
-    A row says whether the file holds an effort line (has_line), holds none (no_line), is not
+    A row says whether the file holds a line of the setting (has_line), holds none (no_line), is not
     there yet (absent) or can't be edited (locked). A value comes only from the trail, which is
     masked, never from the file itself.
     """
@@ -544,15 +688,15 @@ def _file_states(view):
     by_ref = {t.ref: t for t in view.targets}
     rows = []
     for layer in sorted(edit_store.LAYERS, key=LAYER_ORDER.get):
-        entries = [e for e in view.effort if e["layer"] == layer]
+        entries = [e for e in view.row if e["layer"] == layer]
         found = next((e for e in entries if ref_of(e) in by_ref), None)
         if found is not None:
             rows.append(_file_row(layer, found.get("file"), "has_line", found.get("line"),
-                                  _masked(found.get("value")), found["status"], by_ref[ref_of(found)].id))
+                                  _masked(found.get("value"), found["key"]), found["status"], by_ref[ref_of(found)].id))
         elif entries:
             first = entries[0]
             rows.append(_file_row(layer, first.get("file"), "locked", first.get("line"),
-                                  _masked(first.get("value")), first["status"],
+                                  _masked(first.get("value"), first["key"]), first["status"],
                                   lock_reason=view.blocked_refs.get(ref_of(first), "unparsed")))
         else:
             rows.append(_empty_file_row(view, layer))
@@ -618,28 +762,68 @@ def _make_adds(view):
         have = {t.key_path for t in view.targets if t.layer == layer}
         display = _display(ctx, target.path)
         wanted = []
-        if (SETTING,) not in have:
-            wanted.append((SETTING,))
-        if view.model is not None and not any(len(path) == 3 for path in have):
-            wanted.append(("modelSettings", _model_name(view, data), SETTING))
+        key = view.setting.key
+        if (key,) not in have:
+            wanted.append((key,))
+        if view.setting.model_path and view.model is not None and not any(len(path) == 3 for path in have):
+            wanted.append(("modelSettings", _model_name(view, data), key))
         for key_path in wanted:
             op = "create" if raw is None else _add_op(data, key_path)
-            out.append(_Target(layer, key_path, target, raw, None, op=op, file_display=display))
+            out.append(_Target(layer, key_path, target, raw, None, op=op, file_display=display, key=key))
     out.sort(key=lambda t: (LAYER_ORDER.get(t.layer, 3), 0 if len(t.key_path) == 1 else 1))
     return out
 
 
+def _refused(view, target, level):
+    """Return the (effect, runs_as, lock_reason, line) of a simulation json_edit refused."""
+    code = view.refused.get((target.id, level))
+    return None, None, ("parent_not_object" if code == "parent_not_object" else "not_editable"), None
+
+
 def _effect(view, target, level):
-    """Return (effect, runs_as, lock_reason, line) of setting one target to a level, from the real resolver run.
+    """Return (effect, runs_as, lock_reason, line) of setting one target to a value, from the real resolver run.
 
     effect is applies, lowered, unknown or wont_apply, and None when the edit is refused or an add
     would land where the trail can't see it (not_on_trail). line is the line the trail gives the
-    target after the edit.
+    target after the edit. Effort has its own rules (caps and the model's levels, see _effort_effect),
+    every other setting is judged by what it runs as after the edit (_outcome_effect).
     """
+    if view.setting.key != SETTING:
+        return _outcome_effect(view, target, level)
+    return _effort_effect(view, target, level)
+
+
+def _outcome_effect(view, target, value):
+    """Return _effect's answer for a setting that is judged by its outcome.
+
+    The entry is missing from the row: wont_apply. It is unknown: unknown. The setting runs as it does today:
+    wont_apply. It runs as the value and the entry is in effect: applies. Anything else: lowered.
+    """
+    entries = _simulate(view, target, value)
+    if entries is None:
+        return _refused(view, target, value)
+    row = _main_row(entries, view.setting.key)
+    mine = next((e for e in row if ref_of(e) == target.ref), None)
+    if mine is None and target.entry is None:
+        return None, None, "not_on_trail", None
+    runs = view.setting.runs_as(view, entries)
+    if mine is None:
+        effect = "wont_apply"
+    elif mine["status"] == "unknown":
+        effect = "unknown"
+    elif runs == view.runs_as:
+        effect = "wont_apply"
+    elif runs == value and mine["status"] == "in_effect":
+        effect = "applies"
+    else:
+        effect = "lowered"
+    return effect, _masked(runs, view.setting.key), None, None if mine is None else mine.get("line")
+
+
+def _effort_effect(view, target, level):
     entries = _simulate(view, target, level)
     if entries is None:
-        code = view.refused.get((target.id, level))
-        return None, None, ("parent_not_object" if code == "parent_not_object" else "not_editable"), None
+        return _refused(view, target, level)
     row = _effort_row(entries)
     mine = next((e for e in row if ref_of(e) == target.ref), None)
     if mine is None and target.entry is None:
@@ -659,15 +843,17 @@ def _effect(view, target, level):
         effect = "lowered"
     if effect != "unknown" and runs == view.runs_as:
         effect = "wont_apply"  # a file change that leaves the level where it is today
-    return effect, _masked(runs), None, None if mine is None else mine.get("line")
+    return effect, _masked(runs, SETTING), None, None if mine is None else mine.get("line")
 
 
-def _level_file(view, file_row, level, order):
+def _level_file(view, file_row, level, order, judge=None):
     """Return the row of one file under one level.
 
     Every item of the order on this layer is a candidate, a line or an add. The best effect wins,
     the first on a tie, so a working replace beats an add and a top add beats a model add.
+    judge(view, target, level) replaces _effect, for a row whose effect is another setting's outcome.
     """
+    judge = judge or _effect
     layer = file_row["layer"]
     out = {"layer": layer, "target": None, "op": None, "line": file_row["line"], "runs_as": None,
            "effect": None, "lock_reason": file_row["lock_reason"], "pickable": False}
@@ -679,7 +865,7 @@ def _level_file(view, file_row, level, order):
     best = None
     hidden = False
     for target in candidates:
-        effect, runs, lock, line = _effect(view, target, level)
+        effect, runs, lock, line = judge(view, target, level)
         hidden = hidden or lock == "not_on_trail"
         rank = EFFECT_RANK.index(effect) if effect is not None else len(EFFECT_RANK)
         if best is None or rank < best[0]:
@@ -716,16 +902,74 @@ def _preselect(files):
     return None
 
 
+def _cap_target(capview, cap):
+    """Return the line target of the cap view that holds this cap entry, or None."""
+    ref = ref_of(cap)
+    return next((t for t in capview.targets if t.ref == ref), None)
+
+
+def _effort_judge(view):
+    """Return a judge for _level_file that rates a cap edit by what the effort level runs as after it."""
+    def judge(capview, target, value):
+        entries = _simulate(capview, target, value)
+        if entries is None:
+            return _refused(capview, target, value)
+        mine = next((e for e in _main_row(entries, CAP) if ref_of(e) == target.ref), None)
+        if mine is None and target.entry is None:
+            return None, None, "not_on_trail", None
+        winner = _winner(_effort_row(entries))
+        runs = _runs_as(view, entries)
+        if winner is None or winner["status"] == "unknown":
+            effect = "unknown"
+        elif runs == view.runs_as:
+            effect = "wont_apply"
+        elif runs == value:
+            effect = "applies"
+        else:
+            effect = "lowered"
+        return effect, _masked(runs, SETTING), None, None if mine is None else mine.get("line")
+    return judge
+
+
+def _via_cap(view, level, certain, caps):
+    """Return the reachable row of a level that one change to the only cap below it would reach, else None.
+
+    The effort row's winner already holds the level, one cap stands in the way and it is a line of the cap
+    view. The row lists the cap view's files, each rated by what the effort level runs as after the edit.
+    """
+    winner = _winner(view.effort)
+    if (len(caps) != 1 or winner is None or winner["status"] not in ("in_effect", "lowered")
+            or winner["value"] != level):
+        return None
+    capview = view.cap_view()
+    cap_target = _cap_target(capview, caps[0])
+    if cap_target is None:
+        return None
+    entries = _simulate(capview, cap_target, level)
+    if entries is None or _runs_as(view, entries) != level:
+        return None
+    order = _order(capview, _winner(capview.row)) + capview.adds
+    judge = _effort_judge(view)
+    files = [_level_file(capview, row, level, order, judge) for row in capview.files]
+    row = _level_row(level, "reachable", level, certain, [_cap_limit(view, caps[0])], files, _preselect(files))
+    row.update(via="cap", cap_first=False)
+    return row
+
+
 def _levels(view, file_rows):
     if view.missing or view.levels_state == "no_effort_support":
         return []
+    if view.setting.key != SETTING:
+        return _plain_levels(view, file_rows)
     certain = view.model is not None
     today = view.runs_as
-    order = _order(view, _winner(view.effort)) + view.adds
+    order = _order(view, _winner(view.row)) + view.adds
     out = []
     for level in LEVELS:
         if level == today:
-            out.append(_level_row(level, "now", level, certain, []))
+            row = _level_row(level, "now", level, certain, [])
+            row.update(via=None, cap_first=False)
+            out.append(row)
             continue
         best = None
         first = None
@@ -746,11 +990,131 @@ def _levels(view, file_rows):
                 break
         files = [_level_file(view, row, level, order) for row in file_rows]
         if reached is not None:
-            out.append(_level_row(level, "reachable", level, certain, [], files, _preselect(files)))
+            row = _level_row(level, "reachable", level, certain, [], files, _preselect(files))
+            row.update(via=None, cap_first=False)
+            out.append(row)
+            continue
+        caps = _caps_below(view.entries, level)
+        row = _via_cap(view, level, certain, caps) if caps else None
+        if row is not None:
+            out.append(row)
+            continue
+        entries = first if first is not None else view.entries
+        row = _level_row(level, "stopped", best if best is not None else today,
+                         certain, limits_for(view, level, entries), files, _preselect(files))
+        row.update(via=None, cap_first=False)
+        if caps and (view.model is None or level in view.offered):
+            capview = view.cap_view()
+            if all(_cap_target(capview, cap) is not None for cap in caps):
+                # Every cap below the level can be raised here, so the picker stays on for it (the cap goes first).
+                # The lowest cap applies, so one cap no file here can change keeps the level out of reach.
+                row.update(cap_first=True, saveable=True, preselect=None)
+        out.append(row)
+    return out
+
+
+def _allow_check(view):
+    """Return verdict(name) for a model name: "ok", "blocked" or "unclear" under the list that runs.
+
+    The list is the merged field of the first availableModels entry. It is unclear when an entry of that row is
+    unknown, or when the managed settings hold deniedModels or availableModelsMatch (the resolver's own flags
+    for the same reason, see resolve._main_rows). An unclear list never blocks.
+    """
+    row = _main_row(view.entries, "availableModels")
+    merged = row[0].get("merged") if row else None
+    unclear = any(e["status"] == "unknown" for e in row)
+    managed = next((src for src in (view.collected or {}).get("settings", []) if src["layer"] == "managed"), None)
+    if managed is not None and isinstance(managed.get("data"), dict):
+        unclear = unclear or any(key in managed["data"] for key in ("deniedModels", "availableModelsMatch"))
+    catalog = view.ctx.rules.get("models", [])
+
+    def verdict(name):
+        if unclear:
+            return "unclear"
+        if merged is None:
+            return "ok"
+        permitted = resolve.model_permitted(name, merged, catalog)
+        return "blocked" if permitted is False else ("unclear" if permitted is None else "ok")
+    return verdict
+
+
+def _plain_winner_limit(view, winner):
+    """Return the winner limit of a setting judged by its outcome. A winner that is a line of this view can be edited."""
+    limit = _winner_limit(view, winner)
+    for target in view.targets:
+        if target.ref == ref_of(winner):
+            limit.update(target=target.id, editable=True, lock_reason=None)
+    return limit
+
+
+def _blocked_limit():
+    return _limit("allowlist", None, None, None, None, "model_blocked")
+
+
+def _blocked_files(file_rows):
+    """Return the file rows of a level the allowlist blocks: nothing can be picked, no simulation runs."""
+    return [{"layer": row["layer"], "target": None, "op": None, "line": row["line"], "runs_as": None,
+             "effect": None, "lock_reason": "model_blocked", "pickable": False} for row in file_rows]
+
+
+def _plain_level(view, file_rows, level, value, row_order, certain):
+    """Return the row of one level of a setting that is judged by its outcome (see _outcome_effect).
+
+    value is what a simulation writes, the level itself except for the window's number row (its probe).
+    """
+    key = view.setting.key
+    best = first = None
+    for target in row_order:
+        entries = _simulate(view, target, value)
+        if entries is None:
+            continue
+        if first is None:
+            first = entries
+        winner = _winner(_main_row(entries, key))
+        if best is None and winner is not None and ref_of(winner) == target.ref:
+            best = view.setting.runs_as(view, entries)
+    files = [_level_file(view, row, value, row_order) for row in file_rows]
+    if any(row["effect"] == "applies" and row["pickable"] for row in files):
+        return _level_row(level, "reachable", value, certain, [], files, _preselect(files))
+    winner = _winner(_main_row(first if first is not None else view.entries, key))
+    if winner is not None and winner["status"] == "in_effect" and winner["value"] == value:
+        limits = []
+    else:
+        limits = [_plain_winner_limit(view, winner)] if winner is not None else []
+    runs = view.runs_as if best is None else best
+    return _level_row(level, "stopped", _masked(runs, key), certain, limits, files, _preselect(files))
+
+
+def _plain_levels(view, file_rows):
+    """Return the level rows of the cap, the model or the window: one per level of the setting's picker."""
+    spec = view.setting
+    key = spec.key
+    certain = view.model is not None if spec.effort_bound else True
+    today = view.runs_as
+    order = _order(view, _winner(view.row)) + view.adds
+    allow = _allow_check(view) if key == "model" else None
+    out = []
+    for level in spec.levels(view.ctx):
+        value = level
+        row_order = order
+        if key == COMPACT:
+            if level == "number":
+                value = COMPACT_PROBES[1] if today == COMPACT_PROBES[0] else COMPACT_PROBES[0]
+            else:  # "auto" is written under modelSettings only
+                row_order = [t for t in order if len(t.key_path) == 3]
+        verdict = None if allow is None else allow(level)
+        if level == today:  # the number row is never now, because today is never "number"
+            row = _level_row(level, "now", level, certain, [])
+        elif verdict == "blocked":
+            row = _level_row(level, "stopped", _masked(today, key), certain, [_blocked_limit()],
+                             _blocked_files(file_rows))
         else:
-            entries = first if first is not None else view.entries
-            out.append(_level_row(level, "stopped", best if best is not None else today,
-                                  certain, limits_for(view, level, entries), files, _preselect(files)))
+            row = _plain_level(view, file_rows, level, value, row_order, certain)
+        if allow is not None:
+            row["allow"] = verdict
+        if key == COMPACT and level == "number":
+            row["probe"] = value
+        out.append(row)
     return out
 
 
@@ -825,11 +1189,32 @@ def _changes(view, before, after):
     return out
 
 
+def _plain_warning(view, entry, value, before, after):
+    """Return the warning of a setting judged by its outcome, or None.
+
+    None when the edited entry is in effect and the setting runs as the value. Else the entry's status, and the
+    limit that is in the way: the winner, when it is not this entry. A winner that is a line of this view can be edited.
+    """
+    spec = view.setting
+    runs_after = spec.runs_as(view, after["entries"])
+    if entry["status"] == "in_effect" and runs_after == value:
+        return None
+    winner = _winner(_main_row(after["entries"], spec.key))
+    limits = []
+    if winner is not None and ref_of(winner) != ref_of(entry):
+        limits = [_plain_winner_limit(view, winner)]
+    return {"status": entry["status"], "reason": entry.get("reason"),
+            "rule_ids": list(entry.get("rule_ids") or []),
+            "in_effect_changes": spec.runs_as(view, before["entries"]) != runs_after,
+            "model_known": view.model is not None,
+            "limits": limits}
+
+
 def _warning(view, edited, value, before, after):
     """Return the warning for the edited entry in the after entries, or None."""
     entries = after["entries"]
     entry = None
-    for item in _effort_row(entries):
+    for item in _main_row(entries, view.setting.key):
         if ref_of(item) == edited.ref:
             entry = item
             break
@@ -837,6 +1222,8 @@ def _warning(view, edited, value, before, after):
         if edited.entry is None:  # an add that lands where the trail can't see it
             raise _Answer(422, {"error": "not_on_trail"})
         raise _Answer(400, {"error": "not_editable"})
+    if view.setting.key != SETTING:
+        return _plain_warning(view, entry, value, before, after)
     limits = limits_for(view, value, entries)
     status = entry["status"]
     if status == "in_effect":
@@ -876,8 +1263,22 @@ def _folder_missing(target):
         return False
 
 
+def _check_value(view, edited, value):
+    """Raise 400 bad_value when the value does not fit the target's key path ("auto" for the window goes under
+    modelSettings only), and 422 model_blocked for a model the allowlist blocks.
+
+    save runs it before it touches the store, so a refused value leaves no store folder behind.
+    """
+    if not view.setting.accepts(view.ctx, value, len(edited.key_path) == 3):
+        raise _Answer(400, {"error": "bad_value"})
+    if view.setting.key == "model" and _allow_check(view)(value) == "blocked":
+        raise _Answer(422, {"error": "model_blocked"})
+
+
 def _require_pickable(view, edited, value):
     """Raise unless this target at this level is a pickable file row.
+
+    The value is checked first (see _check_value).
 
     The page only sends the target of a pickable row, one whose effect is applies, lowered or unknown
     and that has no lock. A forged preview or save for a change that wouldn't apply, or for a file the
@@ -885,6 +1286,7 @@ def _require_pickable(view, edited, value):
     the lock (not_on_trail, parent_not_object). A value the file already holds is left to no_change,
     which writes nothing.
     """
+    _check_value(view, edited, value)
     if _new_raw(edited, value) == edited.raw:
         return
     effect, _runs, lock, _line = _effect(view, edited, value)
@@ -911,19 +1313,21 @@ def _preview(ctx, view, edited, value, action="set"):
     overlay[edited.path] = new_raw
     after = api_settings.answer(ctx, view.listing, view.project, overlay=overlay, reuse=view.collected)
     warning = None if remove else _warning(view, edited, value, before, after)
-    runs_before = _masked(_runs_as(view, before["entries"]))
-    runs_after = _masked(_runs_as(view, after["entries"]))
+    key = view.setting.key
+    runs_before = _masked(view.setting.runs_as(view, before["entries"]), key)
+    runs_after = _masked(view.setting.runs_as(view, after["entries"]), key)
     diff = json_edit.structured_diff(None if edited.raw is None else edited.raw.decode("utf-8"),
                                      new_raw.decode("utf-8"), edited.file_display)
     line = edited.line
     if line is None:  # an add: the line the trail gives it after the edit
-        line = next((item.get("line") for item in _effort_row(after["entries"])
+        line = next((item.get("line") for item in _main_row(after["entries"], key)
                      if ref_of(item) == edited.ref), None)
     trail = json.dumps({"before": before["entries"], "after": after["entries"]}, sort_keys=True)
     others, layers = _others(ctx, view.project, edited)
     payload = {
+        "setting": key,
         "target": edited.id,
-        "old_value": _masked(edited.old_value),
+        "old_value": _masked(edited.old_value, key),
         "new_value": None if remove else value,
         "no_change": no_change,
         "no_effect": remove and runs_before is not None and runs_after == runs_before,
@@ -948,13 +1352,15 @@ def _preview(ctx, view, edited, value, action="set"):
         "runs_before": runs_before,
         "runs_after": runs_after,
     }
+    if key == "model" and not remove:
+        payload["allow"] = _allow_check(view)(value)
     return _Preview(payload, new_raw, layers)
 
 
 # ---------------------------------------------------------------- answers
 
 def _targets_out(view):
-    winner = _winner(view.effort)
+    winner = _winner(view.row)
     rows = []
     for target in view.targets:
         entry = target.entry
@@ -964,7 +1370,7 @@ def _targets_out(view):
             "layer": target.layer,
             "file_display": entry.get("file"),
             "line": entry.get("line"),
-            "current_value": _masked(entry.get("value")),
+            "current_value": _masked(entry.get("value"), entry["key"]),
             "status": entry["status"],
             "shared": target.layer == "project",
             "in_effect": (winner is not None and target.ref == ref_of(winner)
@@ -975,15 +1381,15 @@ def _targets_out(view):
 
 
 def _remove_out(view, target):
-    """Return what removing a target's line would do: the level it runs at after, and why it can't be removed."""
+    """Return what removing a target's line would do: what the setting runs as after, and why it can't be removed."""
     entries = _simulate_remove(view, target)
     if entries is None:
         code = view.refused.get((target.id, "remove"))
         return {"runs_as": None, "no_effect": False,
                 "lock_reason": "repeated_key" if code == "repeated_key" else "not_editable"}
-    runs = _runs_as(view, entries)
+    runs = view.setting.runs_as(view, entries)
     # With no level known either side, the dashboard can't say the line does nothing.
-    return {"runs_as": _masked(runs), "no_effect": runs is not None and runs == view.runs_as, "lock_reason": None}
+    return {"runs_as": _masked(runs, view.setting.key), "no_effect": runs is not None and runs == view.runs_as, "lock_reason": None}
 
 
 def _adds_out(view):
@@ -1183,19 +1589,21 @@ def _backup_preview(ctx, listing, project, target, row, kind):
     diff = None if file_unparsed else json_edit.structured_diff(raw_text, data_text, display)
     key_path = list(row.get("key_path") or [])
     name = key_path[-1] if key_path else None
-    view = _view(ctx, listing, project)
+    setting = name if name in SETTINGS else SETTING  # the runs are the edited setting's, an old row's effort
+    view = _view(ctx, listing, project, setting=setting)
     runs_before = runs_after = None
     if not (view.missing or view.repo_locked):
-        runs_before = _masked(view.runs_as)
+        runs_before = _masked(view.runs_as, setting)
         # the {} stands for the deleted file, because an overlay path counts as present
         overlay = {target.path: b"{}" if data is None else data}
         entries, _collected = api_settings.resolved(ctx, project, overlay=overlay, listing=listing,
                                                     reuse=view.collected)
-        runs_after = _masked(_runs_as(view, entries))
+        runs_after = _masked(view.setting.runs_as(view, entries), setting)
     current = edit_store.ABSENT if raw is None else hashlib.sha256(raw).hexdigest()
     payload = {
         "edit": row.get("id"),
         "kind": kind,
+        "setting": setting,
         "layer": target.layer,
         "shared": target.layer == "project",
         "file_display": display,
@@ -1224,7 +1632,8 @@ class _Request:
     """What an answer for a store exception needs to know about its request."""
 
     def __init__(self, ctx, listing, project, target=None, value=None, undo=False, action="set",
-                 backup=None):
+                 backup=None, setting=SETTING):
+        self.setting = setting  # the key of the setting a save edits
         self.ctx = ctx
         self.listing = listing
         self.project = project
@@ -1269,7 +1678,7 @@ def _fresh_preview(req):
     if req.undo or (req.value is None and not remove):
         return None
     try:
-        view = _view(req.ctx, req.listing, req.project)
+        view = _view(req.ctx, req.listing, req.project, setting=req.setting)
         found = view.find(req.target.id)
         if remove and found.entry is None:
             return None  # the line went, so there is nothing left to remove
@@ -1354,9 +1763,32 @@ def _pick_body(ctx, body):
     return _pick(ctx, [body["project"]] if "project" in body else [])
 
 
-def _body_value(body):
+def _setting_named(name):
+    """Return the key of a setting asked for by name, or raise 400 bad_setting. Only the table's keys pass."""
+    if not isinstance(name, str) or name not in SETTINGS:
+        raise _Answer(400, {"error": "bad_setting"})
+    return name
+
+
+def _query_setting(query):
+    """Return the setting key of a targets query: none asked is effortLevel, exactly one value else."""
+    asked = query.get("setting")
+    if asked is None:
+        return SETTING
+    if not isinstance(asked, list) or len(asked) != 1:
+        raise _Answer(400, {"error": "bad_setting"})
+    return _setting_named(asked[0])
+
+
+def _body_setting(body):
+    """Return the setting key of a preview or save body. Without one it is effortLevel."""
+    return _setting_named(body["setting"]) if "setting" in body else SETTING
+
+
+def _body_value(body, setting, ctx):
+    """Return the value of a body, or raise 400 bad_value. Each setting checks its own values (no bool, no float)."""
     value = body.get("value")
-    if not isinstance(value, str) or value not in LEVELS:
+    if not SETTINGS[setting].accepts(ctx, value):
         raise _Answer(400, {"error": "bad_value"})
     return value
 
@@ -1369,14 +1801,14 @@ def _body_action(body):
     return action
 
 
-def _body_edit(body):
-    """Return (action, value) of a preview or save body. A remove carries no value, a set needs a level."""
+def _body_edit(body, setting, ctx):
+    """Return (action, value) of a preview or save body. A remove carries no value, a set needs a value of the setting."""
     action = _body_action(body)
     if action == "remove":
         if "value" in body:
             raise _Answer(400, {"error": "bad_request"})
         return action, None
-    return action, _body_value(body)
+    return action, _body_value(body, setting, ctx)
 
 
 def _body_target(body):
@@ -1386,9 +1818,12 @@ def _body_target(body):
     return target
 
 
-def _editable_view(ctx, listing, project, target_id):
-    """Return (view, target) for a preview or a save, or raise the answer."""
-    view = _view(ctx, listing, project)
+def _editable_view(ctx, listing, project, target_id, setting=SETTING):
+    """Return (view, target) for a preview or a save, or raise the answer.
+
+    A model without effort levels refuses effortLevel and maxEffortLevel only: levels_state is ok for the others.
+    """
+    view = _view(ctx, listing, project, setting=setting)
     if view.missing:
         raise _Answer(422, {"error": "file_missing"})
     if view.levels_state == "no_effort_support":
@@ -1415,28 +1850,33 @@ def _read_only(view, project, file_rows):
     """
     levels = []
     if not (view.missing or view.levels_state == "no_effort_support"):
-        levels = [{"level": level, "result": "now" if level == view.runs_as else "offered"} for level in LEVELS]
+        levels = [{"level": level, "result": "now" if level == view.runs_as else "offered"}
+                  for level in view.setting.levels(view.ctx)]
     files = [{key: value for key, value in row.items() if key != "target"} for row in file_rows]
     return {"enabled": False, "project": project.key, "state": project.state,
-            "agent": MAIN_AGENT, "setting": SETTING, "runs_as": view.runs_as,
+            "agent": MAIN_AGENT, "setting": view.setting.key,
+            "runs_as": _masked(view.runs_as, view.setting.key),
             "model": view.model, "levels_state": view.levels_state,
             "project_lock": _project_lock(view), "files": files, "levels": levels}
 
 
 def targets(ctx, query):
-    """GET /api/edit/targets: the main effort row, what can be edited and what each level would do.
+    """GET /api/edit/targets: the main row of a setting, what can be edited and what each level would do.
 
-    With edits off it answers the read-only form from _read_only, for the same project checks.
+    ?setting= names the setting (effortLevel, maxEffortLevel, model or autoCompactWindow), none means effortLevel,
+    anything else is 400 bad_setting. With edits off it answers the read-only form from _read_only, for the same
+    project checks.
     """
     try:
+        setting = _query_setting(query)
         listing, project = _pick(ctx, query.get("project") or [])
-        view = _view(ctx, listing, project)
+        view = _view(ctx, listing, project, setting=setting)
         files = view.files
         if ctx.edit is None:
             return 200, _read_only(view, project, files)
         levels = _levels(view, files)
         return 200, {"enabled": True, "project": project.key, "state": project.state,
-                     "agent": MAIN_AGENT, "setting": SETTING, "runs_as": view.runs_as,
+                     "agent": MAIN_AGENT, "setting": setting, "runs_as": _masked(view.runs_as, setting),
                      "model": view.model, "levels_state": view.levels_state,
                      "project_lock": _project_lock(view),
                      "targets": _targets_out(view), "adds": _adds_out(view),
@@ -1452,9 +1892,10 @@ def preview(ctx, body):
         return 400, {"error": "not_editable"}
     try:
         listing, project = _pick_body(ctx, body)
-        action, value = _body_edit(body)
+        setting = _body_setting(body)
+        action, value = _body_edit(body, setting, ctx)
         target_id = _body_target(body)
-        view, edited = _editable_view(ctx, listing, project, target_id)
+        view, edited = _editable_view(ctx, listing, project, target_id, setting)
         if action == "set":
             _require_pickable(view, edited, value)
         return 200, _with_git(ctx, project, _preview(ctx, view, edited, value, action).payload)
@@ -1477,21 +1918,25 @@ def save(ctx, body):
     req = _Request(ctx, None, None)
     try:
         listing, project = _pick_body(ctx, body)
-        action, value = _body_edit(body)
+        setting = _body_setting(body)
+        action, value = _body_edit(body, setting, ctx)
         target_id = _body_target(body)
         base_file, base_trail, base_others = (body.get("base_file"), body.get("base_trail"),
                                               body.get("base_others"))
         if (not isinstance(base_file, str) or not isinstance(base_trail, str)
                 or not isinstance(base_others, dict)):
             raise _Answer(400, {"error": "bad_request"})
-        view, edited = _editable_view(ctx, listing, project, target_id)
+        view, edited = _editable_view(ctx, listing, project, target_id, setting)
         if action == "remove" and edited.entry is None:
             raise _Answer(400, {"error": "not_editable"})  # an add has no line to remove
-        req = _Request(ctx, listing, project, edited, value, action=action)
+        req = _Request(ctx, listing, project, edited, value, action=action, setting=setting)
+        if action == "set":
+            _check_value(view, edited, value)
 
         def plan(raw):
             # An absent file has no bytes to overlay, so its path is left out and reads as absent.
-            fresh_view = _view(ctx, listing, project, overlay={} if raw is None else {edited.path: raw})
+            fresh_view = _view(ctx, listing, project, overlay={} if raw is None else {edited.path: raw},
+                               setting=setting)
             try:
                 fresh = fresh_view.find(target_id)
             except _Answer:

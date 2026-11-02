@@ -8,7 +8,7 @@ written by hand in the checks. No browser starts, no socket opens, and every fol
 The test skips when node is not installed, and it tries the --experimental-default-type=module flag like
 tests/test_shell_js.py does.
 
-Two more tests read the card's source. One fails if any of the seven card files holds a call that parses text as markup.
+Two more tests read the card's source. One fails if any of the nine card files holds a call that parses text as markup.
 The other fails if a class the card uses is missing from app.css.
 """
 import json
@@ -27,7 +27,7 @@ import test_api_edit as tae
 
 TESTS = Path(__file__).resolve().parent
 STATIC = Path(helpers.REPO) / "dashboard" / "static"
-CARD_FILES = [STATIC / "js" / name for name in ("edit_card.js", "edit_flow.js", "edit_pick.js", "edit_review.js", "edit_foot.js", "edit_backup.js", "edit_ui.js")]
+CARD_FILES = [STATIC / "js" / name for name in ("edit_card.js", "edit_flow.js", "edit_pick.js", "edit_review.js", "edit_foot.js", "edit_backup.js", "edit_ui.js", "edit_setting.js", "edit_words.js")]
 CSS = STATIC / "app.css"
 CHECKS = TESTS / "js" / "edit_card_checks.mjs"
 NODE = shutil.which("node")
@@ -64,6 +64,49 @@ def state_of(world):
     return {"settings": settings_of(world), "targets": world.targets(), "history": world.history()}
 
 
+CAP = "maxEffortLevel"
+MODEL = "model"
+WINDOW = "autoCompactWindow"
+
+
+def state_for(world, setting):
+    """The three things the page holds when the cell of a setting is open."""
+    return {"settings": settings_of(world), "targets": world.targets(None, setting), "history": world.history()}
+
+
+def previews_for(world, setting, values):
+    """A preview of each value at every file row the page can pick, by layer: { layer: { value: answer } }."""
+    out = {}
+    for row in world.targets(None, setting)["targets"]:
+        if row["layer"] not in ("local", "project", "user"):
+            continue
+        out[row["layer"]] = {}
+        for value in values:
+            status, body = world.preview(row["target"], value, setting=setting)
+            if status == 200:
+                out[row["layer"]][str(value)] = body
+    return out
+
+
+def round_trip(world, setting, layer, value):
+    """A change at the file of a layer, saved and then undone: the answers and the state after each."""
+    tgt = target_of_setting(world, setting, layer)
+    status, pv = world.preview(tgt, value, setting=setting)
+    assert status == 200, (status, pv)
+    status, saved = world.save(pv, tgt, value, setting=setting)
+    assert status == 200, saved
+    out = {"target": tgt, "save": saved, "after_save": state_for(world, setting)}
+    status, undone = world.undo(saved["edit"]["id"])
+    assert status == 200, undone
+    out["undo"] = undone
+    out["after_undo"] = state_for(world, setting)
+    return out
+
+
+def target_of_setting(world, setting, layer):
+    return tae.target_of(world.targets(None, setting), layer)["target"]
+
+
 def write_json(folder, name, data):
     with open(os.path.join(folder, name + ".json"), "w", encoding="utf-8") as fh:
         json.dump(data, fh)
@@ -71,7 +114,8 @@ def write_json(folder, name, data):
 
 def build_all(case, folder):
     """Builds the payload files. World needs a TestCase for its cleanup, so the test passes itself in."""
-    for step in (base, levels_cases, warnings, undo_cases, ledger, stale, creates, inserts, removes, new_stale, owner_world):
+    for step in (base, levels_cases, warnings, undo_cases, ledger, stale, creates, inserts, removes, new_stale, owner_world,
+                 cap_panels, model_panels, window_panels):
         step(case, folder)
 
 
@@ -355,6 +399,60 @@ def owner_world(case, folder):
            "local_preview": preview(world, local, "medium"), "project_preview": preview(world, proj, "medium")}
     assert tae.level_of(out["start"]["targets"], "medium")["preselect"] == local
     write_json(folder, "owner", out)
+
+
+# The effort cap: three worlds. A cap line the effort line is below (two changes), a cap line above the effort line that
+# one change reaches (via the cap), and two caps below the level.
+def cap_panels(case, folder):
+    worlds = {
+        "cap_first": dict(user={"model": SONNET, "maxEffortLevel": "low"}, project={"effortLevel": "low"}),
+        "cap_via": dict(user={"model": SONNET}, project={"effortLevel": "high"}, local={"maxEffortLevel": "low"}),
+        "cap_several": dict(user={"model": SONNET, "maxEffortLevel": "medium"},
+                            project={"effortLevel": "low", "maxEffortLevel": "low"}),
+        "cap_panel": dict(user={"model": SONNET}, project={"effortLevel": "low", "maxEffortLevel": "medium"}),
+    }
+    for name, kwargs in worlds.items():
+        world = tae.World(case, **kwargs)
+        out = {"effort": state_of(world), "cap": state_for(world, CAP)}
+        out["cap_previews"] = previews_for(world, CAP, ("low", "medium", "high", "xhigh", "max"))
+        out["effort_previews"] = previews_for(world, "effortLevel", ("medium", "high", "xhigh"))
+        if name == "cap_panel":
+            out["trip"] = round_trip(world, CAP, "project", "high")
+        write_json(folder, name, out)
+
+
+# The model: a project line at sonnet (every id and alias is a level), and the same with a managed allowlist that blocks opus.
+def model_panels(case, folder):
+    worlds = {
+        "model_panel": dict(user={"model": SONNET}, project={"model": "sonnet"}),
+        "model_blocked": dict(user={"model": SONNET}, project={"model": "sonnet"}, managed={"availableModels": ["sonnet"]}),
+        "model_unclear": dict(user={"model": SONNET}, project={"model": "sonnet"},
+                              managed={"availableModels": ["sonnet"], "deniedModels": ["haiku"]}),
+    }
+    for name, kwargs in worlds.items():
+        world = tae.World(case, **kwargs)
+        out = state_for(world, MODEL)
+        out["previews"] = previews_for(world, MODEL, ("opus", "claude-opus-5-5", "claude-sonnet-5-5"))
+        if name == "model_panel":
+            out["trip"] = round_trip(world, MODEL, "project", "claude-opus-5-5")
+        write_json(folder, name, out)
+
+
+# The compact window: a project number with a model known, and with no model (Auto has no row to pick).
+def window_panels(case, folder):
+    worlds = {
+        "window_panel": dict(user={"model": SONNET}, project={"autoCompactWindow": 200000}),
+        "window_nomodel": dict(project={"autoCompactWindow": 200000}),
+        "window_auto": dict(user={"model": SONNET, "modelSettings": {SONNET: {"autoCompactWindow": "auto"}}},
+                            project={"autoCompactWindow": 200000}),
+    }
+    for name, kwargs in worlds.items():
+        world = tae.World(case, **kwargs)
+        out = state_for(world, WINDOW)
+        out["previews"] = previews_for(world, WINDOW, (300000, 250000, "auto"))
+        if name == "window_panel":
+            out["trip"] = round_trip(world, WINDOW, "project", 300000)
+        write_json(folder, name, out)
 
 
 class CardScripts(unittest.TestCase):

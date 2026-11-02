@@ -625,6 +625,14 @@ body{background:var(--page-bg)}
 .s4 .s6-on .p2-sv{font-weight:var(--weight-semibold)}
 .s6-lvs{display:grid}
 .s6-lvs>.s4-lab{padding:var(--space-1) 0 var(--space-2)}
+/* The model pop-up and the compact window box: native controls, dressed as the project switcher is */
+.s6-sel,.s6-num{font:var(--text-md) var(--font-sans);color:var(--text);background-color:var(--card-bg);border:var(--border-width) solid var(--border-strong);border-radius:var(--radius-md);padding:6px 10px;min-height:36px;box-sizing:border-box;max-width:100%}
+.s6-sel{min-width:260px;padding-right:32px;appearance:none;-webkit-appearance:none;
+  background-image:linear-gradient(45deg,transparent 50%,var(--text) 50%),linear-gradient(135deg,var(--text) 50%,transparent 50%);background-position:calc(100% - 16px) 15px,calc(100% - 11px) 15px;background-size:5px 5px;background-repeat:no-repeat}
+.s6-num{width:12ch;font-variant-numeric:tabular-nums}
+.s6-sel:focus-visible,.s6-num:focus-visible{outline:var(--focus-width) solid var(--focus-ring);outline-offset:var(--focus-offset)}
+.s6-sel:disabled,.s6-num:disabled{background-color:var(--surface-2);color:var(--text-muted);cursor:default}
+.s6-ctl{display:flex;gap:var(--space-2);align-items:center;flex-wrap:wrap}
 .s6-rows{display:grid;border:var(--border-width) solid transparent;border-radius:var(--radius-md);overflow:hidden;margin:0;padding:0;min-width:0}
 .s6-r{display:grid;grid-template-columns:minmax(0,1fr) 170px 164px;gap:var(--space-3);align-items:center;padding:var(--space-2) var(--space-3);min-height:52px;border-top:var(--border-width) solid var(--border);box-sizing:border-box;width:100%;position:relative;color:var(--text)}
 /* A list value: two columns, the name and then the value at about twice the name's width, the empty third cell hidden and the value allowed its full width. */
@@ -688,6 +696,8 @@ body{background:var(--page-bg)}
   .s4-body{padding:var(--space-4) var(--space-4) var(--space-5)}
   .s4-rb{padding:var(--space-4)}
   .s4 .btn{min-height:44px}
+  .s6-sel,.s6-num{min-height:44px}
+  .s6-sel{min-width:0;width:100%}
   .s4-link{display:inline-flex;align-items:center;min-height:44px}
   .s4-bkrow{min-height:44px;scroll-margin:130px 0 96px}
   .s4-segs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));width:100%;grid-auto-flow:row}
