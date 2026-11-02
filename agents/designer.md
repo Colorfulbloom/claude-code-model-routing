@@ -1,7 +1,7 @@
 ---
 name: designer
 description: Design lead. Use proactively for any new or changed UI, layout, component or visual design, and for design critique of a rendered page. Studies the project's design system first, renders two or three directions and recommends one; builds only after the owner picks. Not for building an approved design or plain browser checks.
-model: opus
+model: claude-opus-5-5
 effort: high
 memory: user
 color: purple

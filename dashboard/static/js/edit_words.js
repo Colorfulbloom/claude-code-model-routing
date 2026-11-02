@@ -6,7 +6,7 @@
 // Every key sits in a literal t() call, one for each key, so tests/test_static_strings.py can see it has a caller.
 // A table maps a setting to a function of the slots. A setting missing from a table reads Effort's entry.
 
-import { t } from "./format.js";
+import { t, withCommas } from "./format.js";
 import { CAP, COMPACT, EFFORT, MODEL } from "./edit_setting.js";
 
 const by = (table) => (setting, slots) => (table[setting] || table[EFFORT])(slots);
@@ -263,5 +263,6 @@ export function shown(setting, value, models = null) {
   if (value === null || value === undefined) return "";
   if (setting === MODEL && models && typeof value === "string" && Object.prototype.hasOwnProperty.call(models, value)) return String(models[value]);
   if (setting === COMPACT && value === "auto") return t("ed_compact_auto");
+  if (setting === COMPACT && /^\d+$/.test(String(value))) return withCommas(String(value));
   return String(value);
 }

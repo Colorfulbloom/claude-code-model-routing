@@ -50,7 +50,7 @@ Options:
   --uninstall  Remove what a previous install added (it reads the manifest).
   -y, --yes    Skip the picker. Use saved choices, else the defaults.
   --agent NAME=MODEL[:EFFORT]
-               Set one agent's model (haiku, sonnet, opus, fable or a model
+               Set one agent's model (haiku, sonnet, claude-opus-5-5, fable or a model
                id) and optionally its effort (low, medium, high, xhigh, max).
                Repeat for more agents.
   --reset      Ignore saved choices and start from the defaults.
@@ -124,7 +124,7 @@ MSG_ERR_AGENT_MISSING = 'Error: --agent needs a value like NAME=MODEL[:EFFORT]\n
 MSG_ERR_AGENT_FORMAT = 'Error: --agent expects NAME=MODEL[:EFFORT], got: %s\n'
 MSG_ERR_AGENT_UNKNOWN = 'Error: unknown agent %s. Known agents: %s\n'
 MSG_ERR_AGENT_INHERIT = 'Error: the model for %s cannot be inherit. Pick a model.\n'
-MSG_ERR_AGENT_MODEL = 'Error: %s is not a model alias (haiku, sonnet, opus, fable) or a valid model id.\n'
+MSG_ERR_AGENT_MODEL = 'Error: %s is not a model alias (haiku, sonnet, claude-opus-5-5, fable) or a valid model id.\n'
 MSG_ERR_AGENT_EFFORT = 'Error: effort %s is not valid for model %s. Valid efforts: %s\n'
 MSG_ERR_FLAG_UNINSTALL = 'Error: %s cannot be combined with --uninstall.\n'
 
@@ -132,7 +132,7 @@ MSG_ERR_FLAG_UNINSTALL = 'Error: %s cannot be combined with --uninstall.\n'
 # End of Messages
 # ============================================================================
 
-ALIASES = ["haiku", "sonnet", "opus", "fable"]
+ALIASES = ["haiku", "sonnet", "claude-opus-5-5", "fable"]
 EFFORTS = ["low", "medium", "high", "xhigh", "max"]
 EFFORTS_BY_MODEL = {alias: EFFORTS for alias in ALIASES}
 FABLE_NOTE = "may bill to usage credits"

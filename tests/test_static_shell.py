@@ -438,6 +438,25 @@ class AppCss(unittest.TestCase):
             if ".sb-bar" in sel and sel != ".sb-bar":
                 self.assertFalse([p for p in decls if p.startswith("border")], sel)
 
+    def test_phone_band_sits_above_the_open_lists_and_below_the_docked_save_bar(self):
+        # The open Arrange or More list (.s5-anc, a flex item of .s4 with z-index 6) paints over the sticky band at a
+        # phone width unless the band is higher. The band stays under the docked Save bar (9) and the open sidebar (10).
+        phone = "(max-width: 720px)"
+        band = int(final_value(self.rules, ".s5-bw", "z-index", phone))
+        anchor = int(final_value(self.rules, ".s5-anc", "z-index"))
+        self.assertGreater(band, anchor)
+        self.assertEqual(final_value(self.rules, ".s5-bw", "position", phone), "sticky")
+        foot = int(final_value(self.rules, ".s4-rf", "z-index", "(max-width: 1240px)"))
+        sidebar = int(final_value(self.rules, ".sb.is-open", "z-index", phone))
+        self.assertLess(band, foot)
+        self.assertLess(band, sidebar)
+
+    def test_rail_text_wraps_long_file_paths(self):
+        # The Why this value sentence (.s4-p) and the rail notes name a file path with no spaces in it. They wrap like
+        # the review box and the diff path (.pa), so the rail never scrolls sideways.
+        for selector in (".pa", ".s4-p", ".s4-note"):
+            self.assertEqual(final_value(self.rules, selector, "overflow-wrap"), "anywhere", selector)
+
     def test_one_section_per_page_with_shared_first(self):
         titles = re.findall(r"(?m)^ \* ([A-Z][\w ,]+)$", self.text)
         self.assertEqual(titles, ["Shared", "Overview", "Agents", "Agent detail", "Models", "Sessions", "Session detail",

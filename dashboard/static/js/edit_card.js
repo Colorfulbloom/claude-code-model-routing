@@ -323,10 +323,11 @@ function capFile(file, lf, payload) {
   return { ...file, state, line: lf && lf.line !== undefined ? lf.line : file.line, value: mine ? mine.value : null, status: mine ? mine.status : null };
 }
 
-// The value of a file row as the page words it: a model by its display name, any other value as text.
+// The value of a file row as the page words it: a model by its display name, the compact window with thousands commas,
+// any other value as text.
 function fileValue(file, setting, payload) {
   if (setting === MODEL) return valueString({ key: MODEL, value: file.value }, payload, true);
-  return text(file.value);
+  return setting === COMPACT ? words.shown(COMPACT, text(file.value)) : text(file.value);
 }
 
 // The leftover local file's line when it holds the value in effect for the setting, else null. The payload names the root
