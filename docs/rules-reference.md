@@ -878,7 +878,7 @@ Quotes:
 
 - Experiment record: none
 - Confidence: Documented
-- Verified on: Claude Code 2.1.302, October 29, 2026
+- Verified on: Claude Code 2.1.302, November 2, 2026
 
 ### effort-lowered-unsupported-level
 
