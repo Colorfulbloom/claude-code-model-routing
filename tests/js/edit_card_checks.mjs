@@ -2421,7 +2421,7 @@ test("text nodes: every server value on the page is text, so a hostile path and 
 });
 
 test("text nodes: the card files hold no call that parses markup, no style, and every diff text goes through h()", () => {
-  const source = ["edit_card", "edit_flow", "edit_pick", "edit_review", "edit_foot", "edit_backup", "edit_ui"]
+  const source = ["edit_card", "edit_flow", "edit_pick", "edit_review", "edit_foot", "edit_backup", "edit_ui", "edit_setting", "edit_words"]
     .map((name) => fs.readFileSync(new URL("js/" + name + ".js", STATIC), "utf8")).join("\n");
   for (const banned of ["innerHTML", "outerHTML", "insertAdjacentHTML", "document.write", "DOMParser", "createContextualFragment"]) {
     assert.equal(source.includes(banned), false, banned);
