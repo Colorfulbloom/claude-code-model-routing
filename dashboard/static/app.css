@@ -580,7 +580,7 @@ body{background:var(--page-bg)}
 .s4-rf:empty,.s4-rf:not(:has(:not(.s4-slot))){display:none}
 .s5-rf{grid-template-columns:minmax(0,1fr) auto!important;align-items:center}
 .s4-rh{font-size:var(--text-lg);font-weight:var(--weight-semibold);line-height:var(--leading-tight);margin:0}
-.s4-p{font-size:var(--text-sm)}
+.s4-p{font-size:var(--text-sm);overflow-wrap:anywhere}
 .s4-link{color:var(--accent);font-size:var(--text-sm);text-decoration:underline;text-underline-offset:3px;background:none;border:0;padding:0;cursor:pointer}
 .s4-wide{width:100%;justify-content:center;min-height:40px;font-size:var(--text-md)}
 /* The older backups list: a row is a button that opens its preview, or a grey line with its reason */
@@ -597,7 +597,7 @@ body{background:var(--page-bg)}
 /* The slots the edit card refills without a page render take no box of their own, so their children lay out in the pane */
 .s4-slot{display:contents}
 /* The review in the rail (board a-norm) and the results in the foot (board a12-saved), values as the boards write them */
-.s4-note{color:var(--text-muted);font-size:var(--text-sm)}
+.s4-note{color:var(--text-muted);font-size:var(--text-sm);overflow-wrap:anywhere}
 .s4-sub{font-size:var(--text-sm);font-weight:var(--weight-semibold)}
 .s4-dl{margin:0;display:grid}
 .s4-dl>div{display:flex;justify-content:space-between;gap:var(--space-3);padding:var(--space-2) 0;border-top:var(--border-width) solid var(--border);font-size:var(--text-sm)}
@@ -681,7 +681,7 @@ body{background:var(--page-bg)}
 /* A phone: the band stays pinned to the top (so the top bar scrolls away), and the list opens in the flow */
 @media (max-width: 720px){
   .main:has(>.content>[data-page="settings"]:not([hidden]))>.topbar{position:static}
-  .s5-bw{padding:0 var(--space-4);position:sticky;top:0;background:var(--card-bg);z-index:5}
+  .s5-bw{padding:0 var(--space-4);position:sticky;top:0;background:var(--card-bg);z-index:7}
   .s4-chead{padding:var(--space-4) var(--space-4) 0}
   .s5-msgs{padding:var(--space-4) var(--space-4) 0}
   .s4-stat{padding:10px var(--space-3)}

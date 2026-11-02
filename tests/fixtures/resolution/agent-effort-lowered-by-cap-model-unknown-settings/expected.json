@@ -1,0 +1,24 @@
+{
+  "fixture": "agent-effort-lowered-by-cap-model-unknown-settings",
+  "rule_ids": [
+    "agent-effort-lowered-by-cap-model-unknown"
+  ],
+  "note": "The agent has no effort of its own and no model, so the project effortLevel wins for the agent and the top-level maxEffortLevel lowers it.",
+  "confidence": "documented",
+  "source": "https://code.claude.com/docs/en/settings-reference#maxeffortlevel",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "effort",
+      "value": "high",
+      "status": "lowered",
+      "layer": "project",
+      "file": "project/.claude/settings.json",
+      "line": 2,
+      "scope": "agent",
+      "agent": "probe",
+      "becomes": "low",
+      "rule_id": "agent-effort-lowered-by-cap-model-unknown"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "fixture": "agent-effort-lowered-by-cap-model-unknown-frontmatter",
+  "rule_ids": [
+    "agent-effort-lowered-by-cap-model-unknown"
+  ],
+  "note": "The agent names a model the catalog doesn't list, so the dashboard treats the model as unknown and the top-level maxEffortLevel lowers the frontmatter effort.",
+  "confidence": "documented",
+  "source": "https://code.claude.com/docs/en/settings-reference#maxeffortlevel",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "effort",
+      "value": "high",
+      "status": "lowered",
+      "layer": "agent",
+      "file": "config/agents/probe.md",
+      "line": 5,
+      "scope": "agent",
+      "agent": "probe",
+      "becomes": "low",
+      "rule_id": "agent-effort-lowered-by-cap-model-unknown"
+    }
+  ]
+}

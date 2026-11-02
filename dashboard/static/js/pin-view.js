@@ -17,6 +17,8 @@ const endsWith = (text, tail) => typeof text === "string" && text.endsWith(tail)
 const isModelUnknown = (value) => value === null || value === undefined;
 // The rule ids that say a top-level cap lowered the level, with or without a known model.
 const isCapRule = (id) => endsWith(id, "lowered-by-cap") || endsWith(id, "lowered-by-cap-model-unknown");
+// With no model known, an agent's rule says the agent's model is unknown, and the main rule says the session's is.
+const isAgentRule = (e) => typeof e.rule_id === "string" && e.rule_id.startsWith("agent-");
 
 // A value that may be missing: the word "Unknown" in place of null or undefined, so no slot prints "null".
 const orUnknown = (value) => (value === null || value === undefined ? t("status_unknown") : value);
@@ -79,7 +81,9 @@ function settingSentences(u, kind, setting, pin) {
     if (lowered && isCapRule(e.rule_id) && source) {
       // With no model the cap is the top-level maxEffortLevel, and a modelSettings cap could still apply.
       out.push(isModelUnknown(capModel)
-        ? t("pin_runs_match_cap_sentence_model_unknown", { setting: label, source, expected })
+        ? (isAgentRule(e)
+          ? t("pin_runs_match_cap_sentence_agent_model_unknown", { setting: label, source, expected })
+          : t("pin_runs_match_cap_sentence_model_unknown", { setting: label, source, expected }))
         : t("pin_runs_match_cap_sentence", { setting: label, source, model: modelWord(capModel), expected }));
     } else if (source) {
       out.push(t("pin_runs_match_sentence", { setting: label, source, expected }));
@@ -96,11 +100,15 @@ function settingSentences(u, kind, setting, pin) {
       out.push(t("pin_runs_match_unsupported_sentence", { model, value: orUnknown(setting.pinned.value), expected }));
     } else if (cap && cap.file) {
       out.push(unknownModel
-        ? t("pin_runs_match_lowered_sentence_model_unknown", { expected, source: from })
+        ? (isAgentRule(e)
+          ? t("pin_runs_match_lowered_sentence_agent_model_unknown", { expected, source: from })
+          : t("pin_runs_match_lowered_sentence_model_unknown", { expected, source: from }))
         : t("pin_runs_match_lowered_sentence", { model, expected, source: from }));
     } else {
       out.push(unknownModel
-        ? t("pin_runs_match_lowered_sentence_model_unknown_no_source", { expected })
+        ? (isAgentRule(e)
+          ? t("pin_runs_match_lowered_sentence_agent_model_unknown_no_source", { expected })
+          : t("pin_runs_match_lowered_sentence_model_unknown_no_source", { expected }))
         : t("pin_runs_match_lowered_sentence_no_source", { model, expected }));
     }
   } else if (setting.state === "matches_lowered") {

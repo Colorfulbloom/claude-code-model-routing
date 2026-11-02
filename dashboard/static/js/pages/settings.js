@@ -9,7 +9,7 @@
 // it goes in as text through h.js and renderText, never as markup.
 
 import { h, clear } from "../h.js";
-import { t, renderText } from "../format.js";
+import { t, renderText, withCommas } from "../format.js";
 import { ALL_KEY, MAIN_KEY, BAND_SETTINGS } from "../router.js";
 import { pageHead, emptyState, projectPickerEmpty } from "../components.js";
 import { bandFor, refitBand, setNotSaved, arrangeButton } from "./band.js";
@@ -60,6 +60,8 @@ export function valueNotShown(entry) {
   return Array.isArray(entry.rule_ids) && entry.rule_ids.some((id) => VALUE_NOT_SHOWN.includes(id));
 }
 
+const COMPACT_KEYS = ["autoCompactWindow", "env.CLAUDE_CODE_AUTO_COMPACT_WINDOW"];
+
 // The value of an entry as plain text. plain true is the Settings band, where a model shows its display
 // name alone. A null value is "" here, and a model row shows its name and id otherwise.
 export function valueString(entry, payload, plain = false) {
@@ -82,6 +84,8 @@ export function valueString(entry, payload, plain = false) {
     }
     return t("model_not_listed", { name: value });
   }
+  // The compact window is a token count, so it reads with thousands commas (the cell and the Where it's set rows).
+  if (COMPACT_KEYS.includes(entry.key) && /^\d+$/.test(String(value))) return withCommas(String(value));
   return String(value);
 }
 

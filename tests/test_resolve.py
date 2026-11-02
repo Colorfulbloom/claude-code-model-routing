@@ -144,6 +144,28 @@ class GuardTests(unittest.TestCase):
         self.assertEqual((main[0]["status"], main[0]["becomes"], main[0]["rule_id"]),
                          ("lowered", "low", "effort-lowered-by-cap"))
 
+    def test_the_agent_no_model_cap_rule_matches_only_with_no_model(self):
+        def agent_effort(name):
+            inputs, _expected = resolve.load_fixture(os.path.join(FIXTURE_DIR, name))
+            before = copy.deepcopy(inputs)
+            entries = resolve.resolve(inputs, RULES, FIELDS)
+            self.assertEqual(inputs, before)
+            rows = [e for e in entries if e["key"] == "effort" and e.get("scope") == "agent"
+                    and e.get("agent") == "probe"]
+            self.assertEqual(len(rows), 1)
+            return rows[0]
+        # No model anywhere: only the model_unknown rule lowers the agent's level.
+        row = agent_effort("agent-effort-lowered-by-cap-model-unknown")
+        self.assertEqual((row["status"], row["becomes"], row["rule_id"]),
+                         ("lowered", "low", "agent-effort-lowered-by-cap-model-unknown"))
+        self.assertNotIn("model", row)
+        # The reason names the cap that lowered the level.
+        self.assertIn("the top-level maxEffortLevel caps it at low", row["reason"])
+        # A known model: the original rule keeps the answer and the row names the model.
+        row = agent_effort("agent-effort-lowered-by-cap")
+        self.assertEqual((row["status"], row["becomes"], row["rule_id"], row["model"]),
+                         ("lowered", "low", "agent-effort-lowered-by-cap", "claude-haiku-5-5"))
+
 
 def _write(path, content):
     os.makedirs(os.path.dirname(path), exist_ok=True)
