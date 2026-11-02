@@ -4,12 +4,12 @@
 fact: edit_store.py alone writes settings; test_edit_security lints write calls and exempts only reference_page.py's one open. api_edit's save recomputes inside the store's locked commit, so _StaleSignal and _Answer must not subclass StoreError or OSError, or _commit_locked wraps them as WriteFailed. A preview or save reports every row that moved, agent rows included. On /usr/bin/python3 3.9.6, O_NOFOLLOW|O_DIRECTORY on a symlink raises ENOTDIR and O_NOFOLLOW on a leaf raises ELOOP.
 check: grep -n "class _StaleSignal\|class _Answer" dashboard/api_edit.py
 evidence: dashboard/api_edit.py, dashboard/edit_store.py, tests/test_edit_security.py
-fp: f46606a318ba
-as_of: 6206393 2026-11-02
+fp: 55a53289a427
+as_of: 399f865 2026-11-02
 author: verifier
 created: 2026-10-31
 last_used: 2026-11-02
-uses: 11
+uses: 13
 
 ### E-e2f0 Edit page: token first, a write drops all project data
 fact: api.js caches usage and settings for the whole page load. take() in edit_session.js runs first at boot and in a hashchange listener registered before the router's. After a write, onWrite runs refreshAll in app.js: every project's data goes and generation moves, so an answer in flight drops itself. A new write route must use that path, or pages keep the old value. refreshAll waits on settings and edit data, never on /api/usage.
@@ -31,7 +31,7 @@ as_of: 6206393 2026-11-02
 author: deep-reasoner
 created: 2026-10-31
 last_used: 2026-11-02
-uses: 6
+uses: 7
 
 ### E-2fea Edit tests: fixture, real managed folder, half-closed sockets
 fact: build_fixture in test_edit_e2e.py is the minimal --allow-edits fixture; its env drops CLAUDE_CODE_EFFORT_LEVEL. Display paths are relative to the fixture, and backups land in <fixture>/config/routing-dashboard/backups/<id>/. A refused save can leave empty store folders. server.live_context uses the REAL managed folder, so tests dataclasses.replace(ctx, managed_dir=<temp>, root=<temp>). A raw POST that promises unsent bytes needs half_close, or the server waits out its 15 s timeout.

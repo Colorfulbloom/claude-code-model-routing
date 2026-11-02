@@ -15,12 +15,12 @@ uses: 4
 fact: CARD_FILES in test_edit_card_js.py holds edit_card, edit_flow, edit_pick, edit_review, edit_foot, edit_backup, edit_ui, edit_setting and edit_words. The text-nodes source list in edit_card_checks.mjs still holds the first seven, so the node no-markup scan skips edit_setting and edit_words. A new card module joins both lists.
 check: grep -n "edit_pick" tests/test_edit_card_js.py tests/js/edit_card_checks.mjs
 evidence: tests/test_edit_card_js.py, tests/js/edit_card_checks.mjs
-fp: 1aaf04404247
-as_of: 6206393 2026-11-02
+fp: 31f6665be818
+as_of: 399f865 2026-11-02
 author: deep-reasoner
 created: 2026-11-01
-last_used: 2026-11-01
-uses: 1
+last_used: 2026-11-02
+uses: 2
 
 ### P-2fdd edit_card_checks: project keys, flows persist
 fact: edit_card_checks.mjs drives the Settings page with a unique project key per app and targets stamped with it, because targetsData returns null on a project mismatch. Flows persist between checks, so a check on notSavedProjects starts with fresh(), an off render. reviewFacts reads layer, ref, line and shared from the preview, so a hand-made preview must carry them. applyWant in edit_card.js matches "btn:"+want, except remove:<layer>, the raw data-edit-focus.
@@ -30,8 +30,8 @@ fp: 1be2facc4a74
 as_of: 6206393 2026-11-02
 author: deep-reasoner
 created: 2026-11-01
-last_used: 2026-11-01
-uses: 1
+last_used: 2026-11-02
+uses: 4
 
 ### P-d516 fakedom: disabled focus, topbar outside the root
 fact: fakedom focus() ignores a disabled element. page.doc.documentElement is not the parent of the app tree, so find shell options with page.topbar.find.

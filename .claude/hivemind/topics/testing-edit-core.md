@@ -41,6 +41,6 @@ fp: 7a42fe8261ef
 as_of: 6206393 2026-11-02
 author: verifier
 created: 2026-11-01
-last_used: 2026-11-01
-uses: 2
+last_used: 2026-11-02
+uses: 5
 promote: approved

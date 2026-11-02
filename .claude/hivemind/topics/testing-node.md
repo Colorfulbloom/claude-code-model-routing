@@ -5,11 +5,11 @@ fact: tests/js/settings_checks.mjs needs MR_PAYLOADS, a folder tests/test_settin
 check: grep -n 'CASES\|MR_PAYLOADS' tests/test_settings_js.py tests/js/settings_checks.mjs
 evidence: tests/test_settings_js.py, tests/js/settings_checks.mjs
 fp: 055afdc66199
-as_of: 6206393 2026-11-02
+as_of: 399f865 2026-11-02
 author: deep-reasoner
 created: 2026-11-02
 last_used: 2026-11-02
-uses: 0
+uses: 1
 promote: approved
 
 ### N-5baa fakedom events, localStorage and whole-page counts
@@ -41,6 +41,17 @@ evidence: tests/js/settings_checks.mjs, dashboard/static/app.css, dashboard/stat
 fp: 152447204974
 as_of: 6206393 2026-11-02
 author: deep-reasoner
+created: 2026-11-02
+last_used: 2026-11-02
+uses: 0
+
+### N-e2fd edit_card_checks rows at rest have no radio
+fact: In tests/js/edit_card_checks.mjs, rows at rest are plain div.s6-r with no radio input, so find them by their s4-ln text (plainRows), not through rowIn or rowOf, which walk p2-row inputs.
+check: grep -n "const plainRows\|const rowIn\|const rowOf" tests/js/edit_card_checks.mjs
+evidence: tests/js/edit_card_checks.mjs
+fp: 52153401ae2f
+as_of: 057353e 2026-11-02
+author: fast-worker
 created: 2026-11-02
 last_used: 2026-11-02
 uses: 0

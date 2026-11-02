@@ -2,9 +2,9 @@
 
 Owner-approved facts promoted from HiveMind. Only deep-reasoner edits this file, and only after the owner approves a promotion. Limit: 60 lines.
 
-- T-7629 Full suite: from the repo root, `/usr/bin/python3 -m unittest discover -s tests` runs 2982 tests (58 skipped) in about 265 seconds (2026-11-02). 56 of the skips need `MR_E2E=1`, and the owner runs those. The other two need `MR_DOCS_LIVE=1` and `MR_SUBAGENT_DOCS`. Run it alone, not beside a harness batch.
+- T-7629 Full suite: from the repo root, `/usr/bin/python3 -m unittest discover -s tests` runs 3110 tests (60 skipped) in about 283 seconds (2026-11-02, development at 057353e). 58 of the skips need `MR_E2E=1`, and the owner runs those. The other two need `MR_DOCS_LIVE=1` and `MR_SUBAGENT_DOCS`. Run it alone, not beside a harness batch.
 - T-5589 Test subsets: `discover -s tests -k <pattern>` or `-p test_x.py` works; dotted names such as `tests.test_x` fail with "No module named 'helpers'".
-- T-c826 MR_TEST_TMP is optional: tests/helpers.py creates the directory when it is set and missing; unset means the system temp dir.
+- T-c826 MR_TEST_TMP is optional: tests/helpers.py creates the directory when it is set and missing; unset means the system temp dir. `_tmp_base` refuses a base inside a git work tree (any `.git` entry at or above its real path), so MR_TEST_TMP must sit outside every repo.
 - E-5b16 Write core: `edit_store.py` alone writes settings.
 - T-07ef Settings harness: `dashboard/experiments/harness/` measures precedence with no real API call (fakeapi.py on 127.0.0.1, throwaway HOME). `claude -p "/effort status"` and `"/autocompact"` send no request. Never run a batch as a check.
 - D-1534 Doc anchors: check code.claude.com anchors against the rendered HTML `id="..."` attributes, not .md heading slugs. Python urllib needs a custom User-Agent; the default gets 403.
@@ -15,3 +15,7 @@ Owner-approved facts promoted from HiveMind. Only deep-reasoner edits this file,
 - N-9919 Settings node checks: `tests/js/settings_checks.mjs` reads payloads from `MR_PAYLOADS`, which `tests/test_settings_js.py` fills from its CASES list, so run it through that test. A fixture a check names with `real(...)` joins CASES, or the check fails with ENOENT.
 - D-c684 macOS traps: `/usr/bin/python3` adds CPATH, LIBRARY_PATH, SDKROOT, MANPATH and `__CF_USER_TEXT_ENCODING` to every child, so env-leak asserts ignore them (SYSTEM_ADDED in `tests/test_harness_guard.py`). BSD sed has no `\b` and exits 0 having changed nothing, and there is no `timeout` command. Rewrite files with Python `re.sub`.
 - C-06bf Probe copies: exclude `.claude`, or rsync carries the owner's `settings.local.json` into the copy. A shell that exports a throwaway HOME also shows that file as untracked in `git status`, so run git without the export.
+- W-7178 Browser-free JS checks: `tests/test_shell_js.py` runs `tests/js/checks.mjs` on fakedom, and `tests/test_pages_js.py` runs the real app.js over `pages.mjs` and `tests/e2e_checks/`. Both skip without node. Modules hold state, so each check imports a fresh copy (`app.js?run=N`, `pages/x.js?copy=N`). h() sets value as a property.
+- K-819f String keys: `tests/test_static_strings.py` counts a key as used only in a literal `t("key"` or `tn("key"` call, so a key passed through a helper such as `pathLine("key", ...)` reads as unused.
+- T-3ad1 Test files: `NoHomePathsInTestsTest` bans home path prefixes in `tests/*.py`, so sample paths start at `/work/`; `tests/fixtures/` is not scanned. Import a test module whole (`import test_x as x`), because `from test_x import TestClass` makes discover run that class twice.
+- D-3ca7 Worktree agents: the worktree guard refuses `git -C <dir>`, a command named by a variable or by a quoted path with a space, and a heredoc that mixes quotes, backticks and `$( )`. A new isolation worktree starts at origin/main, not development.

@@ -27,12 +27,12 @@ promote: approved
 fact: code.claude.com headings carry custom ids, so check anchors against the rendered HTML id="..." attributes, not .md slugs. urllib needs a custom User-Agent, as tests/test_doc_anchors.py sends. WebFetch summarises, so confirm a new quote with curl -sL <url>.md | grep.
 check: curl -sL https://code.claude.com/docs/en/sub-agents | grep -o 'id="supported-frontmatter-fields"'
 evidence: tests/test_doc_anchors.py, dashboard/rules.json
-fp: 554682f2ae64
-as_of: 3cd3124 2026-11-02
+fp: 72b5eaa28430
+as_of: 399f865 2026-11-02
 author: verifier
 created: 2026-10-29
 last_used: 2026-11-02
-uses: 16
+uses: 22
 promote: approved
 
 ### D-6bed Patching os.stat alone misses pathlib on Python 3.9
@@ -79,3 +79,4 @@ author: deep-reasoner
 created: 2026-10-30
 last_used: 2026-10-30
 uses: 7
+promote: approved

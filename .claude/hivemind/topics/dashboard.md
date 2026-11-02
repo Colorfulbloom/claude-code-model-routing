@@ -9,7 +9,8 @@ as_of: 0a1241f 2026-11-01
 author: fast-worker
 created: 2026-10-30
 last_used: 2026-11-02
-uses: 11
+uses: 12
+promote: approved
 
 ### W-f6ed macOS traps in server tests: bytecode prefix, second bind
 fact: /usr/bin/python3 3.9.6 sets sys.pycache_prefix under $HOME/Library/Caches, so a no-writes test that hashes source folders passes even with dont_write_bytecode False. Run the child with -X pycache_prefix=, as NoWrites does; -B would defeat it. A second bind to 0.0.0.0 fails even for a loopback-only socket, so check with lsof -nP -a -p <pid> -iTCP -sTCP:LISTEN -Fn.
@@ -31,7 +32,7 @@ as_of: 6206393 2026-11-02
 author: deep-reasoner
 created: 2026-10-30
 last_used: 2026-11-02
-uses: 3
+uses: 4
 
 ### W-4518 Settings: external links, Escape, implicit project
 fact: Links to other sites go only through externalLink in h.js, https only. trail.js hears Escape in the capture phase to act before shell.js. A missing_folder project answers with empty entries unless it is implicit, which still resolves.

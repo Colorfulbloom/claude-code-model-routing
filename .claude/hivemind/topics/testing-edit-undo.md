@@ -4,12 +4,12 @@
 fact: Edit ledgers are per file, while history merges the layers by (time, seq), newest first. Server rows[-1] is one file's newest row and page rows[0] is the project's newest. undoable and undo_anyway are per file, but the foot draws Undo and Undo anyway only for history.rows[0], so a row can be its own file's newest, carry a flag and still sit in Older backups.
 check: grep -n "rows\[-1\]" dashboard/api_edit.py; grep -n "history.rows\[0\]" dashboard/static/js/edit_foot.js
 evidence: dashboard/api_edit.py, dashboard/static/js/edit_foot.js, dashboard/static/js/edit_pick.js
-fp: 143b88ba3ea7
-as_of: 6206393 2026-11-02
+fp: ea14f81f7845
+as_of: 399f865 2026-11-02
 author: verifier
 created: 2026-11-01
-last_used: 2026-11-01
-uses: 0
+last_used: 2026-11-02
+uses: 2
 promote: approved
 
 ### U-7c6a The confirm ignores presses for guard.ms
@@ -43,4 +43,15 @@ as_of: 6206393 2026-11-02
 author: verifier
 created: 2026-11-01
 last_used: 2026-11-01
+uses: 0
+
+### U-ea51 A create's saved strip names no backup path
+fact: A save that creates a file keeps only an .absent marker, which backup_path does not count as a backup, so the save's backup_display is null and the foot's saved strip has no .s4-hint .pa line. E2E waits for STRIP_PATH only after an insert or replace; a create waits for STRIP_LINE and UNDO with 'Created'.
+check: grep -n "_REAL_BACKUP_RE\|def backup_path" dashboard/edit_store.py; grep -n "ed_saved_backup" dashboard/static/js/edit_foot.js
+evidence: dashboard/edit_store.py, dashboard/static/js/edit_foot.js, tests/test_edit_e2e.py
+fp: 03fd923d739c
+as_of: 399f865 2026-11-02
+author: deep-reasoner
+created: 2026-11-02
+last_used: 2026-11-02
 uses: 0

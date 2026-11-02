@@ -53,15 +53,15 @@ as_of: 6206393 2026-11-02
 author: verifier
 created: 2026-11-01
 last_used: 2026-11-02
-uses: 3
+uses: 5
 
 ### S-3c1a Edit test worlds: repo place, target ids
-fact: World in test_api_edit.py patches git_check.repo_place to no_repo, so a repo-lock test replaces world.place. Real-process tests stay no_repo only because they build under helpers._tmp_base; an MR_TEST_TMP inside a git repo changes that. _target_id hashes layer and key path only, so one id names that layer in every project, and a save compares base hashes.
+fact: World in test_api_edit.py patches git_check.repo_place to no_repo, so a repo-lock test replaces world.place. Real-process tests stay no_repo because they build under helpers._tmp_base, which refuses a base inside any git work tree. _target_id hashes layer and key path only, so one id names that layer in every project, and a save compares base hashes.
 check: grep -n "def _target_id" dashboard/api_edit.py; grep -n "world.place" tests/test_api_edit.py
 evidence: dashboard/api_edit.py, tests/test_api_edit.py, tests/helpers.py
-fp: c057c35d59db
-as_of: 6206393 2026-11-02
+fp: 0fccf570c849
+as_of: 057353e 2026-11-02
 author: verifier
 created: 2026-11-01
 last_used: 2026-11-02
-uses: 3
+uses: 8
