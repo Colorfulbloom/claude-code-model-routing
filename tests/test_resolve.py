@@ -128,6 +128,22 @@ class GuardTests(unittest.TestCase):
             resolve.resolve(inputs, RULES, FIELDS)
         self.assertEqual(RULES, before)
 
+    def test_the_no_model_cap_rule_matches_only_with_no_model(self):
+        # No model anywhere: only the model_unknown rule lowers the level.
+        inputs, _expected = resolve.load_fixture(os.path.join(FIXTURE_DIR, "effort-lowered-by-cap-model-unknown"))
+        before = copy.deepcopy(inputs)
+        entries = resolve.resolve(inputs, RULES, FIELDS)
+        self.assertEqual(inputs, before)
+        main = [e for e in entries if e["key"] == "effortLevel" and e.get("scope") == "main"]
+        self.assertEqual((main[0]["status"], main[0]["becomes"], main[0]["rule_id"]),
+                         ("lowered", "low", "effort-lowered-by-cap-model-unknown"))
+        # A known model: the original rule keeps the answer.
+        inputs, _expected = resolve.load_fixture(os.path.join(FIXTURE_DIR, "effort-lowered-by-cap"))
+        entries = resolve.resolve(inputs, RULES, FIELDS)
+        main = [e for e in entries if e["key"] == "effortLevel" and e.get("scope") == "main"]
+        self.assertEqual((main[0]["status"], main[0]["becomes"], main[0]["rule_id"]),
+                         ("lowered", "low", "effort-lowered-by-cap"))
+
 
 def _write(path, content):
     os.makedirs(os.path.dirname(path), exist_ok=True)

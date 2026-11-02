@@ -2314,6 +2314,118 @@
       }
     },
     {
+      "rule_id": "effort-lowered-by-cap-model-unknown",
+      "key": "effortLevel",
+      "scope": "main",
+      "layer_order": [
+        "env",
+        "flag",
+        "managed",
+        "cli",
+        "local",
+        "project",
+        "user",
+        "default"
+      ],
+      "combine": "highest_layer",
+      "conditions": [
+        {
+          "layer": "env",
+          "models": [
+            "*"
+          ],
+          "when": "model_unknown",
+          "status": "lowered",
+          "becomes": {
+            "computed": "cap"
+          }
+        },
+        {
+          "layer": "flag",
+          "models": [
+            "*"
+          ],
+          "when": "model_unknown",
+          "status": "lowered",
+          "becomes": {
+            "computed": "cap"
+          }
+        },
+        {
+          "layer": "managed",
+          "models": [
+            "*"
+          ],
+          "when": "model_unknown",
+          "status": "lowered",
+          "becomes": {
+            "computed": "cap"
+          }
+        },
+        {
+          "layer": "cli",
+          "models": [
+            "*"
+          ],
+          "when": "model_unknown",
+          "status": "lowered",
+          "becomes": {
+            "computed": "cap"
+          }
+        },
+        {
+          "layer": "local",
+          "models": [
+            "*"
+          ],
+          "when": "model_unknown",
+          "status": "lowered",
+          "becomes": {
+            "computed": "cap"
+          }
+        },
+        {
+          "layer": "project",
+          "models": [
+            "*"
+          ],
+          "when": "model_unknown",
+          "status": "lowered",
+          "becomes": {
+            "computed": "cap"
+          }
+        },
+        {
+          "layer": "user",
+          "models": [
+            "*"
+          ],
+          "when": "model_unknown",
+          "status": "lowered",
+          "becomes": {
+            "computed": "cap"
+          }
+        }
+      ],
+      "reason": "{value} from {file} runs as {becomes}, because the top-level maxEffortLevel caps it at {becomes}. The dashboard doesn't know the session's model, so a per-model cap in modelSettings could change that.",
+      "quotes": [
+        {
+          "doc_url": "https://code.claude.com/docs/en/settings-reference#maxeffortlevel",
+          "quote": "Any higher level runs at the cap instead, including one from `/effort`, the `/model` picker, `--effort`, `CLAUDE_CODE_EFFORT_LEVEL`, a skill's or subagent's `effort` frontmatter, or the model's own default."
+        },
+        {
+          "doc_url": "https://code.claude.com/docs/en/settings-reference#maxeffortlevel",
+          "quote": "When several scopes set a cap, the lowest applies, so a cap set in one scope can't be raised from another"
+        }
+      ],
+      "experiment": null,
+      "confidence": "documented",
+      "verified_on": {
+        "claude_version": "2.1.302",
+        "date": "2026-10-29"
+      }
+    },
+    {
       "rule_id": "effort-lowered-unsupported-level",
       "key": "effortLevel",
       "scope": "main",

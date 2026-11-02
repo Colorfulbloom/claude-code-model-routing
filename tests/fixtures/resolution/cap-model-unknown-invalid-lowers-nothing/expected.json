@@ -1,0 +1,36 @@
+{
+  "fixture": "cap-model-unknown-invalid-lowers-nothing",
+  "rule_ids": [
+    "max-effort-level-values",
+    "effort-level-layer-order"
+  ],
+  "confidence": "documented",
+  "source": "https://code.claude.com/docs/en/settings-reference#maxeffortlevel",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "effortLevel",
+      "value": "high",
+      "status": "in_effect",
+      "layer": "project",
+      "file": "project/.claude/settings.json",
+      "scope": "main"
+    },
+    {
+      "key": "maxEffortLevel",
+      "value": "turbo",
+      "status": "invalid",
+      "layer": "user",
+      "file": "config/settings.json",
+      "scope": "main"
+    },
+    {
+      "key": "maxEffortLevel",
+      "value": null,
+      "status": "default",
+      "layer": "default",
+      "file": null,
+      "scope": "main"
+    }
+  ]
+}
