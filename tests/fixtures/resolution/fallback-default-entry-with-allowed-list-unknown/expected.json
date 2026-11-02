@@ -1,0 +1,24 @@
+{
+  "fixture": "fallback-default-entry-with-allowed-list-unknown",
+  "rule_ids": [
+    "fallback-model-chain-unclear"
+  ],
+  "note": "default expands to the default model, so the dashboard can't say whether the list permits it.",
+  "confidence": "documented",
+  "source": "https://code.claude.com/docs/en/model-config#fallback-model-chains",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "fallbackModel",
+      "value": [
+        "default",
+        "sonnet"
+      ],
+      "status": "unknown",
+      "layer": "project",
+      "file": "project/.claude/settings.json",
+      "scope": "main",
+      "rule_id": "fallback-model-chain-unclear"
+    }
+  ]
+}

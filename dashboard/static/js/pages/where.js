@@ -112,7 +112,7 @@ export function entryRow(entry, payload, cls = null) {
     value,
     none: value === null ? t("band_not_known") : null,
     status: value === null ? null : entry.status,
-    cls,
+    cls: Array.isArray(entry.value) ? [cls, "s6-wide"].filter(Boolean).join(" ") : cls,
   });
 }
 

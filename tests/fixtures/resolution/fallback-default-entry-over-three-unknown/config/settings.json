@@ -1,0 +1,8 @@
+{
+  "fallbackModel": [
+    "default",
+    "sonnet",
+    "opus",
+    "haiku"
+  ]
+}

@@ -31,6 +31,10 @@ import agent_md  # noqa: E402
 
 HIDDEN = "hidden"
 SECRET_NAME_PARTS = ("KEY", "TOKEN", "SECRET", "PASSWORD", "CREDENTIAL", "AUTH")
+# Names that hold a secret-looking part but never a secret. MAX_THINKING_TOKENS is
+# a token budget, and the resolver reads its value (rule always-thinking-order).
+# The match is the whole name, in any case. A value with a secret prefix still hides.
+NOT_SECRET_NAMES = ("MAX_THINKING_TOKENS",)
 SECRET_VALUE_PREFIXES = ("sk-", "Bearer ")
 
 MANAGED_FILE = "managed-settings.json"
@@ -50,10 +54,16 @@ _JSON_SPACE = " \t\n\r"
 # Masking
 
 def is_secret_name(name):
-    """True when the name contains any secret part, in any case."""
+    """True when the name contains any secret part, in any case.
+
+    A name in NOT_SECRET_NAMES is never secret, so its value is read as it is
+    (and a value with a secret prefix still hides, see is_secret_value).
+    """
     if not isinstance(name, str):
         return False
     upper = name.upper()
+    if upper in NOT_SECRET_NAMES:
+        return False
     return any(part in upper for part in SECRET_NAME_PARTS)
 
 

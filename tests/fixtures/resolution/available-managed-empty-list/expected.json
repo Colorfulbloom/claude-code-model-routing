@@ -1,0 +1,33 @@
+{
+  "fixture": "available-managed-empty-list",
+  "rule_ids": [
+    "available-models-managed-empty",
+    "available-models-order"
+  ],
+  "confidence": "documented",
+  "source": "https://code.claude.com/docs/en/model-config#default-model-behavior",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "availableModels",
+      "value": [],
+      "status": "in_effect",
+      "layer": "managed",
+      "file": "managed/managed-settings.json",
+      "scope": "main",
+      "merged": [],
+      "rule_id": "available-models-managed-empty"
+    },
+    {
+      "key": "availableModels",
+      "value": [
+        "sonnet"
+      ],
+      "status": "overridden",
+      "layer": "user",
+      "file": "config/settings.json",
+      "scope": "main",
+      "rule_id": "available-models-order"
+    }
+  ]
+}

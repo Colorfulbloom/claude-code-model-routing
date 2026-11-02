@@ -1,0 +1,38 @@
+{
+  "fixture": "fallback-allowed-list-drops-entry",
+  "rule_ids": [
+    "fallback-model-chain-limits"
+  ],
+  "confidence": "documented",
+  "source": "https://code.claude.com/docs/en/model-config#restrict-model-selection",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "fallbackModel",
+      "value": [
+        "sonnet",
+        "opus"
+      ],
+      "status": "lowered",
+      "layer": "project",
+      "file": "project/.claude/settings.json",
+      "scope": "main",
+      "becomes": "sonnet",
+      "merged": ["sonnet"],
+      "rule_id": "fallback-model-chain-limits"
+    },
+    {
+      "key": "availableModels",
+      "value": [
+        "sonnet"
+      ],
+      "status": "in_effect",
+      "layer": "user",
+      "file": "config/settings.json",
+      "scope": "main",
+      "merged": [
+        "sonnet"
+      ]
+    }
+  ]
+}

@@ -294,6 +294,11 @@ class EveryRow(unittest.TestCase):
         for name, payload in self.answers.items():
             with self.subTest(name):
                 for row in payload["rows"]:
+                    first = payload["entries"][row["entries"][0]]
+                    if row["setting"] == "availableModels" and first["layer"] != "managed":
+                        # No managed list: every file's list stays in effect and joins
+                        # the others (combine managed_or_merge). The first carries merged.
+                        continue
                     for index in row["entries"][1:]:
                         self.assertNotIn(payload["entries"][index]["status"], WINNING, row)
 

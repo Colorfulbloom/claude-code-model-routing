@@ -1884,6 +1884,607 @@ class FixtureMaskingTests(unittest.TestCase):
         self.assertNotIn("planted-secret-foxtrot", json.dumps(entries))
 
 
+class ModelPermittedTests(unittest.TestCase):
+    """model_permitted: does an availableModels list permit a model name?"""
+
+    CATALOG = RULES["models"]
+
+    def check(self, name, allowed):
+        return resolve.model_permitted(name, allowed, self.CATALOG)
+
+    def test_a_family_alias_entry_permits_every_version_of_the_family(self):
+        for name in ("claude-sonnet-5", "claude-sonnet-5-5", "claude-sonnet-4-6",
+                     "claude-sonnet-5-5-20261001", "claude-sonnet-5-5[1m]"):
+            with self.subTest(name=name):
+                self.assertIs(self.check(name, ["sonnet"]), True)
+        for name in ("claude-opus-5-5", "claude-haiku-4-5", "claude-fable-5"):
+            with self.subTest(name=name):
+                self.assertIs(self.check(name, ["sonnet"]), False)
+
+    def test_a_version_prefix_permits_later_ids_that_extend_it(self):
+        self.assertIs(self.check("claude-fable-5", ["claude-fable-5"]), True)
+        self.assertIs(self.check("claude-fable-5-1", ["claude-fable-5"]), True)
+        self.assertIs(self.check("claude-fable-5-1-20261001", ["claude-fable-5"]), True)
+        self.assertIs(self.check("claude-fable-5-1", ["claude-fable-5-1"]), True)
+        self.assertIs(self.check("claude-fable-5", ["claude-fable-5-1"]), False)
+        self.assertIs(self.check("claude-fable-5-10", ["claude-fable-5-1"]), False)
+        self.assertIs(self.check("claude-opus-5-5", ["claude-fable-5"]), False)
+
+    def test_a_specific_entry_disables_the_wildcard_of_its_family(self):
+        allowed = ["sonnet", "claude-sonnet-4-5"]
+        self.assertIs(self.check("claude-sonnet-4-5", allowed), True)
+        self.assertIs(self.check("claude-sonnet-4-5-20250929", allowed), True)
+        self.assertIs(self.check("claude-sonnet-5", allowed), False)
+        self.assertIs(self.check("claude-sonnet-5-5", allowed), False)
+        # Another family's wildcard is not touched.
+        self.assertIs(self.check("claude-opus-5", ["opus", "claude-sonnet-4-5"]), True)
+
+    def test_a_family_alias_name_is_permitted_by_any_entry_naming_the_family(self):
+        # A blocked alias is swapped for the newest permitted version of its family.
+        self.assertIs(self.check("opus", ["sonnet", "claude-opus-4-6"]), True)
+        self.assertIs(self.check("opus", ["opus"]), True)
+        self.assertIs(self.check("sonnet", ["claude-sonnet-4-5"]), True)
+        self.assertIs(self.check("opus", ["anthropic.claude-opus-5-5-v1:0"]), True)
+        self.assertIs(self.check("opus", ["sonnet"]), False)
+        self.assertIs(self.check("fable", ["haiku", "claude-sonnet-5"]), False)
+
+    def test_default_and_other_names_cannot_be_told(self):
+        for name in ("default", "gpt-4", "us.anthropic.claude-opus-5-5-v1:0", "", "opusplan"):
+            with self.subTest(name=name):
+                self.assertIsNone(self.check(name, ["sonnet"]))
+                self.assertIsNone(self.check(name, []))
+        self.assertIsNone(self.check(None, ["sonnet"]))
+        self.assertIsNone(self.check(5, ["sonnet"]))
+
+    def test_an_entry_that_is_not_a_claude_name_leaves_a_miss_unclear(self):
+        mantle = ["sonnet", "anthropic.claude-opus-5-5-v1:0"]
+        self.assertIsNone(self.check("claude-opus-5", mantle))
+        self.assertIsNone(self.check("claude-haiku-4-5", mantle))
+        self.assertIsNone(self.check("claude-haiku-4-5", ["anthropic.other"]))
+        # A match still counts, and a list without such an entry says no.
+        self.assertIs(self.check("claude-sonnet-5", mantle), True)
+        self.assertIs(self.check("claude-opus-5", ["claude-opus-5", "anthropic.x"]), True)
+        self.assertIs(self.check("claude-haiku-4-5", ["sonnet", "claude-opus-5"]), False)
+
+    def test_an_entry_that_embeds_the_family_disables_its_wildcard(self):
+        # The Mantle id counts as a specific entry, so the opus wildcard stops.
+        allowed = ["opus", "anthropic.claude-opus-5-5-v1:0"]
+        self.assertIsNone(self.check("claude-opus-4-6", allowed))
+        self.assertIs(self.check("opus", allowed), True)
+
+    def test_an_empty_list_permits_nothing(self):
+        for name in ("opus", "claude-opus-5-5", "haiku", "claude-haiku-4-5"):
+            with self.subTest(name=name):
+                self.assertIs(self.check(name, []), False)
+        self.assertIs(self.check("claude-opus-5-5", None), False)
+
+    def test_names_compare_in_lower_case(self):
+        self.assertIs(self.check("Claude-Sonnet-5", ["SONNET"]), True)
+        self.assertIs(self.check("OPUS", ["Claude-Opus-4-6"]), True)
+        self.assertIs(self.check("claude-opus-5-5", ["CLAUDE-OPUS-5"]), True)
+
+    def test_an_id_with_no_family_in_it_is_unclear_unless_an_entry_matches(self):
+        self.assertIsNone(self.check("claude-3-5-sonnet-20241022", ["sonnet"]))
+        self.assertIs(self.check("claude-3-5-sonnet-20241022", ["claude-3-5-sonnet"]), True)
+
+    def test_entries_that_are_not_text_are_skipped(self):
+        self.assertIs(self.check("claude-sonnet-5", [5, None, "sonnet"]), True)
+        self.assertIs(self.check("claude-sonnet-5", [5, None]), False)
+
+    def test_it_is_exported_and_pure(self):
+        allowed = ["sonnet"]
+        before = copy.deepcopy((allowed, self.CATALOG))
+        self.check("claude-sonnet-5", allowed)
+        self.assertEqual((allowed, self.CATALOG), before)
+        self.assertTrue(callable(resolve.model_permitted))
+
+
+class ChainFlagTests(unittest.TestCase):
+    def test_a_fallback_flag_splits_on_commas(self):
+        cases = [(["--fallback-model", "sonnet,haiku"], ["sonnet", "haiku"]),
+                 (["--fallback-model=sonnet, haiku ,,"], ["sonnet", "haiku"]),
+                 (["--fallback-model", " , "], []),
+                 (["--fallback-model", "sonnet", "--fallback-model", "haiku"], ["haiku"])]
+        for flags, want in cases:
+            with self.subTest(flags=flags):
+                self.assertEqual(resolve.parse_flags(flags), {"--fallback-model": want})
+
+    def test_a_fallback_flag_with_no_value_is_left_out(self):
+        self.assertEqual(resolve.parse_flags(["--fallback-model"]), {})
+
+    def test_split_chain(self):
+        self.assertEqual(resolve.split_chain("a, b,,c ,"), ["a", "b", "c"])
+        self.assertEqual(resolve.split_chain(""), [])
+
+
+class ThinkingRowTests(ResolveCase):
+    """alwaysThinkingEnabled, with MAX_THINKING_TOKENS as its variable."""
+
+    OLD = "claude-opus-4-8"
+
+    def thinking(self, entries):
+        return self.rows(entries, "alwaysThinkingEnabled")
+
+    def test_zero_from_the_shell_reaches_the_row(self):
+        entries = self.run_resolve(user={"model": self.OLD, "alwaysThinkingEnabled": True},
+                                   shell_env={"MAX_THINKING_TOKENS": "0"})
+        env = self.only(entries, "env.MAX_THINKING_TOKENS")
+        self.assertEqual((env["value"], env["status"]), ("0", "in_effect"))
+        got = self.thinking(entries)
+        self.assertEqual([(e["layer"], e["value"], e["status"], e.get("via")) for e in got],
+                         [("env", "0", "in_effect", "MAX_THINKING_TOKENS"),
+                          ("user", True, "overridden", None)])
+        self.assertEqual(got[0]["rule_id"], "always-thinking-order")
+
+    def test_zero_from_a_settings_env_block_reaches_the_row(self):
+        entries = self.run_resolve(user={"model": self.OLD},
+                                   project={"env": {"MAX_THINKING_TOKENS": "0"}})
+        (entry,) = self.thinking(entries)
+        self.assertEqual((entry["layer"], entry["value"], entry["status"], entry["file"], entry["via"]),
+                         ("env", "0", "in_effect", "project/.claude/settings.json",
+                          "MAX_THINKING_TOKENS"))
+        self.assertEqual(self.only(entries, "env.MAX_THINKING_TOKENS")["value"], "0")
+
+    def test_zero_as_a_number_in_an_env_block_reads_as_text(self):
+        entries = self.run_resolve(user={"model": self.OLD, "env": {"MAX_THINKING_TOKENS": 0}})
+        self.assertEqual(self.thinking(entries)[0]["value"], "0")
+
+    def test_a_value_with_a_secret_prefix_stays_hidden_and_is_the_wrong_type(self):
+        # The masking hides a whole value only when it is a string with a secret
+        # prefix, and that is never a string of digits.
+        entries = self.run_resolve(user={"model": self.OLD}, shell_env={
+            "MAX_THINKING_TOKENS": "sk-planted-bravo"})
+        (entry,) = self.thinking(entries)
+        self.assertEqual((entry["value"], entry["status"], entry["rule_id"]),
+                         ("hidden", "unknown", "always-thinking-value-wrong"))
+        self.assertNotIn("planted-bravo", json.dumps(entries))
+
+    def test_a_variable_of_all_zeros_reads_as_zero(self):
+        for model, shows in ((self.OLD, "in_effect"), ("claude-opus-5-5", "ignored")):
+            for text in ("00", "000"):
+                with self.subTest(model=model, text=text):
+                    entries = self.thinking(self.run_resolve(
+                        user={"model": model}, shell_env={"MAX_THINKING_TOKENS": text}))
+                    env = next(e for e in entries if e["layer"] == "env")
+                    self.assertEqual((env["value"], env["status"]), ("0", shows))
+                    if shows == "ignored":
+                        self.assertEqual(env["rule_id"], "always-thinking-no-effect")
+        # A positive number with leading zeros stays a positive number.
+        (entry,) = self.thinking(self.run_resolve(
+            user={"model": self.OLD}, shell_env={"MAX_THINKING_TOKENS": "0800"}))
+        self.assertEqual((entry["value"], entry["status"]), ("800", "in_effect"))
+
+    def test_a_blocked_model_leaves_false_unknown(self):
+        (entry,) = self.thinking(self.run_resolve(
+            managed={"availableModels": ["opus"]},
+            user={"model": "claude-sonnet-4-6", "alwaysThinkingEnabled": False}))
+        self.assertEqual((entry["status"], entry["rule_id"]),
+                         ("unknown", "always-thinking-model-unknown"))
+        self.assertNotIn("model", entry)
+
+    def test_a_swapped_alias_leaves_false_unknown_not_ignored(self):
+        user = {"model": "opus", "alwaysThinkingEnabled": False}
+        (entry,) = self.thinking(self.run_resolve(
+            user=dict(user, availableModels=["claude-opus-4-6"])))
+        self.assertEqual((entry["status"], entry["rule_id"]),
+                         ("unknown", "always-thinking-model-unknown"))
+        # A list that keeps the alias's own version still ignores the false.
+        entries = self.thinking(self.run_resolve(
+            user=dict(user, availableModels=["claude-opus-5-5"])))
+        self.assertEqual([e["status"] for e in entries], ["default", "ignored"])
+
+    def test_a_permitted_model_keeps_the_thinking_rules(self):
+        entries = self.thinking(self.run_resolve(
+            user={"model": self.OLD, "alwaysThinkingEnabled": False,
+                  "availableModels": ["opus"]}))
+        self.assertEqual([(e["status"], e["value"]) for e in entries], [("in_effect", False)])
+        self.assertEqual(entries[0]["model"], self.OLD)
+
+    def test_an_unclear_allowlist_leaves_false_unknown(self):
+        for label, kw in (
+                ("wrong type", {"managed": {"availableModels": "opus"}}),
+                ("denied models", {"managed": {"deniedModels": ["claude-opus-5-5"]}}),
+                ("match mode", {"managed": {"availableModelsMatch": "exact"}})):
+            with self.subTest(label):
+                (entry,) = self.thinking(self.run_resolve(
+                    user={"model": self.OLD, "alwaysThinkingEnabled": False}, **kw))
+                self.assertEqual((entry["status"], entry["rule_id"]),
+                                 ("unknown", "always-thinking-model-unknown"))
+
+    def test_the_variable_must_be_ascii_digits(self):
+        for value in ("abc", "", "-1", "1.5", " 5", "８０"):
+            with self.subTest(value=value):
+                entries = self.run_resolve(user={"model": self.OLD},
+                                           shell_env={"MAX_THINKING_TOKENS": value})
+                (entry,) = self.thinking(entries)
+                self.assertEqual((entry["status"], entry["rule_id"]),
+                                 ("unknown", "always-thinking-value-wrong"))
+
+    def test_a_file_must_hold_a_boolean(self):
+        for value in ("false", 0, 1, "true", [], {"a": 1}):
+            with self.subTest(value=value):
+                (entry,) = self.thinking(self.run_resolve(
+                    user={"model": self.OLD, "alwaysThinkingEnabled": value}))
+                self.assertEqual((entry["status"], entry["rule_id"]),
+                                 ("unknown", "always-thinking-value-wrong"))
+
+    def test_a_wrong_type_is_judged_by_its_own_rule_even_on_a_model_that_always_thinks(self):
+        (entry,) = self.thinking(self.run_resolve(
+            user={"model": "claude-opus-5-5", "alwaysThinkingEnabled": "false"}))
+        self.assertEqual((entry["status"], entry["rule_id"]),
+                         ("unknown", "always-thinking-value-wrong"))
+
+    def test_every_catalog_model_either_ignores_false_or_takes_it(self):
+        always = set(rules_schema.expand_models([{"from": "claude-fable-5"}],
+                                                [m["id"] for m in RULES["models"]]))
+        self.assertEqual(always, {"claude-fable-5", "claude-fable-5-1", "claude-opus-5-5",
+                                  "claude-sonnet-5-5", "claude-haiku-5-5"})
+        for model in RULES["models"]:
+            with self.subTest(model=model["id"]):
+                entries = self.thinking(self.run_resolve(
+                    user={"model": model["id"], "alwaysThinkingEnabled": False}))
+                if model["id"] in always:
+                    self.assertEqual([(e["status"], e["value"]) for e in entries],
+                                     [("default", "on"), ("ignored", False)])
+                else:
+                    self.assertEqual([(e["status"], e["value"]) for e in entries],
+                                     [("in_effect", False)])
+
+    def test_true_changes_nothing_on_any_model(self):
+        (entry,) = self.thinking(self.run_resolve(
+            user={"model": "claude-opus-5-5", "alwaysThinkingEnabled": True}))
+        self.assertEqual((entry["status"], entry["value"]), ("in_effect", True))
+
+    def test_no_model_leaves_false_unknown_but_true_in_effect(self):
+        (entry,) = self.thinking(self.run_resolve(user={"alwaysThinkingEnabled": False}))
+        self.assertEqual((entry["status"], entry["rule_id"]),
+                         ("unknown", "always-thinking-model-unknown"))
+        (entry,) = self.thinking(self.run_resolve(user={"alwaysThinkingEnabled": True}))
+        self.assertEqual(entry["status"], "in_effect")
+
+    def test_zero_with_no_model_is_unknown(self):
+        (entry,) = self.thinking(self.run_resolve(shell_env={"MAX_THINKING_TOKENS": "0"}))
+        self.assertEqual((entry["status"], entry["rule_id"], entry["value"]),
+                         ("unknown", "always-thinking-model-unknown", "0"))
+
+    def test_a_positive_variable_turns_thinking_on_over_false(self):
+        entries = self.thinking(self.run_resolve(
+            user={"model": self.OLD, "alwaysThinkingEnabled": False},
+            shell_env={"MAX_THINKING_TOKENS": "8000"}))
+        self.assertEqual([(e["layer"], e["value"], e["status"]) for e in entries],
+                         [("env", "8000", "in_effect"), ("user", False, "overridden")])
+
+    def test_on_a_model_that_always_thinks_false_is_ignored_whatever_the_variable_says(self):
+        entries = self.thinking(self.run_resolve(
+            user={"model": "claude-opus-5-5", "alwaysThinkingEnabled": False},
+            shell_env={"MAX_THINKING_TOKENS": "8000"}))
+        self.assertEqual([(e["layer"], e["status"]) for e in entries],
+                         [("env", "in_effect"), ("user", "ignored")])
+
+    def test_the_default_is_the_word_on(self):
+        (entry,) = self.thinking(self.run_resolve(user={"model": self.OLD}))
+        self.assertEqual((entry["value"], entry["status"], entry["rule_id"]),
+                         ("on", "default", "always-thinking-default"))
+        (entry,) = self.thinking(self.run_resolve(user={"model": "claude-haiku-5-5"}))
+        self.assertEqual(entry["rule_id"], "always-thinking-default-always-on")
+        self.assertIn("Haiku 5.5", entry["reason"])
+
+    def test_the_variable_wins_over_a_managed_file_for_one_session(self):
+        entries = self.thinking(self.run_resolve(
+            managed={"alwaysThinkingEnabled": True}, user={"model": self.OLD},
+            shell_env={"MAX_THINKING_TOKENS": "0"}))
+        self.assertEqual([(e["layer"], e["status"]) for e in entries],
+                         [("env", "in_effect"), ("managed", "overridden")])
+
+    def test_the_row_plan_picks_the_order_rule(self):
+        ctx = resolve._Context(self.make_inputs(), RULES, FIELDS)
+        for key, rule_id in (("alwaysThinkingEnabled", "always-thinking-order"),
+                             ("fallbackModel", "fallback-model-order"),
+                             ("availableModels", "available-models-order")):
+            with self.subTest(key=key):
+                row = {"key": key, "scope": "main", "agent": None, "model": None}
+                order, rule = resolve._row_plan(ctx, row, [])
+                self.assertEqual(rule["rule_id"], rule_id)
+                self.assertEqual(order, rule["layer_order"])
+
+
+class ModelListRowTests(ResolveCase):
+    """availableModels merges, and fallbackModel works from it."""
+
+    def allowed(self, entries):
+        return self.rows(entries, "availableModels")
+
+    def chain(self, entries):
+        return self.only(entries, "fallbackModel")
+
+    def test_lists_join_in_layer_order_with_duplicates_dropped(self):
+        entries = self.run_resolve(
+            user={"availableModels": ["sonnet", "haiku"]},
+            project={"availableModels": ["opus", "sonnet"]},
+            local={"availableModels": ["fable"]},
+            cli={"availableModels": ["haiku", "claude-opus-5"]})
+        got = self.allowed(entries)
+        self.assertEqual([(e["layer"], e["status"]) for e in got],
+                         [("cli", "in_effect"), ("local", "in_effect"),
+                          ("project", "in_effect"), ("user", "in_effect")])
+        self.assertEqual(got[0]["merged"], ["haiku", "claude-opus-5", "fable", "opus", "sonnet"])
+        self.assertTrue(all("merged" not in e for e in got[1:]))
+        self.assertEqual({e["rule_id"] for e in got}, {"available-models-order"})
+        self.assertEqual(got[0]["value"], ["haiku", "claude-opus-5"])
+
+    def test_a_managed_list_wins_whole_and_the_rest_are_overridden(self):
+        entries = self.run_resolve(
+            managed={"availableModels": ["opus"]}, user={"availableModels": ["sonnet"]},
+            project={"availableModels": ["haiku"]}, local={"availableModels": ["fable"]})
+        got = self.allowed(entries)
+        self.assertEqual([(e["layer"], e["status"]) for e in got],
+                         [("managed", "in_effect"), ("local", "overridden"),
+                          ("project", "overridden"), ("user", "overridden")])
+        self.assertEqual(got[0]["merged"], ["opus"])
+        self.assertTrue(all("merged" not in e for e in got[1:]))
+        self.assertTrue(all(e["rule_id"] == "available-models-order" for e in got))
+
+    def test_a_managed_empty_list_blocks_everything_and_has_its_own_rule(self):
+        entries = self.run_resolve(managed={"availableModels": []},
+                                   user={"availableModels": ["sonnet"]})
+        head = self.allowed(entries)[0]
+        self.assertEqual((head["value"], head["merged"], head["status"], head["rule_id"]),
+                         ([], [], "in_effect", "available-models-managed-empty"))
+        self.assertEqual(self.allowed(entries)[1]["status"], "overridden")
+
+    def test_managed_files_combine_their_lists_and_replace_the_chain_whole(self):
+        self.run_resolve()  # makes the folders
+        _write(os.path.join(self.tmp, "managed", "managed-settings.json"),
+               {"availableModels": ["opus"], "fallbackModel": ["claude-sonnet-5", "claude-haiku-4-5"]})
+        _write(os.path.join(self.tmp, "managed", "managed-settings.d", "10-team.json"),
+               {"availableModels": ["sonnet", "opus"], "fallbackModel": ["claude-opus-5"]})
+        entries = resolve.resolve(self.make_inputs(user={"fallbackModel": ["haiku"]}), RULES, FIELDS)
+        head = self.allowed(entries)[0]
+        self.assertEqual((head["layer"], head["value"], head["merged"]),
+                         ("managed", ["opus", "sonnet"], ["opus", "sonnet"]))
+        chain = self.rows(entries, "fallbackModel")
+        self.assertEqual([(e["layer"], e["value"], e["status"]) for e in chain],
+                         [("managed", ["claude-opus-5"], "in_effect"),
+                          ("user", ["haiku"], "overridden")])
+
+    def test_a_default_row_has_no_merged_list(self):
+        (entry,) = self.allowed(self.run_resolve())
+        self.assertEqual((entry["status"], entry["layer"], entry["value"], entry["rule_id"]),
+                         ("default", "default", None, "available-models-default"))
+        self.assertNotIn("merged", entry)
+
+    def test_a_value_that_is_not_a_list_adds_nothing_and_makes_the_list_unclear(self):
+        entries = self.run_resolve(project={"availableModels": ["opus"]},
+                                   user={"availableModels": "sonnet"})
+        got = self.allowed(entries)
+        self.assertEqual([(e["layer"], e["status"], e["rule_id"]) for e in got],
+                         [("project", "in_effect", "available-models-order"),
+                          ("user", "unknown", "available-models-value-wrong")])
+        self.assertEqual(got[0]["merged"], ["opus"])
+        # The unclear list leaves the chain unclear, even for a chain it would not touch.
+        chain = self.chain(self.run_resolve(
+            project={"availableModels": ["opus"], "fallbackModel": ["opus"]},
+            user={"availableModels": "sonnet"}))
+        self.assertEqual((chain["status"], chain["rule_id"]),
+                         ("unknown", "fallback-model-chain-unclear"))
+
+    def test_a_managed_value_that_is_not_a_list_is_unknown_with_no_merged_list(self):
+        (entry,) = self.allowed(self.run_resolve(managed={"availableModels": "opus"}))
+        self.assertEqual((entry["status"], entry["rule_id"]),
+                         ("unknown", "available-models-value-wrong"))
+        self.assertNotIn("merged", entry)
+
+    def test_a_list_with_a_non_text_item_is_the_wrong_type(self):
+        (entry,) = self.allowed(self.run_resolve(user={"availableModels": ["opus", 5]}))
+        self.assertEqual((entry["status"], entry["rule_id"]),
+                         ("unknown", "available-models-value-wrong"))
+
+    # fallbackModel
+
+    def test_the_chain_is_the_whole_value_of_the_highest_file(self):
+        entries = self.run_resolve(project={"fallbackModel": ["claude-sonnet-5"]},
+                                   user={"fallbackModel": ["claude-haiku-4-5"]})
+        self.assertEqual([(e["layer"], e["status"], e["value"]) for e in self.rows(entries, "fallbackModel")],
+                         [("project", "in_effect", ["claude-sonnet-5"]),
+                          ("user", "overridden", ["claude-haiku-4-5"])])
+
+    def test_a_flag_chain_beats_the_files_and_is_a_list(self):
+        entries = self.run_resolve(user={"fallbackModel": ["claude-haiku-4-5"]},
+                                   flags=["--fallback-model", "sonnet, haiku"])
+        got = self.rows(entries, "fallbackModel")
+        self.assertEqual([(e["layer"], e["value"], e["status"], e["file"]) for e in got],
+                         [("flag", ["sonnet", "haiku"], "in_effect", "session.json:flags"),
+                          ("user", ["claude-haiku-4-5"], "overridden", "config/settings.json")])
+
+    def test_a_chain_of_three_or_fewer_distinct_names_is_left_alone(self):
+        for chain in ([], ["sonnet"], ["sonnet", "haiku", "opus"]):
+            with self.subTest(chain=chain):
+                entry = self.chain(self.run_resolve(user={"fallbackModel": chain}))
+                self.assertEqual((entry["status"], entry["value"]), ("in_effect", chain))
+                self.assertNotIn("becomes", entry)
+
+    def test_duplicates_go_and_the_chain_is_capped_at_three(self):
+        entry = self.chain(self.run_resolve(
+            user={"fallbackModel": ["a", "b", "a", "c", "d", "e"]}))
+        self.assertEqual((entry["status"], entry["becomes"], entry["rule_id"]),
+                         ("lowered", "a, b, c", "fallback-model-chain-limits"))
+        self.assertEqual(entry["value"], ["a", "b", "a", "c", "d", "e"])
+        self.assertIn("a, b, c", entry["reason"])
+
+    def test_an_alias_and_the_id_it_names_are_one_entry(self):
+        entry = self.chain(self.run_resolve(
+            user={"fallbackModel": ["sonnet", "claude-sonnet-5-5", "haiku"]}))
+        self.assertEqual((entry["status"], entry["becomes"]), ("lowered", "sonnet, haiku"))
+
+    def test_the_allowlist_drops_blocked_entries(self):
+        entry = self.chain(self.run_resolve(
+            user={"fallbackModel": ["sonnet", "opus", "haiku"], "availableModels": ["sonnet", "haiku"]}))
+        self.assertEqual((entry["status"], entry["becomes"]), ("lowered", "sonnet, haiku"))
+
+    def test_an_empty_allowlist_drops_every_entry(self):
+        entry = self.chain(self.run_resolve(
+            managed={"availableModels": []}, user={"fallbackModel": ["sonnet"]}))
+        self.assertEqual((entry["status"], entry["becomes"]), ("lowered", "nothing"))
+        self.assertEqual(entry["rule_id"], "fallback-model-chain-limits")
+
+    def test_a_chain_the_allowlist_leaves_whole_is_in_effect(self):
+        entry = self.chain(self.run_resolve(
+            user={"fallbackModel": ["claude-sonnet-5", "haiku"], "availableModels": ["sonnet", "haiku"]}))
+        self.assertEqual(entry["status"], "in_effect")
+
+    def test_the_allowlist_applies_before_the_cap_of_three(self):
+        entry = self.chain(self.run_resolve(
+            user={"fallbackModel": ["sonnet", "opus", "haiku", "fable"], "availableModels": ["sonnet"]}))
+        self.assertEqual((entry["status"], entry["becomes"], entry["rule_id"]),
+                         ("lowered", "sonnet", "fallback-model-chain-limits"))
+        # A blocked entry in front of the cap does not take a place in the chain.
+        entry = self.chain(self.run_resolve(
+            user={"fallbackModel": ["opus", "sonnet", "haiku", "fable"],
+                  "availableModels": ["sonnet", "haiku", "fable"]}))
+        self.assertEqual((entry["status"], entry["becomes"]), ("lowered", "sonnet, haiku, fable"))
+        # Four distinct entries that the list permits are only capped.
+        entry = self.chain(self.run_resolve(
+            user={"fallbackModel": ["sonnet", "opus", "haiku", "fable"],
+                  "availableModels": ["sonnet", "opus", "haiku", "fable"]}))
+        self.assertEqual((entry["status"], entry["becomes"]), ("lowered", "sonnet, opus, haiku"))
+
+    def test_default_in_a_chain_of_more_than_three_is_unclear_with_no_allowlist(self):
+        for user in ({"fallbackModel": ["default", "sonnet", "opus", "haiku"]},
+                     {"fallbackModel": ["sonnet", "opus", "default", "haiku", "fable"]},
+                     {"fallbackModel": ["default", "sonnet", "opus", "haiku"],
+                      "availableModels": ["sonnet", "opus", "haiku", "default"]}):
+            with self.subTest(user=user):
+                entry = self.chain(self.run_resolve(user=user))
+                self.assertEqual((entry["status"], entry["rule_id"]),
+                                 ("unknown", "fallback-model-chain-unclear"))
+                self.assertNotIn("becomes", entry)
+        # Duplicates go first, so three distinct entries are not over the limit.
+        entry = self.chain(self.run_resolve(
+            user={"fallbackModel": ["default", "default", "sonnet", "opus"]}))
+        self.assertEqual((entry["status"], entry["becomes"]), ("lowered", "default, sonnet, opus"))
+        # Three entries with default and no list keep today's answer.
+        entry = self.chain(self.run_resolve(user={"fallbackModel": ["default", "sonnet", "opus"]}))
+        self.assertEqual(entry["status"], "in_effect")
+
+    def test_a_masked_list_item_is_still_a_text_list(self):
+        entry = self.chain(self.run_resolve(user={"fallbackModel": ["sk-abc", "sonnet"]}))
+        self.assertEqual((entry["status"], entry["value"]), ("in_effect", ["hidden", "sonnet"]))
+
+    def test_a_managed_value_that_is_a_masked_string_is_the_wrong_type(self):
+        entries = self.run_resolve(managed={"availableModels": "sk-abc"},
+                                   user={"fallbackModel": ["sonnet"]})
+        (allowed,) = self.allowed(entries)
+        self.assertEqual((allowed["value"], allowed["status"], allowed["rule_id"]),
+                         ("hidden", "unknown", "available-models-value-wrong"))
+        self.assertNotIn("merged", allowed)
+        chain = self.chain(entries)
+        self.assertEqual((chain["status"], chain["rule_id"]),
+                         ("unknown", "fallback-model-chain-unclear"))
+        self.assertNotIn("sk-abc", json.dumps(entries))
+        # The same for a masked chain.
+        (chain,) = self.rows(self.run_resolve(user={"fallbackModel": "sk-abc"}), "fallbackModel")
+        self.assertEqual((chain["value"], chain["status"], chain["rule_id"]),
+                         ("hidden", "unknown", "fallback-model-value-wrong"))
+
+    def test_only_the_text_items_of_a_list_join_the_merged_list(self):
+        entries = self.run_resolve(local={"availableModels": ["haiku"]},
+                                   project={"availableModels": ["opus", 1]},
+                                   user={"availableModels": ["sonnet"]})
+        got = self.allowed(entries)
+        self.assertEqual([(e["layer"], e["status"]) for e in got],
+                         [("local", "in_effect"), ("project", "unknown"), ("user", "in_effect")])
+        self.assertEqual(got[0]["merged"], ["haiku", "opus", "sonnet"])
+
+    def test_a_managed_list_joins_only_its_text_items(self):
+        (managed,) = self.allowed(self.run_resolve(managed={"availableModels": ["opus", None]}))
+        self.assertEqual((managed["status"], managed.get("merged")), ("unknown", ["opus"]))
+
+    def test_default_in_a_chain_is_unclear_only_when_an_allowlist_applies(self):
+        entry = self.chain(self.run_resolve(
+            user={"fallbackModel": ["default", "sonnet"], "availableModels": ["sonnet"]}))
+        self.assertEqual((entry["status"], entry["rule_id"]),
+                         ("unknown", "fallback-model-chain-unclear"))
+        entry = self.chain(self.run_resolve(user={"fallbackModel": ["default", "sonnet"]}))
+        self.assertEqual(entry["status"], "in_effect")
+
+    def test_managed_blocks_the_dashboard_does_not_work_out_leave_the_chain_unclear(self):
+        for extra in ({"deniedModels": ["claude-opus-5-5"]}, {"availableModelsMatch": "exact"}):
+            with self.subTest(extra=extra):
+                entry = self.chain(self.run_resolve(managed=extra,
+                                                    user={"fallbackModel": ["sonnet"]}))
+                self.assertEqual((entry["status"], entry["rule_id"]),
+                                 ("unknown", "fallback-model-chain-unclear"))
+        entry = self.chain(self.run_resolve(managed={"model": "sonnet"},
+                                            user={"fallbackModel": ["sonnet"]}))
+        self.assertEqual(entry["status"], "in_effect")
+
+    def test_the_flag_chain_goes_through_the_same_checks(self):
+        entry = self.chain(self.run_resolve(flags=["--fallback-model=a,b,c,d"]))
+        self.assertEqual((entry["layer"], entry["status"], entry["becomes"]),
+                         ("flag", "lowered", "a, b, c"))
+
+    def test_a_chain_that_is_not_a_list_of_text_is_the_wrong_type(self):
+        for value in ("claude-sonnet-5", ["sonnet", 5], {"a": 1}, 5, True):
+            with self.subTest(value=value):
+                entry = self.chain(self.run_resolve(user={"fallbackModel": value}))
+                self.assertEqual((entry["status"], entry["rule_id"]),
+                                 ("unknown", "fallback-model-value-wrong"))
+
+    def test_a_default_chain_is_the_default_rule(self):
+        entry = self.chain(self.run_resolve())
+        self.assertEqual((entry["status"], entry["value"], entry["rule_id"]),
+                         ("default", None, "fallback-model-default"))
+
+    # Files the dashboard cannot read
+
+    def lock(self, rel):
+        path = os.path.join(self.tmp, rel)
+        _write(path, "{}")
+        os.chmod(path, 0)
+        self.addCleanup(os.chmod, path, 0o600)
+
+    def test_an_unreadable_managed_file_makes_all_three_rows_unknown(self):
+        if os.geteuid() == 0:
+            self.skipTest("root reads a file with mode 000")
+        entries = self.run_resolve(managed="{}", managed_mode=0, user={"model": "claude-haiku-4-5"})
+        source = self.only(entries, "settingsFile")
+        for key in ("alwaysThinkingEnabled", "availableModels", "fallbackModel"):
+            with self.subTest(row=key):
+                entry = self.rows(entries, key)[0]
+                self.assertEqual((entry["status"], entry["rule_id"], entry["reason"]),
+                                 ("unknown", source["rule_id"], source["reason"]))
+                self.assertNotIn("merged", entry)
+
+    def test_an_unreadable_user_file_could_add_to_the_merged_list(self):
+        if os.geteuid() == 0:
+            self.skipTest("root reads a file with mode 000")
+        self.lock("config/settings.json")
+        entries = self.run_resolve(project={"availableModels": ["opus"]})
+        source = self.only(entries, "settingsFile")
+        (entry,) = self.allowed(entries)
+        self.assertEqual((entry["status"], entry["value"], entry["layer"], entry["rule_id"]),
+                         ("unknown", ["opus"], "project", source["rule_id"]))
+        self.assertNotIn("merged", entry)
+        # The chain cannot be worked out against an allowlist nobody can read.
+        chain = self.chain(self.run_resolve(
+            project={"availableModels": ["opus"], "fallbackModel": ["opus"]}))
+        self.assertEqual((chain["status"], chain["rule_id"]),
+                         ("unknown", "fallback-model-chain-unclear"))
+
+    def test_a_managed_list_stands_when_only_a_lower_file_is_unreadable(self):
+        if os.geteuid() == 0:
+            self.skipTest("root reads a file with mode 000")
+        self.lock("config/settings.json")
+        entries = self.run_resolve(managed={"availableModels": ["opus"]})
+        (entry,) = self.allowed(entries)
+        self.assertEqual((entry["status"], entry["merged"], entry["layer"]),
+                         ("in_effect", ["opus"], "managed"))
+
+    def test_the_row_stays_known_when_every_file_is_readable(self):
+        (entry,) = self.allowed(self.run_resolve(user={"availableModels": ["opus"]}))
+        self.assertEqual((entry["status"], entry["merged"]), ("in_effect", ["opus"]))
+
+
 class CompareTests(unittest.TestCase):
     def entry(self, **fields):
         base = {"key": "effortLevel", "value": "low", "status": "in_effect", "layer": "user",

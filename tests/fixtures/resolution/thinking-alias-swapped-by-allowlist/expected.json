@@ -1,0 +1,21 @@
+{
+  "fixture": "thinking-alias-swapped-by-allowlist",
+  "rule_ids": [
+    "always-thinking-model-unknown"
+  ],
+  "note": "The allowed list permits only Opus 4.6, so the alias opus is swapped for it and not for Opus 5.5. The dashboard can't say which version runs, so the false is Unknown and not Ignored.",
+  "confidence": "documented",
+  "source": "https://code.claude.com/docs/en/model-config#restrict-model-selection",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "alwaysThinkingEnabled",
+      "value": false,
+      "status": "unknown",
+      "layer": "user",
+      "file": "config/settings.json",
+      "scope": "main",
+      "rule_id": "always-thinking-model-unknown"
+    }
+  ]
+}

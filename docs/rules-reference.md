@@ -205,6 +205,21 @@ Some sources change a session after it starts, and others sit outside what the d
 | settings-file-managed-unparsed | settingsFile | main | Documented | 2.1.302 |
 | settings-file-unparsed-skipped | settingsFile | main | Tested | 2.1.302 |
 | rules-files-listed | rulesFile | main | Documented | 2.1.302 |
+| always-thinking-no-effect | alwaysThinkingEnabled | main | Documented | 2.1.302 |
+| always-thinking-model-unknown | alwaysThinkingEnabled | main | Documented | 2.1.302 |
+| always-thinking-value-wrong | alwaysThinkingEnabled | main | Assumed | 2.1.302 |
+| always-thinking-order | alwaysThinkingEnabled | main | Documented | 2.1.302 |
+| always-thinking-default-always-on | alwaysThinkingEnabled | main | Documented | 2.1.302 |
+| always-thinking-default | alwaysThinkingEnabled | main | Documented | 2.1.302 |
+| fallback-model-chain-limits | fallbackModel | main | Documented | 2.1.302 |
+| fallback-model-chain-unclear | fallbackModel | main | Documented | 2.1.302 |
+| fallback-model-value-wrong | fallbackModel | main | Assumed | 2.1.302 |
+| fallback-model-order | fallbackModel | main | Documented | 2.1.302 |
+| fallback-model-default | fallbackModel | main | Documented | 2.1.302 |
+| available-models-managed-empty | availableModels | main | Documented | 2.1.302 |
+| available-models-value-wrong | availableModels | main | Assumed | 2.1.302 |
+| available-models-order | availableModels | main | Documented | 2.1.302 |
+| available-models-default | availableModels | main | Documented | 2.1.302 |
 
 ### effort-level-user-settings-opus-5-5
 
@@ -1744,3 +1759,356 @@ Quotes:
 - Experiment record: none
 - Confidence: Documented
 - Verified on: Claude Code 2.1.302, October 29, 2026
+
+### always-thinking-no-effect
+
+- Key: alwaysThinkingEnabled
+- Scope: main
+- Combine: highest_layer
+- Layer order (highest first): env, managed, cli, local, project, user, default
+
+Reason:
+
+> {model} always thinks, so {file} can't turn thinking off. Neither false nor MAX_THINKING_TOKENS=0 has any effect on it.
+
+Quotes:
+
+- [https://code.claude.com/docs/en/settings-reference#alwaysthinkingenabled](https://code.claude.com/docs/en/settings-reference#alwaysthinkingenabled)
+
+> On models that always think, such as Opus 5.5, Sonnet 5.5, Haiku 5.5, and the Fable models, `false` has no effect.
+
+- [https://code.claude.com/docs/en/model-config#extended-thinking](https://code.claude.com/docs/en/model-config#extended-thinking)
+
+> a saved `alwaysThinkingEnabled: false` or `MAX_THINKING_TOKENS=0` has no effect there
+
+- Experiment record: none
+- Confidence: Documented
+- Verified on: Claude Code 2.1.302, November 2, 2026
+
+### always-thinking-model-unknown
+
+- Key: alwaysThinkingEnabled
+- Scope: main
+- Combine: highest_layer
+- Layer order (highest first): env, managed, cli, local, project, user, default
+
+Reason:
+
+> {file} asks to turn thinking off, but some models always think, and the dashboard doesn't know the session's model. So it can't say whether thinking is on or off. To check, run /config in a new session started in this project, where those models show "Thinking can't be turned off".
+
+Quotes:
+
+- [https://code.claude.com/docs/en/settings-reference#alwaysthinkingenabled](https://code.claude.com/docs/en/settings-reference#alwaysthinkingenabled)
+
+> On models that always think, such as Opus 5.5, Sonnet 5.5, Haiku 5.5, and the Fable models, `false` has no effect.
+
+- [https://code.claude.com/docs/en/model-config#extended-thinking](https://code.claude.com/docs/en/model-config#extended-thinking)
+
+> a saved `alwaysThinkingEnabled: false` or `MAX_THINKING_TOKENS=0` has no effect there
+
+- Experiment record: none
+- Confidence: Documented
+- Verified on: Claude Code 2.1.302, November 2, 2026
+
+### always-thinking-value-wrong
+
+- Key: alwaysThinkingEnabled
+- Scope: main
+- Combine: highest_layer
+- Layer order (highest first): env, managed, cli, local, project, user, default
+
+Reason:
+
+> The value in {file} isn't true or false, or a whole number for MAX_THINKING_TOKENS, so the dashboard can't say what Claude Code does with it.
+
+Quotes:
+
+none
+
+- Experiment record: none
+- Confidence: Assumed
+- Verified on: Claude Code 2.1.302, November 2, 2026
+
+### always-thinking-order
+
+- Key: alwaysThinkingEnabled
+- Scope: main
+- Combine: highest_layer
+- Layer order (highest first): env, managed, cli, local, project, user, default
+
+Reason:
+
+> {winner} sets extended thinking, because MAX_THINKING_TOKENS beats alwaysThinkingEnabled for one session and the higher file wins. On a third-party provider such as Bedrock, Agent Platform or Foundry, Claude Code leaves out the thinking parameter instead of turning thinking off, so adaptive-reasoning models may still think. The dashboard can't see the provider.
+
+Quotes:
+
+- [https://code.claude.com/docs/en/settings#settings-precedence](https://code.claude.com/docs/en/settings#settings-precedence)
+
+> When the same key appears in more than one place, Claude Code uses the value from the highest level that sets it.
+
+- [https://code.claude.com/docs/en/settings-reference#alwaysthinkingenabled](https://code.claude.com/docs/en/settings-reference#alwaysthinkingenabled)
+
+> takes precedence over this key for one session: `0` turns thinking off, under the same model and provider limits as `false`, and a positive value turns thinking on even when this key is `false`.
+
+- [https://code.claude.com/docs/en/settings-reference#alwaysthinkingenabled](https://code.claude.com/docs/en/settings-reference#alwaysthinkingenabled)
+
+> Claude Code omits the `thinking` parameter instead of turning thinking off, so adaptive-reasoning models may still think.
+
+- Experiment record: none
+- Confidence: Documented
+- Verified on: Claude Code 2.1.302, November 2, 2026
+
+### always-thinking-default-always-on
+
+- Key: alwaysThinkingEnabled
+- Scope: main
+- Combine: highest_layer
+- Layer order (highest first): env, managed, cli, local, project, user, default
+
+Reason:
+
+> Nothing can turn thinking off here, because {model} always thinks.
+
+Quotes:
+
+- [https://code.claude.com/docs/en/model-config#extended-thinking](https://code.claude.com/docs/en/model-config#extended-thinking)
+
+> You can't turn thinking off on Opus 5.5, Sonnet 5.5, Haiku 5.5, or the Fable models.
+
+- Experiment record: none
+- Confidence: Documented
+- Verified on: Claude Code 2.1.302, November 2, 2026
+
+### always-thinking-default
+
+- Key: alwaysThinkingEnabled
+- Scope: main
+- Combine: highest_layer
+- Layer order (highest first): env, managed, cli, local, project, user, default
+
+Reason:
+
+> Nothing sets extended thinking, so it's on by default for models that support it.
+
+Quotes:
+
+- [https://code.claude.com/docs/en/settings-reference#alwaysthinkingenabled](https://code.claude.com/docs/en/settings-reference#alwaysthinkingenabled)
+
+> unset, so thinking is on for models that support it
+
+- Experiment record: none
+- Confidence: Documented
+- Verified on: Claude Code 2.1.302, November 2, 2026
+
+### fallback-model-chain-limits
+
+- Key: fallbackModel
+- Scope: main
+- Combine: highest_layer
+- Layer order (highest first): flag, managed, cli, local, project, user, default
+
+Reason:
+
+> The chain in {file} runs as {becomes}. Claude Code removes duplicates, drops models the allowed list doesn't permit and keeps at most three.
+
+Quotes:
+
+- [https://code.claude.com/docs/en/model-config#fallback-model-chains](https://code.claude.com/docs/en/model-config#fallback-model-chains)
+
+> Claude Code caps chains at three models after duplicate removal and ignores extra entries.
+
+- [https://code.claude.com/docs/en/model-config#restrict-model-selection](https://code.claude.com/docs/en/model-config#restrict-model-selection)
+
+> entries outside the allowlist are dropped
+
+- [https://code.claude.com/docs/en/settings-reference#fallbackmodel](https://code.claude.com/docs/en/settings-reference#fallbackmodel)
+
+> Claude Code keeps at most three distinct allowed models from the list and ignores the rest
+
+- Experiment record: none
+- Confidence: Documented
+- Verified on: Claude Code 2.1.302, November 2, 2026
+
+### fallback-model-chain-unclear
+
+- Key: fallbackModel
+- Scope: main
+- Combine: highest_layer
+- Layer order (highest first): flag, managed, cli, local, project, user, default
+
+Reason:
+
+> The dashboard can't say which models in {file} stay in the chain. It can't match some entries against the allowed list, such as default or a provider ID, and it doesn't apply a managed deniedModels or availableModelsMatch. In a chain of more than three models, default also hides which three stay, because it expands to a model the dashboard can't name.
+
+Quotes:
+
+- [https://code.claude.com/docs/en/model-config#fallback-model-chains](https://code.claude.com/docs/en/model-config#fallback-model-chains)
+
+> Claude Code caps chains at three models after duplicate removal and ignores extra entries.
+
+- [https://code.claude.com/docs/en/model-config#restrict-model-selection](https://code.claude.com/docs/en/model-config#restrict-model-selection)
+
+> entries outside the allowlist are dropped
+
+- Experiment record: none
+- Confidence: Documented
+- Verified on: Claude Code 2.1.302, November 2, 2026
+
+### fallback-model-value-wrong
+
+- Key: fallbackModel
+- Scope: main
+- Combine: highest_layer
+- Layer order (highest first): flag, managed, cli, local, project, user, default
+
+Reason:
+
+> The value in {file} isn't a list of model names, so the dashboard can't say what Claude Code does with it.
+
+Quotes:
+
+none
+
+- Experiment record: none
+- Confidence: Assumed
+- Verified on: Claude Code 2.1.302, November 2, 2026
+
+### fallback-model-order
+
+- Key: fallbackModel
+- Scope: main
+- Combine: highest_layer
+- Layer order (highest first): flag, managed, cli, local, project, user, default
+
+Reason:
+
+> {winner} sets the fallback chain. Claude Code takes the whole list from the highest file that sets one, and lists don't merge. The --fallback-model flag beats every file.
+
+Quotes:
+
+- [https://code.claude.com/docs/en/settings#lists-merge-instead-of-overriding](https://code.claude.com/docs/en/settings#lists-merge-instead-of-overriding)
+
+> is an ordered chain where position carries meaning, so Claude Code takes the whole value from the highest-precedence file that defines it.
+
+- [https://code.claude.com/docs/en/settings-reference#fallbackmodel](https://code.claude.com/docs/en/settings-reference#fallbackmodel)
+
+> `--fallback-model` takes precedence over this key for one session
+
+- [https://code.claude.com/docs/en/model-config#fallback-model-chains](https://code.claude.com/docs/en/model-config#fallback-model-chains)
+
+> The `--fallback-model` flag takes precedence over the `fallbackModel` setting.
+
+- Experiment record: none
+- Confidence: Documented
+- Verified on: Claude Code 2.1.302, November 2, 2026
+
+### fallback-model-default
+
+- Key: fallbackModel
+- Scope: main
+- Combine: highest_layer
+- Layer order (highest first): flag, managed, cli, local, project, user, default
+
+Reason:
+
+> Nothing sets a chain, so a failed request isn't retried on another model.
+
+Quotes:
+
+- [https://code.claude.com/docs/en/settings-reference#fallbackmodel](https://code.claude.com/docs/en/settings-reference#fallbackmodel)
+
+> unset, so a failed request isn't retried on another model
+
+- Experiment record: none
+- Confidence: Documented
+- Verified on: Claude Code 2.1.302, November 2, 2026
+
+### available-models-managed-empty
+
+- Key: availableModels
+- Scope: main
+- Combine: managed_or_merge
+- Layer order (highest first): managed, cli, local, project, user, default
+
+Reason:
+
+> {file} sets an empty list, so Claude Code blocks named model selections.
+
+Quotes:
+
+- [https://code.claude.com/docs/en/model-config#default-model-behavior](https://code.claude.com/docs/en/model-config#default-model-behavior)
+
+> With `availableModels: []`, named model selections are blocked
+
+- Experiment record: none
+- Confidence: Documented
+- Verified on: Claude Code 2.1.302, November 2, 2026
+
+### available-models-value-wrong
+
+- Key: availableModels
+- Scope: main
+- Combine: managed_or_merge
+- Layer order (highest first): managed, cli, local, project, user, default
+
+Reason:
+
+> The value in {file} isn't a list of model names, so the dashboard can't say what Claude Code does with it.
+
+Quotes:
+
+none
+
+- Experiment record: none
+- Confidence: Assumed
+- Verified on: Claude Code 2.1.302, November 2, 2026
+
+### available-models-order
+
+- Key: availableModels
+- Scope: main
+- Combine: managed_or_merge
+- Layer order (highest first): managed, cli, local, project, user, default
+
+Reason:
+
+> A managed list applies as it is, and Claude Code ignores the lists in your own files. With no managed list, Claude Code combines the lists from your files.
+
+Quotes:
+
+- [https://code.claude.com/docs/en/settings#lists-merge-instead-of-overriding](https://code.claude.com/docs/en/settings#lists-merge-instead-of-overriding)
+
+> applies that list as-is and ignores entries you add in user, project, or local settings
+
+- [https://code.claude.com/docs/en/settings#lists-merge-instead-of-overriding](https://code.claude.com/docs/en/settings#lists-merge-instead-of-overriding)
+
+> Across non-managed scopes Claude Code merges the arrays as usual.
+
+- [https://code.claude.com/docs/en/model-config#merge-behavior](https://code.claude.com/docs/en/model-config#merge-behavior)
+
+> entries in user, project, or local settings cannot extend it
+
+- Experiment record: none
+- Confidence: Documented
+- Verified on: Claude Code 2.1.302, November 2, 2026
+
+### available-models-default
+
+- Key: availableModels
+- Scope: main
+- Combine: managed_or_merge
+- Layer order (highest first): managed, cli, local, project, user, default
+
+Reason:
+
+> Nothing sets a list, so every model is available.
+
+Quotes:
+
+- [https://code.claude.com/docs/en/settings-reference#availablemodels](https://code.claude.com/docs/en/settings-reference#availablemodels)
+
+> unset, so every model is available
+
+- Experiment record: none
+- Confidence: Documented
+- Verified on: Claude Code 2.1.302, November 2, 2026

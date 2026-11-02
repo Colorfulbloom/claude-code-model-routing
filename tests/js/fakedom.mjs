@@ -62,7 +62,7 @@ export class FElement extends FNode {
     this.attrs = new Map();
     this.listeners = {};
     this.styleMap = {};
-    this.rect = { top: 0, bottom: 0, width: 0, height: 0 };
+    this.rect = { left: 0, right: 0, top: 0, bottom: 0, width: 0, height: 0 };
     const self = this;
     this.style = new Proxy({}, {
       set(_t, k, v) { self.styleMap[k] = v; return true; },
@@ -84,11 +84,44 @@ export class FElement extends FNode {
   set textContent(v) { this.childNodes = []; this.appendChild(new FText(String(v))); }
   get open() { return this.attrs.has("open"); }
   getBoundingClientRect() { return this.rect; }
-  addEventListener(type, fn) { (this.listeners[type] = this.listeners[type] || []).push(fn); }
-  // Runs the listeners of this element and then of each ancestor, as a bubbling event does.
+  // A listener added with true or { capture: true } runs in the capture phase, from the document down to the target.
+  addEventListener(type, fn, options) {
+    (this.listeners[type] = this.listeners[type] || []).push(fn);
+    if (options === true || (options && options.capture)) (this.captureFns = this.captureFns || new Set()).add(fn);
+  }
+  removeEventListener(type, fn) {
+    const list = this.listeners[type];
+    if (!list || !list.includes(fn)) return;
+    list.splice(list.indexOf(fn), 1);
+    if (this.captureFns && !list.includes(fn)) this.captureFns.delete(fn);
+  }
+  // Pointer capture is only recorded, so a check can see which pointer an element took.
+  setPointerCapture(id) { (this.pointerCaptures = this.pointerCaptures || []).push(id); this.capturedPointer = id; }
+  releasePointerCapture(id) { if (this.capturedPointer === id) this.capturedPointer = null; }
+  // Runs the listeners the way a browser does: capture listeners from the document down to the target, then the
+  // target's own, then bubbling listeners up through each ancestor. stopPropagation ends the walk after the current
+  // node, stopImmediatePropagation ends it at once, and preventDefault sets defaultPrevented.
   dispatch(type, extra = {}) {
-    const event = Object.assign({ type, target: this, preventDefault() {}, key: undefined }, extra);
-    for (let n = this; n; n = n.parentNode) (n.listeners && n.listeners[type] || []).forEach((fn) => fn(event));
+    const path = [];
+    for (let n = this; n; n = n.parentNode) path.push(n);
+    let stopped = false;
+    let immediate = false;
+    const event = Object.assign({
+      type, target: this, key: undefined, defaultPrevented: false,
+      preventDefault() { this.defaultPrevented = true; },
+      stopPropagation() { stopped = true; },
+      stopImmediatePropagation() { stopped = true; immediate = true; },
+    }, extra);
+    const run = (node, capture) => {
+      for (const fn of [...(node.listeners && node.listeners[type] || [])]) {
+        if (immediate) return;
+        if (Boolean(node.captureFns && node.captureFns.has(fn)) === capture) fn(event);
+      }
+    };
+    for (let i = path.length - 1; i > 0 && !stopped; i--) run(path[i], true);
+    if (!stopped) { run(path[0], true); run(path[0], false); }
+    for (let i = 1; i < path.length && !stopped; i++) run(path[i], false);
+    return event;
   }
   click() { this.dispatch("click"); }
   closest(sel) {
@@ -114,6 +147,17 @@ export class FElement extends FNode {
 }
 FElement.focused = null;
 
+// A Storage with the four calls the dashboard uses. items is the Map behind it.
+function makeStore() {
+  const items = new Map();
+  return {
+    getItem: (k) => (items.has(k) ? items.get(k) : null),
+    setItem: (k, v) => { items.set(k, String(v)); },
+    removeItem: (k) => { items.delete(k); },
+    items,
+  };
+}
+
 // A fresh page for one scenario. Sets the globals the modules read: document, window and Node.
 export function createPage({ narrow = true } = {}) {
   FElement.focused = null;
@@ -132,16 +176,14 @@ export function createPage({ narrow = true } = {}) {
     },
     history: { replaceState(_a, _b, url) { win.location._hash = url; } },
     addEventListener(type, fn) { (listeners[type] = listeners[type] || []).push(fn); },
-    // A sessionStorage for the edit token. A check can replace it, or make the property throw, as a blocked one does.
-    sessionStorage: (() => {
-      const items = new Map();
-      return {
-        getItem: (k) => (items.has(k) ? items.get(k) : null),
-        setItem: (k, v) => { items.set(k, String(v)); },
-        removeItem: (k) => { items.delete(k); },
-        items,
-      };
-    })(),
+    removeEventListener(type, fn) {
+      const list = listeners[type] || [];
+      if (list.includes(fn)) list.splice(list.indexOf(fn), 1);
+    },
+    // A sessionStorage for the edit token and a localStorage for the band order. A check can replace either, or make the
+    // property throw, as a blocked one does.
+    sessionStorage: makeStore(),
+    localStorage: makeStore(),
     matchMedia: () => media,
     scrollTo() {},
   };

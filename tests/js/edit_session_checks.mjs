@@ -919,7 +919,7 @@ test("app: bad_token on a preview locks the page and clears the token", async ()
 // a read-only cell never does. The page asks for the targets in any mode the server answered.
 const SETTINGS = "#/settings?project=p1";
 const stateLine = (app) => app.sections.settings.find((n) => n.getAttribute && n.getAttribute("data-edit") === "state")[0] || null;
-const bandOf = (app) => app.sections.settings.find((n) => n.getAttribute && n.getAttribute("class") === "s5-a")[0] || null;
+const bandOf = (app) => app.sections.settings.find((n) => n.getAttribute && (n.getAttribute("class") || "").split(" ").includes("s5-a"))[0] || null;
 
 test("app: the Settings page draws the band and no edit state line, and only the Effort rail says off or locked", async () => {
   const off = await boot({ hash: SETTINGS, edit: [200, { enabled: false, launch_id: null }] });

@@ -1,0 +1,40 @@
+{
+  "fixture": "available-user-and-project-merge",
+  "rule_ids": [
+    "available-models-order"
+  ],
+  "confidence": "documented",
+  "source": "https://code.claude.com/docs/en/settings#lists-merge-instead-of-overriding",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "availableModels",
+      "value": [
+        "opus",
+        "sonnet"
+      ],
+      "status": "in_effect",
+      "layer": "project",
+      "file": "project/.claude/settings.json",
+      "scope": "main",
+      "merged": [
+        "opus",
+        "sonnet",
+        "haiku"
+      ],
+      "rule_id": "available-models-order"
+    },
+    {
+      "key": "availableModels",
+      "value": [
+        "sonnet",
+        "haiku"
+      ],
+      "status": "in_effect",
+      "layer": "user",
+      "file": "config/settings.json",
+      "scope": "main",
+      "rule_id": "available-models-order"
+    }
+  ]
+}

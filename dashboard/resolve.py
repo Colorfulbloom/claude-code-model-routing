@@ -20,6 +20,7 @@ Public functions:
     load_fixture(folder, rules=None) -> (Inputs, expected)
     display_path(path, home=None, root=None) -> the text an entry shows for a path
     compare(entries, expected) -> list of mismatch messages
+    model_permitted(name, allowed, catalog) -> True, False or None (can't tell)
 
 resolve is a pure function of its inputs. It opens no file, lists no folder,
 writes nothing, uses no network and never looks up the home folder. The caller
@@ -89,7 +90,11 @@ Order of work:
     3. Agent files. Each file gets one case (not_md_file, parse_error, ...) and
        the agentFile row of its agent name.
     4. Main rows: model, maxEffortLevel, effortLevel, autoCompactWindow,
-       promptCacheTtl, rulesFile. effortLevel needs the main model and the cap.
+       promptCacheTtl, alwaysThinkingEnabled, availableModels, fallbackModel,
+       rulesFile. effortLevel needs the main model and the cap. The thinking row
+       needs the main model. fallbackModel needs the availableModels row, which
+       fills ctx.allowed, because Claude Code drops chain entries the list
+       blocks.
     5. Agent rows, for each agent that loads: model, effort, autoCompactWindow,
        subagentPromptCacheTtl. They need the main model and the agent's own.
 
@@ -147,6 +152,7 @@ FLAGS = {
     "--model": [("model", "main")],
     "--effort": [("effortLevel", "main"), ("effort", "agent")],
     "--autocompact": [("autoCompactWindow", "main"), ("autoCompactWindow", "agent")],
+    "--fallback-model": [("fallbackModel", "main")],
 }
 
 # The settings key that feeds each row: (scope, row key) -> settings key.
@@ -156,6 +162,9 @@ SETTINGS_KEYS = {
     ("main", "effortLevel"): "effortLevel",
     ("main", "autoCompactWindow"): "autoCompactWindow",
     ("main", "promptCacheTtl"): "promptCacheTtl",
+    ("main", "alwaysThinkingEnabled"): "alwaysThinkingEnabled",
+    ("main", "fallbackModel"): "fallbackModel",
+    ("main", "availableModels"): "availableModels",
     ("agent", "effort"): "effortLevel",
     ("agent", "autoCompactWindow"): "autoCompactWindow",
     ("agent", "subagentPromptCacheTtl"): "subagentPromptCacheTtl",
@@ -178,7 +187,8 @@ FRONTMATTER_KEYS = {
 }
 
 # Rows that carry a model: the rule conditions' `models` are matched against it.
-MODEL_ROWS = ("maxEffortLevel", "effortLevel", "effort", "autoCompactWindow")
+MODEL_ROWS = ("maxEffortLevel", "effortLevel", "effort", "autoCompactWindow",
+              "alwaysThinkingEnabled")
 EFFORT_ROWS = ("effortLevel", "effort")
 
 # Rows that list files. A file that does not load leaves them empty, and an
@@ -336,6 +346,81 @@ def read_number(value):
 
 
 # --------------------------------------------------------------------------
+# The model allowlist
+
+FAMILIES = ("opus", "sonnet", "haiku", "fable")
+_FAMILY_RE = re.compile(r"claude-(%s)(?![a-z])" % "|".join(FAMILIES))
+
+
+def _family_in(text):
+    """The family a lower-case model name embeds, or None.
+
+    A family alias is its own family. For "claude-<family>-..." the family is
+    the second hyphen segment, and an id that embeds one (such as a provider id
+    "anthropic.claude-<family>-...") names the same family.
+    """
+    if text in FAMILIES:
+        return text
+    match = _FAMILY_RE.search(text)
+    return match.group(1) if match else None
+
+
+def model_permitted(name, allowed, catalog):
+    """Say whether an availableModels list permits a model name.
+
+    Returns True, False, or None when the dashboard can't tell. `allowed` is
+    the list that runs, `catalog` the models list of rules.json. Names compare
+    in lower case. The basis is the model configuration page (Restrict model
+    selection, Merge behavior and Mantle model IDs):
+
+    - A family alias (a catalog alias, or opus, sonnet, haiku, fable) is
+      permitted when the list holds that alias or any entry naming the family,
+      because Claude Code swaps a blocked alias for the newest permitted
+      version of the family. Otherwise it is not.
+    - A name that starts with "claude-" is permitted when an entry equals it or
+      is a version prefix of it (the entry plus "-"). A family alias entry
+      counts only when no entry in the list is specific to that family, because
+      a specific entry disables that family's wildcard. With no match the name
+      is not permitted, unless the list holds an entry that is neither a family
+      alias nor a "claude-" name (such as anthropic.*), and then the answer is
+      None. A "claude-" name with no family in it (claude-3-...) that no entry
+      matches is None too, because no family entry can be matched to it.
+    - Any other name, "default" included, is None.
+    """
+    entries = [e.lower() for e in (allowed or []) if isinstance(e, str)]
+    if not isinstance(name, str):
+        return None
+    name = name.lower()
+    aliases = set(FAMILIES)
+    for model in catalog:
+        aliases.update(a.lower() for a in model.get("aliases", []))
+    if name in aliases:
+        family = _family_in(name)
+        if family is None:
+            model = next((m for m in catalog if name in
+                          [a.lower() for a in m.get("aliases", [])]), None)
+            family = _family_in(model["id"]) if model else None
+        return any(e == name or (family is not None and _family_in(e) == family)
+                   for e in entries)
+    if not name.startswith("claude-"):
+        return None
+    rid = re.sub(r"\[1m\]$", "", name)
+    if any(e == rid or rid.startswith(e + "-") for e in entries):
+        return True
+    family = _family_in(rid)
+    if family is None:
+        # An id with no family in it (an old claude-3-... id): the list's family
+        # entries can't be matched to it, so the dashboard can't tell.
+        return None
+    specific = any(e not in aliases and _family_in(e) == family for e in entries)
+    if family in entries and not specific:
+        return True
+    if any(e not in aliases and not e.startswith("claude-") for e in entries):
+        return None
+    return False
+
+
+# --------------------------------------------------------------------------
 # Sources
 
 def _below(path, base):
@@ -372,8 +457,17 @@ def display_path(path, home=None, root=None):
     return path
 
 
+def split_chain(text):
+    """Split a --fallback-model value on commas: strip spaces, drop empty items."""
+    return [part.strip() for part in text.split(",") if part.strip()]
+
+
 def parse_flags(flags):
-    """Return {flag: value} for the flags in FLAGS. The last use of a flag wins."""
+    """Return {flag: value} for the flags in FLAGS. The last use of a flag wins.
+
+    --fallback-model takes a comma-separated list, so its value is a list of
+    names (see split_chain). Every other value is the word as it was given.
+    """
     out = {}
     words = [w for w in (flags or []) if isinstance(w, str)]
     for i, word in enumerate(words):
@@ -384,6 +478,10 @@ def parse_flags(flags):
             out[name] = inline
         elif i + 1 < len(words):
             out[name] = words[i + 1]
+        else:
+            continue
+        if name == "--fallback-model":
+            out[name] = split_chain(out[name])
     return out
 
 
@@ -495,6 +593,10 @@ class _Context:
         self.unknown_files = []  # settingsFile entries whose status is unknown
         self.main_model = None  # catalog id
         self.main_model_value = None
+        # What the availableModels row says, for the fallbackModel row after it.
+        self.allowed = None  # the list that runs, or None when nothing sets one
+        self.allowed_unclear = False  # the dashboard can't say which list runs
+        self.model_blocks_unclear = False  # managed settings block models another way
         self._caps = {}
         self._covers = {}
 
@@ -559,10 +661,17 @@ def _candidate(layer, file, value, line=None, **extra):
 
 
 def _show_value(row, value):
-    """Digits-only strings on an autoCompactWindow row show as integers."""
+    """Digits-only strings on an autoCompactWindow row show as integers.
+
+    A list (fallbackModel, availableModels) shows as a copy, so an entry never
+    shares the list the collectors hold. A --fallback-model flag value is
+    already a list (parse_flags splits it).
+    """
     if row["key"] == "autoCompactWindow" and isinstance(value, str) and value.isdigit() \
             and value.isascii():
         return int(value)
+    if isinstance(value, list):
+        return list(value)
     return value
 
 
@@ -664,6 +773,103 @@ def frontmatter_candidates(ctx, row, files):
 
 
 # --------------------------------------------------------------------------
+# File cases for the thinking and model-list rows
+
+CHAIN_LIMIT = 3  # Claude Code keeps at most three distinct models in a fallback chain
+CASE_KEYS = ("alwaysThinkingEnabled", "fallbackModel", "availableModels")
+
+
+def _is_text_list(value):
+    return isinstance(value, list) and all(isinstance(item, str) for item in value)
+
+
+def _wrong_type(key, cand):
+    """True when a candidate's value has a type Claude Code does not read for the key.
+
+    alwaysThinkingEnabled reads a boolean from a file, and from
+    MAX_THINKING_TOKENS a string of ASCII digits (an empty string is wrong too).
+    fallbackModel and availableModels read a list of strings. A whole value
+    that reads "hidden" is a masked string, because the masking hides a list
+    item by item, so it has the wrong type for these keys. An item "hidden"
+    inside a list is still a string, and the list is fine.
+    """
+    value = cand["value"]
+    if key == "alwaysThinkingEnabled":
+        if cand.get("via"):
+            return not (isinstance(value, str) and value != "" and value.isascii()
+                        and value.isdigit())
+        return not isinstance(value, bool)
+    return not _is_text_list(value)
+
+
+def _chain_case(ctx, value):
+    """Return (case, chain) for a fallbackModel list: how Claude Code cuts it.
+
+    Claude Code removes duplicate entries, drops entries the availableModels
+    list does not permit and keeps at most three (CHAIN_LIMIT). The case is
+    chain_limited when that changes the list, with the chain that runs;
+    chain_unclear when the dashboard can't work the chain out; else None.
+
+    The allowlist comes first, then the cap: the settings reference says Claude
+    Code "keeps at most three distinct allowed models from the list". Entries
+    that no rule can place are unclear, and so is any chain while managed
+    settings block models another way (deniedModels, availableModelsMatch) or
+    the allowlist is unclear. "default" expands to a model the dashboard can't
+    name, so a chain of more than three with "default" in it is unclear even
+    with no allowlist, because it hides which three stay.
+    """
+    unique = []
+    seen = set()
+    for name in value:
+        marker = normalize_model(name, ctx.catalog)[0] or name
+        if marker not in seen:
+            seen.add(marker)
+            unique.append(name)
+    if ctx.model_blocks_unclear or ctx.allowed_unclear:
+        return "chain_unclear", None
+    if len(unique) > CHAIN_LIMIT and any(name.lower() == "default" for name in unique):
+        return "chain_unclear", None
+    if ctx.allowed is None:
+        kept = unique[:CHAIN_LIMIT]
+    else:
+        verdicts = [model_permitted(name, ctx.allowed, ctx.catalog) for name in unique]
+        if any(v is None for v in verdicts):
+            return "chain_unclear", None
+        kept = [name for name, v in zip(unique, verdicts) if v][:CHAIN_LIMIT]
+    if kept != value:
+        return "chain_limited", kept
+    return None, None
+
+
+def set_cases(ctx, key, cands):
+    """Set cand["case"] (and cand["chain"]) on the candidates of the key's row.
+
+    wrong_type for alwaysThinkingEnabled, fallbackModel and availableModels.
+    For a fallbackModel list of the right type: chain_limited or chain_unclear
+    (see _chain_case). It must run after the availableModels row, which fills
+    ctx.allowed.
+    """
+    if key not in CASE_KEYS:
+        return
+    for cand in cands:
+        if _wrong_type(key, cand):
+            cand["case"] = "wrong_type"
+        elif key == "alwaysThinkingEnabled" and cand.get("via"):
+            # A digit string through the variable is a number: "00" is the "0"
+            # the rules name.
+            try:
+                cand["value"] = str(int(cand["value"]))
+            except ValueError:
+                pass
+        elif key == "fallbackModel":
+            case, chain = _chain_case(ctx, cand["value"])
+            if case is not None:
+                cand["case"] = case
+            if chain is not None:
+                cand["chain"] = chain
+
+
+# --------------------------------------------------------------------------
 # Votes
 
 def _candidate_text(cand):
@@ -698,6 +904,13 @@ def _effort_cap(ctx, model_id):
 
 def _computed_becomes(ctx, row, cand, kind):
     """Return what a computed `becomes` works out for a candidate, or None."""
+    if kind == "chain":
+        # The fallbackModel chain that runs: the names, or "nothing" when every
+        # entry is dropped. It has no effort level to check.
+        chain = cand.get("chain")
+        if chain is None:
+            return None
+        return ", ".join(chain) or "nothing"
     levels = rules_schema.EFFORT_LEVELS
     value = cand["value"]
     if not isinstance(value, str) or value not in levels:
@@ -746,6 +959,10 @@ def _condition_matches(ctx, row, cand, cond):
     if "values" in cond and _match_value(cand) not in cond["values"]:
         return False
     if "plans" in cond and ctx.plan not in cond["plans"]:
+        return False
+    if cand.get("case") == "wrong_type" and cond.get("when") != "wrong_type":
+        # A value of the wrong type is judged by the wrong_type rule alone. The
+        # other rules read the value (false, 0, a chain), which means nothing here.
         return False
     if cond.get("when") == "model_unknown":
         if cond["layer"] == "default" and not cand.get("synth"):
@@ -992,6 +1209,9 @@ def _make_entry(ctx, row, cand, status, votes, becomes=None):
             entry[field] = cand[field]
     if becomes is not None:
         entry["becomes"] = becomes
+    if row["key"] == "fallbackModel" and status == "lowered" and cand.get("chain") is not None:
+        # The list that runs, as availableModels does; the written list stays in value.
+        entry["merged"] = list(cand["chain"])
     if cand.get("other_file"):
         entry["other_file"] = cand["other_file"]
     if cand.get("field"):
@@ -1011,6 +1231,32 @@ def _winner(entries):
     return None
 
 
+def _merged_list(managed, ranked):
+    """The list that runs on a managed_or_merge row, or None when no list does.
+
+    A managed candidate's list applies as it is. Otherwise the lists of the
+    candidates in layer order join, with duplicates removed and the first one
+    kept. A candidate whose value is not a list adds nothing, and only the
+    string items of a list count, because Claude Code reads only names.
+    """
+    def names(value):
+        return [item for item in value if isinstance(item, str)]
+
+    if managed is not None:
+        return names(managed["value"]) if isinstance(managed["value"], list) else None
+    lists = [c["value"] for c in ranked if isinstance(c["value"], list)]
+    if not lists:
+        return None
+    out = []
+    seen = set()
+    for value in lists:
+        for item in names(value):
+            if item not in seen:
+                seen.add(item)
+                out.append(item)
+    return out
+
+
 def resolve_row(ctx, row, cands):
     """Resolve one row. Returns its entries, the winner first.
 
@@ -1024,6 +1270,13 @@ def resolve_row(ctx, row, cands):
 
     A ceiling row (the auto-compact window of an agent) compares the layer
     that can only lower the value with the session's value, see _rank_ceiling.
+
+    A managed_or_merge row (availableModels) works on layer order. An eligible
+    managed candidate wins whole and every other candidate is overridden. With
+    none, every eligible candidate stays in the row with its own vote status
+    and none is overridden. The first entry carries `merged`, the list that
+    runs (see _merged_list). A row with no eligible candidate takes the
+    synthesized default as usual.
     """
     order, combine_rule = _row_plan(ctx, row, cands)
     combine = combine_rule["combine"] if combine_rule else "highest_layer"
@@ -1057,6 +1310,8 @@ def resolve_row(ctx, row, cands):
     session_unknown = None
     if combine == "lowest_value":
         ranked = _select_lowest(order, eligible, combine_rule)
+    elif combine == "managed_or_merge":
+        ranked = sorted(eligible, key=lambda c: _sort_key(order, c))
     elif combine == "ceiling":
         ranked, session_unknown = _rank_ceiling(ctx, row, order, eligible, votes_of, combine_rule)
     else:
@@ -1069,6 +1324,18 @@ def resolve_row(ctx, row, cands):
                             _becomes_of(ctx, row, synth, votes, status))
         return _finish(ctx, [entry] + excluded, order_id, None)
     winner = ranked[0]
+    if combine == "managed_or_merge":
+        managed = next((c for c in ranked if c["layer"] == "managed"), None)
+        if managed is not None:
+            head = [entry_for(managed)]
+            rest = [entry_for(c, "overridden") for c in ranked if c is not managed]
+        else:
+            head = [entry_for(c) for c in ranked]
+            rest = []
+        merged = _merged_list(managed, ranked)
+        if merged is not None:
+            head[0]["merged"] = merged
+        return _finish(ctx, head + rest + excluded, order_id, managed or winner)
     status = _status_of(votes_of[id(winner)])
     if session_unknown is not None:
         # The session's window is unknown, so what the frontmatter lowers is.
@@ -1275,13 +1542,36 @@ def _settings_file_rows(ctx):
     return got
 
 
+_KEEP = object()  # run() keeps the model the row would carry
+
+
+def _thinking_model(ctx):
+    """The model the extended thinking row depends on, as a catalog id or None.
+
+    The allowlist can replace the model: a blocked `model` setting is replaced at
+    startup and the session starts on the default model, and a blocked alias is
+    swapped for a permitted version (model-config.md, Restrict model
+    selection). So the row trusts the model only when the allowlist is clear and
+    permits the catalog id. The id is checked, not the alias, because any alias
+    passes model_permitted by substitution. Needs the availableModels row run.
+    """
+    if ctx.allowed_unclear or ctx.model_blocks_unclear:
+        return None
+    if ctx.allowed is not None and \
+            model_permitted(ctx.main_model, ctx.allowed, ctx.catalog) is not True:
+        return None
+    return ctx.main_model
+
+
 def _main_rows(ctx):
     entries = []
 
-    def run(key):
-        row = {"key": key, "scope": "main", "agent": None,
-               "model": ctx.main_model if key in MODEL_ROWS else None}
+    def run(key, model=_KEEP):
+        if model is _KEEP:
+            model = ctx.main_model if key in MODEL_ROWS else None
+        row = {"key": key, "scope": "main", "agent": None, "model": model}
         cands = settings_candidates(ctx, row) + variable_candidates(ctx, row)
+        set_cases(ctx, key, cands)
         got = resolve_row(ctx, row, cands)
         marked = _mark_unreadable_files(ctx, got, row, cands)
         entries.extend(got)
@@ -1294,6 +1584,14 @@ def _main_rows(ctx):
         ctx.main_model = normalize_model(winner["value"], ctx.catalog)[0]
     for key in ("maxEffortLevel", "effortLevel", "autoCompactWindow", "promptCacheTtl"):
         run(key)
+    got, marked = run("availableModels")
+    managed = next((src for src in ctx.settings if src["layer"] == "managed"), None)
+    ctx.allowed = got[0].get("merged")
+    ctx.allowed_unclear = marked or any(e["status"] == "unknown" for e in got)
+    ctx.model_blocks_unclear = managed is not None and any(
+        key in managed["data"] for key in ("deniedModels", "availableModelsMatch"))
+    run("alwaysThinkingEnabled", model=_thinking_model(ctx))
+    run("fallbackModel")
     entries.extend(_rules_file_rows(ctx))
     return entries
 
@@ -1316,10 +1614,12 @@ def _ranks_above(ctx, entry, order, layer):
 def _become_unknown(winner, source):
     """Make a winning entry Unknown, with the rule ids and reason of `source`.
 
-    It keeps its value, layer, file and line, and it drops `becomes`.
+    It keeps its value, layer, file and line, and it drops `becomes` and
+    `merged`.
     """
     winner["status"] = "unknown"
     winner.pop("becomes", None)
+    winner.pop("merged", None)
     winner["rule_id"] = source["rule_id"]
     winner["rule_ids"] = list(source["rule_ids"])
     winner["reason"] = source["reason"]
@@ -1348,8 +1648,11 @@ def _mark_unreadable_files(ctx, entries, row, cands):
     The code only decides whether that file could have set the winner's value.
     For a file in layer L, it could when any of these holds:
 
-      a. the row takes the lowest value (combine lowest_value) and L is in the
-         row's order, because any file might hold a lower value;
+      a. the row takes the lowest value (combine lowest_value) or merges lists
+         (combine managed_or_merge) and L is in the row's order, because any
+         file might hold a lower value or add to the list. A managed_or_merge
+         row whose winner is on the managed layer is the exception: the managed
+         list applies as it is, so only an unreadable managed file counts;
       b. L is in the order and the winner ranks below L, or the winner is a
          default;
       c. env is in the order and the winner ranks at or below env, because the
@@ -1370,7 +1673,9 @@ def _mark_unreadable_files(ctx, entries, row, cands):
     if winner is None or not ctx.unknown_files:
         return False
     order, rule = _row_plan(ctx, row, cands)
-    lowest = rule is not None and rule["combine"] == "lowest_value"
+    lowest = rule is not None and rule["combine"] in ("lowest_value", "managed_or_merge")
+    managed_wins = rule is not None and rule["combine"] == "managed_or_merge" \
+        and winner["layer"] == "managed"
     via = ctx.env.get(winner.get("via"))
     if winner["layer"] == "env" and via is not None:
         env_covers = via.get("status") == "unknown"
@@ -1379,6 +1684,11 @@ def _mark_unreadable_files(ctx, entries, row, cands):
     for source in ctx.unknown_files:
         layer = source["layer"]
         in_order = layer in order
+        if managed_wins:
+            if in_order and layer == "managed":
+                _become_unknown(winner, source)
+                return True
+            continue
         if (lowest and in_order) \
                 or (in_order and (winner["layer"] == "default"
                                   or _ranks_above(ctx, winner, order, layer))) \
@@ -1426,8 +1736,16 @@ def resolve(inputs, rules, agent_fields):
     rules.json document (see load_rules). `agent_fields` is the list of
     frontmatter fields Claude Code reads (see load_agent_fields). resolve opens
     no file. Entries hold key, value, status, layer, file and scope always, and
-    line, agent, model, via, path, raw, becomes, other_file and field when they
-    apply, then rule_id, rule_ids and reason.
+    line, agent, model, via, path, raw, becomes, other_file, field and merged
+    when they apply, then rule_id, rule_ids and reason.
+
+    merged is only on the first entry of an availableModels row: the list that
+    runs. With a managed list it is that list. Otherwise it joins the lists of
+    the files in layer order, duplicates removed, first one kept. A default
+    entry has no merged. A fallbackModel entry whose chain Claude Code cuts has
+    status lowered and becomes holding the names that run, joined by ", " (or
+    "nothing"). It also has merged, the kept list that runs (empty when every
+    entry is dropped); its value stays the list as written.
     """
     ctx = _Context(inputs, rules, agent_fields)
     entries = _settings_file_rows(ctx)

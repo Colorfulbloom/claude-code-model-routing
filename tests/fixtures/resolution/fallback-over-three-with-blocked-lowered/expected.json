@@ -1,0 +1,28 @@
+{
+  "fixture": "fallback-over-three-with-blocked-lowered",
+  "rule_ids": [
+    "fallback-model-chain-limits"
+  ],
+  "note": "The allowed list applies first, then the cap of three, so the one permitted entry is the chain that runs.",
+  "confidence": "documented",
+  "source": "https://code.claude.com/docs/en/settings-reference#fallbackmodel",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "fallbackModel",
+      "value": [
+        "sonnet",
+        "opus",
+        "haiku",
+        "fable"
+      ],
+      "status": "lowered",
+      "layer": "project",
+      "file": "project/.claude/settings.json",
+      "scope": "main",
+      "becomes": "sonnet",
+      "merged": ["sonnet"],
+      "rule_id": "fallback-model-chain-limits"
+    }
+  ]
+}

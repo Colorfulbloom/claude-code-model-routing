@@ -1,0 +1,21 @@
+{
+  "fixture": "thinking-model-blocked-by-allowlist",
+  "rule_ids": [
+    "always-thinking-model-unknown"
+  ],
+  "note": "The allowed list blocks the model setting, so the session starts on the default model. The dashboard can't tell whether that model keeps thinking on, and the cell must not read Off.",
+  "confidence": "documented",
+  "source": "https://code.claude.com/docs/en/model-config#restrict-model-selection",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "alwaysThinkingEnabled",
+      "value": false,
+      "status": "unknown",
+      "layer": "user",
+      "file": "config/settings.json",
+      "scope": "main",
+      "rule_id": "always-thinking-model-unknown"
+    }
+  ]
+}

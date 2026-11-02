@@ -112,6 +112,30 @@ class MaskTests(unittest.TestCase):
                 self.assertFalse(collect.is_secret_name(name))
         self.assertFalse(collect.is_secret_name(None))
 
+    def test_max_thinking_tokens_is_not_a_secret_name(self):
+        # TOKEN in the name would hide it, but it holds a token budget and the
+        # resolver reads its value (rule always-thinking-order).
+        self.assertEqual(collect.NOT_SECRET_NAMES, ("MAX_THINKING_TOKENS",))
+        for name in ("MAX_THINKING_TOKENS", "max_thinking_tokens", "Max_Thinking_Tokens"):
+            with self.subTest(name=name):
+                self.assertFalse(collect.is_secret_name(name))
+                self.assertEqual(collect.mask("0", name), "0")
+                self.assertEqual(collect.mask({name: "8000"}), {name: "8000"})
+
+    def test_the_exception_is_the_whole_name_only(self):
+        for name in ("MAX_THINKING_TOKENS_EXTRA", "MY_MAX_THINKING_TOKENS", "ANTHROPIC_AUTH_TOKEN",
+                     "MAX_THINKING_TOKENS ", "MAX_OUTPUT_TOKENS"):
+            with self.subTest(name=name):
+                self.assertTrue(collect.is_secret_name(name))
+                self.assertEqual(collect.mask("0", name), collect.HIDDEN)
+
+    def test_a_value_with_a_secret_prefix_still_hides_under_the_exception(self):
+        for value in ("sk-planted-bravo", "Bearer planted-charlie"):
+            with self.subTest(value=value):
+                self.assertEqual(collect.mask(value, "MAX_THINKING_TOKENS"), collect.HIDDEN)
+        self.assertEqual(collect.mask({"MAX_THINKING_TOKENS": "sk-x", "OTHER_TOKEN": "0"}),
+                         {"MAX_THINKING_TOKENS": "hidden", "OTHER_TOKEN": "hidden"})
+
     def test_secret_value_prefixes(self):
         for value in ("sk-planted-bravo", "SK-planted-bravo", "Bearer planted-charlie",
                       "bearer planted-charlie", "  sk-planted-bravo"):
@@ -311,6 +335,22 @@ class SettingsFileTests(Tree):
         self.assertTrue(all(isinstance(v["line"], int) for v in where.values()))
         self.assertEqual(where[("env", "A")]["line"], 7)
 
+    def test_managed_folder_combines_available_models_and_replaces_the_fallback_chain(self):
+        first = self.managed_file({"availableModels": ["opus", "sonnet"],
+                                   "fallbackModel": ["claude-sonnet-5", "claude-haiku-4-5"]})
+        second = self.managed_d("10-team.json", {"availableModels": ["sonnet", "haiku"],
+                                                 "fallbackModel": ["claude-opus-5"]})
+        third = self.managed_d("20-more.json", {"availableModels": ["fable"]})
+        managed = self.source(self.settings(), "managed")
+        data, where = managed["data"], managed["where"]
+        # Lists join in file order with duplicates dropped, so the managed row sees all three.
+        self.assertEqual(data["availableModels"], ["opus", "sonnet", "haiku", "fable"])
+        # The chain is an ordered list where position matters, so the last file replaces it whole.
+        self.assertEqual(data["fallbackModel"], ["claude-opus-5"])
+        self.assertEqual(where[("fallbackModel",)]["path"], second)
+        self.assertEqual(where[("availableModels",)]["path"], third)
+        self.assertNotEqual(where[("availableModels",)]["path"], first)
+
     def test_managed_data_is_masked_before_it_merges(self):
         self.managed_file({"env": {"MADE_UP_TOKEN": "planted-secret-one"}})
         self.managed_d("10.json", {"env": {"OTHER": "Bearer planted-secret-two"}})
@@ -498,6 +538,28 @@ class EnvTests(Tree):
         self.assertNotIn("MADE_UP_UNLISTED_NAME", text)
         self.assertNotIn("planted-shell-value-9", text)
         self.assertIn("ANTHROPIC_MODEL", out["env"])
+
+    def test_max_thinking_tokens_keeps_its_value_from_the_shell(self):
+        env = collect.collect_env([], {"MAX_THINKING_TOKENS": "0"}, ["MAX_THINKING_TOKENS"])
+        self.assertEqual(env, {"MAX_THINKING_TOKENS": [{"value": "0", "origin": "shell"}]})
+        env = collect.collect_env([], {"MAX_THINKING_TOKENS": "sk-planted-bravo"},
+                                  ["MAX_THINKING_TOKENS"])
+        self.assertEqual(env["MAX_THINKING_TOKENS"], [{"value": "hidden", "origin": "shell"}])
+
+    def test_max_thinking_tokens_keeps_its_value_from_a_settings_env_block(self):
+        path = self.user({"env": {"MAX_THINKING_TOKENS": "0", "OTHER_TOKEN": "0"}})
+        self.proj({"env": {"MAX_THINKING_TOKENS": 8000}})
+        env = collect.collect_env(self.settings()["sources"], {}, [])
+        self.assertEqual(env["MAX_THINKING_TOKENS"], [
+            {"value": "8000", "origin": "settings", "layer": "project",
+             "path": os.path.join(self.project, ".claude", "settings.json"), "line": 3},
+            {"value": "0", "origin": "settings", "layer": "user", "path": path, "line": 3}])
+        self.assertEqual(env["OTHER_TOKEN"][0]["value"], "hidden")
+
+    def test_a_secret_prefix_in_a_settings_env_block_still_hides_max_thinking_tokens(self):
+        self.user({"env": {"MAX_THINKING_TOKENS": "Bearer planted-charlie"}})
+        env = collect.collect_env(self.settings()["sources"], {}, [])
+        self.assertEqual(env["MAX_THINKING_TOKENS"][0]["value"], "hidden")
 
     def test_shell_secrets_under_named_variables_are_masked(self):
         env = collect.collect_env([], {"ANTHROPIC_MODEL": "sk-planted-bravo"}, self.NAMES)

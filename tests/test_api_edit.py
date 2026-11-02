@@ -233,6 +233,7 @@ class Constants(Base):
                ("modelSettings", "us.anthropic.claude-opus-5-5-v1:0", "effortLevel")]
         no = [(), ("model",), ("maxEffortLevel",), ("env", "CLAUDE_CODE_EFFORT_LEVEL"), ("hooks",),
               ("permissions", "allow"), ("apiKeyHelper",), ("autoCompactWindow",),
+              ("alwaysThinkingEnabled",), ("fallbackModel",), ("availableModels",),
               ("modelSettings", OPUS, "maxEffortLevel"), ("modelSettings", "effortLevel"),
               ("modelSettings", OPUS, "effortLevel", "x"), ("modelSettings", 0, "effortLevel"),
               ("effortLevel", "x"), ("hooks", "effortLevel")]

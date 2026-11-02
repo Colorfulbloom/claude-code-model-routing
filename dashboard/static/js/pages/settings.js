@@ -1,4 +1,5 @@
-// Settings: the main session's model, effort, effort cap, compact window and cache lifetime, as a Stat band of
+// Settings: the main session's model, effort, effort cap, compact window, cache lifetime, extended thinking, fallback
+// models and allowed models, as a Stat band of
 // cells (pages/band.js) over two panes, the open setting's body and a rail that says why the value is what it is.
 // Round 6 design, board a-rest. app.css holds every class used here (section
 // "Settings and trail").
@@ -11,12 +12,13 @@ import { h, clear } from "../h.js";
 import { t, renderText } from "../format.js";
 import { ALL_KEY, MAIN_KEY, BAND_SETTINGS } from "../router.js";
 import { pageHead, emptyState, projectPickerEmpty } from "../components.js";
-import { bandFor, refitBand, setNotSaved } from "./band.js";
+import { bandFor, refitBand, setNotSaved, arrangeButton } from "./band.js";
+import { focusedAction, restoreAction } from "./band_arrange.js";
 import { readFrame } from "./read_frame.js";
 import * as editCard from "../edit_card.js";
 // band.js imports from this file and this file imports from band.js: neither may use the other's bindings at the top level.
 
-// The five settings of the band, in the saved order of its cells: the row key and the label of each. The keys are
+// The eight settings of the band, in the saved order of its cells: the row key and the label of each. The keys are
 // the same as BAND_SETTINGS in router.js, which validates ?setting=, and a check holds the two together.
 export const TILES = [
   { key: "model", label: () => t("f_model") },
@@ -24,6 +26,9 @@ export const TILES = [
   { key: "maxEffortLevel", label: () => t("cap") },
   { key: "autoCompactWindow", label: () => t("f_compact") },
   { key: "promptCacheTtl", label: () => t("f_cache") },
+  { key: "alwaysThinkingEnabled", label: () => t("f_thinking") },
+  { key: "fallbackModel", label: () => t("f_fallback") },
+  { key: "availableModels", label: () => t("f_allowed") },
 ];
 
 // The settings the Settings page can change in Stage 1. Any other setting rests in the read-only frame
@@ -35,14 +40,23 @@ export const DEFAULT_SETTING = "effortLevel";
 
 const HIDDEN = "hidden"; // what collect.py leaves in place of a value that looks like a secret
 
-// The two rules that mark the user file's top-level effortLevel Unknown because the model is not known. The
-// entry keeps the file's value for the reason text, but the value may not apply, so no screen shows it as the answer.
-const VALUE_NOT_SHOWN = ["effort-level-user-settings-model-unknown", "agent-effort-user-settings-model-unknown"];
+// The rules that mark an entry Unknown because its value cannot be read as the answer: the user file's top-level
+// effortLevel when the model is not known, extended thinking when the model is not known or the value is wrong,
+// and a fallback or allowed list of the wrong type. The entry keeps the file's value for the reason text, but the
+// value may not apply, so no screen shows it as the answer.
+const VALUE_NOT_SHOWN = [
+  "effort-level-user-settings-model-unknown", "agent-effort-user-settings-model-unknown",
+  "always-thinking-model-unknown", "always-thinking-value-wrong",
+  "fallback-model-value-wrong", "available-models-value-wrong",
+];
 
-// True for an Unknown entry of those rules: its value stays in the entry but is not shown as a headline.
+// True for an Unknown entry of those rules: its value stays in the entry but is not shown as a headline. Any
+// Unknown entry of extended thinking counts too, because an unreadable file can mark it Unknown under another rule
+// id, and the cell must never say Off then.
 export function valueNotShown(entry) {
-  return entry.status === "unknown" && Array.isArray(entry.rule_ids)
-    && entry.rule_ids.some((id) => VALUE_NOT_SHOWN.includes(id));
+  if (entry.status !== "unknown") return false;
+  if (entry.key === "alwaysThinkingEnabled") return true;
+  return Array.isArray(entry.rule_ids) && entry.rule_ids.some((id) => VALUE_NOT_SHOWN.includes(id));
 }
 
 // The value of an entry as plain text. plain true is the Settings band, where a model shows its display
@@ -52,6 +66,14 @@ export function valueString(entry, payload, plain = false) {
   if (value === null || value === undefined || valueNotShown(entry)) return "";
   if (value === HIDDEN) return t("hidden");
   if (value === "") return t("value_empty");
+  if (Array.isArray(value)) return value.length ? value.join(", ") : t("value_empty");
+  if (entry.key === "alwaysThinkingEnabled") {
+    if (value === true || value === "on" || (typeof value === "string" && /^\d+$/.test(value) && Number(value) > 0)) {
+      return t("band_on");
+    }
+    if (value === false || value === "0") return t("band_off");
+    return String(value);
+  }
   if (entry.key === "model") {
     const models = (payload && payload.models) || {};
     if (Object.prototype.hasOwnProperty.call(models, value)) {
@@ -109,6 +131,9 @@ export function settingLabel(key) {
     case "promptCacheTtl": case "subagentPromptCacheTtl": return t("f_cache");
     case "autoCompactWindow": return t("f_compact");
     case "maxEffortLevel": return t("cap");
+    case "alwaysThinkingEnabled": return t("f_thinking");
+    case "fallbackModel": return t("f_fallback");
+    case "availableModels": return t("f_allowed");
     case "agentFile": return t("f_agentfile");
     case "settingsFile": return t("f_settingsfile");
     case "rulesFile": return t("f_rulesfile");
@@ -249,10 +274,12 @@ function watchFoot(foot, rail) {
 export function render(root, ctx) {
   const keep = focusedSetting(root);
   const editKey = editCard.focusKey(); // an edit control that holds focus keeps it across this draw
+  const arrangeKey = focusedAction(root); // a button of the Arrange list, or the Arrange button, keeps it too
   clear(root);
   const page = h("div", { class: "s4 s4-c" });
   root.appendChild(page);
-  page.appendChild(h("div", { class: "s4-chead" }, pageHead({ title: t("nav_settings"), intro: t("intro_settings") })));
+  const head = h("div", { class: "s4-chead" });
+  page.appendChild(head);
   const messages = h("div", { class: "s5-msgs" });
   const payload = renderGuards(messages, ctx);
   if (messages.firstChild) page.appendChild(messages);
@@ -267,6 +294,8 @@ export function render(root, ctx) {
       restRail: (notes) => railBody(ctx, payload, selected, notes), selected, onNotSaved: setNotSaved,
     });
     page.appendChild(bandFor(ctx, payload, selected, edit.notSaved));
+    // The Arrange button sits at the top right of the head, and only a page with a band has one.
+    head.appendChild(pageHead({ title: t("nav_settings"), intro: t("intro_settings"), right: arrangeButton() }));
     const body = h("div", { class: "s4-body", "data-slot": "body" },
       EDITABLE_SETTINGS.includes(selected) && edit.body ? edit.body : readFrame(ctx, payload, selected));
     const foot = h("div", { class: "s4-rf s5-rf", "data-slot": "foot" }, edit.foot);
@@ -276,10 +305,11 @@ export function render(root, ctx) {
     refitBand();
     edit.done(root, editKey);
   }
+  if (!head.firstChild) head.appendChild(pageHead({ title: t("nav_settings"), intro: t("intro_settings") }));
   // The Settings section also draws when a payload lands, so only the Settings route takes the record.
   if (ctx.route.name === "settings" && pendingReturn) takeReturnFocus(root);
   else if (keep) {
     const cell = findNode(root, (n) => n.getAttribute("data-setting") === keep);
     if (cell) cell.focus();
-  }
+  } else if (arrangeKey) restoreAction(root, arrangeKey);
 }

@@ -1,0 +1,6 @@
+{
+  "fallbackModel": [
+    "default",
+    "sonnet"
+  ]
+}

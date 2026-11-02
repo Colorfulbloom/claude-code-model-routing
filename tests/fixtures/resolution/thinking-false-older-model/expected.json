@@ -1,0 +1,22 @@
+{
+  "fixture": "thinking-false-older-model",
+  "rule_ids": [
+    "always-thinking-order"
+  ],
+  "confidence": "documented",
+  "source": "https://code.claude.com/docs/en/settings-reference#alwaysthinkingenabled",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "alwaysThinkingEnabled",
+      "value": false,
+      "status": "in_effect",
+      "layer": "user",
+      "file": "config/settings.json",
+      "scope": "main",
+      "line": 3,
+      "rule_id": "always-thinking-order",
+      "model": "claude-opus-4-8"
+    }
+  ]
+}

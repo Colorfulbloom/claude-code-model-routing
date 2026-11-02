@@ -1,0 +1,8 @@
+{
+  "fallbackModel": [
+    "sonnet",
+    "opus",
+    "haiku",
+    "fable"
+  ]
+}

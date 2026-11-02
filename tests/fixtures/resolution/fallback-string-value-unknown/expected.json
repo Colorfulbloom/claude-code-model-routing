@@ -1,0 +1,20 @@
+{
+  "fixture": "fallback-string-value-unknown",
+  "rule_ids": [
+    "fallback-model-value-wrong"
+  ],
+  "confidence": "assumed",
+  "source": "assumed: no run backs the wrong-type rule",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "fallbackModel",
+      "value": "claude-sonnet-5",
+      "status": "unknown",
+      "layer": "user",
+      "file": "config/settings.json",
+      "scope": "main",
+      "rule_id": "fallback-model-value-wrong"
+    }
+  ]
+}

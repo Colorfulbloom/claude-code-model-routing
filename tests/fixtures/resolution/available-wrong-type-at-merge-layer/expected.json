@@ -1,0 +1,35 @@
+{
+  "fixture": "available-wrong-type-at-merge-layer",
+  "rule_ids": [
+    "available-models-order",
+    "available-models-value-wrong"
+  ],
+  "confidence": "assumed",
+  "source": "assumed: no run backs the wrong-type rule",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "availableModels",
+      "value": [
+        "opus"
+      ],
+      "status": "in_effect",
+      "layer": "project",
+      "file": "project/.claude/settings.json",
+      "scope": "main",
+      "merged": [
+        "opus"
+      ],
+      "rule_id": "available-models-order"
+    },
+    {
+      "key": "availableModels",
+      "value": "sonnet",
+      "status": "unknown",
+      "layer": "user",
+      "file": "config/settings.json",
+      "scope": "main",
+      "rule_id": "available-models-value-wrong"
+    }
+  ]
+}

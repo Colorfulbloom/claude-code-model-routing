@@ -1,0 +1,28 @@
+{
+  "fixture": "fallback-chain-five-capped",
+  "rule_ids": [
+    "fallback-model-chain-limits"
+  ],
+  "confidence": "documented",
+  "source": "https://code.claude.com/docs/en/model-config#fallback-model-chains",
+  "claude_version": "2.1.302",
+  "expect": [
+    {
+      "key": "fallbackModel",
+      "value": [
+        "claude-sonnet-5",
+        "claude-haiku-4-5",
+        "claude-sonnet-5",
+        "claude-opus-5",
+        "claude-fable-5"
+      ],
+      "status": "lowered",
+      "layer": "user",
+      "file": "config/settings.json",
+      "scope": "main",
+      "becomes": "claude-sonnet-5, claude-haiku-4-5, claude-opus-5",
+      "merged": ["claude-sonnet-5", "claude-haiku-4-5", "claude-opus-5"],
+      "rule_id": "fallback-model-chain-limits"
+    }
+  ]
+}
