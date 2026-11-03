@@ -32,6 +32,10 @@ ReadResult = collections.namedtuple(
     "ReadResult", "records notes oldest_seen oldest_by_folder signature unreadable top_unreadable",
     defaults=(None, frozenset(), False))
 
+# What Reader.read_folder returns: the records of one project folder, a hash over the
+# files it used (as ReadResult.signature) and whether the folder could not be used.
+FolderResult = collections.namedtuple("FolderResult", "records signature unreadable")
+
 # One entry per file. offset is the end of the last complete line that was parsed.
 _Entry = collections.namedtuple(
     "_Entry", "dev ino size mtime_ns offset records stats meta_sig agent_type"
@@ -107,6 +111,28 @@ def unreadable_folder(project_path, folders):
     for folder in sorted(folders):
         if folder == full or (len(full) > _MAX_UNITS and folder.startswith(full[:_MAX_UNITS] + "-")):
             return folder
+    return None
+
+
+def folder_for_path(project_path, projects_dir, first_cwd_of=None):
+    """The transcript folder name for project_path, or None, the way folder_matches decides.
+
+    Up to 200 units it is the dashed real path, whether or not the folder exists.
+    Above that, it is the first folder in projects_dir (sorted) that starts with
+    the 200-unit prefix plus "-" and whose first cwd, from first_cwd_of(folder),
+    is the real path. With no first_cwd_of, a long path gives None.
+    """
+    real = os.path.realpath(project_path)
+    full = _dashed(real)
+    if len(full) <= _MAX_UNITS:
+        return full
+    if first_cwd_of is None:
+        return None
+    prefix = full[:_MAX_UNITS] + "-"
+    names = sorted(e.name for e in _listdir(projects_dir) if e.name.startswith(prefix) and _is_dir(e))
+    for name in names:
+        if first_cwd_of(name) == real:
+            return name
     return None
 
 
@@ -316,6 +342,57 @@ class Reader:
         with self._lock:
             return self._read(now)
 
+    def read_folder(self, folder, now):
+        """Read one project folder: a FolderResult (records, signature, unreadable).
+
+        It shares the per-file cache and the lock with read, applies the same
+        horizon, and parses only the new bytes of a file that grew. It drops
+        cache entries only for files inside this folder that it no longer finds.
+        It never changes files_found. A folder that does not exist gives no
+        records and is not unreadable. unreadable is True when the folder exists
+        but could not be listed, or all its files failed to open.
+        """
+        with self._lock:
+            return self._read_folder(folder, now)
+
+    def _read_folder(self, folder, now):
+        if now.tzinfo is None:
+            now = now.replace(tzinfo=_UTC)
+        cutoff = (now - datetime.timedelta(days=self.horizon_days)).timestamp()
+        path = os.path.join(self.config_dir, "projects", folder)
+        if os.path.islink(path):  # read never follows a linked folder either
+            return FolderResult([], hash(()), False)
+        inside = _listdir_checked(path)
+        found = []
+        listed = inside is not None
+        if listed:
+            self._scan_folder(found, inside, folder)
+        records = []
+        seen = set()
+        signature = []
+        opened = failed = 0
+        for item in sorted(found, key=lambda f: f.path):
+            if item.st.st_mtime < cutoff:
+                signature.append((item.path,))
+                opened += 1
+                continue
+            entry = self._load(item)
+            if entry is None:
+                failed += 1
+                continue
+            opened += 1
+            seen.add(item.path)
+            signature.append((item.path, entry.size, entry.mtime_ns, entry.meta_sig))
+            records.extend(entry.records)
+        prefix = path + os.sep
+        for cached in [p for p in self._cache if p.startswith(prefix) and p not in seen]:
+            del self._cache[cached]
+        if listed:
+            unreadable = failed > 0 and opened == 0
+        else:
+            unreadable = os.path.isdir(path)
+        return FolderResult(records, hash(tuple(signature)), unreadable)
+
     def _read(self, now):
         if now.tzinfo is None:
             now = now.replace(tzinfo=_UTC)
@@ -403,26 +480,35 @@ class Reader:
             if inside is None:
                 unlisted.add(folder)
                 continue
-            for entry in inside:
-                name = entry.name
-                if entry.is_symlink():
-                    ignored += 1
-                elif _is_file(entry):
-                    kind = None
-                    for pattern, k in ((_MAIN_RE, MAIN), (_ORPHANED_RE, ORPHANED), (_SUPERSEDED_RE, SUPERSEDED)):
-                        m = pattern.fullmatch(name)
-                        if m:
-                            kind, sid = k, m.group(1)
-                            break
-                    if kind is None:
-                        ignored += 1
-                    else:
-                        self._add(files, entry, folder, sid, None, kind, None)
-                elif _is_dir(entry) and _UUID_RE.fullmatch(name):
-                    ignored += self._scan_session(files, entry, folder)
-                else:
-                    ignored += 1
+            ignored += self._scan_folder(files, inside, folder)
         return files, ignored, unlisted, False
+
+    def _scan_folder(self, files, inside, folder):
+        """Add the transcript files among the entries of one project folder to files.
+
+        Returns how many entries were ignored.
+        """
+        ignored = 0
+        for entry in inside:
+            name = entry.name
+            if entry.is_symlink():
+                ignored += 1
+            elif _is_file(entry):
+                kind = None
+                for pattern, k in ((_MAIN_RE, MAIN), (_ORPHANED_RE, ORPHANED), (_SUPERSEDED_RE, SUPERSEDED)):
+                    m = pattern.fullmatch(name)
+                    if m:
+                        kind, sid = k, m.group(1)
+                        break
+                if kind is None:
+                    ignored += 1
+                else:
+                    self._add(files, entry, folder, sid, None, kind, None)
+            elif _is_dir(entry) and _UUID_RE.fullmatch(name):
+                ignored += self._scan_session(files, entry, folder)
+            else:
+                ignored += 1
+        return ignored
 
     def _scan_session(self, files, session_dir, folder):
         ignored = 0

@@ -335,6 +335,7 @@ To use it, copy it into a project's `.claude/agents/`, fill in the bracketed pla
 
 The Routing Dashboard is a local page that shows where your tokens went and which of your settings apply. It's read-only unless you start the server with `--allow-edits`. The Project dropdown picks one project, or All projects, the view across every project folder. Usage covers today, 7 days or 30 days.
 
+- Live. The project's running session minute by minute, refreshed every 3 seconds while the tab is in view.
 - Overview. Usage in the project over the range you pick, read from its transcripts.
 - Agents. Each agent's runs, tokens, estimated cost and cache, with the model and effort it ran with against its pin.
 - Models. Usage by model, with the agents that ran on each.

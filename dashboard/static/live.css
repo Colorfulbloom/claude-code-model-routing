@@ -1,0 +1,98 @@
+/* Live page (#/live). Every class starts lv-. Tokens only: no color literals and no new color tokens.
+   The pills sit on the frames of the version chip (.vchip) and the status chip (.st).
+   Motion (the flash on a changed value or a new row, the blink on the update time, the column and bar
+   transitions) lives in one prefers-reduced-motion: no-preference block at the end of the file. */
+
+[data-page="live"] [hidden]{display:none!important}
+
+/* Live control: a neutral pill on the version chip's frame, a mark glyph plus the word, then the time and a button.
+   The row keeps one height in every state, so the pill coming and going moves nothing. */
+.lv-ctl{display:flex;align-items:center;gap:var(--space-2);min-height:32px;font-family:var(--font-sans)}
+.lv-pill{display:inline-flex;align-items:center;gap:6px;font:var(--weight-semibold) var(--text-sm)/1 var(--font-sans);padding:6px 10px 6px 8px;border-radius:var(--radius-pill);background:var(--surface-2);border:var(--border-width) solid var(--border);color:var(--text);white-space:nowrap}
+.lv-mk{display:inline-block;width:1em;text-align:center;font-style:normal}
+.lv-pill[data-s="paused"]{color:var(--text-muted)}
+.lv-pill[data-s="paused"] .lv-mk::before{content:"\275A\275A";font-size:9px;letter-spacing:-1px}
+.lv-pill[data-s="lost"]{color:var(--status-invalid-fg);background:var(--status-invalid-bg);border-color:transparent}
+.lv-pill[data-s="lost"] .lv-mk::before{content:var(--status-invalid-mark)}
+.lv-time{font:var(--text-xs)/1.3 var(--font-sans);color:var(--text-muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.lv-ctl .btn{min-height:32px;padding:4px 10px;font-family:var(--font-sans);color:var(--text)}
+.lv-ph-r{align-self:flex-end}
+
+/* The notice above the header while the server does not answer */
+.lv-lost-nt{border-left-color:var(--status-invalid-fg);font:var(--text-sm)/1.4 var(--font-sans);width:100%;max-width:none;box-sizing:border-box}
+
+/* Growth in the last minute: accent text with a triangle mark, no chip, so it never reads as the vs-yesterday delta. */
+.lv-since{display:block;font:var(--weight-medium) var(--text-xs)/1.35 var(--font-sans);color:var(--accent);font-variant-numeric:tabular-nums;min-height:1.35em}
+.lv-since::before{content:"\25B2\00a0";font-size:9px}
+.lv-since.lv-zero,.lv-since.lv-plain{color:var(--text-muted)}
+.lv-since.lv-plain::before{content:none}
+.lv-since.lv-zero::before{content:"\2013\00a0";font-size:var(--text-xs)}
+.lv-stack .kpi-v{border-radius:var(--radius-sm);margin-left:-4px;padding-left:4px;margin-right:auto;padding-right:4px;min-height:1.2em}
+
+/* Activity pill: the status chip's frame, neutral fill. The mark carries the shape and the word the meaning. */
+.lv-act{display:inline-flex;align-items:center;gap:6px;font:var(--weight-semibold) var(--text-xs)/1 var(--font-sans);padding:4px 9px 4px 7px;border-radius:var(--radius-pill);background:var(--surface-2);color:var(--text);white-space:nowrap}
+.lv-act::before{display:inline-block;width:1em;text-align:center}
+.lv-act[data-a="working"]::before{content:"\25CF";color:var(--accent)}
+.lv-act[data-a="idle"]{color:var(--text-muted)}
+.lv-act[data-a="idle"]::before{content:"\25CB"}
+
+/* The session line. It keeps the height of the session select, whether or not the select is there. */
+.lv-sess{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2) var(--space-3);margin-top:var(--space-3);min-height:32px;font:var(--text-sm)/1.4 var(--font-sans)}
+.lv-sess .mono{color:var(--text)}
+.lv-gone{margin-top:var(--space-2);font:var(--text-sm)/1.4 var(--font-sans);max-width:72ch}
+.lv-pick{margin-left:auto}
+.lv-pick select{min-height:32px;padding-top:2px;padding-bottom:2px}
+
+/* Page body */
+.lv-stack{display:grid;gap:var(--space-4)}
+.lv-g21{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:var(--space-4);align-items:stretch}
+.lv-g21 .dchart .dbars{height:236px}
+.lv-g21 .klg{min-height:1.5em}
+.dx-min span{position:absolute;transform:translateX(-50%)}
+.dx.dx-min span:first-child{transform:translateX(-50%)}
+.dx .lv-now-x{display:block!important;transform:translateX(-50%)!important;font-weight:var(--weight-semibold);color:var(--text)}
+
+/* Agents */
+.lv-ags{display:grid;gap:var(--space-3);font-family:var(--font-sans);align-content:start}
+.lv-ag{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px var(--space-3);align-items:center;padding-bottom:var(--space-3);border-bottom:var(--border-width) solid var(--border)}
+.lv-ag:last-child{border-bottom:0;padding-bottom:0}
+.lv-ag-n{font-weight:var(--weight-medium);font-size:var(--text-sm);overflow-wrap:anywhere}
+.lv-ag-m{color:var(--text-muted);font-size:var(--text-xs)}
+.lv-ag-bar{grid-column:1 / -1;display:grid;grid-template-columns:minmax(0,1fr) 56px;gap:var(--space-3);align-items:center}
+.lv-ag-v{font-size:var(--text-sm);text-align:right;font-variant-numeric:tabular-nums;font-weight:var(--weight-medium)}
+.lv-ag-last{grid-column:1 / -1;color:var(--text-muted);font-size:var(--text-xs);min-height:1.35em}
+.lv-bar{height:14px;background:var(--chart-track);border-radius:3px;overflow:hidden}
+.lv-bar span{display:block;height:100%;background:var(--accent);border-radius:3px}
+
+/* Latest requests */
+.lv-req td{font-variant-numeric:tabular-nums;height:41px}
+.lv-new{display:inline-block;margin-left:6px;font:var(--weight-semibold) 11px/1 var(--font-sans);color:var(--accent);border:var(--border-width) solid var(--accent);border-radius:var(--radius-sm);padding:2px 4px;vertical-align:1px}
+
+/* The empty card */
+.lv-empty{display:grid;gap:var(--space-2);justify-items:start;padding:var(--space-6) var(--space-5)}
+.lv-empty .es-h{font-size:var(--text-lg)}
+
+@media (max-width: 720px){
+  .lv-g21{grid-template-columns:minmax(0,1fr)}
+  .lv-g21 .dchart .dbars{height:150px}
+  .lv-ph-r{align-self:auto;width:100%}
+  .lv-pick{margin-left:0}
+  .lv-req .lv-hide-s{display:none}
+  .lv-req tbody tr{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:var(--space-3);padding:var(--space-2) 0}
+  .lv-req tbody tr:nth-child(n+6){display:none}
+  .lv-req tbody td{display:block;padding:1px 0;height:auto}
+  .lv-req tbody td:nth-child(1){grid-column:1;grid-row:1;color:var(--text-muted);font-size:var(--text-xs)}
+  .lv-req tbody td:nth-child(2){grid-column:1;grid-row:2;font-weight:var(--weight-medium)}
+  .lv-req tbody td:nth-child(5){grid-column:2;grid-row:2;text-align:right}
+  .lv-req tbody td:nth-child(7){grid-column:2;grid-row:1;text-align:right;color:var(--text-muted);font-size:var(--text-xs)}
+}
+
+/* Motion: once on a changed answer, then hold. Nothing moves under reduced motion. The New marker is text and always shows. */
+@keyframes lv-blink{0%{opacity:1}35%{opacity:.25}100%{opacity:1}}
+@keyframes lv-flash{0%{background-color:color-mix(in srgb,var(--accent) 20%,transparent)}100%{background-color:transparent}}
+@media (prefers-reduced-motion: no-preference){
+  .lv-tick{animation:lv-blink .7s ease-out 1}
+  .lv-fresh{animation:lv-flash 1.4s ease-out 1}
+  .lv-g21 .dbars .col{transition:y .45s ease-out,height .45s ease-out}
+  .lv-bar span{transition:width .45s ease-out}
+}

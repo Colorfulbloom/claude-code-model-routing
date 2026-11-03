@@ -77,6 +77,7 @@ if HERE not in sys.path:
     sys.path.insert(0, HERE)
 
 import api_edit  # noqa: E402
+import api_live  # noqa: E402
 import api_settings  # noqa: E402
 import api_usage  # noqa: E402
 import collect  # noqa: E402
@@ -137,6 +138,7 @@ ROUTES = {
     "/api/edit/history": api_edit.history,
     "/api/edit/targets": api_edit.targets,
     "/api/files": api_settings.files,
+    "/api/live": api_live.live,
     "/api/projects": api_usage.api_projects,
     "/api/rules": api_settings.rules,
     "/api/settings": api_settings.settings,

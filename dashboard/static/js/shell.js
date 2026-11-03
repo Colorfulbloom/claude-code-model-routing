@@ -15,6 +15,7 @@ function navGroups() {
     {
       label: (project) => (project === ALL_KEY ? t("all_projects") : t("nav_group_project")),
       items: [
+        ["live", t("nav_live"), "pulse"],
         ["overview", t("nav_overview"), "overview"],
         ["agents", t("nav_agents"), "agents"],
         ["models", t("nav_models"), "cpu"],
