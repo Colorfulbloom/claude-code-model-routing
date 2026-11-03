@@ -10,8 +10,15 @@
 // The order of the cells is the project's own (ticket 105). It is state.order: the default order of TILES, or the
 // order saved in the browser for the project (localStorage, keyed by the project's path). A move saves it, Reset
 // removes it, and no settings file and no server route is involved. A move comes from a mouse drag (band_drag.js) or
-// from the Arrange list (band_arrange.js), and both end in commit() below. If the browser blocks storage the order
-// still works in memory until the page is closed.
+// from the Earlier and Later buttons (band_arrange.js), and both end in commit() below. If the browser blocks storage
+// the order still works in memory until the page is closed.
+//
+// Arrange (Stage 5 direction A, "the band is the editor"). Over 720px, while Arrange is pressed, the band shows the
+// saved order exactly: the first foldAt settings, each with Earlier and Later buttons and a grip, and no cell borrowed
+// for the open setting. If settings sit past the fold, the last column is a More slot that only shows them (it is not
+// a button), and the tray under the band holds the rest with the same cells. At 720px and under the band stays as it
+// is and the Arrange list sits under it. The state keeps two flags for that, narrow and editing, and the layout key
+// carries them, so a resize across 720px, or a press of Arrange, draws the band again.
 //
 // Every value comes from the server as data, so it goes in as text through h.js, never as markup.
 
@@ -19,7 +26,7 @@ import { h, clear } from "../h.js";
 import { t, withCommas } from "../format.js";
 import { icon } from "../icons.js";
 import { chip } from "../components.js";
-import { fit, merge, move, sameOrder, dropIndex } from "../band_order.js";
+import { fit, merge, move, sameOrder, dropIndex, dropIndexArranged } from "../band_order.js";
 import { attachDrag, cancelDrag } from "./band_drag.js";
 import * as arrange from "./band_arrange.js";
 // settings.js imports this file too: nothing here may use these bindings at the top level, only inside functions.
@@ -30,6 +37,8 @@ export const DEFAULT_WIDTH = 1600;
 // A status that asks to be looked at, so the More summary names it instead of counting settings.
 const PROBLEMS = ["overridden", "ignored", "invalid", "unknown"];
 const POP_ID = "settings-more";
+// The phone layout of app.css. Over this the band can be the editor, at this and under it the list is.
+const NARROW = "(max-width: 720px)";
 
 // The band that is on screen, or null. The listeners below read it.
 let current = null;
@@ -131,6 +140,32 @@ function cellFor(model) {
   },
   cellSpans(model),
   h("span", { class: "s6-grip", "aria-hidden": "true" }));
+}
+
+// A cell while the band is the editor: the same three spans, but not a link, so a cell is not a tab stop. The
+// open setting keeps its underline. Under the spans sits the control row: Earlier and Later (from band_arrange.js) and
+// the grip, always shown, because the cell can be dragged. index is the setting's place in the whole order.
+function editCellFor(state, key, index) {
+  const model = state.models.get(key);
+  return h("div", {
+    class: ["s4-stat", "s5-stat", model.on && "is-on"],
+    "aria-current": model.on ? "true" : null,
+    "data-setting": key,
+  },
+  cellSpans(model),
+  h("span", { class: "s7-ctl" },
+    arrange.stepsFor(key, model.label, index, state.order.length, true, (k, delta) => step(state, k, delta)),
+    h("span", { class: "s6-grip", "aria-hidden": "true" })));
+}
+
+// The last column of the band while it is the editor and settings sit past the fold. It shows that More is there, and
+// the tray below holds the settings. It is not a button: it has no tab stop, no pressed look, and a screen reader skips
+// it, because the tray says the same in words. Its look is the open More button's. A mouse drop on it is the first
+// place under More (band_drag.js finds it by the s5-more class).
+function moreSlotFor(count) {
+  return h("div", { class: "s4-stat s5-stat s5-more is-open", "aria-hidden": "true" },
+    h("span", { class: "s4-sl" }, t("band_more_l")),
+    h("span", { class: "s4-sv" }, t("band_more_v", { n: count }), icon("chevron", "s5-chev")));
 }
 
 // ---------------------------------------------------------------- More
@@ -245,24 +280,47 @@ const resetText = (state, key) => t("ar_reset_said", slots(state, key));
 
 // ---------------------------------------------------------------- changing the order
 
-// Takes a new order: keeps it in memory, saves it, redraws the band with focus where it was, and says the move.
+// The other setting that changed side of the fold when key crossed it, or null for none. Taking a setting out of one row
+// and putting it in the other shifts the settings between its two places by one, so the one next to the fold goes the
+// other way: a setting moved into the band pushes the last band setting under More, and one moved under More lets the
+// first setting under More up. That holds for any fold inside the order, so null is only a guard for a fold outside it.
+function swappedAcross(before, after, foldAt, key) {
+  return after.find((k) => k !== key && (before.indexOf(k) < foldAt) !== (after.indexOf(k) < foldAt)) ?? null;
+}
+
+// Takes a new order: keeps it in memory, saves it, redraws the band with focus where it was, and says the move. While
+// the band is the editor, a setting that crosses the fold changes row, and the words say which way it went.
 function commit(state, next, key) {
+  const was = state.order.indexOf(key) < state.foldAt;
+  const now = next.indexOf(key) < state.foldAt;
+  const crossed = state.editing && was !== now;
+  const other = crossed ? swappedAcross(state.order, next, state.foldAt, key) : null;
   state.order = next;
   saveOrder(state.path, next);
   arrange.markMoved(key);
   const focused = focusOf(state);
   paint(state, widthOf(state) || state.width);
   refocus(state, focused);
-  say(state, movedText(state, key));
+  if (!crossed) say(state, movedText(state, key));
+  else if (now) {
+    if (other === null) say(state, t("sr_moved_into_band", slots(state, key)));
+    else say(state, t("sr_moved_into_band_dropped", { ...slots(state, key), dropped: labelOf(other) }));
+  } else if (other === null) say(state, t("sr_moved_to_more", slots(state, key)));
+  else say(state, t("sr_moved_to_more_raised", { ...slots(state, key), raised: labelOf(other) }));
 }
 
-// A mouse drop. A drop that leaves the order as it was saves nothing and says nothing.
-function dropped(state, key, slot, onMore) {
-  const next = move(state.order, key, dropIndex(state.order, state.cells, state.moreKeys, key, slot, onMore));
+// A mouse drop. A drop that leaves the order as it was saves nothing and says nothing. While the band is the editor
+// the cells on screen are the saved order, so the drop is placed by the row it landed in (row 0 is the band, 1 is the
+// tray, and a drop on the More slot counts as the tray's first slot).
+function dropped(state, key, slot, onMore, row = 0) {
+  const at = state.editing
+    ? dropIndexArranged(state.order, state.foldAt, key, row, slot, onMore)
+    : dropIndex(state.order, state.cells, state.moreKeys, key, slot, onMore);
+  const next = move(state.order, key, at);
   if (!sameOrder(next, state.order)) commit(state, next, key);
 }
 
-// Up or Down in the Arrange list.
+// Earlier or Later: one place in the saved order.
 function step(state, key, delta) {
   const to = state.order.indexOf(key) + delta;
   if (to < 0 || to >= state.order.length) return;
@@ -282,8 +340,10 @@ function reset(state) {
 
 // ---------------------------------------------------------------- draw
 
-// The More list and the Arrange list, in the slot under the band. They never show together: opening one closes the
-// other. The More list is always in the page, hidden until opened. The Arrange list is in the page only while open.
+// The More list and, while arranging, the tray or the list, in the slot under the band. The More list and the phone
+// list never show together: opening one closes the other. The More list is always in the page when there is a More
+// button, hidden until opened. While the band is the editor there is no More button (the slot is not one), so no
+// More list, and the tray is in the page instead. The phone list is in the page only while arranging.
 function drawPops(state) {
   clear(state.anc);
   state.pop = null;
@@ -293,33 +353,39 @@ function drawPops(state) {
     state.anc.appendChild(state.pop);
   }
   if (arrange.isOpen()) {
-    state.anc.appendChild(arrange.listFor(arrangeApi(state)));
+    state.anc.appendChild(state.editing ? arrange.trayFor(arrangeApi(state)) : arrange.listFor(arrangeApi(state)));
     state.open = false;
   }
   if (state.more) setOpen(state, state.open);
   else state.open = false;
-  if (state.arrBtn) state.arrBtn.setAttribute("aria-expanded", arrange.isOpen() ? "true" : "false");
+  if (state.arrBtn) state.arrBtn.setAttribute("aria-pressed", arrange.isOpen() ? "true" : "false");
 }
 
-// What band_arrange.js needs to draw the list and to act on it.
+// What band_arrange.js needs to draw the tray or the list and to act on it.
 function arrangeApi(state) {
   return {
     order: state.order,
-    atCell: state.moreKeys.length ? state.cells.length : 0,
+    foldAt: state.foldAt,
+    columns: state.columns,
     isDefault: sameOrder(state.order, defaultOrder()),
     project: state.ctx.project ? state.ctx.project.name : "",
     label: labelOf,
     value: (key) => valueFor(key, winnerOf(state.payload, key), state.payload).node,
+    cell: (key, index) => editCellFor(state, key, index),
     step: (key, delta) => step(state, key, delta),
     reset: () => reset(state),
     done: () => closeArrange(state, true),
   };
 }
 
+// Pressing Arrange. Over 720px the band itself changes (editor cells, no borrowed cell), so it is drawn again. On a
+// phone the band stays as it is and only the list comes or goes, so the More button, which may be the one being
+// pressed, is not replaced.
 function openArrange(state, open) {
   if (arrange.isOpen() === open) return;
   arrange.setOpen(open);
-  drawPops(state);
+  if (isNarrow()) drawPops(state);
+  else paint(state, widthOf(state) || state.width);
 }
 
 // Done and Esc: close the list and give focus back to the Arrange button.
@@ -328,24 +394,55 @@ function closeArrange(state, focus) {
   if (focus && state.arrBtn) state.arrBtn.focus();
 }
 
+// True in the phone layout (720px and under). A page with no matchMedia reads as wide.
+function isNarrow() {
+  try {
+    return Boolean(window.matchMedia && window.matchMedia(NARROW).matches);
+  } catch (err) {
+    return false;
+  }
+}
+
+// The cells and the More list for width, with a key that names the whole drawing. While the band is the editor (Arrange
+// pressed, over 720px) no cell is borrowed for the open setting, so the band is the first settings of the saved
+// order and the fold is where it ends. Otherwise the open setting takes its cell as always. The key holds both flags
+// as well as the cells, so a press of Arrange or a resize across 720px draws again even when the cells are the same,
+// and so does a width that moves the fold while the open setting sits behind it.
+function layoutFor(state, width, narrow) {
+  const editing = arrange.isOpen() && !narrow;
+  const { cells, more } = fit(state.order, width || DEFAULT_WIDTH, editing ? null : state.selected);
+  const key = cells.join(",") + "|" + more.join(",") + (editing ? "|edit" : "") + (narrow ? "|narrow" : "");
+  return { cells, more, editing, key };
+}
+
 // Fills the band for width. The cells and the list come from fit() over state.order, so a width that gives the same
 // answer gives the same band. The list holds every setting in the saved order, and the ones with a cell are marked,
 // because the narrow layout shows the whole list. A drag in progress ends first, so nothing is left of it.
 function paint(state, width) {
   cancelDrag();
   state.width = width;
-  const { cells, more } = fit(state.order, width || DEFAULT_WIDTH, state.selected);
+  state.narrow = isNarrow();
+  const { cells, more, editing, key } = layoutFor(state, width, state.narrow);
   state.cells = cells;
   state.moreKeys = more;
-  state.layout = cells.join(",") + "|" + more.join(",");
+  state.editing = editing;
+  state.foldAt = editing ? cells.length : 0;
+  state.layout = key;
   state.models = new Map(TILES.map((spec) => [spec.key, modelOf(state.ctx, state.payload, spec, state.selected, state.notSaved)]));
-  const hidden = more.map((key) => state.models.get(key));
+  const hidden = more.map((k) => state.models.get(k));
 
   clear(state.nav);
   state.more = null;
-  cells.forEach((key) => state.nav.appendChild(cellFor(state.models.get(key))));
-  state.nav.style.setProperty("--n", String(cells.length + (hidden.length ? 1 : 0)));
-  if (hidden.length) {
+  state.nav.classList.toggle("s7-ed", editing);
+  state.columns = cells.length + (hidden.length ? 1 : 0);
+  state.nav.style.setProperty("--n", String(state.columns));
+  if (editing) {
+    cells.forEach((k, i) => state.nav.appendChild(editCellFor(state, k, i)));
+    if (hidden.length) state.nav.appendChild(moreSlotFor(hidden.length));
+  } else {
+    cells.forEach((k) => state.nav.appendChild(cellFor(state.models.get(k))));
+  }
+  if (hidden.length && !editing) {
     state.more = h("button", {
       type: "button",
       class: "s4-stat s5-stat s5-more",
@@ -377,8 +474,7 @@ export function refitBand() {
   if (!state) return;
   const width = widthOf(state);
   if (!width) return;
-  const next = fit(state.order, width, state.selected);
-  if (next.cells.join(",") + "|" + next.more.join(",") === state.layout) return;
+  if (layoutFor(state, width, isNarrow()).key === state.layout) return;
   // A redraw removes the element that has focus, so focus goes to the same setting, or to More, or to the same
   // button of the Arrange list.
   const focused = focusOf(state);
@@ -387,13 +483,21 @@ export function refitBand() {
 }
 
 // Depth-first search through childNodes, which a real element and the test DOM both have.
-function findSetting(node, key) {
-  if (node.nodeType === 1 && node.getAttribute("data-setting") === key) return node;
+function findNode(node, test) {
+  if (node.nodeType === 1 && test(node)) return node;
   for (const child of Array.from(node.childNodes || [])) {
-    const found = findSetting(child, key);
+    const found = findNode(child, test);
     if (found) return found;
   }
   return null;
+}
+
+const findSetting = (node, key) => findNode(node, (n) => n.getAttribute("data-setting") === key);
+
+// The rows a mouse drag works in: the band, and while it is the editor the tray's row of cells (when it has any).
+function rowsOf(state) {
+  const tray = state.editing ? findNode(state.anc, (n) => n.classList && n.classList.contains("s7-trow")) : null;
+  return tray ? [state.nav, tray] : [state.nav];
 }
 
 // The setting whose cell or row has focus, "" for the More button, null when focus is elsewhere.
@@ -443,8 +547,9 @@ export function arrangeButton() {
   state.arrBtn = arrange.buttonFor(() => {
     const opening = !arrange.isOpen();
     openArrange(state, opening);
-    // Opening by press moves focus into the list, so Tab does not walk the band first. A redraw never comes here.
-    if (opening) arrange.focusFirst(state.host);
+    // Over 720px focus stays on the pressed button and Tab walks the band. On a phone Tab from the head would reach the
+    // band's link and More first, and More closes arranging, so focus goes into the list. A redraw never comes here.
+    if (opening && isNarrow()) arrange.focusFirst(state.host);
   });
   return state.arrBtn;
 }
@@ -497,11 +602,13 @@ export function bandFor(ctx, payload, selected, notSaved = new Set()) {
   current = {
     ctx, payload, selected, notSaved, host, nav, anc, status, path, open: false, layout: "", more: null, pop: null, width: 0,
     order: merge(readSaved(path), defaultOrder()), cells: [], moreKeys: [], models: new Map(), arrBtn: null,
+    narrow: false, editing: false, foldAt: 0, columns: 0,
   };
   const state = current;
-  attachDrag(nav, {
+  attachDrag(host, {
+    rows: () => rowsOf(state),
     spans: (key) => cellSpans(modelOf(state.ctx, state.payload, TILES.find((spec) => spec.key === key), state.selected, state.notSaved)),
-    drop: (key, slot, onMore) => dropped(state, key, slot, onMore),
+    drop: (key, slot, onMore, row) => dropped(state, key, slot, onMore, row),
     cancelled: (key) => say(state, t("ar_drag_cancel", { name: labelOf(key) })),
   });
   bind();

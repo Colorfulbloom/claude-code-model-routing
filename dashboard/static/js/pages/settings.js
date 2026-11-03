@@ -270,17 +270,21 @@ function focusedSetting(root) {
 
 // At 1240 and under the rail's foot docks at the window's foot, and the rail pads its end by the foot's height, so a
 // foot that grows with a long result never covers the last lines. The height goes in --s4-foot on the rail (app.css
-// falls back to a fixed padding). One watcher at a time, because the page draws a new foot each render.
+// falls back to a fixed padding). It goes on the page too, because the band's tray and list sit above the rail and
+// their buttons keep a scroll margin of the foot's height, so a button that takes focus never lands under the bar.
+// One watcher at a time, because the page draws a new foot each render.
 let footWatch = null;
 
-function watchFoot(foot, rail) {
+function watchFoot(foot, rail, page) {
   if (footWatch) footWatch.disconnect();
   footWatch = null;
   if (typeof ResizeObserver === "undefined") return;
   footWatch = new ResizeObserver(() => {
     const px = foot.offsetHeight;
-    if (px > 0) rail.style.setProperty("--s4-foot", px + "px");
-    else rail.style.removeProperty("--s4-foot");
+    for (const el of [rail, page]) {
+      if (px > 0) el.style.setProperty("--s4-foot", px + "px");
+      else el.style.removeProperty("--s4-foot");
+    }
   });
   footWatch.observe(foot);
 }
@@ -288,7 +292,9 @@ function watchFoot(foot, rail) {
 export function render(root, ctx) {
   const keep = focusedSetting(root);
   const editKey = editCard.focusKey(); // an edit control that holds focus keeps it across this draw
-  const arrangeKey = focusedAction(root); // a button of the Arrange list, or the Arrange button, keeps it too
+  // A button of the band editor, the tray or the list, or the Arrange button, keeps focus too. It wins over the setting
+  // below it, because an Earlier or Later button sits inside a setting's cell and would otherwise lose focus to the cell.
+  const arrangeKey = focusedAction(root);
   clear(root);
   const page = h("div", { class: "s4 s4-c" });
   root.appendChild(page);
@@ -316,15 +322,16 @@ export function render(root, ctx) {
     const foot = h("div", { class: "s4-rf s5-rf", "data-slot": "foot" }, edit.foot);
     const rail = h("aside", { class: "s4-rail" }, edit.rail || railBody(ctx, payload, selected), foot);
     page.appendChild(h("div", { class: "s5-w" }, body, rail));
-    watchFoot(foot, rail);
+    watchFoot(foot, rail, page);
     refitBand();
     edit.done(root, editKey);
   }
   if (!head.firstChild) head.appendChild(pageHead({ title: t("nav_settings"), intro: t("intro_settings") }));
   // The Settings section also draws when a payload lands, so only the Settings route takes the record.
   if (ctx.route.name === "settings" && pendingReturn) takeReturnFocus(root);
+  else if (arrangeKey) restoreAction(root, arrangeKey);
   else if (keep) {
     const cell = findNode(root, (n) => n.getAttribute("data-setting") === keep);
     if (cell) cell.focus();
-  } else if (arrangeKey) restoreAction(root, arrangeKey);
+  }
 }

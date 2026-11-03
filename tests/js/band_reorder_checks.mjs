@@ -1,5 +1,6 @@
-// Browser-free checks of the per-project band order (ticket 105): the pure moves in band_order.js, the order saved in
-// the browser, the Arrange list, and the mouse drag. Run by tests/test_settings_js.py. They load pages/settings.js,
+// Browser-free checks of the per-project band order (ticket 105, and Stage 5 direction A): the pure moves in
+// band_order.js, the order saved in the browser, Arrange (the band as the editor over 720px, the list on a phone), and
+// the mouse drag in one row and in two. Run by tests/test_settings_js.py. They load pages/settings.js,
 // pages/band.js, pages/band_arrange.js and pages/band_drag.js from dashboard/static/js against the small fake DOM in
 // fakedom.mjs. Nothing here opens a browser or a socket.
 //
@@ -15,6 +16,10 @@ const STATIC = new URL("../../dashboard/static/", import.meta.url);
 const JS = new URL("js/", STATIC).href;
 const STRINGS = JSON.parse(fs.readFileSync(new URL("strings.json", STATIC), "utf8"));
 
+// The fake DOM answers every media query with `narrow`. The band reads (max-width: 720px), so a check that is about the
+// desktop editor wants a wide page, and a phone check passes true. The default here is wide.
+const newPage = (narrow = false) => createPage({ narrow });
+
 const tests = [];
 const test = (name, fn) => tests.push([name, fn]);
 
@@ -24,7 +29,7 @@ const router = await import(JS + "router.js");
 const settings = await import(JS + "pages/settings.js");
 const band = await import(JS + "pages/band.js");
 const bandOrder = await import(JS + "band_order.js");
-const { move, merge, sameOrder, dropSlot, dropIndex, fit } = bandOrder;
+const { move, merge, sameOrder, dropSlot, dropSlotIn, dropIndex, dropIndexArranged, fit } = bandOrder;
 
 const KEYS = ["model", "effortLevel", "maxEffortLevel", "autoCompactWindow", "promptCacheTtl", "alwaysThinkingEnabled", "fallbackModel", "availableModels"];
 const NAMES = ["Model", "Effort", "Effort cap", "Compact window", "Cache lifetime", "Extended thinking", "Fallback models", "Allowed models"];
@@ -124,6 +129,70 @@ test("dropIndex: works by keys when the open cell took the last slot, so the cel
   assert.deepEqual(move(order, "f", dropIndex(order, cells, more, "f", 0, true)), ["a", "b", "c", "d", "f", "e", "g", "h"]);
 });
 
+test("dropSlotIn: the line nearest to y, then the first cell in it whose middle is right of x, else the slot after its last cell", () => {
+  // Two lines of cells, as the tray wraps: three on the first, two on the second.
+  const edges = [
+    { left: 0, right: 100, top: 0, bottom: 70 }, { left: 100, right: 200, top: 0, bottom: 70 }, { left: 200, right: 300, top: 0, bottom: 70 },
+    { left: 0, right: 100, top: 80, bottom: 150 }, { left: 100, right: 200, top: 80, bottom: 150 },
+  ];
+  assert.equal(dropSlotIn(edges, 20, 30), 0);
+  assert.equal(dropSlotIn(edges, 120, 30), 1);
+  assert.equal(dropSlotIn(edges, 250, 30), 3, "past the first line's last middle is the slot after it");
+  assert.equal(dropSlotIn(edges, 9999, 30), 3, "far right on the first line is still the first line's end");
+  assert.equal(dropSlotIn(edges, 20, 110), 3, "the second line's first slot");
+  assert.equal(dropSlotIn(edges, 60, 110), 4);
+  assert.equal(dropSlotIn(edges, 9999, 110), 5, "the end of the last line is the end of the list");
+  assert.equal(dropSlotIn(edges, 20, -500), 0, "above everything is the first line");
+  assert.equal(dropSlotIn(edges, 20, 9000), 3, "below everything is the last line");
+  assert.equal(dropSlotIn(edges, 20, 74), 0, "in the gap, the nearer line wins (the first, 4 away, over the second, 6)");
+  assert.equal(dropSlotIn(edges, 20, 77), 3, "in the gap, the nearer line wins (the second)");
+  assert.equal(dropSlotIn([], 10, 10), 0);
+  // One line gives the same answer as dropSlot.
+  const one = [{ left: 0, right: 100, top: 5, bottom: 60 }, { left: 100, right: 200, top: 5, bottom: 60 }, { left: 200, right: 300, top: 5, bottom: 60 }];
+  for (const x of [-50, 0, 49, 50, 149, 150, 250, 9999]) assert.equal(dropSlotIn(one, x, 30), dropSlot(one, x), "x " + x);
+});
+
+test("dropIndexArranged: the band row holds order[0..foldAt), the tray order[foldAt..), and a drop stays in the row it was dropped in", () => {
+  const order = ["a", "b", "c", "d", "e", "f", "g", "h"];
+  const at = (key, row, slot, onMore = false, fold = 5) => move(order, key, dropIndexArranged(order, fold, key, row, slot, onMore));
+  // A tray cell to a band slot: before the cell right of the slot, and the last band cell goes under More.
+  assert.deepEqual(at("g", 0, 1), ["a", "g", "b", "c", "d", "e", "f", "h"], "tray item to band slot 1");
+  assert.deepEqual(at("g", 0, 0), ["g", "a", "b", "c", "d", "e", "f", "h"]);
+  // To the band's end slot: the last cell of the band, and the one that was last goes under More.
+  assert.deepEqual(at("g", 0, 5), ["a", "b", "c", "d", "g", "e", "f", "h"], "tray item to the band's end slot");
+  // A band cell to the tray: slot 0 is first under More, and the tray's first cell moves up into the band.
+  assert.deepEqual(at("b", 1, 0), ["a", "c", "d", "e", "f", "b", "g", "h"], "band item to tray slot 0");
+  assert.deepEqual(at("b", 1, 2), ["a", "c", "d", "e", "f", "g", "b", "h"], "band item to tray slot 2");
+  assert.deepEqual(at("b", 1, 3), ["a", "c", "d", "e", "f", "g", "h", "b"], "band item to the tray's end slot");
+  // The band's end slot, from the band: the cell becomes the last of the band, and nothing else crosses the fold.
+  assert.deepEqual(at("a", 0, 5), ["b", "c", "d", "e", "a", "f", "g", "h"], "band end slot from the band");
+  assert.deepEqual(at("e", 0, 5), order, "the last cell dropped on the end slot stays where it is");
+  // The More slot counts as the tray's first slot, whatever slot the pointer had.
+  assert.deepEqual(at("c", 0, 4, true), ["a", "b", "d", "e", "f", "c", "g", "h"], "More slot, from the band");
+  assert.deepEqual(at("g", 0, 4, true), ["a", "b", "c", "d", "e", "g", "f", "h"], "More slot, from the tray: first under More");
+  assert.deepEqual(at("f", 0, 0, true), order, "the first under More dropped on More stays");
+  // Inside one row: before the neighbour, and never relative to the cell itself.
+  assert.deepEqual(at("d", 0, 1), ["a", "d", "b", "c", "e", "f", "g", "h"]);
+  assert.deepEqual(at("d", 0, 3), order, "before itself");
+  assert.deepEqual(at("d", 0, 4), order, "before the cell after it");
+  assert.deepEqual(at("h", 1, 0), ["a", "b", "c", "d", "e", "h", "f", "g"]);
+  assert.deepEqual(at("f", 1, 1), order, "the tray's first cell dropped after itself");
+  assert.deepEqual(at("f", 1, 3), ["a", "b", "c", "d", "e", "g", "h", "f"]);
+  // No second row: everything fits, so every drop is in the band, and its end slot is the last place.
+  assert.deepEqual(at("c", 0, 1, false, 8), ["a", "c", "b", "d", "e", "f", "g", "h"], "no second row, slot 1");
+  assert.deepEqual(at("c", 0, 8, false, 8), ["a", "b", "d", "e", "f", "g", "h", "c"], "no second row, end slot");
+  assert.deepEqual(at("c", 0, 2, false, 8), order);
+  // A fold of 1 (a very narrow band) and a fold clamped to the list.
+  assert.deepEqual(at("c", 0, 0, false, 1), ["c", "a", "b", "d", "e", "f", "g", "h"]);
+  assert.deepEqual(at("c", 0, 1, false, 1), ["c", "a", "b", "d", "e", "f", "g", "h"], "the end slot of a one cell band makes it the only cell");
+  assert.deepEqual(at("a", 1, 0, false, 99), order.slice(1).concat("a"), "a fold past the list clamps, so there is no tray and a tray drop ends last");
+  // A key that is not in the order goes last. A slot past the row clamps to the row's end.
+  assert.equal(dropIndexArranged(order, 5, "zzz", 0, 1, false), order.length);
+  assert.deepEqual(move(order, "a", dropIndexArranged(order, 5, "a", 1, 99, false)), ["b", "c", "d", "e", "f", "g", "h", "a"]);
+  assert.deepEqual(move(order, "g", dropIndexArranged(order, 5, "g", 0, -4, false)), ["g", "a", "b", "c", "d", "e", "f", "h"]);
+  assert.deepEqual(order, ["a", "b", "c", "d", "e", "f", "g", "h"], "the input is not changed");
+});
+
 // ---------------------------------------------------------------- the page
 
 function entry(over) {
@@ -148,7 +217,7 @@ function payloadFor(path = "~/work/p" + (++serial)) {
   };
 }
 
-function show(payload, { page = createPage(), project = { key: "app", name: "App" }, setting = null } = {}) {
+function show(payload, { page = newPage(), project = { key: "app", name: "App" }, setting = null } = {}) {
   const root = page.sections.settings;
   const ctx = {
     route: { name: "settings", params: {}, query: { setting } },
@@ -185,8 +254,35 @@ function narrow(page, root, width) {
   (page.listeners.resize || []).forEach((fn) => fn({}));
 }
 
+// ---------------------------------------------------------------- Arrange: the band is the editor (over 720px)
+
+// The tray under the band, its row of cells, and the keys in that row.
+const trayOf = (root) => byClass(root, "s7-tray")[0];
+const trowOf = (root) => byClass(root, "s7-trow")[0];
+const trayKeys = (root) => (trowOf(root) ? trowOf(root).childNodes.map((n) => n.getAttribute("data-setting")) : []);
+// What is open under the band: the tray over 720px, the list on a phone.
+const openOf = (root) => trayOf(root) || listOf(root);
+const hostOf = (root) => byClass(root, "s5-band")[0];
+const stepsOf = (cell) => byClass(cell, "s6-mv")[0].childNodes;
+const pathOf = (node) => node.find((n) => n.tagName === "path")[0].getAttribute("d");
+const ICON_LEFT = "M19 12H5M11 6l-6 6 6 6";
+const ICON_RIGHT = "M5 12h14M13 6l6 6-6 6";
+const ICON_UP = "M12 19V5M6 11l6-6 6 6";
+const ICON_DOWN = "M12 5v14M6 13l6 6 6-6";
+
+// The controls Tab can reach inside a node, in document order: enabled buttons and links, not inside anything hidden
+// or aria-hidden. The name of each is its data-arrange, or its data-setting.
+function tabStops(node, out = []) {
+  if (node.nodeType !== 1 || node.hasAttribute("hidden") || node.getAttribute("aria-hidden") === "true") return out;
+  const control = (node.tagName === "button" && !node.hasAttribute("disabled")) || (node.tagName === "a" && node.hasAttribute("href"));
+  if (control && node.getAttribute("tabindex") !== "-1") out.push(node);
+  node.childNodes.forEach((child) => tabStops(child, out));
+  return out;
+}
+const stopName = (n) => n.getAttribute("data-arrange") || n.getAttribute("data-setting");
+
 test("page: no band, no Arrange button; a band puts the button in the head with its label, state and target", () => {
-  const page = createPage();
+  const page = newPage();
   const none = show(null, { page });
   assert.equal(arrangeBtn(none), undefined);
   const root = show(payloadFor(), { page });
@@ -196,15 +292,17 @@ test("page: no band, no Arrange button; a band puts the button in the head with 
   assert.equal(btn.getAttribute("type"), "button");
   assert.equal(text(btn), STRINGS.arrange);
   assert.equal(btn.getAttribute("aria-label"), STRINGS.ar_btn_sr);
-  assert.equal(btn.getAttribute("aria-expanded"), "false");
+  assert.equal(btn.getAttribute("aria-pressed"), "false", "it is a toggle, so it says pressed");
+  assert.equal(btn.getAttribute("aria-expanded"), null);
   assert.equal(btn.getAttribute("aria-controls"), "settings-arrange");
   const head = byClass(root, "s4-chead")[0];
   assert.ok(head.contains(btn), "the button is in the page head");
   assert.equal(text(root.find((n) => n.tagName === "h1")[0]), "Settings");
-  assert.equal(listOf(root), undefined, "the list is closed until it is asked for");
+  assert.equal(openOf(root), undefined, "nothing is open until it is asked for");
+  assert.equal(hasClass(navOf(root), "s7-ed"), false);
 });
 
-test("status line: one role=status element in the band host, outside the nav and the list, empty until a change", () => {
+test("status line: one role=status element in the band host, outside the nav and the tray, empty until a change", () => {
   const root = show(payloadFor());
   const status = statusOf(root);
   assert.ok(status);
@@ -215,73 +313,142 @@ test("status line: one role=status element in the band host, outside the nav and
   assert.equal(status.parentNode, host);
   assert.equal(navOf(root).contains(status), false);
   arrangeBtn(root).click();
-  assert.equal(listOf(root).contains(status), false);
+  assert.equal(trayOf(root).contains(status), false);
   action(root, "down:model").click();
   assert.equal(statusOf(root), status, "a redraw of the band keeps the same element");
   assert.equal(text(status), "Model moved to position 2 of 8.");
 });
 
-test("arrange: opening shows the heading, the project, a row for each setting in order and Reset off at the default", () => {
-  const root = show(payloadFor());
+test("arrange: pressing it turns the band into the editor, says pressed, and leaves focus on the button", () => {
+  const page = newPage();
+  const root = show(payloadFor(), { page });
   const btn = arrangeBtn(root);
+  btn.focus();
   btn.click();
-  assert.equal(btn.getAttribute("aria-expanded"), "true");
-  const list = listOf(root);
-  assert.ok(list);
-  assert.equal(list.getAttribute("id"), "settings-arrange");
-  assert.equal(text(list.find((n) => n.tagName === "h2")[0]), STRINGS.ar_h);
-  assert.equal(text(list.find((n) => n.tagName === "p")[0]), "Order for App");
-  assert.deepEqual(rowNames(root), NAMES);
-  assert.equal(text(byClass(rowsOf(root)[0], "v")[0]), "Opus 5.5");
-  assert.equal(text(byClass(rowsOf(root)[1], "v")[0]), "high");
-  assert.equal(root.find((n) => hasClass(n, "s6-ag")).length, 0, "a row has no grip, because rows do not drag");
-  assert.equal(byClass(list, "s6-grip").length, 0);
-  assert.equal(text(list).includes(STRINGS.ar_note), true);
+  assert.equal(btn.getAttribute("aria-pressed"), "true");
+  assert.equal(FElement.focused, btn, "focus stays on Arrange, and Tab walks the band");
+  assert.ok(hasClass(navOf(root), "s7-ed"));
+  assert.equal(navOf(root).tagName, "nav", "the band stays a landmark");
+  assert.equal(listOf(root), undefined, "no phone list over 720px");
+  assert.deepEqual(cellKeys(root), KEYS);
+  for (const cell of cellsOf(root)) {
+    assert.equal(cell.tagName, "div", "a cell is not a link, so it is not a tab stop");
+    assert.equal(cell.hasAttribute("href"), false);
+    assert.ok(hasClass(cell, "s4-stat") && hasClass(cell, "s5-stat"));
+    const spans = cell.childNodes.slice(0, 3);
+    assert.deepEqual(spans.map((n) => n.tagName), ["span", "span", "span"]);
+    assert.ok(byClass(cell, "s4-sw")[0].textContent.length > 0, "the status mark and word are there");
+    const ctl = byClass(cell, "s7-ctl");
+    assert.equal(ctl.length, 1);
+    assert.equal(ctl[0].find((n) => n.tagName === "button").length, 2, "Earlier and Later");
+    const grip = byClass(ctl[0], "s6-grip");
+    assert.equal(grip.length, 1, "the grip is always there");
+    assert.equal(grip[0].getAttribute("aria-hidden"), "true");
+  }
+  assert.equal(text(byClass(cellsOf(root)[0], "s4-sw")[0]), STRINGS.status_in_effect, "the status keeps its word beside the mark");
+  // The open setting keeps its underline mark.
+  assert.deepEqual(byClass(navOf(root), "is-on").map((n) => n.getAttribute("data-setting")), ["effortLevel"]);
+});
+
+test("arrange: every setting fits, so the tray holds the empty note, in the flow under the band, with the foot", () => {
+  const root = show(payloadFor());
+  arrangeBtn(root).click();
+  const tray = trayOf(root);
+  assert.ok(tray);
+  assert.equal(tray.getAttribute("id"), "settings-arrange");
+  assert.equal(tray.parentNode, byClass(root, "s5-anc")[0], "in the slot under the band, in the flow");
+  assert.equal(text(byClass(tray, "s7-empty")[0]), STRINGS.tray_empty);
+  assert.equal(byClass(tray, "s6-fold").length, 0, "no fold line when nothing is behind More");
+  assert.equal(trowOf(root), undefined);
+  assert.equal(moreOf(root), undefined, "no More slot either");
+  assert.equal(tray.styleMap["--n"], navOf(root).styleMap["--n"], "the tray has the band's columns");
+  assert.equal(text(tray).includes(STRINGS.ar_note), true);
   assert.equal(action(root, "reset").hasAttribute("disabled"), true, "Reset is off at the default order");
   assert.equal(text(action(root, "reset")), STRINGS.ar_reset);
   assert.equal(text(action(root, "done")), STRINGS.ar_done);
-  assert.equal(root.find((n) => hasClass(n, "s6-fold")).length, 0, "all eight fit, so More starts nowhere");
+  assert.ok(hasClass(action(root, "done").parentNode, "s7-af"));
 });
 
-test("arrange: Up and Down name the setting, and the first Up and the last Down are off", () => {
+test("arrange: Earlier and Later name the setting, point left and right, and the first Earlier and the last Later are off", () => {
   const root = show(payloadFor());
   arrangeBtn(root).click();
-  assert.equal(action(root, "up:effortLevel").getAttribute("aria-label"), "Move Effort up");
-  assert.equal(action(root, "down:effortLevel").getAttribute("aria-label"), "Move Effort down");
+  assert.equal(action(root, "up:effortLevel").getAttribute("aria-label"), "Move Effort earlier");
+  assert.equal(action(root, "down:effortLevel").getAttribute("aria-label"), "Move Effort later");
+  assert.equal(pathOf(action(root, "up:effortLevel")), ICON_LEFT);
+  assert.equal(pathOf(action(root, "down:effortLevel")), ICON_RIGHT);
+  assert.deepEqual(stepsOf(cellsOf(root)[1]).map((b) => b.getAttribute("data-arrange")), ["up:effortLevel", "down:effortLevel"], "Earlier first");
   assert.equal(action(root, "up:model").hasAttribute("disabled"), true);
   assert.equal(action(root, "down:model").hasAttribute("disabled"), false);
   assert.equal(action(root, "down:availableModels").hasAttribute("disabled"), true);
   assert.equal(action(root, "up:availableModels").hasAttribute("disabled"), false);
-  assert.equal(root.find((n) => n.tagName === "button" && n.hasAttribute("disabled")).length, 3, "Reset, first Up, last Down");
+  assert.equal(root.find((n) => n.tagName === "button" && n.hasAttribute("disabled")).length, 3, "Reset, first Earlier, last Later");
 });
 
-test("arrange: opening by press moves focus to the first row's Down; a redraw does not take focus", () => {
-  const page = createPage();
-  const payload = payloadFor("~/work/focus");
-  let root = show(payload, { page });
+test("arrange: with settings behind More, the band is the first of the saved order, a More slot that is not a button, and a tray", () => {
+  const page = newPage();
+  const root = show(payloadFor(), { page, setting: "alwaysThinkingEnabled" });
+  narrow(page, root, 660);
+  assert.deepEqual(cellKeys(root), ["model", "effortLevel", "maxEffortLevel", "alwaysThinkingEnabled"], "the open setting borrows a cell as always");
   const btn = arrangeBtn(root);
-  btn.focus();
   btn.click();
-  assert.equal(FElement.focused, action(root, "down:" + KEYS[0]), "the first Up is off, so the first Down takes focus");
-  assert.equal(FElement.focused.hasAttribute("disabled"), false);
-  // Closing with Done returns to the button; opening again moves focus in again.
+  assert.deepEqual(cellKeys(root), KEYS.slice(0, 4), "arranging shows the saved order, with no borrowed cell");
+  assert.deepEqual(trayKeys(root), KEYS.slice(4));
+  assert.equal(navOf(root).styleMap["--n"], "5", "four cells and the slot");
+  assert.equal(trayOf(root).styleMap["--n"], "5");
+  const slot = moreOf(root);
+  assert.equal(slot.tagName, "div", "not a button");
+  assert.equal(slot.getAttribute("aria-hidden"), "true");
+  assert.equal(slot.hasAttribute("tabindex"), false);
+  assert.equal(slot.getAttribute("data-setting"), null);
+  assert.equal(slot.getAttribute("aria-expanded"), null);
+  assert.equal(slot.getAttribute("role"), null);
+  assert.ok(hasClass(slot, "is-open") && hasClass(slot, "s5-more"));
+  assert.equal(text(byClass(slot, "s4-sl")[0]), STRINGS.band_more_l);
+  assert.equal(text(byClass(slot, "s4-sv")[0]), "4 more");
+  assert.equal(byClass(slot, "s5-chev").length, 1);
+  assert.equal(byClass(slot, "s4-sw").length, 0, "no status line at rest");
+  assert.equal(tabStops(slot).length, 0);
+  assert.equal(slot.find((n) => n.tagName === "button" || n.tagName === "a").length, 0);
+  assert.equal(slot, navOf(root).childNodes[4], "it is the last column");
+  // The tray says where More starts, and its cells are the same editor cells, the open one marked.
+  assert.equal(text(byClass(trayOf(root), "s6-fold")[0]), STRINGS.fold_line);
+  assert.equal(trayOf(root).childNodes[0], byClass(trayOf(root), "s6-fold")[0], "the line is first, the row under it");
+  assert.equal(trayOf(root).childNodes[1], trowOf(root));
+  assert.deepEqual(byClass(trowOf(root), "is-on").map((n) => n.getAttribute("data-setting")), ["alwaysThinkingEnabled"]);
+  assert.equal(byClass(trayOf(root), "s7-empty").length, 0);
+  for (const cell of trowOf(root).childNodes) assert.equal(cell.find((n) => n.tagName === "button").length, 2);
+  // Done: the normal band comes back, and the open setting borrows its cell again.
   action(root, "done").click();
-  assert.equal(FElement.focused, btn);
-  btn.click();
-  assert.equal(FElement.focused, action(root, "down:" + KEYS[0]));
-  // A redraw that restores the open list leaves focus where it was.
-  btn.focus();
-  root = show(payload, { page });
-  assert.ok(listOf(root));
-  assert.equal(FElement.focused, arrangeBtn(root));
-  const other = cellsOf(root)[2];
-  other.focus();
-  band.setNotSaved(new Set(["model"]));
-  assert.notEqual(FElement.focused, action(root, "down:" + KEYS[0]), "a redraw does not pull focus into the list");
+  assert.equal(trayOf(root), undefined);
+  assert.deepEqual(cellKeys(root), ["model", "effortLevel", "maxEffortLevel", "alwaysThinkingEnabled"]);
+  assert.equal(moreOf(root).tagName, "button", "More is a button again");
+  assert.equal(hasClass(navOf(root), "s7-ed"), false);
+  assert.equal(btn.getAttribute("aria-pressed"), "false");
 });
 
-test("arrange: Down moves the setting in the band and the list, saves it, says it, marks the row, and keeps focus on the button", () => {
-  const page = createPage();
+test("arrange: Tab walks each band cell's Earlier then Later, then the tray's cells, then Reset and Done", () => {
+  const page = newPage();
+  const root = show(payloadFor(), { page });
+  narrow(page, root, 660);
+  arrangeBtn(root).click();
+  action(root, "down:model").click();
+  const order = swap(KEYS, "model", "effortLevel");
+  const want = [];
+  order.forEach((key, i) => {
+    if (i > 0) want.push("up:" + key);
+    if (i < order.length - 1) want.push("down:" + key);
+  });
+  want.push("reset", "done");
+  assert.deepEqual(tabStops(hostOf(root)).map(stopName), want);
+  // A band cell is never a stop by itself, and the More slot is not one.
+  assert.equal(tabStops(hostOf(root)).filter((n) => n.tagName === "a").length, 0);
+  // The Arrange button comes first in the page. The section itself is hidden in the fake DOM, so its children are walked.
+  const first = root.childNodes.flatMap((child) => tabStops(child))[0];
+  assert.equal(first, arrangeBtn(root));
+});
+
+test("arrange: a move in the band moves the setting, saves it, says it, and keeps focus on the same button", () => {
+  const page = newPage();
   const payload = payloadFor("~/work/down");
   const root = show(payload, { page });
   arrangeBtn(root).click();
@@ -290,30 +457,24 @@ test("arrange: Down moves the setting in the band and the list, saves it, says i
   down.click();
   const want = swap(KEYS, "model", "effortLevel");
   assert.deepEqual(cellKeys(root), want);
-  assert.deepEqual(rowNames(root), names(want));
   assert.deepEqual(JSON.parse(storeOf(page).get(keyOfPath("~/work/down"))), want);
   assert.equal(text(statusOf(root)), "Model moved to position 2 of 8.");
-  const moved = rowsOf(root).filter((r) => hasClass(r, "is-moved"));
-  assert.equal(moved.length, 1);
-  assert.equal(text(byClass(moved[0], "n")[0]), "Model");
-  assert.equal(FElement.focused, action(root, "down:model"), "focus is on the Down button of the moved row");
+  assert.equal(FElement.focused, action(root, "down:model"), "focus is on the Later button of the moved setting");
   assert.equal(FElement.focused.hasAttribute("disabled"), false);
-  assert.ok(listOf(root), "the list stays open");
+  assert.ok(trayOf(root), "the tray stays");
   assert.equal(action(root, "reset").hasAttribute("disabled"), false, "Reset is on once the order differs");
 });
 
-test("arrange: when the pressed button turns off, focus goes to the other button of the same row", () => {
+test("arrange: when the pressed button turns off, focus goes to the other button of the same setting", () => {
   const root = show(payloadFor());
   arrangeBtn(root).click();
-  // Up from position 2 reaches the top, so Up is off and Down takes focus.
   action(root, "down:model").click();
   action(root, "up:model").focus();
   action(root, "up:model").click();
   assert.deepEqual(cellKeys(root), KEYS);
   assert.equal(text(statusOf(root)), "Model moved to position 1 of 8.");
   assert.equal(action(root, "up:model").hasAttribute("disabled"), true);
-  assert.equal(FElement.focused, action(root, "down:model"));
-  // Down to the end of the list: Down is off and Up takes focus.
+  assert.equal(FElement.focused, action(root, "down:model"), "the first Earlier is off, so Later takes focus");
   let guard = 0;
   while (!action(root, "down:model").hasAttribute("disabled") && guard++ < 20) {
     action(root, "down:model").focus();
@@ -321,11 +482,81 @@ test("arrange: when the pressed button turns off, focus goes to the other button
   }
   assert.equal(cellKeys(root)[7], "model");
   assert.equal(text(statusOf(root)), "Model moved to position 8 of 8.");
-  assert.equal(FElement.focused, action(root, "up:model"));
+  assert.equal(FElement.focused, action(root, "up:model"), "the last Later is off, so Earlier takes focus");
+});
+
+test("arrange: a setting that crosses the fold changes row, focus stays on its button, and the words say which way it went", () => {
+  const page = newPage();
+  const root = show(payloadFor(), { page });
+  narrow(page, root, 660);
+  arrangeBtn(root).click();
+  // Compact window is the last cell of the band. Later puts it first behind More.
+  const later = action(root, "down:autoCompactWindow");
+  later.focus();
+  later.click();
+  assert.deepEqual(cellKeys(root), ["model", "effortLevel", "maxEffortLevel", "promptCacheTtl"]);
+  assert.deepEqual(trayKeys(root), ["autoCompactWindow", "alwaysThinkingEnabled", "fallbackModel", "availableModels"]);
+  assert.equal(text(statusOf(root)), "Compact window moved to position 5 of 8. It is now under More settings. Cache lifetime moved up from More settings.");
+  assert.equal(FElement.focused, action(root, "down:autoCompactWindow"));
+  assert.ok(trayOf(root).contains(FElement.focused), "the button now lives in the tray");
+  assert.equal(text(byClass(moreOf(root), "s4-sv")[0]), "4 more");
+  // Earlier brings it back into the band.
+  action(root, "up:autoCompactWindow").focus();
+  action(root, "up:autoCompactWindow").click();
+  assert.deepEqual(cellKeys(root), KEYS.slice(0, 4));
+  assert.equal(text(statusOf(root)), "Compact window moved to position 4 of 8. It is no longer under More settings. Cache lifetime is now under More settings.");
+  assert.equal(FElement.focused, action(root, "up:autoCompactWindow"));
+  assert.ok(navOf(root).contains(FElement.focused), "and into the band's row again");
+  // A move inside the tray is an ordinary move.
+  action(root, "down:alwaysThinkingEnabled").click();
+  assert.equal(text(statusOf(root)), "Extended thinking moved to position 7 of 8.");
+  // Earlier on the first cell behind More brings it into the band, and the last band cell goes behind More.
+  action(root, "up:promptCacheTtl").click();
+  assert.equal(text(statusOf(root)), "Cache lifetime moved to position 4 of 8. It is no longer under More settings. Compact window is now under More settings.");
+});
+
+test("arrange: a move across the fold names the setting it pushed across the other way, and a move inside a row does not", () => {
+  const page = newPage();
+  const root = show(payloadFor(), { page });
+  narrow(page, root, 660);
+  arrangeBtn(root).click();
+  // The strings fill their slots through t().
+  const t = format.t;
+  assert.equal(t("sr_moved_into_band_dropped", { name: "A", n: 2, total: 8, dropped: "B" }),
+    "A moved to position 2 of 8. It is no longer under More settings. B is now under More settings.");
+  assert.equal(t("sr_moved_to_more_raised", { name: "A", n: 5, total: 8, raised: "B" }),
+    "A moved to position 5 of 8. It is now under More settings. B moved up from More settings.");
+  // The band holds 4 of the 8. Later on the last band cell: it goes under More and the first one there comes up.
+  action(root, "down:autoCompactWindow").click();
+  assert.equal(text(statusOf(root)), "Compact window moved to position 5 of 8. It is now under More settings. Cache lifetime moved up from More settings.");
+  // Earlier on the first cell under More (now Compact window): it comes up and the last band cell goes down.
+  action(root, "up:autoCompactWindow").click();
+  assert.equal(text(statusOf(root)), "Compact window moved to position 4 of 8. It is no longer under More settings. Cache lifetime is now under More settings.");
+  // Inside the band and inside the tray keep the plain words.
+  action(root, "down:model").click();
+  assert.equal(text(statusOf(root)), "Model moved to position 2 of 8.");
+  action(root, "down:alwaysThinkingEnabled").click();
+  assert.equal(text(statusOf(root)), "Extended thinking moved to position 7 of 8.");
+  // From any band cell, Later steps it to the band's end and then across the fold. The step across names the setting
+  // that came up, and the steps before it name none.
+  for (let from = 0; from < 4; from += 1) {
+    const p = newPage();
+    const r = show(payloadFor(), { page: p });
+    narrow(p, r, 660);
+    arrangeBtn(r).click();
+    const key = KEYS[from];
+    for (let step = from; step < 3; step += 1) {
+      action(r, "down:" + key).click();
+      assert.equal(text(statusOf(r)), NAME_OF[key] + " moved to position " + (step + 2) + " of 8.", key + " inside the band");
+    }
+    action(r, "down:" + key).click();
+    assert.equal(text(statusOf(r)), NAME_OF[key] + " moved to position 5 of 8. It is now under More settings. "
+      + NAME_OF[KEYS[4]] + " moved up from More settings.", key + " across the fold");
+  }
 });
 
 test("arrange: Reset puts the default order back for this project, says so, turns off, and moves focus to Done", () => {
-  const page = createPage();
+  const page = newPage();
   const root = show(payloadFor("~/work/reset"), { page });
   arrangeBtn(root).click();
   action(root, "down:model").click();
@@ -336,134 +567,122 @@ test("arrange: Reset puts the default order back for this project, says so, turn
   reset.focus();
   reset.click();
   assert.deepEqual(cellKeys(root), KEYS);
-  assert.deepEqual(rowNames(root), NAMES);
   assert.equal(storeOf(page).has(keyOfPath("~/work/reset")), false, "the item is removed");
   assert.equal(text(statusOf(root)), "Order reset. Model is at position 1 of 8.");
   assert.equal(action(root, "reset").hasAttribute("disabled"), true);
   assert.equal(FElement.focused, action(root, "done"));
-  assert.equal(rowsOf(root).filter((r) => hasClass(r, "is-moved")).length, 0);
 });
 
-test("arrange: Done closes the list and Esc does too, and both return focus to the Arrange button", () => {
-  const page = createPage();
+test("arrange: Done closes the editor and Esc does too, and both return focus to the Arrange button", () => {
+  const page = newPage();
   const root = show(payloadFor(), { page });
   const btn = arrangeBtn(root);
   btn.click();
   action(root, "done").focus();
   action(root, "done").click();
-  assert.equal(listOf(root), undefined);
-  assert.equal(btn.getAttribute("aria-expanded"), "false");
+  assert.equal(trayOf(root), undefined);
+  assert.equal(hasClass(navOf(root), "s7-ed"), false);
+  assert.equal(btn.getAttribute("aria-pressed"), "false");
   assert.equal(FElement.focused, btn);
   btn.click();
   action(root, "down:model").focus();
   const ev = page.doc.dispatch("keydown", { key: "Escape" });
-  assert.equal(listOf(root), undefined);
+  assert.equal(trayOf(root), undefined);
   assert.equal(FElement.focused, btn);
   assert.equal(ev.defaultPrevented, true);
-  // A key that was handled already, or another key, leaves the list alone.
+  assert.equal(cellsOf(root)[0].tagName, "a", "the normal band is back");
+  // A key that was handled already, or another key, leaves it alone.
   btn.click();
   page.doc.dispatch("keydown", { key: "Escape", defaultPrevented: true });
-  assert.ok(listOf(root));
+  assert.ok(trayOf(root));
   page.doc.dispatch("keydown", { key: "ArrowDown" });
-  assert.ok(listOf(root));
+  assert.ok(trayOf(root));
+  // Pressing Arrange again turns it off.
+  btn.click();
+  assert.equal(trayOf(root), undefined);
+  assert.equal(btn.getAttribute("aria-pressed"), "false");
 });
 
-test("arrange: an outside click leaves the list open", () => {
-  const page = createPage();
+test("arrange: an outside click leaves the editor open", () => {
+  const page = newPage();
   const root = show(payloadFor(), { page });
   arrangeBtn(root).click();
   page.sections.settings.dispatch("click");
   page.topbar.dispatch("click");
-  assert.ok(listOf(root));
+  assert.ok(trayOf(root));
 });
 
-test("arrange: a band redraw from a Not saved change keeps the list open and focus on the same button", () => {
-  const page = createPage();
+test("arrange: a band redraw from a Not saved change keeps the editor open and focus on the same button", () => {
+  const page = newPage();
   const root = show(payloadFor(), { page });
   arrangeBtn(root).click();
   action(root, "down:effortLevel").focus();
   band.setNotSaved(new Set(["effortLevel"]));
-  assert.ok(listOf(root));
+  assert.ok(trayOf(root));
   assert.equal(FElement.focused, action(root, "down:effortLevel"));
   assert.equal(text(byClass(cellsOf(root)[1], "s5-pend")[0]), STRINGS.band_not_saved);
   band.setNotSaved(new Set());
   assert.equal(FElement.focused, action(root, "down:effortLevel"));
 });
 
-test("arrange: a resize that changes the cells keeps the list open and focus on the same button", () => {
-  const page = createPage();
-  const root = show(payloadFor(), { page });
+test("arrange: a resize that moves the fold draws the band and tray again, with the open setting behind it, and keeps focus", () => {
+  const page = newPage();
+  const root = show(payloadFor(), { page, setting: "availableModels" });
   arrangeBtn(root).click();
+  assert.deepEqual(cellKeys(root), KEYS);
   action(root, "up:fallbackModel").focus();
   narrow(page, root, 660);
-  assert.equal(cellKeys(root).length, 4);
-  assert.ok(listOf(root));
+  assert.deepEqual(cellKeys(root), KEYS.slice(0, 4), "the open setting is behind the fold and takes no cell");
+  assert.deepEqual(trayKeys(root), KEYS.slice(4));
+  assert.ok(openOf(root));
   assert.equal(FElement.focused, action(root, "up:fallbackModel"));
+  assert.ok(trayOf(root).contains(FElement.focused));
+  // The same fold at another width draws nothing again.
+  const nodes = cellsOf(root);
+  narrow(page, root, 700);
+  assert.ok(cellsOf(root).every((n, i) => n === nodes[i]));
+  // Another fold moves the cells and the tray together.
+  narrow(page, root, 900);
+  assert.deepEqual(cellKeys(root), KEYS.slice(0, 5));
+  assert.deepEqual(trayKeys(root), KEYS.slice(5));
+  assert.equal(navOf(root).styleMap["--n"], "6");
+  assert.equal(trayOf(root).styleMap["--n"], "6");
+  narrow(page, root, 1056);
+  assert.deepEqual(cellKeys(root), KEYS);
+  assert.equal(trowOf(root), undefined);
+  assert.equal(text(byClass(trayOf(root), "s7-empty")[0]), STRINGS.tray_empty);
+  assert.equal(moreOf(root), undefined);
 });
 
 test("arrange: a whole page render of the same project keeps it open and focus on the same button; another project closes it", () => {
-  const page = createPage();
+  const page = newPage();
   const payload = payloadFor("~/work/keep");
   let root = show(payload, { page });
   arrangeBtn(root).click();
   action(root, "down:effortLevel").click();
   action(root, "down:effortLevel").focus();
   root = show(payload, { page });
-  assert.ok(listOf(root), "still open");
-  assert.equal(arrangeBtn(root).getAttribute("aria-expanded"), "true");
-  assert.equal(FElement.focused, action(root, "down:effortLevel"));
-  assert.deepEqual(rowNames(root), names(swap(KEYS, "effortLevel", "maxEffortLevel")), "the saved order draws again");
+  assert.ok(trayOf(root), "still open");
+  assert.equal(arrangeBtn(root).getAttribute("aria-pressed"), "true");
+  assert.equal(FElement.focused, action(root, "down:effortLevel"), "a button inside a cell keeps focus, not the cell");
+  assert.deepEqual(cellKeys(root), swap(KEYS, "effortLevel", "maxEffortLevel"), "the saved order draws again");
   // The Arrange button keeps focus too.
   arrangeBtn(root).focus();
   root = show(payload, { page });
   assert.equal(FElement.focused, arrangeBtn(root));
-  // A different project: the list is closed and the button says so.
+  // A different project: closed, and the button says so.
   root = show(payloadFor("~/work/other"), { page });
-  assert.equal(listOf(root), undefined);
-  assert.equal(arrangeBtn(root).getAttribute("aria-expanded"), "false");
+  assert.equal(openOf(root), undefined);
+  assert.equal(arrangeBtn(root).getAttribute("aria-pressed"), "false");
+  assert.equal(hasClass(navOf(root), "s7-ed"), false);
 });
 
-test("arrange: opening it closes the More list and opening More closes it", () => {
-  const page = createPage();
-  const root = show(payloadFor(), { page });
-  narrow(page, root, 660);
-  moreOf(root).click();
-  assert.equal(moreOf(root).getAttribute("aria-expanded"), "true");
-  arrangeBtn(root).click();
-  assert.equal(moreOf(root).getAttribute("aria-expanded"), "false");
-  assert.ok(listOf(root));
-  assert.equal(byClass(root, "s5-pop").filter((n) => n.hidden === false && n.getAttribute("id") === "settings-more").length, 0);
-  moreOf(root).click();
-  assert.equal(listOf(root), undefined, "the Arrange list is gone");
-  assert.equal(arrangeBtn(root).getAttribute("aria-expanded"), "false");
-  assert.equal(moreOf(root).getAttribute("aria-expanded"), "true");
-  assert.equal(byAttr(root, "id", "settings-more").hidden, false);
-});
-
-test("arrange: when settings sit in More at this width, a dashed row says where More starts", () => {
-  const page = createPage();
-  const root = show(payloadFor(), { page });
-  narrow(page, root, 660);
-  arrangeBtn(root).click();
-  const rows = byClass(root, "s6-al")[0].childNodes;
-  const at = rows.findIndex((r) => hasClass(r, "s6-fold"));
-  assert.equal(at, 4, "four cells, so the row comes before the fifth setting");
-  assert.equal(text(rows[at]), STRINGS.ar_fold);
-  assert.equal(text(byClass(rows[at + 1], "n")[0]), "Cache lifetime");
-  // Wider again: no More, no row.
-  narrow(page, root, 1056);
-  assert.equal(root.find((n) => hasClass(n, "s6-fold")).length, 0);
-  // A phone: one cell and More. The row sits after the first setting.
-  narrow(page, root, 343);
-  assert.equal(byClass(root, "s6-al")[0].childNodes.findIndex((r) => hasClass(r, "s6-fold")), 1);
-});
-
-test("arrange: a move in the list never changes the address or the open cell, and never calls the network", () => {
+test("arrange: a move never changes the address or the open cell, and never calls the network", () => {
   const calls = [];
   const had = Object.getOwnPropertyDescriptor(globalThis, "fetch");
   globalThis.fetch = (...args) => { calls.push(args); throw new Error("a move must not call the network"); };
   try {
-    const page = createPage();
+    const page = newPage();
     const root = show(payloadFor(), { page, setting: "promptCacheTtl" });
     const before = page.win.location.hash;
     arrangeBtn(root).click();
@@ -478,10 +697,149 @@ test("arrange: a move in the list never changes the address or the open cell, an
   }
 });
 
+// ---------------------------------------------------------------- Arrange on a phone (720px and under)
+
+test("phone: Arrange opens the list under the band, focus goes into it, and the band keeps the open setting's cell", () => {
+  const page = newPage(true);
+  const root = show(payloadFor(), { page, setting: "alwaysThinkingEnabled" });
+  narrow(page, root, 343);
+  const btn = arrangeBtn(root);
+  btn.focus();
+  btn.click();
+  assert.equal(btn.getAttribute("aria-pressed"), "true");
+  const list = listOf(root);
+  assert.ok(list);
+  assert.equal(trayOf(root), undefined);
+  assert.equal(hasClass(navOf(root), "s7-ed"), false);
+  assert.deepEqual(cellKeys(root), ["alwaysThinkingEnabled"], "the band is the open setting's cell and More, as before");
+  assert.equal(cellsOf(root)[0].tagName, "a");
+  assert.equal(moreOf(root).tagName, "button");
+  assert.equal(FElement.focused, action(root, "down:model"), "focus goes into the list, because Tab would reach More first");
+  assert.equal(FElement.focused.hasAttribute("disabled"), false);
+  assert.equal(list.getAttribute("id"), "settings-arrange");
+  assert.equal(text(list.find((n) => n.tagName === "h2")[0]), STRINGS.ar_h);
+  assert.equal(text(list.find((n) => n.tagName === "p")[0]), "Order for App");
+  assert.equal(text(byClass(list, "s7-note")[0]), STRINGS.phone_note);
+  assert.deepEqual(rowNames(root), NAMES, "the list shows the saved order, not the displaced one");
+  assert.equal(text(byClass(rowsOf(root)[0], "v")[0]), "Opus 5.5");
+  assert.equal(byClass(list, "s6-grip").length, 0, "rows do not drag");
+  assert.equal(byClass(list, "s6-fold").length, 0, "no fold line: the band here is one cell and More");
+  assert.equal(root.find((n) => hasClass(n, "s6-fold")).length, 0);
+  assert.equal(action(root, "reset").hasAttribute("disabled"), true);
+  assert.equal(storeOf(page).size, 0);
+});
+
+test("phone: Earlier and Later are named, point up and down, and step the list", () => {
+  const page = newPage(true);
+  const payload = payloadFor("~/work/phone-step");
+  const root = show(payload, { page });
+  narrow(page, root, 343);
+  arrangeBtn(root).click();
+  assert.equal(action(root, "up:effortLevel").getAttribute("aria-label"), "Move Effort earlier");
+  assert.equal(action(root, "down:effortLevel").getAttribute("aria-label"), "Move Effort later");
+  assert.equal(pathOf(action(root, "up:effortLevel")), ICON_UP);
+  assert.equal(pathOf(action(root, "down:effortLevel")), ICON_DOWN);
+  assert.equal(action(root, "up:model").hasAttribute("disabled"), true);
+  assert.equal(action(root, "down:availableModels").hasAttribute("disabled"), true);
+  assert.equal(root.find((n) => n.tagName === "button" && n.hasAttribute("disabled")).length, 3);
+  const down = action(root, "down:model");
+  down.focus();
+  down.click();
+  const want = swap(KEYS, "model", "effortLevel");
+  assert.deepEqual(rowNames(root), names(want));
+  assert.deepEqual(JSON.parse(storeOf(page).get(keyOfPath("~/work/phone-step"))), want);
+  assert.equal(text(statusOf(root)), "Model moved to position 2 of 8.");
+  assert.equal(FElement.focused, action(root, "down:model"));
+  const moved = rowsOf(root).filter((r) => hasClass(r, "is-moved"));
+  assert.equal(moved.length, 1);
+  assert.equal(text(byClass(moved[0], "n")[0]), "Model");
+  // Moving across where More starts says only the place, because the list shows the whole order.
+  action(root, "down:model").click();
+  assert.equal(text(statusOf(root)), "Model moved to position 3 of 8.");
+  action(root, "reset").click();
+  assert.deepEqual(rowNames(root), NAMES);
+  assert.equal(FElement.focused, action(root, "done"));
+});
+
+test("phone: Done and Esc close the list and return focus to the button; a redraw does not pull focus into the list", () => {
+  const page = newPage(true);
+  const payload = payloadFor("~/work/phone-done");
+  let root = show(payload, { page });
+  narrow(page, root, 343);
+  const btn = arrangeBtn(root);
+  btn.click();
+  action(root, "done").click();
+  assert.equal(listOf(root), undefined);
+  assert.equal(btn.getAttribute("aria-pressed"), "false");
+  assert.equal(FElement.focused, btn);
+  btn.click();
+  page.doc.dispatch("keydown", { key: "Escape" });
+  assert.equal(listOf(root), undefined);
+  assert.equal(FElement.focused, btn);
+  btn.click();
+  root = show(payload, { page });
+  assert.ok(listOf(root), "a page render keeps it open");
+  const other = cellsOf(root)[0];
+  other.focus();
+  band.setNotSaved(new Set(["model"]));
+  assert.notEqual(FElement.focused, action(root, "down:" + KEYS[0]), "a redraw does not pull focus into the list");
+});
+
+test("phone: opening Arrange closes the More list and opening More closes Arrange", () => {
+  const page = newPage(true);
+  const root = show(payloadFor(), { page });
+  narrow(page, root, 660);
+  moreOf(root).click();
+  assert.equal(moreOf(root).getAttribute("aria-expanded"), "true");
+  arrangeBtn(root).click();
+  assert.equal(moreOf(root).getAttribute("aria-expanded"), "false");
+  assert.ok(listOf(root));
+  assert.equal(byClass(root, "s5-pop").filter((n) => n.hidden === false && n.getAttribute("id") === "settings-more").length, 0);
+  const more = moreOf(root);
+  more.click();
+  assert.equal(moreOf(root), more, "the More button is the same one: the phone band is not drawn again");
+  assert.equal(listOf(root), undefined, "the Arrange list is gone");
+  assert.equal(arrangeBtn(root).getAttribute("aria-pressed"), "false");
+  assert.equal(moreOf(root).getAttribute("aria-expanded"), "true");
+  assert.equal(byAttr(root, "id", "settings-more").hidden, false);
+});
+
+test("phone: crossing 720px with Arrange on swaps the list for the tray and back, and keeps focus on the same button", () => {
+  const page = newPage(false);
+  const root = show(payloadFor(), { page, setting: "alwaysThinkingEnabled" });
+  narrow(page, root, 660);
+  arrangeBtn(root).click();
+  assert.ok(trayOf(root));
+  action(root, "down:effortLevel").focus();
+  page.media.matches = true;
+  narrow(page, root, 660);
+  assert.equal(trayOf(root), undefined);
+  assert.ok(listOf(root));
+  assert.deepEqual(cellKeys(root), ["model", "effortLevel", "maxEffortLevel", "alwaysThinkingEnabled"], "the open setting borrows its cell again");
+  assert.equal(moreOf(root).tagName, "button");
+  assert.equal(FElement.focused, action(root, "down:effortLevel"));
+  page.media.matches = false;
+  narrow(page, root, 660);
+  assert.ok(trayOf(root));
+  assert.equal(listOf(root), undefined);
+  assert.deepEqual(cellKeys(root), KEYS.slice(0, 4));
+  assert.equal(FElement.focused, action(root, "down:effortLevel"));
+});
+
+test("strings: the editor's words are in strings.json, the old list's are gone, and the file stays sorted", () => {
+  assert.equal(STRINGS.fold_line, "More starts here at this window size");
+  for (const gone of ["ar_up", "ar_down", "ar_fold"]) assert.equal(gone in STRINGS, false, gone + " is not used any more");
+  for (const key of ["fold_line", "phone_note", "sr_moved_into_band", "sr_moved_into_band_dropped", "sr_moved_to_more", "sr_moved_to_more_raised", "step_earlier", "step_later", "tray_empty"]) {
+    assert.equal(typeof STRINGS[key], "string", key);
+  }
+  const keys = Object.keys(STRINGS);
+  assert.deepEqual(keys, [...keys].sort(), "strings.json stays sorted");
+});
+
 // ---------------------------------------------------------------- the saved order
 
 test("storage: two projects keep their own order, and Reset clears one", () => {
-  const page = createPage();
+  const page = newPage();
   const a = payloadFor("~/work/a");
   const b = payloadFor("~/work/b");
   let root = show(a, { page });
@@ -506,7 +864,7 @@ test("storage: two projects keep their own order, and Reset clears one", () => {
 });
 
 test("storage: a saved order with a dropped or a new setting is merged, and the More list follows the order", () => {
-  const page = createPage();
+  const page = newPage();
   const path = "~/work/merge";
   page.win.localStorage.setItem(keyOfPath(path), JSON.stringify(["availableModels", "gone", "model", "model", 4, "effortLevel"]));
   const root = show(payloadFor(path), { page });
@@ -518,7 +876,7 @@ test("storage: a saved order with a dropped or a new setting is merged, and the 
 });
 
 test("refit: a resize follows the project's saved order, never the default one, and a width with the same cells draws nothing", () => {
-  const page = createPage();
+  const page = newPage();
   const path = "~/work/refit";
   const saved = ["availableModels", "fallbackModel", "alwaysThinkingEnabled", "promptCacheTtl", "autoCompactWindow", "maxEffortLevel", "effortLevel", "model"];
   page.win.localStorage.setItem(keyOfPath(path), JSON.stringify(saved));
@@ -549,7 +907,7 @@ test("refit: a resize follows the project's saved order, never the default one, 
 
 test("storage: text that is not JSON, or not a list, gives the default order", () => {
   for (const [i, raw] of ["{not json", "", "null", "{\"a\":1}", "\"model\"", "42"].entries()) {
-    const page = createPage();
+    const page = newPage();
     const path = "~/work/corrupt" + i;
     page.win.localStorage.setItem(keyOfPath(path), raw);
     const root = show(payloadFor(path), { page });
@@ -558,7 +916,7 @@ test("storage: text that is not JSON, or not a list, gives the default order", (
 });
 
 test("storage: blocked localStorage throws on access, the page still draws, and a move still works in memory for this page", () => {
-  const page = createPage();
+  const page = newPage();
   Object.defineProperty(page.win, "localStorage", { get() { throw new Error("SecurityError: the store is blocked"); } });
   const payload = payloadFor("~/work/blocked");
   let root = show(payload, { page });
@@ -570,7 +928,7 @@ test("storage: blocked localStorage throws on access, the page still draws, and 
   assert.equal(text(statusOf(root)), "Model moved to position 2 of 8.");
   root = show(payload, { page });
   assert.deepEqual(cellKeys(root), want, "a page render in the same page still has the order");
-  assert.ok(listOf(root), "the list is still open");
+  assert.ok(openOf(root), "the editor is still open");
   action(root, "reset").click();
   assert.deepEqual(cellKeys(root), KEYS);
   root = show(payload, { page });
@@ -578,7 +936,7 @@ test("storage: blocked localStorage throws on access, the page still draws, and 
 });
 
 test("storage: a store that refuses a write keeps the order in memory, and one that refuses reads is not fatal", () => {
-  const page = createPage();
+  const page = newPage();
   const real = page.win.localStorage;
   page.win.localStorage = { getItem: (k) => real.getItem(k), setItem() { throw new Error("QuotaExceededError"); }, removeItem() { throw new Error("blocked"); } };
   const payload = payloadFor("~/work/full");
@@ -594,7 +952,7 @@ test("storage: a store that refuses a write keeps the order in memory, and one t
 });
 
 test("storage: a full store still answers reads with the old order, but the moved order stays on the next render", () => {
-  const page = createPage();
+  const page = newPage();
   const real = page.win.localStorage;
   const path = "~/work/quota";
   const old = swap(KEYS, "model", "availableModels");
@@ -635,14 +993,14 @@ test("storage: a full store still answers reads with the old order, but the move
 });
 
 test("storage: the key is band-order: plus the project's path, and a payload with no path stays in memory only", () => {
-  const page = createPage();
+  const page = newPage();
   let root = show(payloadFor("~/work/key"), { page });
   arrangeBtn(root).click();
   action(root, "down:model").click();
   assert.deepEqual([...storeOf(page).keys()], ["band-order:~/work/key"]);
   const nopath = payloadFor();
   delete nopath.path_display;
-  const page2 = createPage();
+  const page2 = newPage();
   root = show(nopath, { page: page2 });
   arrangeBtn(root).click();
   action(root, "down:model").click();
@@ -651,12 +1009,13 @@ test("storage: the key is band-order: plus the project's path, and a payload wit
 });
 
 test("order: the last-slot rule for the open cell stays, and the order itself is never changed by it", () => {
-  const page = createPage();
+  const page = newPage();
   const root = show(payloadFor(), { page, setting: "alwaysThinkingEnabled" });
   narrow(page, root, 660);
   assert.deepEqual(cellKeys(root), ["model", "effortLevel", "maxEffortLevel", "alwaysThinkingEnabled"]);
   arrangeBtn(root).click();
-  assert.deepEqual(rowNames(root), NAMES, "the list shows the saved order, not the displaced one");
+  assert.deepEqual(cellKeys(root), KEYS.slice(0, 4), "arranging shows the saved order, not the displaced one");
+  assert.deepEqual(trayKeys(root), KEYS.slice(4));
   assert.equal(storeOf(page).size, 0);
 });
 
@@ -686,6 +1045,7 @@ const nothingLeft = (root) => {
   assert.equal(byClass(root, "s6-ghost").length, 0, "no gap is left");
   assert.equal(byClass(root, "s6-mdrop").length, 0);
   assert.equal(hasClass(navOf(root), "is-dragging"), false);
+  assert.equal(byClass(root, "is-dragging").length, 0, "no row is left in the grabbing state");
 };
 const listenerCounts = (page) => ["pointermove", "pointerup", "pointercancel", "keydown", "click", "pointerdown"].map((t) => (page.doc.listeners[t] || []).length);
 
@@ -702,7 +1062,7 @@ test("drag: every cell is a link that is not draggable, with a grip, and the nav
 });
 
 test("drag: a short press does not start a drag, takes no pointer capture, and leaves the click alone", async () => {
-  const page = createPage();
+  const page = newPage();
   const root = show(payloadFor(), { page });
   const nav = place(root);
   const cell = cellsOf(root)[2];
@@ -722,7 +1082,7 @@ test("drag: a short press does not start a drag, takes no pointer capture, and l
 });
 
 test("drag: the threshold is 5 pixels from the press, in any direction", () => {
-  const page = createPage();
+  const page = newPage();
   const root = show(payloadFor(), { page });
   const nav = place(root);
   press(cellsOf(root)[2], center(2), 135);
@@ -737,7 +1097,7 @@ test("drag: the threshold is 5 pixels from the press, in any direction", () => {
 });
 
 test("drag: touch, pen, other buttons, modifier keys and the More button start nothing", () => {
-  const page = createPage();
+  const page = newPage();
   const root = show(payloadFor(), { page });
   narrow(page, root, 660);
   const nav = place(root);
@@ -767,7 +1127,7 @@ test("drag: touch, pen, other buttons, modifier keys and the More button start n
 });
 
 test("drag: a real drop reorders, saves, redraws, says where it went, and eats the click that follows", async () => {
-  const page = createPage();
+  const page = newPage();
   const path = "~/work/drop";
   const root = show(payloadFor(path), { page });
   const nav = place(root);
@@ -812,7 +1172,7 @@ test("drag: a real drop reorders, saves, redraws, says where it went, and eats t
 });
 
 test("drag: the line follows the slot, and a drop to the right of a cell lands before the cell after it", () => {
-  const page = createPage();
+  const page = newPage();
   const root = show(payloadFor(), { page });
   place(root);
   press(cellsOf(root)[0], center(0));
@@ -832,7 +1192,7 @@ test("drag: the line follows the slot, and a drop to the right of a cell lands b
 });
 
 test("drag: a drop past the last cell puts the setting last", () => {
-  const page = createPage();
+  const page = newPage();
   const root = show(payloadFor(), { page });
   place(root);
   press(cellsOf(root)[2], center(2));
@@ -844,7 +1204,7 @@ test("drag: a drop past the last cell puts the setting last", () => {
 });
 
 test("drag: a drop where the cell already is saves nothing and says nothing, but still eats the click", () => {
-  const page = createPage();
+  const page = newPage();
   const root = show(payloadFor(), { page });
   place(root);
   const cell = cellsOf(root)[3];
@@ -860,7 +1220,7 @@ test("drag: a drop where the cell already is saves nothing and says nothing, but
 });
 
 test("drag: the lifted cell and the line stay inside the band's box and the window", () => {
-  const page = createPage();
+  const page = newPage();
   const root = show(payloadFor(), { page });
   place(root);
   press(cellsOf(root)[3], center(3), 135);
@@ -888,7 +1248,7 @@ test("drag: the lifted cell and the line stay inside the band's box and the wind
 });
 
 test("drag: over More the button says Drop into More; leaving it puts the words back; a drop makes the setting first behind More", () => {
-  const page = createPage();
+  const page = newPage();
   const root = show(payloadFor(), { page });
   narrow(page, root, 660);
   place(root);
@@ -921,7 +1281,7 @@ test("drag: over More the button says Drop into More; leaving it puts the words 
 });
 
 test("drag: a drag with the open cell in More follows the last-slot rule, by keys", () => {
-  const page = createPage();
+  const page = newPage();
   const root = show(payloadFor(), { page, setting: "fallbackModel" });
   narrow(page, root, 660);
   place(root);
@@ -936,7 +1296,7 @@ test("drag: a drag with the open cell in More follows the last-slot rule, by key
 });
 
 test("drag: Esc puts everything back, says so, and stops the key, so the More list does not close", async () => {
-  const page = createPage();
+  const page = newPage();
   const root = show(payloadFor(), { page });
   narrow(page, root, 660);
   place(root);
@@ -970,7 +1330,7 @@ test("drag: Esc puts everything back, says so, and stops the key, so the More li
 });
 
 test("drag: Esc before the threshold is the page's, and no key listener is added until a drag starts", () => {
-  const page = createPage();
+  const page = newPage();
   const root = show(payloadFor(), { page });
   place(root);
   const keys = (page.doc.listeners.keydown || []).length;
@@ -992,7 +1352,7 @@ test("drag: a pointer cancel, a lost capture, a window blur and a resize each en
     ["resize", (page) => (page.listeners.resize || []).slice().forEach((fn) => fn({}))],
   ];
   for (const [name, end] of ends) {
-    const page = createPage();
+    const page = newPage();
     const root = show(payloadFor(), { page });
     place(root);
     const before = listenerCounts(page);
@@ -1013,7 +1373,7 @@ test("drag: a pointer cancel, a lost capture, a window blur and a resize each en
 
 test("drag: a move with the main button up ends the press with no drag, or a running drag with no message", async () => {
   // Press a cell, leave the window, let go elsewhere, come back and move: no cell lifts.
-  let page = createPage();
+  let page = newPage();
   let root = show(payloadFor(), { page });
   place(root);
   let before = listenerCounts(page);
@@ -1032,7 +1392,7 @@ test("drag: a move with the main button up ends the press with no drag, or a run
   drag(page, center(2) + 80, 135, 2);
   nothingLeft(root);
   // The same for a drag that is running: it ends quietly, changes nothing, and the next move starts nothing.
-  page = createPage();
+  page = newPage();
   root = show(payloadFor(), { page });
   place(root);
   before = listenerCounts(page);
@@ -1056,7 +1416,7 @@ test("drag: a move with the main button up ends the press with no drag, or a run
 test("drag: a real click gets through after each way the click eater goes away", async () => {
   // A drag ended by Esc leaves the eater waiting for the button to come up. Each of these ends the wait.
   const start = (path) => {
-    const page = createPage();
+    const page = newPage();
     const root = show(payloadFor(path), { page });
     place(root);
     const before = listenerCounts(page);
@@ -1114,7 +1474,7 @@ test("drag: a real click gets through after each way the click eater goes away",
 });
 
 test("drag: a draw of the band during a drag ends the drag first, so nothing is stranded", () => {
-  const page = createPage();
+  const page = newPage();
   const root = show(payloadFor(), { page });
   place(root);
   const nav = navOf(root);
@@ -1141,7 +1501,7 @@ test("drag: a drag never changes the address or the open cell, never moves focus
   const calls = [];
   globalThis.fetch = (...args) => { calls.push(args); throw new Error("a drag must not call the network"); };
   try {
-    const page = createPage();
+    const page = newPage();
     const root = show(payloadFor(), { page, setting: "promptCacheTtl" });
     place(root);
     const hash = page.win.location.hash;
@@ -1159,31 +1519,280 @@ test("drag: a drag never changes the address or the open cell, never moves focus
   }
 });
 
-test("drag: with the Arrange list open, a drop shows in the list and the band, and the list stays open", () => {
-  const page = createPage();
-  const root = show(payloadFor(), { page });
-  arrangeBtn(root).click();
-  place(root);
-  press(cellsOf(root)[2], center(2));
-  drag(page, 10);
-  release(page, 10);
-  const want = ["maxEffortLevel", "model", "effortLevel", ...KEYS.slice(3)];
-  assert.deepEqual(cellKeys(root), want);
-  assert.ok(listOf(root));
-  assert.deepEqual(rowNames(root), names(want));
-  assert.equal(action(root, "reset").hasAttribute("disabled"), false);
-});
-
-test("drag: a status line reaches a screen reader for a mouse drop with the list closed", () => {
-  const page = createPage();
+test("drag: a status line reaches a screen reader for a mouse drop with arranging off", () => {
+  const page = newPage();
   const root = show(payloadFor(), { page });
   place(root);
-  assert.equal(listOf(root), undefined);
+  assert.equal(openOf(root), undefined);
   press(cellsOf(root)[7], center(7));
   drag(page, center(7) - 400);
   release(page, center(7) - 400);
   assert.equal(statusOf(root).getAttribute("role"), "status");
   assert.equal(text(statusOf(root)), "Allowed models moved to position 5 of 8.");
+});
+
+// ---------------------------------------------------------------- the mouse drag while arranging (two rows)
+
+// Boxes for the editor: place() gives the band's cells and the More slot a row at the top, and this gives the tray's
+// cells a row below it, `columns` to a line (the band's column count), 132 wide, each line 70 high with 10 between.
+// The tray's first line is 200 to 270, so the middle of the gap between the rows is 185.
+function placeTray(root, columns = null) {
+  const nav = place(root);
+  const trow = trowOf(root);
+  if (!trow) return { nav, trow: null, columns: 0 };
+  const cols = columns || Number(navOf(root).styleMap["--n"]);
+  trow.childNodes.forEach((cell, i) => {
+    const top = 200 + Math.floor(i / cols) * 80;
+    cell.rect = { left: (i % cols) * 132, right: (i % cols + 1) * 132, top, bottom: top + 70, width: 132, height: 70 };
+  });
+  const bottom = 200 + (Math.ceil(trow.childNodes.length / cols) - 1) * 80 + 70;
+  trow.rect = { left: 0, right: cols * 132, top: 200, bottom, width: cols * 132, height: bottom - 200 };
+  return { nav, trow, columns: cols };
+}
+const trayCell = (root, key) => trowOf(root).childNodes.find((n) => n.getAttribute("data-setting") === key);
+const trayY = (line = 0) => 235 + line * 80;
+const arrangedPage = (setting = null, width = 660) => {
+  const page = newPage();
+  const root = show(payloadFor(), { page, setting });
+  narrow(page, root, width);
+  arrangeBtn(root).click();
+  return { page, root };
+};
+
+test("arranging drag: a tray cell dropped in the band lands before the cell under the pointer and moves into the band", () => {
+  const { page, root } = arrangedPage();
+  const nav = navOf(root);
+  placeTray(root);
+  assert.deepEqual(trayKeys(root), KEYS.slice(4));
+  const think = trayCell(root, "alwaysThinkingEnabled");
+  press(think, center(1), trayY());
+  drag(page, center(1) - 20, trayY());
+  assert.deepEqual(nav.pointerCaptures, [1]);
+  assert.ok(hasClass(think, "s6-ghost"), "the tray cell leaves the same dashed gap");
+  assert.ok(hasClass(trowOf(root), "is-dragging") && hasClass(nav, "is-dragging"), "both rows show the grabbing cursor");
+  assert.equal(lifts(root).length, 1);
+  assert.equal(nav.contains(lifts(root)[0]), true, "the lifted cell lives in the nav and reaches over the tray");
+  assert.deepEqual(lifts(root)[0].childNodes.map((n) => text(n)), ["Extended thinking", "On", "Default"], "no control row on the lifted copy");
+  // The pointer is in the tray: the line sits at the tray's slot 1 and covers the cell beside it.
+  assert.equal(lines(root)[0].styleMap.left, "132px");
+  assert.equal(lines(root)[0].styleMap.top, "99px", "the tray cell's top (200) less the nav's top (100) less 1");
+  assert.equal(lines(root)[0].styleMap.height, "72px");
+  // Up into the band, left of Effort's middle: slot 1 of the band.
+  drag(page, 150, 135);
+  assert.equal(lines(root)[0].styleMap.left, "132px");
+  assert.equal(lines(root)[0].styleMap.top, "-1px", "the band cell's top (100) less the nav's top (100) less 1");
+  assert.equal(lines(root)[0].styleMap.height, "72px");
+  release(page, 150, 135);
+  const want = ["model", "alwaysThinkingEnabled", "effortLevel", "maxEffortLevel", "autoCompactWindow", "promptCacheTtl", "fallbackModel", "availableModels"];
+  assert.deepEqual(JSON.parse([...storeOf(page).values()][0]), want);
+  assert.deepEqual(cellKeys(root), want.slice(0, 4));
+  assert.deepEqual(trayKeys(root), want.slice(4));
+  assert.equal(text(statusOf(root)), "Extended thinking moved to position 2 of 8. It is no longer under More settings. Compact window is now under More settings.");
+  nothingLeft(root);
+});
+
+test("arranging drag: a band cell dropped in the tray moves under More, and the tray's first cell moves up", () => {
+  const { page, root } = arrangedPage();
+  placeTray(root);
+  press(cellsOf(root)[1], center(1), 135);
+  drag(page, 36, trayY());
+  assert.equal(lines(root)[0].styleMap.left, "0px", "the tray's slot 0");
+  assert.equal(lines(root)[0].styleMap.top, "99px");
+  release(page, 36, trayY());
+  const want = ["model", "maxEffortLevel", "autoCompactWindow", "promptCacheTtl", "effortLevel", "alwaysThinkingEnabled", "fallbackModel", "availableModels"];
+  assert.deepEqual(JSON.parse([...storeOf(page).values()][0]), want);
+  assert.deepEqual(cellKeys(root), want.slice(0, 4));
+  assert.deepEqual(trayKeys(root), want.slice(4));
+  assert.equal(text(statusOf(root)), "Effort moved to position 5 of 8. It is now under More settings. Cache lifetime moved up from More settings.");
+  nothingLeft(root);
+});
+
+test("arranging drag: the More slot takes a drop as the first place under More, and reads differently from the band's end slot", () => {
+  const { page, root } = arrangedPage();
+  placeTray(root);
+  const slot = moreOf(root);
+  const label = slot.childNodes[0];
+  assert.equal(text(label), STRINGS.band_more_l);
+  press(cellsOf(root)[1], center(1), 135);
+  drag(page, center(1) + 20, 135);
+  assert.equal(hasClass(slot, "s6-mdrop"), false);
+  // Right of the last band cell's middle but not on the slot: the band's end slot, the line shows.
+  drag(page, 500, 135);
+  assert.equal(hasClass(slot, "s6-mdrop"), false);
+  assert.equal(lines(root)[0].hidden, false);
+  assert.equal(lines(root)[0].styleMap.left, "528px", "at the right edge of the last band cell");
+  // On the slot: it takes the drop look and the drop words, and the line gives way.
+  drag(page, 600, 135);
+  assert.ok(hasClass(slot, "s6-mdrop"));
+  assert.equal(text(label), STRINGS.drop_more);
+  assert.equal(lines(root)[0].hidden, true);
+  // Below the middle of the gap the pointer is in the tray, so the slot lets go of it, even at the same x.
+  drag(page, 600, trayY());
+  assert.equal(hasClass(slot, "s6-mdrop"), false);
+  assert.equal(text(label), STRINGS.band_more_l);
+  drag(page, 600, 135);
+  release(page, 600, 135);
+  const want = ["model", "maxEffortLevel", "autoCompactWindow", "promptCacheTtl", "effortLevel", "alwaysThinkingEnabled", "fallbackModel", "availableModels"];
+  assert.deepEqual(JSON.parse([...storeOf(page).values()][0]), want, "the same as a drop on the tray's slot 0");
+  assert.equal(text(moreOf(root).childNodes[0]), STRINGS.band_more_l, "the redrawn slot has its own words");
+  assert.equal(text(statusOf(root)), "Effort moved to position 5 of 8. It is now under More settings. Cache lifetime moved up from More settings.");
+});
+
+test("arranging drag: the band's end slot makes the dropped cell the band's last, and a drop inside a row says only the place", () => {
+  const { page, root } = arrangedPage();
+  placeTray(root);
+  press(cellsOf(root)[0], center(0), 135);
+  drag(page, 500, 135);
+  release(page, 500, 135);
+  assert.deepEqual(cellKeys(root), ["effortLevel", "maxEffortLevel", "autoCompactWindow", "model"]);
+  assert.equal(text(statusOf(root)), "Model moved to position 4 of 8.", "nothing crossed the fold");
+  placeTray(root);
+  // Tray to tray: Extended thinking before Cache lifetime.
+  press(trayCell(root, "alwaysThinkingEnabled"), center(1), trayY());
+  drag(page, 36, trayY());
+  release(page, 36, trayY());
+  assert.deepEqual(trayKeys(root), ["alwaysThinkingEnabled", "promptCacheTtl", "fallbackModel", "availableModels"]);
+  assert.equal(text(statusOf(root)), "Extended thinking moved to position 5 of 8.");
+});
+
+test("arranging drag: a drop where the cell already is saves nothing and says nothing", () => {
+  const { page, root } = arrangedPage();
+  placeTray(root);
+  const cell = trayCell(root, "fallbackModel");
+  press(cell, center(2), trayY());
+  drag(page, center(2) + 30, trayY());
+  drag(page, center(2) - 20, trayY());
+  release(page, center(2) - 20, trayY());
+  assert.equal(storeOf(page).size, 0);
+  assert.equal(text(statusOf(root)), "");
+  nothingLeft(root);
+});
+
+test("arranging drag: the lifted cell and the line stay within the band's top and the tray's bottom", () => {
+  const { page, root } = arrangedPage();
+  placeTray(root);
+  press(trayCell(root, "promptCacheTtl"), center(0), trayY());
+  drag(page, center(0) + 30, trayY() + 10);
+  const lift = lifts(root)[0];
+  drag(page, 9000, 9000);
+  assert.equal(lift.styleMap.top, "112px", "the tray's bottom (270) less its height (70) plus 12, from the nav's top (100)");
+  assert.equal(lift.styleMap.left, "528px", "its right edge ends at the box's right edge, 660");
+  drag(page, -9000, -9000);
+  assert.equal(lift.styleMap.top, "-12px", "no higher than 12 above the band");
+  assert.equal(lift.styleMap.left, "0px");
+  // The line goes to the end of the tray's row and covers the last cell.
+  drag(page, 9000, trayY());
+  assert.equal(lines(root)[0].styleMap.left, "528px");
+  assert.equal(lines(root)[0].styleMap.top, "99px");
+  release(page, 9000, trayY());
+});
+
+test("arranging drag: a tray that wraps is read by line first and then by middle, and the line follows", () => {
+  const { page, root } = arrangedPage(null, 343);
+  assert.deepEqual(cellKeys(root), ["model"]);
+  assert.equal(navOf(root).styleMap["--n"], "2");
+  const { columns } = placeTray(root);
+  assert.equal(columns, 2);
+  assert.equal(trayKeys(root).length, 7);
+  press(cellsOf(root)[0], center(0), 135);
+  // The second line of the tray, left of its first middle: slot 2 (Compact window), the line at its left, on line 2.
+  drag(page, 36, trayY(1));
+  assert.equal(lines(root)[0].styleMap.left, "0px");
+  assert.equal(lines(root)[0].styleMap.top, "179px", "the second line's top (280) less the nav's top (100) less 1");
+  // The end of the first line: slot 2 is also the first cell of the second line, and the line is drawn after the first line's last cell.
+  drag(page, 250, trayY(0));
+  assert.equal(lines(root)[0].styleMap.left, "264px");
+  assert.equal(lines(root)[0].styleMap.top, "99px");
+  drag(page, 36, trayY(1));
+  release(page, 36, trayY(1));
+  assert.deepEqual(JSON.parse([...storeOf(page).values()][0]), ["effortLevel", "maxEffortLevel", "model", "autoCompactWindow", "promptCacheTtl", "alwaysThinkingEnabled", "fallbackModel", "availableModels"]);
+  assert.equal(text(statusOf(root)), "Model moved to position 3 of 8. It is now under More settings. Effort moved up from More settings.");
+});
+
+test("arranging drag: a press on Earlier or Later starts nothing, in the band or the tray, and a press on the grip does", () => {
+  const { page, root } = arrangedPage();
+  const nav = placeTray(root).nav;
+  for (const name of ["down:effortLevel", "up:effortLevel", "down:fallbackModel"]) {
+    press(action(root, name), center(1), 135);
+    drag(page, center(1) + 90, 135);
+    drag(page, center(1) + 200, trayY());
+    nothingLeft(root);
+    release(page, center(1) + 200, trayY());
+  }
+  assert.equal(nav.pointerCaptures, undefined);
+  assert.equal(storeOf(page).size, 0);
+  // The button still does its job on a click.
+  action(root, "down:effortLevel").click();
+  assert.equal(text(statusOf(root)), "Effort moved to position 3 of 8.");
+  placeTray(root);
+  press(byClass(cellsOf(root)[0], "s6-grip")[0], center(0), 135);
+  drag(page, center(0) + 90, 135);
+  assert.equal(lifts(root).length, 1, "the grip takes a drag");
+  release(page, center(0) + 90, 135);
+  // The status text and the cell's own spans take one too.
+  press(byClass(cellsOf(root)[1], "s4-sl")[0], center(1), 135);
+  drag(page, center(1) + 90, 135);
+  assert.equal(lifts(root).length, 1);
+  release(page, center(1), 135);
+});
+
+test("arranging drag: Esc puts everything back in both rows and says so", async () => {
+  const { page, root } = arrangedPage();
+  placeTray(root);
+  press(trayCell(root, "availableModels"), center(3), trayY());
+  drag(page, center(1), 135);
+  assert.equal(lifts(root).length, 1);
+  const esc = page.doc.dispatch("keydown", { key: "Escape" });
+  assert.equal(esc.defaultPrevented, true);
+  nothingLeft(root);
+  assert.equal(hasClass(trowOf(root), "is-dragging"), false);
+  assert.deepEqual(trayKeys(root), KEYS.slice(4));
+  assert.ok(trayOf(root), "the editor stays open");
+  assert.equal(text(statusOf(root)), "Move canceled. Allowed models is back where it was.");
+  assert.equal(storeOf(page).size, 0);
+  release(page, center(1), 135);
+  await tick();
+});
+
+test("arranging drag: with no settings behind More there is one row, and a drop keeps every cell in the band", () => {
+  const page = newPage();
+  const root = show(payloadFor(), { page });
+  arrangeBtn(root).click();
+  assert.equal(trowOf(root), undefined);
+  place(root);
+  press(cellsOf(root)[0], center(0), 135);
+  drag(page, 9000, 135);
+  assert.equal(lines(root)[0].styleMap.top, undefined, "one row: the line keeps its own top and height from the style sheet");
+  release(page, 9000, 135);
+  assert.deepEqual(cellKeys(root), [...KEYS.slice(1), "model"]);
+  assert.equal(text(statusOf(root)), "Model moved to position 8 of 8.");
+});
+
+test("arranging drag: after Done the band drags as before, in one row, and the line has no top of its own", () => {
+  const { page, root } = arrangedPage();
+  action(root, "done").click();
+  place(root);
+  press(cellsOf(root)[0], center(0), 135);
+  drag(page, center(0) + 200, 135);
+  assert.equal(lines(root)[0].styleMap.top, undefined);
+  assert.equal(lines(root)[0].styleMap.height, undefined);
+  release(page, center(3) - 5, 135);
+  assert.deepEqual(cellKeys(root), ["effortLevel", "maxEffortLevel", "model", "autoCompactWindow"]);
+  assert.equal(text(statusOf(root)), "Model moved to position 3 of 8.");
+});
+
+test("arranging drag: a drag that is running when the band is drawn again ends first, in both rows", () => {
+  const { page, root } = arrangedPage();
+  placeTray(root);
+  press(trayCell(root, "fallbackModel"), center(2), trayY());
+  drag(page, center(2) + 40, trayY() + 5);
+  assert.equal(lifts(root).length, 1);
+  band.setNotSaved(new Set(["effortLevel"]));
+  nothingLeft(root);
+  assert.equal(hasClass(trowOf(root), "is-dragging"), false);
+  release(page, center(2) + 40, trayY() + 5);
+  assert.deepEqual(trayKeys(root), KEYS.slice(4));
+  assert.equal(storeOf(page).size, 0);
 });
 
 // ---------------------------------------------------------------- the style sheet

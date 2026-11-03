@@ -557,9 +557,9 @@ body{background:var(--page-bg)}
 .s6-ar .v{font-size:var(--text-sm);font-weight:var(--weight-semibold);white-space:nowrap}
 .s6-ar .v .s5-sv-none{font-weight:var(--weight-regular)}
 .s6-ar.is-moved{background:var(--nav-active-bg);box-shadow:inset 3px 0 0 var(--accent)}
-.s6-mv{display:inline-flex;gap:2px}
-.s6-mv button{appearance:none;background:none;border:var(--border-width) solid var(--border-strong);border-radius:var(--radius-sm);width:32px;height:32px;display:grid;place-items:center;color:var(--text);padding:0;cursor:pointer}
-.s6-mv button[disabled]{color:var(--text-muted);border-color:var(--border);cursor:default}
+.s6-mv{display:inline-flex;gap:4px}
+.s6-mv button{appearance:none;background:var(--card-bg);border:var(--border-width) solid var(--border-strong);border-radius:var(--radius-sm);width:28px;height:28px;display:grid;place-items:center;color:var(--text);padding:0;cursor:pointer}
+.s6-mv button[disabled]{color:var(--text-muted);border-color:var(--border);background:transparent;cursor:default}
 .s6-mv button:focus-visible{outline:var(--focus-width) solid var(--focus-ring);outline-offset:1px}
 .s6-mv svg{width:14px;height:14px}
 .s6-fold{display:flex;align-items:center;gap:8px;padding:6px 16px;font-size:var(--text-xs);color:var(--text-muted);background:var(--surface)}
@@ -567,6 +567,27 @@ body{background:var(--page-bg)}
 .s6-af{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 12px;align-items:center;padding:10px 16px 12px;border-top:var(--border-width) solid var(--border)}
 .s6-af p{grid-column:1/-1;color:var(--text-muted);font-size:var(--text-sm)}
 .s6-af .s4-link[disabled]{color:var(--text-muted);text-decoration:none;cursor:default}
+/* Arranging in the band (Stage 5 direction A): over 720px the band is the editor and a tray under it holds the settings
+   behind More. The tray is in the flow, so it pushes the page down. Class names are the stage's (s7-). Tokens only. */
+.s4 .s6-arr[aria-pressed="true"]{background:var(--nav-active-bg);border-color:var(--accent);color:var(--text)}
+.s7-ctl{display:flex;align-items:center;justify-content:space-between;margin-top:6px;padding-right:4px}
+.s7-ed .s5-stat,.s7-trow .s5-stat{align-content:start;overflow:visible;cursor:grab}
+.s7-ed .s5-more{cursor:default}
+.s5-more.is-open:not(.s6-mdrop){background:var(--nav-hover-bg)}
+.s5-more.is-open .s5-chev{transform:rotate(180deg)}
+.s6-a .s7-ctl .s6-grip{display:inline-block;position:static}
+.s7-tray{padding:0 var(--space-6);background:var(--card-bg)}
+.s7-tray .s6-fold{padding:6px 0;background:none}
+.s7-trow{display:grid;grid-template-columns:repeat(var(--n,1),minmax(0,1fr));position:relative}
+.s7-trow [data-setting]{position:relative;user-select:none;-webkit-user-select:none}
+.s7-trow>.s5-stat.s7-lead{border-left:0;padding-left:0}
+.s7-trow.is-dragging,.s7-trow.is-dragging *{cursor:grabbing}
+.s7-trow .s6-ghost{background:var(--surface);outline:var(--border-width) dashed var(--border-strong);outline-offset:-1px}
+.s7-trow .s6-ghost>*{visibility:hidden}
+.s7-empty{margin:var(--space-3) 0 0;border:var(--border-width) dashed var(--border-strong);border-radius:var(--radius-sm);background:var(--surface);color:var(--text-muted);font-size:var(--text-sm);padding:14px 16px}
+.s7-af{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px 16px;padding:10px 0 12px;border-top:0;border-bottom:var(--border-width) solid var(--border)}
+.s7-af p{margin:0 auto 0 0}
+.s7-note{margin:0;padding:8px 16px 0;color:var(--text-muted);font-size:var(--text-sm)}
 /* The panes: each scrolls on its own, so the rail's foot stays at the bottom of the window */
 .s5-w{display:grid;grid-template-columns:minmax(0,1fr) 368px;border-top:var(--border-width) solid var(--border)}
 .s5-lock{height:calc(100vh - 56px);min-height:0;overflow:hidden;position:relative}
@@ -674,8 +695,11 @@ body{background:var(--page-bg)}
   .s4-rf .s4-wide{width:auto;padding-inline:var(--space-4)}
   .s4-rail:has(.s4-rf :not(.s4-slot)){padding-bottom:calc(var(--s4-foot,108px) + 12px)}
   .s4-rb .s4-rh,.s4-rb .nt{scroll-margin-top:110px}
+  .s6-ap button,.s7-tray button,.s5-pop button,.s5-pop a{scroll-margin-bottom:calc(var(--s4-foot,108px) + 12px)}
   .s5-a .s5-stat{padding-inline:var(--space-3)}
   .s5-a .s5-stat:first-child{padding-left:0}
+  .s7-trow .s5-stat{padding-inline:var(--space-3)}
+  .s7-trow>.s5-stat:first-child,.s7-trow>.s5-stat.s7-lead{padding-left:0}
   .s5-pop{border-right:var(--border-width) solid var(--border-strong);right:var(--space-6);width:400px}
 }
 /* A phone: the band stays pinned to the top (so the top bar scrolls away), and the list opens in the flow */
@@ -707,6 +731,9 @@ body{background:var(--page-bg)}
   .s6-act{justify-self:start}
   .s6-ar{padding:4px 0 4px 8px;min-height:52px}
   .s6-mv button{width:44px;height:44px}
+  /* The sticky band is about 109px tall with a Not saved line, so a focused step keeps 12px and its ring clear of it */
+  .s6-ap button{scroll-margin-top:124px}
+  .s7-note{padding:8px 0 0 8px}
   .s6-aph{padding:12px 0 8px 8px}
   .s6-af{padding:10px 0 12px 8px}
   .s6-fold{padding-inline:8px}
