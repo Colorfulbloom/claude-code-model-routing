@@ -28,7 +28,7 @@ def data_pages():
 class ChecksFiles(unittest.TestCase):
     def test_one_file_per_page(self):
         names = sorted(f[:-5] for f in os.listdir(pages.CHECKS_DIR) if f.endswith(".json"))
-        self.assertEqual(len(data_pages()), 12)
+        self.assertEqual(len(data_pages()), 13)
         self.assertEqual(names, sorted(data_pages()))
         self.assertEqual([f for f in os.listdir(pages.CHECKS_DIR) if not f.endswith(".json")], [])
 
@@ -61,7 +61,7 @@ class ChecksFiles(unittest.TestCase):
         self.assertEqual([r[1] for r in detail], ["#/sessions/abc-123"])
         self.assertIn("Tidewater reporting", detail[0][2])
         self.assertEqual(sum(1 for r in routes if r[0] in ("agent-detail", "trail")), 7)
-        self.assertEqual(len(routes) * len(pages.THEMES) * len(pages.WIDTHS), 128)
+        self.assertEqual(len(routes) * len(pages.THEMES) * len(pages.WIDTHS), 132)
         self.assertFalse([r for r in routes if pages.SESSION_TOKEN in r[1]])
 
     def test_settings_and_trail_texts_avoid_the_forms_innertext_changes(self):

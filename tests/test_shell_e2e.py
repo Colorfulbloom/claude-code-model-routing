@@ -373,7 +373,7 @@ class ShellE2E(unittest.TestCase):
             self.open("#/overview", width)
             for hash_, section in ROUTES:
                 self.page.go(hash_, section)
-                self.assertEqual(self.page.eval("document.querySelectorAll('main [data-page]').length"), 12)
+                self.assertEqual(self.page.eval("document.querySelectorAll('main [data-page]').length"), 13)
                 self.assertTrue(self.page.eval("document.querySelector('[data-page=%s] h1').textContent.length > 0" % section), hash_)
         self.page.go("#/overview?project=all", "all-projects")
         self.assertEqual(self.page.eval("document.querySelector('.sb-g').textContent"), "All projects")

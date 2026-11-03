@@ -8,6 +8,7 @@ const circle = (cx, cy, r) => ["circle", { cx, cy, r }];
 const path = (d) => ["path", { d }];
 
 const ICONS = {
+  pulse: [path("M3 12h4l2.5-6 5 12 2.5-6h4")],
   overview: [rect(3, 3, 7, 7, 1.5), rect(14, 3, 7, 7, 1.5), rect(3, 14, 7, 7, 1.5), rect(14, 14, 7, 7, 1.5)],
   session: [rect(3, 4, 18, 16, 2), path("M7 9l3 3-3 3M12 15h5")],
   agents: [circle(9, 8, 3.5), path("M3 20a6 6 0 0 1 12 0M16 4.5a3.5 3.5 0 0 1 0 7M21 20a6 6 0 0 0-4.5-5.8")],

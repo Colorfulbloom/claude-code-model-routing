@@ -1,7 +1,8 @@
 // Hash routes. The router only parses the hash and shows or hides the page sections. Each section is
 // filled by its own module in js/pages/.
 //
-//   #/overview                         #/models
+//   #/live                             #/overview
+//   #/models
 //   #/agents                           #/sessions
 //   #/agents/<name or @main>           #/sessions/<id>
 //   #/settings                         #/settings/<agent key>/<setting key>   (the trail)
@@ -16,7 +17,7 @@ import { RANGES } from "./format.js";
 
 // One section and one module per page. The overview route fills "all-projects" when the project is All.
 export const PAGES = [
-  "overview", "agents", "agent-detail", "models", "sessions", "session-detail",
+  "live", "overview", "agents", "agent-detail", "models", "sessions", "session-detail",
   "settings", "trail", "attention", "files", "rules", "all-projects",
 ];
 
@@ -37,7 +38,7 @@ export function routePath(name, params = {}) {
     case "agent-detail": return "/agents/" + encodeKey(params.agent);
     case "session-detail": return "/sessions/" + encodeURIComponent(params.id);
     case "trail": return "/settings/" + encodeKey(params.agent) + "/" + encodeURIComponent(params.setting);
-    case "overview": case "agents": case "models": case "sessions":
+    case "live": case "overview": case "agents": case "models": case "sessions":
     case "settings": case "attention": case "files": case "rules":
       return "/" + name;
     default: return "/overview";
@@ -97,7 +98,7 @@ function parseRoute(hash) {
 
   if (path === "" || path === "/") return { name: "overview", params: {}, query, known: true };
   if (segments.length === 1) {
-    return ["overview", "agents", "models", "sessions", "settings", "attention", "files", "rules"].includes(first)
+    return ["live", "overview", "agents", "models", "sessions", "settings", "attention", "files", "rules"].includes(first)
       ? route(first) : unknown;
   }
   if (first === "agents" && segments.length === 2) {
