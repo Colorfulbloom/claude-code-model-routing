@@ -1,0 +1,1150 @@
+#!/usr/bin/env python3
+"""Start, find and stop Routing Dashboard servers for Claude Code sessions.
+
+The routing-dashboard plugin's skill runs this as
+python3 "<plugin root>/bin/routing-dashboard" [global options] [action] [args],
+and its SessionEnd hook runs the hidden action session-end. Python 3.9 standard
+library only, and no imports from the repo.
+
+Global options come before the action: --data DIR (else env CLAUDE_PLUGIN_DATA),
+--default-project DIR (else the working folder), --session ID, and --fixture DIR
+(tests only, needs env ROUTING_DASHBOARD_TEST_FIXTURES=1). After the action only
+that action's own options are allowed, so the skill's $ARGUMENTS can't override a
+global option.
+
+Actions: start (the default), stop [--all], reload, status [--all], open,
+project DIR, edits, log. Run with --session (the skill path) the launcher always
+exits 0 and reports a failure as one stdout line that starts "error: ", because a
+non-zero exit aborts the skill. Run by hand it exits 1 for a failure and 2 for a
+usage error, and writes errors to stderr.
+
+State lives under the data folder, folders 0700 and files 0600:
+servers/<id>.json (one record per project), servers/.lock, logs/<id>.log and
+links/<id>.url. The id is sha1(realpath(project))[:12].
+
+An edit link holds a key. It is never printed, logged or put in an error message.
+read_launch_line is the only function that holds it.
+"""
+import sys
+sys.dont_write_bytecode = True
+
+import contextlib
+import errno
+import fcntl
+import hashlib
+import http.client
+import json
+import os
+import re
+import select
+import signal
+import socket
+import subprocess
+import time
+from datetime import datetime
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DEFAULT_PORT = 8377
+LOCK_WAIT = 45
+END_LOCK_WAIT = 30
+LAUNCH_WAIT = 15
+STOP_WAIT = 5
+LOG_LIMIT = 1024 * 1024
+LOG_KEEP = 256 * 1024
+LOG_LINES = 40
+SESSION_RE = re.compile(r"[A-Za-z0-9_-]{0,128}")
+LINE_RE = re.compile(r"http://127\.0\.0\.1:([0-9]{1,5})/(#/settings\?edit=[A-Za-z0-9_-]+)?")
+EDIT_MARK = "#/settings?edit="
+SANDBOX_MESSAGE = ("Claude Code's sandbox blocked the dashboard launcher. "
+                   "See \"Sandbox\" in the routing-dashboard plugin README.")
+USAGE = ("usage: routing-dashboard [start|stop|reload|status|open|project DIR|edits|log] "
+         "[--port N] [--all] [--no-open] [--key-file]")
+KEY_FILE_HINT = "Run edits --key-file to save the link to a file instead."
+
+GLOBAL_OPTIONS = ("--data", "--default-project", "--session", "--fixture")
+# action -> (options as {name: takes a value}, number of positional words)
+ACTIONS = {
+    "start": ({"--port": True, "--no-open": False}, 0),
+    "stop": ({"--all": False}, 0),
+    "reload": ({"--no-open": False, "--key-file": False}, 0),
+    "status": ({"--all": False}, 0),
+    "open": ({}, 0),
+    "project": ({"--port": True, "--no-open": False}, 1),
+    "edits": ({"--port": True, "--no-open": False, "--key-file": False}, 0),
+    "log": ({}, 0),
+    "session-end": ({}, 0),
+    "_end": ({"--session": True, "--claude-pid": True, "--claude-started": True}, 0),
+}
+QUIET_ACTIONS = ("session-end", "_end")
+
+
+class Usage(Exception):
+    """A bad command line. The text is ours and holds no key."""
+
+
+class Fail(Exception):
+    """A failure to report. The text is ours and holds no key."""
+
+
+class Ctx:
+    """What one run knows: where the data is, who is calling, which folder it means."""
+
+    def __init__(self):
+        self.data = None
+        self.session = None
+        self.default_project = None
+        self.fixture = None
+        self.skill = False
+        self.owner = None
+        self.owner_set = False
+
+
+def say(line):
+    sys.stdout.write(line + "\n")
+
+
+def clean(text, limit=80):
+    text = "".join(ch if ch.isprintable() else "?" for ch in str(text))
+    return text if len(text) <= limit else text[:limit] + "..."
+
+
+# --------------------------------------------------------------------------
+# Command line
+
+def parse_args(argv, state):
+    """Return (globals, action, options, positional). Global options come first."""
+    glob = {}
+    i = 0
+    while i < len(argv) and argv[i] in GLOBAL_OPTIONS:
+        name = argv[i]
+        if name == "--session":
+            state["skill"] = True
+        if name in glob:
+            raise Usage("%s was given twice" % name)
+        if i + 1 >= len(argv):
+            raise Usage("%s needs a value" % name)
+        glob[name] = argv[i + 1]
+        i += 2
+    rest = argv[i:]
+    if rest and not rest[0].startswith("--"):
+        action, rest = rest[0], rest[1:]
+    else:
+        action = "start"
+    if action not in ACTIONS:
+        raise Usage("unknown action %s" % clean(action))
+    if action in QUIET_ACTIONS:
+        if state["skill"]:
+            raise Usage("%s is not an action the skill can run" % action)
+        state["quiet"] = True
+    spec, wanted = ACTIONS[action]
+    opts = {}
+    pos = []
+    j = 0
+    while j < len(rest):
+        word = rest[j]
+        if word in spec:
+            if word in opts:
+                raise Usage("%s was given twice" % word)
+            if spec[word]:
+                if j + 1 >= len(rest):
+                    raise Usage("%s needs a value" % word)
+                opts[word] = rest[j + 1]
+                j += 2
+            else:
+                opts[word] = True
+                j += 1
+        elif word.startswith("--"):
+            raise Usage("%s is not an option of %s" % (clean(word), action))
+        else:
+            pos.append(word)
+            j += 1
+    if len(pos) != wanted:
+        raise Usage("%s takes %d word%s after the action, got %d"
+                    % (action, wanted, "" if wanted == 1 else "s", len(pos)))
+    return glob, action, opts, pos
+
+
+def parse_port(opts):
+    if "--port" not in opts:
+        return None
+    text = opts["--port"]
+    if not re.fullmatch(r"[0-9]{1,5}", text) or int(text) > 65535:
+        raise Usage("--port needs a number from 0 to 65535")
+    return int(text)
+
+
+def build_ctx(glob):
+    ctx = Ctx()
+    ctx.data = glob.get("--data") or os.environ.get("CLAUDE_PLUGIN_DATA") or ""
+    if not ctx.data:
+        raise Fail("no data folder: pass --data or set CLAUDE_PLUGIN_DATA")
+    ctx.data = os.path.abspath(ctx.data)
+    if "--session" in glob:
+        if not SESSION_RE.fullmatch(glob["--session"]):
+            raise Usage("--session takes letters, digits, - and _ (up to 128)")
+        ctx.session = glob["--session"]
+        ctx.skill = True
+    ctx.default_project = os.path.abspath(glob.get("--default-project") or os.getcwd())
+    if "--fixture" in glob:
+        if os.environ.get("ROUTING_DASHBOARD_TEST_FIXTURES") != "1":
+            raise Usage("--fixture is for tests only")
+        if not os.path.isdir(glob["--fixture"]):
+            raise Usage("--fixture needs an existing folder")
+        ctx.fixture = os.path.abspath(glob["--fixture"])
+    return ctx
+
+
+# --------------------------------------------------------------------------
+# Processes
+
+def run_ps(*args):
+    """Run ps and return its stdout, or "" when it finds nothing. A blocked ps raises PermissionError."""
+    try:
+        proc = subprocess.run(("ps", "-ww") + args, stdout=subprocess.PIPE,
+                              stderr=subprocess.DEVNULL, timeout=5, universal_newlines=True)
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return ""
+    return proc.stdout.strip() if proc.returncode == 0 else ""
+
+
+def ps_command(pid):
+    return run_ps("-o", "command=", "-p", str(pid))
+
+
+def proc_info(pid):
+    """Return (stat, lstart) for a pid, or None when ps doesn't know it."""
+    text = run_ps("-o", "stat=", "-o", "lstart=", "-p", str(pid))
+    parts = text.split(None, 1)
+    if len(parts) < 2:
+        return None
+    return parts[0], parts[1].strip()
+
+
+def parent_of(pid):
+    text = run_ps("-o", "ppid=", "-p", str(pid))
+    return int(text) if text.isdigit() else 0
+
+
+def pid_exists(pid):
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+def claude_identity():
+    """Return (claude_pid, claude_started) from env CLAUDE_PID, or (None, None).
+
+    CLAUDE_PID is undocumented, so it counts only when it names one of this
+    process's ancestors, up to 8 levels above the parent.
+    """
+    raw = os.environ.get("CLAUDE_PID", "")
+    if not re.fullmatch(r"[0-9]{1,10}", raw) or int(raw) <= 0:
+        return None, None
+    pid = int(raw)
+    cur = os.getppid()
+    for _ in range(8):
+        if cur == pid:
+            info = proc_info(pid)
+            return pid, (info[1] if info else None)
+        if cur <= 1:
+            break
+        cur = parent_of(cur)
+    return None, None
+
+
+def owner_alive(owner):
+    pid = owner.get("claude_pid")
+    if pid is None:
+        return True
+    if not pid_exists(pid):
+        return False
+    info = proc_info(pid)
+    if info is None or info[0].startswith("Z"):
+        return False
+    started = owner.get("claude_started")
+    return started is None or info[1] == started
+
+
+def ps_matches(rec):
+    command = ps_command(rec["pid"])
+    return bool(command) and rec["server"] in command
+
+
+def process_ours(rec):
+    return pid_exists(rec["pid"]) and ps_matches(rec)
+
+
+def wait_gone(pid, seconds):
+    deadline = time.monotonic() + seconds
+    while time.monotonic() < deadline:
+        if not pid_exists(pid):
+            return True
+        time.sleep(0.05)
+    if not pid_exists(pid):
+        return True
+    info = proc_info(pid)
+    return info is None or info[0].startswith("Z")
+
+
+def stop_process(rec, between=None):
+    """SIGTERM, wait, SIGKILL. Signals only a pid whose command holds the record's server path.
+
+    Returns True when a process was signalled. between runs after SIGTERM.
+    """
+    if not process_ours(rec):
+        return False
+    pid = rec["pid"]
+    try:
+        os.kill(pid, signal.SIGTERM)
+    except ProcessLookupError:
+        return False
+    if between is not None:
+        between()
+    if not wait_gone(pid, STOP_WAIT) and ps_matches(rec):
+        try:
+            os.kill(pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        wait_gone(pid, 3)
+    return True
+
+
+def probe_http(port, timeout=2):
+    """True when GET / on 127.0.0.1:port answers 200 from a Routing Dashboard server."""
+    conn = http.client.HTTPConnection("127.0.0.1", port, timeout=timeout)
+    try:
+        conn.putrequest("GET", "/", skip_host=True, skip_accept_encoding=True)
+        conn.putheader("Host", "127.0.0.1:%d" % port)
+        conn.endheaders()
+        resp = conn.getresponse()
+        resp.read()
+        return resp.status == 200 and (resp.getheader("Server") or "").startswith("RoutingDashboard")
+    except (OSError, http.client.HTTPException):
+        return False
+    finally:
+        conn.close()
+
+
+def check_record(ctx, records, rid, rec):
+    """Return "live", "dead" or "hung". Dead and hung records are forgotten.
+
+    A hung server is one whose process is ours but whose port doesn't answer twice
+    (the second time with a 5 s timeout). It is stopped, because ps matched it.
+    """
+    if not process_ours(rec):
+        forget(ctx, rid)
+        del records[rid]
+        return "dead"
+    if probe_http(rec["port"]) or probe_http(rec["port"], timeout=5):
+        return "live"
+    stop_process(rec)
+    forget(ctx, rid)
+    del records[rid]
+    say("stopped a server for %s that stopped answering" % rec["project"])
+    return "hung"
+
+
+# --------------------------------------------------------------------------
+# State under the data folder
+
+def project_id(project):
+    return hashlib.sha1(os.path.realpath(project).encode()).hexdigest()[:12]
+
+
+def servers_dir(data):
+    return os.path.join(data, "servers")
+
+
+def record_path(ctx, rid):
+    return os.path.join(servers_dir(ctx.data), rid + ".json")
+
+
+def log_path(ctx, rid):
+    return os.path.join(ctx.data, "logs", rid + ".log")
+
+
+def link_path(ctx, rid):
+    return os.path.join(ctx.data, "links", rid + ".url")
+
+
+def ensure_dirs(data):
+    try:
+        os.makedirs(data, mode=0o700, exist_ok=True)
+    except (FileExistsError, NotADirectoryError):
+        raise Fail("the data path is not a folder: %s" % clean(data, 200))
+    for name in ("servers", "logs", "links"):
+        path = os.path.join(data, name)
+        try:
+            os.mkdir(path, 0o700)
+        except FileExistsError:
+            pass
+        os.chmod(path, 0o700)
+
+
+class Lock:
+    """An exclusive flock on servers/.lock, polled every 50 ms."""
+
+    def __init__(self, folder, wait):
+        self.fd = os.open(os.path.join(folder, ".lock"), os.O_RDWR | os.O_CREAT, 0o600)
+        deadline = time.monotonic() + wait
+        while True:
+            try:
+                fcntl.flock(self.fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                return
+            except OSError as exc:
+                if not isinstance(exc, BlockingIOError) and exc.errno != errno.EACCES:
+                    os.close(self.fd)
+                    raise
+            if time.monotonic() >= deadline:
+                os.close(self.fd)
+                raise Fail("another launcher is busy, try again")
+            time.sleep(0.05)
+
+    def release(self):
+        try:
+            fcntl.flock(self.fd, fcntl.LOCK_UN)
+        finally:
+            os.close(self.fd)
+
+
+def write_private(path, data, replace=True):
+    """Write bytes to a new 0600 file next to path, fsync, then rename it over path."""
+    tmp = "%s.tmp%d" % (path, os.getpid())
+    try:
+        os.unlink(tmp)
+    except FileNotFoundError:
+        pass
+    fd = os.open(tmp, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+    try:
+        with os.fdopen(fd, "wb") as fh:
+            fh.write(data)
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
+
+def save_record(ctx, rid, rec):
+    write_private(record_path(ctx, rid), (json.dumps(rec, indent=2, sort_keys=True) + "\n").encode("utf-8"))
+
+
+def unlink_quiet(path):
+    try:
+        os.unlink(path)
+    except FileNotFoundError:
+        pass
+
+
+def forget(ctx, rid):
+    """Delete a project's record and its link file."""
+    unlink_quiet(record_path(ctx, rid))
+    unlink_quiet(link_path(ctx, rid))
+
+
+def valid_record(raw):
+    """Return a record with every field present, or None when raw isn't one."""
+    if not isinstance(raw, dict):
+        return None
+    for key in ("pid", "port"):
+        if not isinstance(raw.get(key), int) or isinstance(raw.get(key), bool):
+            return None
+    if raw["pid"] <= 0 or not 0 <= raw["port"] <= 65535:
+        return None
+    for key in ("project", "server"):
+        if not isinstance(raw.get(key), str) or not raw[key]:
+            return None
+    rec = dict(raw)
+    owners = []
+    for owner in raw.get("owners") if isinstance(raw.get("owners"), list) else []:
+        if not isinstance(owner, dict):
+            continue
+        pid = owner.get("claude_pid")
+        if pid is not None and (not isinstance(pid, int) or isinstance(pid, bool)):
+            continue
+        owners.append({"claude_pid": pid,
+                       "claude_started": owner.get("claude_started")
+                       if isinstance(owner.get("claude_started"), str) else None,
+                       "session": owner.get("session") if isinstance(owner.get("session"), str) else ""})
+    rec["owners"] = owners
+    rec["manual"] = raw.get("manual") is True
+    rec["edits"] = raw.get("edits") is True
+    for key in ("plugin_root", "plugin_version", "started", "log", "link_file", "fixture"):
+        if not isinstance(rec.get(key), str):
+            rec[key] = None
+    return rec
+
+
+def load_records(ctx):
+    """Return {id: record}. A file that isn't a record is deleted."""
+    records = {}
+    folder = servers_dir(ctx.data)
+    for name in sorted(os.listdir(folder)):
+        if not name.endswith(".json") or name.startswith("."):
+            continue
+        path = os.path.join(folder, name)
+        try:
+            with open(path, "r", encoding="utf-8") as fh:
+                rec = valid_record(json.load(fh))
+        except FileNotFoundError:
+            continue
+        except (ValueError, UnicodeDecodeError):
+            rec = None
+        if rec is None:
+            unlink_quiet(path)
+            say("cleaned up an unreadable server record (%s)" % clean(name))
+            continue
+        records[name[:-5]] = rec
+    return records
+
+
+def prune(ctx, records):
+    """Drop owners whose Claude Code process is gone. Stop a server left with none."""
+    for rid, rec in list(records.items()):
+        keep = [o for o in rec["owners"] if owner_alive(o)]
+        if len(keep) == len(rec["owners"]):
+            continue
+        rec["owners"] = keep
+        if keep or rec["manual"]:
+            save_record(ctx, rid, rec)
+            continue
+        stopped = stop_process(rec)
+        forget(ctx, rid)
+        del records[rid]
+        if stopped:
+            say("stopped the server for %s: every session that used it has ended" % rec["project"])
+
+
+def add_owner(rec, owner):
+    """Add owner unless the same Claude Code process, or the same session when pid is unknown, is in."""
+    for have in rec["owners"]:
+        if owner["claude_pid"] is not None:
+            if have["claude_pid"] == owner["claude_pid"] and have["claude_started"] == owner["claude_started"]:
+                return
+        elif have["claude_pid"] is None and have["session"] == owner["session"]:
+            return
+    rec["owners"].append(owner)
+
+
+def caller_owner(ctx):
+    if not ctx.skill:
+        return None
+    if not ctx.owner_set:
+        pid, started = claude_identity()
+        ctx.owner = {"claude_pid": pid, "claude_started": started, "session": ctx.session}
+        ctx.owner_set = True
+    return ctx.owner
+
+
+def first_port():
+    raw = os.environ.get("ROUTING_DASHBOARD_FIRST_PORT", "")
+    if re.fullmatch(r"[0-9]{1,5}", raw) and 0 < int(raw) <= 65535:
+        return int(raw)
+    return DEFAULT_PORT
+
+
+def server_path():
+    path = os.path.join(ROOT, "payload", "dashboard", "server.py")
+    if not os.path.isfile(path):
+        raise Fail("the plugin's server is missing: %s" % clean(path, 300))
+    return path
+
+
+def plugin_version():
+    try:
+        with open(os.path.join(ROOT, ".claude-plugin", "plugin.json"), "r", encoding="utf-8") as fh:
+            version = json.load(fh).get("version")
+    except (OSError, ValueError, AttributeError):
+        return "unknown"
+    return version if isinstance(version, str) and version else "unknown"
+
+
+# --------------------------------------------------------------------------
+# Browser
+
+def browser_blocked():
+    """Return None when a browser may open, else the line to say ("" for none)."""
+    if os.environ.get("SSH_CONNECTION") or os.environ.get("SSH_TTY"):
+        return "Not opening a browser over SSH."
+    if sys.platform.startswith("linux") and not (os.environ.get("DISPLAY")
+                                                 or os.environ.get("WAYLAND_DISPLAY")):
+        return "No display found, so no browser opened."
+    return None
+
+
+@contextlib.contextmanager
+def quiet_output():
+    """Point stdout and stderr at /dev/null, so a browser can't keep our pipe open."""
+    sys.stdout.flush()
+    sys.stderr.flush()
+    try:
+        saved = (os.dup(1), os.dup(2))
+        null = os.open(os.devnull, os.O_RDWR)
+    except OSError:
+        yield
+        return
+    try:
+        os.dup2(null, 1)
+        os.dup2(null, 2)
+        yield
+    finally:
+        os.dup2(saved[0], 1)
+        os.dup2(saved[1], 2)
+        for fd in (null,) + saved:
+            os.close(fd)
+
+
+def open_browser(url, no_open):
+    """Return ("opened", ""), ("skipped", line) or ("failed", line). line may be empty."""
+    if no_open:
+        return "skipped", ""
+    reason = browser_blocked()
+    if reason is not None:
+        return "skipped", reason
+    try:
+        import webbrowser
+        with quiet_output():
+            # get().open, not webbrowser.open: the latter goes on to the next browser
+            # when the first fails, which would defeat a BROWSER stub that exits 1.
+            ok = webbrowser.get().open(url, new=2)
+    except Exception:
+        ok = False
+    if ok:
+        return "opened", ""
+    return "failed", "Couldn't open a browser."
+
+
+def show_server(rec):
+    say("Routing Dashboard: http://127.0.0.1:%d/ (%s)" % (rec["port"], rec["project"]))
+    if rec["edits"]:
+        say("edits on")
+
+
+def announce(rec, no_open):
+    """Print the read-only URL and open it."""
+    show_server(rec)
+    state, line = open_browser("http://127.0.0.1:%d/" % rec["port"], no_open)
+    if state == "opened":
+        say("Opened in your browser.")
+    elif line:
+        say(line)
+
+
+# --------------------------------------------------------------------------
+# Starting a server
+
+def open_log(ctx, rid):
+    """Open the project's log for append. Over 1 MB it first keeps only its last 256 KB."""
+    path = log_path(ctx, rid)
+    try:
+        size = os.stat(path).st_size
+    except FileNotFoundError:
+        size = 0
+    if size > LOG_LIMIT:
+        with open(path, "rb") as fh:
+            fh.seek(size - LOG_KEEP)
+            tail = fh.read()
+        write_private(path, tail)
+    return os.open(path, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o600)
+
+
+def last_log_line(ctx, rid):
+    try:
+        with open(log_path(ctx, rid), "rb") as fh:
+            fh.seek(0, os.SEEK_END)
+            fh.seek(max(0, fh.tell() - 4096))
+            lines = fh.read().decode("utf-8", "replace").strip().splitlines()
+    except OSError:
+        return ""
+    line = lines[-1] if lines else ""
+    return "" if "edit=" in line else clean(line, 200)
+
+
+def kill_child(proc):
+    try:
+        proc.kill()
+    except OSError:
+        pass
+    try:
+        proc.wait(5)
+    except subprocess.TimeoutExpired:
+        pass
+
+
+def write_link_file(ctx, rid, url):
+    path = link_path(ctx, rid)
+    write_private(path, (url + "\n").encode("ascii"))
+    return path
+
+
+def read_launch_line(ctx, rid, fd, proc, edits, no_open, key_file):
+    """Read the server's one line from the pipe.
+
+    Returns None when the port was busy, else (port, lines, link_file). This is
+    the only function that holds an edit URL. It hands the URL to the browser or
+    the link file and keeps it out of every message, record and exception.
+    """
+    buf = b""
+    deadline = time.monotonic() + LAUNCH_WAIT
+    while b"\n" not in buf and len(buf) < 4096:
+        left = deadline - time.monotonic()
+        if left <= 0:
+            kill_child(proc)
+            raise Fail("the server didn't report its address in %d seconds; see the log at %s"
+                       % (LAUNCH_WAIT, clean(log_path(ctx, rid), 300)))
+        ready, _, _ = select.select([fd], [], [], left)
+        if not ready:
+            continue
+        chunk = os.read(fd, 4096)
+        if not chunk:
+            break
+        buf += chunk
+    if b"\n" not in buf:
+        kill_child(proc)
+        detail = last_log_line(ctx, rid)
+        raise Fail("the server stopped before it was ready%s" % (": " + detail if detail else ""))
+    line = buf.split(b"\n", 1)[0].decode("ascii", "replace")
+    buf = None
+    if line == "error: port-in-use":
+        kill_child(proc)
+        return None
+    match = LINE_RE.fullmatch(line)
+    if match is None or bool(match.group(2)) != edits:
+        line = None
+        kill_child(proc)
+        raise Fail("the server sent a reply the launcher doesn't know; see the log at %s"
+                   % clean(log_path(ctx, rid), 300))
+    port = int(match.group(1))
+    lines = []
+    link_file = None
+    if edits:
+        try:
+            if key_file:
+                link_file = write_link_file(ctx, rid, line)
+                lines.append("Edit link saved to %s. It holds a key, so delete it when you're done."
+                             % link_file)
+            else:
+                state, why = open_browser(line, no_open)
+                if state == "opened":
+                    lines.append("Opened the edit link in your browser.")
+                else:
+                    lines.append(why or "Not opening the edit link because of --no-open.")
+                    lines.append(KEY_FILE_HINT)
+        except Exception:
+            line = None
+            kill_child(proc)
+            raise Fail("couldn't hand over the edit link") from None
+    line = None
+    return port, lines, link_file
+
+
+
+
+def spawn_once(ctx, rid, server, project, port, edits, fixture, key_file, no_open):
+    """Start one server on port. Returns None when the port is busy, else (pid, port, lines, link_file)."""
+    argv = [sys.executable, "-B", server, "--project", project, "--port", str(port)]
+    r, w = os.pipe()
+    try:
+        argv += ["--launch-fd", str(w)]
+        if edits:
+            argv.append("--allow-edits")
+        if fixture:
+            argv += ["--fixture", fixture]
+        log_fd = open_log(ctx, rid)
+        try:
+            proc = subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=log_fd, stderr=log_fd,
+                                    cwd=project, start_new_session=True, pass_fds=(w,))
+        finally:
+            os.close(log_fd)
+    except BaseException:
+        os.close(r)
+        raise
+    finally:
+        os.close(w)
+    try:
+        result = read_launch_line(ctx, rid, r, proc, edits, no_open, key_file)
+    finally:
+        os.close(r)
+    if result is None:
+        return None
+    return (proc.pid,) + result
+
+
+def launch_server(ctx, rid, project, port_arg, preferred, edits, fixture, key_file, no_open):
+    """Start a server. Returns (pid, port, notes, lines to print after the URL, link_file)."""
+    server = server_path()
+    if port_arg is not None:
+        tries = [port_arg]
+    else:
+        tries = [preferred] if preferred == 0 else [preferred, 0]
+    notes = []
+    for index, port in enumerate(tries):
+        result = spawn_once(ctx, rid, server, project, port, edits, fixture, key_file, no_open)
+        if result is not None:
+            pid, got, lines, link_file = result
+            if index > 0:
+                notes.append("port %d is busy, using %d" % (tries[0], got))
+            return pid, got, notes, lines, link_file
+    if port_arg is not None:
+        raise Fail("port %d is in use" % port_arg)
+    raise Fail("no free port found")
+
+
+def now_text():
+    return datetime.now().astimezone().isoformat(timespec="seconds")
+
+
+def bring_up(ctx, records, rid, project, port_arg, no_open, edits, key_file, old=None):
+    """Start a new server for project and record it. old is the record it replaces, already stopped."""
+    preferred = old["port"] if old else first_port()
+    fixture = old["fixture"] if old else ctx.fixture
+    pid, port, notes, lines, link_file = launch_server(
+        ctx, rid, project, port_arg, preferred, edits, fixture, key_file, no_open)
+    rec = {"pid": pid, "port": port, "project": project, "edits": edits, "started": now_text(),
+           "plugin_root": ROOT, "plugin_version": plugin_version(), "server": server_path(),
+           "log": log_path(ctx, rid), "owners": list(old["owners"]) if old else [],
+           "manual": bool(old and old["manual"]), "link_file": link_file, "fixture": fixture}
+    mark_caller(ctx, rec)
+    try:
+        save_record(ctx, rid, rec)
+    except BaseException:
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except OSError:
+            pass
+        unlink_quiet(link_path(ctx, rid))
+        raise
+    records[rid] = rec
+    for note in notes:
+        say(note)
+    show_server(rec)
+    if edits:
+        for line in lines:
+            say(line)
+    else:
+        state, why = open_browser("http://127.0.0.1:%d/" % port, no_open)
+        if state == "opened":
+            say("Opened in your browser.")
+        elif why:
+            say(why)
+    return rec
+
+
+def live_record(ctx, records, rid):
+    """Return the project's live record, or None. A stale record is deleted."""
+    rec = records.get(rid)
+    if rec is None:
+        return None
+    if check_record(ctx, records, rid, rec) == "live":
+        return rec
+    return None
+
+
+def mark_caller(ctx, rec):
+    """Add the calling session as an owner, or mark the record manual for a run by hand."""
+    owner = caller_owner(ctx)
+    if owner is None:
+        rec["manual"] = True
+    else:
+        add_owner(rec, owner)
+
+
+def do_start(ctx, records, project, port_arg, no_open, edits=False, key_file=False):
+    rid = project_id(project)
+    rec = live_record(ctx, records, rid)
+    if rec is not None and not edits:
+        mark_caller(ctx, rec)
+        save_record(ctx, rid, rec)
+        announce(rec, no_open)
+        if port_arg and rec["port"] != port_arg:
+            say("already running on port %d; run stop first to change the port" % rec["port"])
+        return
+    if rec is not None:
+        stop_process(rec)
+        forget(ctx, rid)
+        del records[rid]
+    bring_up(ctx, records, rid, project, port_arg, no_open, edits, key_file, old=rec)
+
+
+def do_reload(ctx, records, project, no_open, key_file):
+    rid = project_id(project)
+    rec = live_record(ctx, records, rid)
+    if rec is not None:
+        stop_process(rec)
+        forget(ctx, rid)
+        del records[rid]
+    bring_up(ctx, records, rid, project, None, no_open, bool(rec and rec["edits"]), key_file, old=rec)
+
+
+def do_stop(ctx, records, project, everything):
+    if everything:
+        targets = sorted(records.items(), key=lambda item: item[1]["project"])
+    else:
+        rid = project_id(project)
+        targets = [(rid, records[rid])] if rid in records else []
+    count = 0
+    for rid, rec in targets:
+        if stop_process(rec):
+            count += 1
+            say("Stopped Routing Dashboard for %s (port %d)." % (rec["project"], rec["port"]))
+        forget(ctx, rid)
+        del records[rid]
+    if not count:
+        say("No Routing Dashboard is running." if everything
+            else "No Routing Dashboard is running for %s." % project)
+
+
+def do_status(ctx, records, project, everything):
+    if everything:
+        targets = sorted(records.items(), key=lambda item: item[1]["project"])
+    else:
+        rid = project_id(project)
+        targets = [(rid, records[rid])] if rid in records else []
+    live = []
+    for rid, rec in targets:
+        state = check_record(ctx, records, rid, rec)
+        if state != "live":
+            if state == "dead":
+                say("cleaned up a stopped server for %s" % rec["project"])
+            continue
+        live.append(rec)
+        sessions = "manual" if rec["manual"] else str(len(rec["owners"]))
+        say("%s  http://127.0.0.1:%d/  %s  started %s  plugin %s  sessions %s"
+            % (rec["project"], rec["port"], "edits" if rec["edits"] else "read-only",
+               rec["started"] or "unknown", rec["plugin_version"] or "unknown", sessions))
+        if rec["plugin_root"] != ROOT:
+            say("  running code from an older plugin version, run reload")
+    if not live:
+        say("No Routing Dashboard is running." if everything
+            else "No Routing Dashboard is running for %s." % project)
+    first = first_port()
+    if not any(rec["port"] == first for rec in records.values()):
+        try:
+            socket.create_connection(("127.0.0.1", first), timeout=0.5).close()
+        except OSError:
+            return
+        say("port %d is in use by a server this plugin didn't start" % first)
+
+
+def do_open(ctx, records, project):
+    rid = project_id(project)
+    rec = live_record(ctx, records, rid)
+    if rec is None:
+        raise Fail("no Routing Dashboard is running for %s; run start" % project)
+    announce(rec, False)
+
+
+def do_log(ctx, project):
+    rid = project_id(project)
+    try:
+        with open(log_path(ctx, rid), "rb") as fh:
+            fh.seek(0, os.SEEK_END)
+            fh.seek(max(0, fh.tell() - 65536))
+            lines = fh.read().decode("utf-8", "replace").splitlines()
+    except FileNotFoundError:
+        say("No log for %s." % project)
+        return
+    if not lines:
+        say("The log for %s is empty." % project)
+    for line in lines[-LOG_LINES:]:
+        say("[line hidden]" if "edit=" in line else line)
+
+
+def resolve_project(ctx, word):
+    path = word if os.path.isabs(word) else os.path.join(ctx.default_project, word)
+    path = os.path.realpath(path)
+    if not os.path.isdir(path):
+        raise Fail("not a folder: %s" % clean(word, 200))
+    return path
+
+
+def default_project(ctx):
+    path = os.path.realpath(ctx.default_project)
+    if not os.path.isdir(path):
+        raise Fail("the project folder doesn't exist: %s" % clean(ctx.default_project, 200))
+    return path
+
+
+def run_locked(ctx, work):
+    lock = Lock(servers_dir(ctx.data), LOCK_WAIT)
+    try:
+        records = load_records(ctx)
+        prune(ctx, records)
+        work(records)
+    finally:
+        lock.release()
+
+
+def run_action(ctx, action, opts, pos):
+    port_arg = parse_port(opts)
+    ensure_dirs(ctx.data)
+    no_open = "--no-open" in opts
+    key_file = "--key-file" in opts
+    everything = "--all" in opts
+    if action == "log":
+        do_log(ctx, default_project(ctx))
+        return
+    if action == "project":
+        project = resolve_project(ctx, pos[0])
+    else:
+        project = default_project(ctx)
+    if action in ("start", "project"):
+        run_locked(ctx, lambda recs: do_start(ctx, recs, project, port_arg, no_open))
+    elif action == "edits":
+        run_locked(ctx, lambda recs: do_start(ctx, recs, project, port_arg, no_open, True, key_file))
+    elif action == "reload":
+        run_locked(ctx, lambda recs: do_reload(ctx, recs, project, no_open, key_file))
+    elif action == "stop":
+        run_locked(ctx, lambda recs: do_stop(ctx, recs, project, everything))
+    elif action == "status":
+        run_locked(ctx, lambda recs: do_status(ctx, recs, project, everything))
+    elif action == "open":
+        run_locked(ctx, lambda recs: do_open(ctx, recs, project))
+
+
+# --------------------------------------------------------------------------
+# The SessionEnd hook
+
+def read_stdin_capped():
+    """Read up to 64 KB from stdin, giving up after 0.3 s."""
+    try:
+        fd = sys.stdin.fileno()
+    except (OSError, ValueError, AttributeError):
+        return b""
+    buf = b""
+    deadline = time.monotonic() + 0.3
+    while len(buf) < 65536:
+        left = deadline - time.monotonic()
+        if left <= 0:
+            break
+        try:
+            ready, _, _ = select.select([fd], [], [], left)
+            if not ready:
+                break
+            chunk = os.read(fd, 65536 - len(buf))
+        except OSError:
+            break
+        if not chunk:
+            break
+        buf += chunk
+    return buf
+
+
+def session_end(glob):
+    """Hand the cleanup to a detached worker and return at once. Never waits, never prints."""
+    try:
+        data = json.loads(read_stdin_capped().decode("utf-8"))
+    except (ValueError, UnicodeDecodeError):
+        return
+    if not isinstance(data, dict):
+        return
+    session = data.get("session_id")
+    if not isinstance(session, str) or not session or not SESSION_RE.fullmatch(session):
+        return
+    if data.get("reason") in ("clear", "resume"):
+        return
+    folder = glob.get("--data") or os.environ.get("CLAUDE_PLUGIN_DATA") or ""
+    if not folder or not os.path.isdir(servers_dir(os.path.abspath(folder))):
+        return
+    pid, started = claude_identity()
+    subprocess.Popen([sys.executable, "-B", os.path.abspath(__file__), "--data", os.path.abspath(folder),
+                      "_end", "--session", session, "--claude-pid", str(pid) if pid else "",
+                      "--claude-started", started or ""],
+                     stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                     start_new_session=True, close_fds=True)
+
+
+def end_session(glob, opts):
+    """The detached worker. Drops this session's owners and stops a server left with none."""
+    folder = glob.get("--data") or os.environ.get("CLAUDE_PLUGIN_DATA") or ""
+    session = opts.get("--session", "")
+    if not folder or not SESSION_RE.fullmatch(session):
+        return
+    ctx = Ctx()
+    ctx.data = os.path.abspath(folder)
+    if not os.path.isdir(servers_dir(ctx.data)):
+        return
+    raw_pid = opts.get("--claude-pid", "")
+    claude_pid = int(raw_pid) if re.fullmatch(r"[0-9]{1,10}", raw_pid) else None
+    claude_started = opts.get("--claude-started") or None
+    lock = Lock(servers_dir(ctx.data), END_LOCK_WAIT)
+    try:
+        for rid, rec in load_records(ctx).items():
+            keep = []
+            for owner in rec["owners"]:
+                mine = ((claude_pid is not None and owner["claude_pid"] == claude_pid
+                         and owner["claude_started"] == claude_started)
+                        or (session and owner["claude_pid"] is None and owner["session"] == session))
+                if not mine and owner_alive(owner):
+                    keep.append(owner)
+            if len(keep) == len(rec["owners"]):
+                continue
+            rec["owners"] = keep
+            if keep or rec["manual"]:
+                save_record(ctx, rid, rec)
+                continue
+            stop_process(rec, between=lambda rid=rid: forget(ctx, rid))
+            forget(ctx, rid)
+    finally:
+        lock.release()
+
+
+# --------------------------------------------------------------------------
+# Entry point
+
+def report(state, message, code):
+    """Print an error. The skill path prints to stdout and exits 0, because a non-zero exit aborts the skill."""
+    if state["quiet"]:
+        return 0
+    if state["skill"]:
+        say("error: " + message)
+        return 0
+    sys.stderr.write("error: " + message + "\n")
+    return code
+
+
+def run(argv, state):
+    glob, action, opts, pos = parse_args(argv, state)
+    if action == "session-end":
+        session_end(glob)
+        return 0
+    if action == "_end":
+        end_session(glob, opts)
+        return 0
+    ctx = build_ctx(glob)
+    run_action(ctx, action, opts, pos)
+    return 0
+
+
+def main(argv=None):
+    argv = list(sys.argv[1:] if argv is None else argv)
+    state = {"skill": False, "quiet": False}
+    try:
+        return run(argv, state)
+    except Usage as exc:
+        return report(state, "%s. %s" % (exc, USAGE), 2)
+    except Fail as exc:
+        return report(state, str(exc), 1)
+    except PermissionError:
+        return report(state, SANDBOX_MESSAGE, 1)
+    except KeyboardInterrupt:
+        return report(state, "interrupted", 1)
+    except Exception as exc:
+        return report(state, "unexpected " + type(exc).__name__, 1)
+    finally:
+        try:
+            sys.stdout.flush()
+        except (OSError, ValueError):
+            pass
+
+
+if __name__ == "__main__":
+    sys.exit(main())

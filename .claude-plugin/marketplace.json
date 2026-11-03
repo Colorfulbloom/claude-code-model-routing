@@ -1,0 +1,8 @@
+{
+  "name": "model-routing",
+  "owner": {"name": "Jorge Calderon"},
+  "metadata": {"description": "Claude Code plugins from the model routing repo, currently the Routing Dashboard."},
+  "plugins": [
+    {"name": "routing-dashboard", "source": "./plugins/routing-dashboard", "description": "Runs the Routing Dashboard, a local page of your Claude Code token usage and settings, from any session."}
+  ]
+}

@@ -2,8 +2,8 @@
 
 Two kinds of test live here. The first scans every dashboard/*.py with the ast
 module and allows write calls only in edit_store.py, plus one named line in
-reference_page.py. The second starts a real server process with --allow-edits
-on a temp fixture, from a copy of the server tree, and drives it over HTTP the
+reference_page.py and the --launch-fd descriptor in server.py, which names no
+path. The second starts a real server process with --allow-edits on a temp fixture, from a copy of the server tree, and drives it over HTTP the
 way the page does: targets, preview, save, undo. The tree hash covers the
 config, project and managed folders and the server copy, so a write anywhere
 else shows up. No browser, and nothing reads the real ~/.claude: every test
@@ -29,6 +29,10 @@ DASHBOARD = os.path.join(helpers.REPO, "dashboard")
 STORE_DIR = "routing-dashboard"
 MODEL = b'{"model": "claude-sonnet-5-5"}\n'  # Sonnet 5.5 takes a project or local effortLevel
 EXCEPTION_FILE = "reference_page.py"
+# server.py --launch-fd writes its URL line to a descriptor the launcher passed in (a pipe).
+# It names no path, so it can't create or change a file.
+LAUNCH_FILE = "server.py"
+LAUNCH_FIRST = "args.launch_fd"
 STORE_FILE = "edit_store.py"
 
 
@@ -359,6 +363,9 @@ class WriteCalls(unittest.TestCase):
                 if (name == EXCEPTION_FILE and finding.call == "open" and finding.detail == "'w'"
                         and finding.first == "PAGE_PATH"):
                     continue
+                if (name == LAUNCH_FILE and finding.call == "open" and finding.detail == "'w'"
+                        and finding.first == LAUNCH_FIRST):
+                    continue
                 stray.append("%s:%d %s %s" % (name, finding.line, finding.call, finding.detail))
         self.assertEqual(stray, [])
 
@@ -366,6 +373,10 @@ class WriteCalls(unittest.TestCase):
         hits = [f for f in self.scan[EXCEPTION_FILE] if f.call == "open" and f.first == "PAGE_PATH"]
         self.assertEqual([(f.detail) for f in hits], ["'w'"])
         self.assertEqual(len(self.scan[EXCEPTION_FILE]), 1)
+
+    def test_the_launch_descriptor_is_the_servers_one_write_call(self):
+        self.assertEqual([(f.call, f.detail, f.first) for f in self.scan[LAUNCH_FILE]],
+                         [("open", "'w'", LAUNCH_FIRST)])
 
     def test_edit_store_is_the_one_module_the_scan_finds_writing(self):
         kinds = {f.call for f in self.scan[STORE_FILE]}
