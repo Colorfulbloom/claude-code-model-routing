@@ -4,6 +4,44 @@ A small set of files for Claude Code that sends each job to the cheapest model t
 
 I wrote up why the setup looks like this in [Claude Code subagents on cheaper models](https://jorgecalderon.codes/blog/claude-code-subagents-on-cheaper-models).
 
+## Quick start
+
+You need these to try it.
+
+- Claude Code 2.1.302, the version this setup is tested on, with a Pro, Max, Team, Enterprise or Console account.
+- python3 3.9 or later. macOS's system python3 works.
+- macOS. Linux is untested.
+
+[Prerequisites](#prerequisites) has the full list, the `design` plugin for the designer agent included.
+
+Testing happens on the `development` branch for now, so check it out before you install.
+
+```bash
+git clone https://github.com/Colorfulbloom/claude-code-model-routing.git
+cd claude-code-model-routing
+git checkout development
+./install.sh --dry-run   # prints the plan, changes nothing
+./install.sh             # opens the picker, then installs
+```
+
+Then restart Claude Code so the hooks and agents load. Run `/setup-model-routing` once if you want the optional global settings. [Install](#install) and [What the installer changes](#what-the-installer-changes) have the details.
+
+The dashboard is a separate plugin, and it installs from the same branch.
+
+```bash
+claude plugin marketplace add Colorfulbloom/claude-code-model-routing#development
+claude plugin install routing-dashboard@model-routing
+```
+
+Start a new session and run `/routing-dashboard:dashboard`. Run `/routing-dashboard:dashboard edits` to turn on editing. [Dashboard plugin](#dashboard-plugin) covers the rest.
+
+Each one has its own uninstall.
+
+- Routing files. Run `./install.sh --uninstall` from the clone. [Uninstall](#uninstall) says what it keeps.
+- Dashboard plugin. Run `/routing-dashboard:dashboard stop --all` in a session, then `claude plugin uninstall routing-dashboard@model-routing` from your shell. Stop the servers first, because uninstalling deletes the plugin's data folder. The [plugin's README](plugins/routing-dashboard/README.md#uninstall) has more.
+
+Report bugs and send feedback in [GitHub issues](https://github.com/Colorfulbloom/claude-code-model-routing/issues).
+
 ## The shape
 
 ```
