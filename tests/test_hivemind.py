@@ -31,6 +31,8 @@ PY = "/usr/bin/python3"
 LIB = os.path.join(HOOKS, "hivemind_lib.py")
 NOW = "2026-10-20T12:00:00"
 TODAY = "2026-10-20"
+LOCK_REL = ".claude/hivemind/inbox/" + lib.LOCK_NAME
+SNAPSHOT_REL = ".claude/hivemind/inbox/" + lib.PREP_SNAPSHOT
 DENY = {"hookSpecificOutput": {
     "hookEventName": "PreToolUse", "permissionDecision": "deny",
     "permissionDecisionReason": "HiveMind store is written only by CONSOLIDATION; propose in the HIVEMIND block"}}
@@ -1998,7 +2000,9 @@ class PrepTest(CliBase):
         before = self.snap()
         rc, out, err = self.run_cmd(lib.cmd_prep, self.store)
         self.assertEqual(rc, 0, err)
-        self.assertEqual(self.snap(), before)
+        after = self.snap()
+        self.assertEqual(sorted(set(after) - set(before)), [LOCK_REL, SNAPSHOT_REL])
+        self.assertEqual({k: v for k, v in after.items() if k not in (LOCK_REL, SNAPSHOT_REL)}, before)
         self.assertFalse(os.path.exists(os.path.join(self.store, "active-days.txt")))
         self.assertTrue(out.rstrip().endswith(lib.NEXT_STEPS))
 
@@ -2075,6 +2079,16 @@ class PrepTest(CliBase):
 
 
 class ApplyTest(CliBase):
+    def prep(self):
+        rc, out, err = self.run_cmd(lib.cmd_prep, self.store)
+        self.assertEqual(rc, 0, err)
+        return out
+
+    def apply(self):
+        """prep, then apply: apply folds only the run files prep reported."""
+        self.prep()
+        return self.run_cmd(lib.cmd_apply, self.store)
+
     def setUp(self):
         super().setUp()
         self.init_store()
@@ -2082,15 +2096,16 @@ class ApplyTest(CliBase):
     def test_unparseable_topic_exits_1_and_changes_nothing(self):
         self.write("topics/dead-ends.md", "garbage\n", self.store)
         self.add_run(used=["T-0001"])
-        before = self.snap()
+        self.prep()
+        before = self.snap(skip=(LOCK_REL,))
         rc, out, err = self.run_cmd(lib.cmd_apply, self.store)
         self.assertEqual(rc, 1)
         self.assertIn("cannot parse topics/dead-ends.md", out)
-        self.assertEqual(self.snap(), before)
+        self.assertEqual(self.snap(skip=(LOCK_REL,)), before)
         self.write("config.json", "{", self.store)
-        before = self.snap()
+        before = self.snap(skip=(LOCK_REL,))
         self.assertEqual(self.run_cmd(lib.cmd_apply, self.store)[0], 1)
-        self.assertEqual(self.snap(), before)
+        self.assertEqual(self.snap(skip=(LOCK_REL,)), before)
 
     def test_resumed_agent_counts_each_id_once(self):
         self.put("testing", [self.record("T-0001", "a", uses="0", last_used="2026-10-01"),
@@ -2104,7 +2119,7 @@ class ApplyTest(CliBase):
             [(n, lib.read_run(os.path.join(self.store, "inbox", n))) for n in lib.run_file_names(self.store)])
         self.assertEqual(count, {"T-0001": 2, "T-0002": 3})
         self.assertEqual((latest["T-0001"], verified), ("2026-10-19", {"T-0001"}))
-        rc, out, err = self.run_cmd(lib.cmd_apply, self.store)
+        rc, out, err = self.apply()
         self.assertEqual(rc, 0, out + err)
         recs = dict((r["id"], r) for r in lib.parse_topic(self.slurp("topics", "testing.md"))[1])
         self.assertEqual((recs["T-0001"]["uses"], recs["T-0002"]["uses"]), ("2", "3"))
@@ -2130,6 +2145,7 @@ class ApplyTest(CliBase):
                      tally={"turns": 1, "context_final_plus_out": 5000, "model": "m", "skipped": None})
         self.add_run(date="2026-10-17", used=["T-0001"], agent_id="a2", tally={"skipped": "missing", "turns": 0})
         self.add_run(date="2026-10-19", verified=["T-0005"], agent_id="a3")
+        self.prep()
         keep = self.snap()
         rc, out, err = self.run_cmd(lib.cmd_apply, self.store)
         self.assertEqual(rc, 0, err)
@@ -2157,7 +2173,8 @@ class ApplyTest(CliBase):
         self.assertEqual(arch["T-0004"]["retired"], TODAY + " expired")
         left = self.snap()
         self.assertEqual(sorted(k for k in keep if k not in left),
-                         [".claude/hivemind/inbox/run%04d.json" % i for i in (1, 2, 3)])
+                         [".claude/hivemind/inbox/" + lib.PREP_SNAPSHOT]
+                         + [".claude/hivemind/inbox/run%04d.json" % i for i in (1, 2, 3)])
         for name in ("injected.json", "fp-cache.json"):
             self.assertEqual(left[".claude/hivemind/inbox/" + name], b'{"keep": "me"}')
         self.assertEqual(left[".claude/hivemind/inbox/errors.log"], b"")
@@ -2182,17 +2199,19 @@ class ApplyTest(CliBase):
             self.write("inbox/run9999.json", json.dumps({"date": TODAY, "used": []}), self.store)
             return real(*a, **kw)
 
+        self.prep()
         with mock.patch.object(lib, "git_head", head_and_add):
             rc, out, _ = self.run_cmd(lib.cmd_apply, self.store)
         self.assertEqual(rc, 0)
         self.assertIn("1 inbox files removed", out)
-        self.assertEqual(os.listdir(os.path.join(self.store, "inbox")), [".gitignore", "run9999.json"])
+        self.assertEqual(sorted(os.listdir(os.path.join(self.store, "inbox"))),
+                         [".gitignore", lib.LOCK_NAME, "run9999.json"])
         self.assertTrue(os.path.exists(late))
 
     def test_apply_counts_a_file_once_per_id_and_ignores_unknown_ids(self):
         self.put("testing", [self.record("T-0001", "f")])
         self.add_run(used=["T-0001", "T-0001"], verified=["T-0001", "T-0abc"])
-        out = self.run_cmd(lib.cmd_apply, self.store)[1]
+        out = self.apply()[1]
         self.assertIn("1 uses folded", out)
         self.assertEqual(self.topic()[0]["uses"], "2")
 
@@ -2205,7 +2224,7 @@ class ApplyTest(CliBase):
         tally = lambda v: {"turns": 1, "context_final_plus_out": v, "model": "m", "skipped": None}  # noqa: E731
         self.add_run(agent_id="s5", kind="k", agent_type="scout", tally=tally(555))
         self.add_run(agent_id="new", kind="k", agent_type="scout", tally=tally(999))
-        rc, out, err = self.run_cmd(lib.cmd_apply, self.store)
+        rc, out, err = self.apply()
         self.assertIn("1 tally samples added", out)
         self.assertIn("apply: 1 run files gave no tally sample (duplicate 1)", err)
         row = json.loads(self.slurp("tallies.json"))["rows"]
@@ -2238,7 +2257,7 @@ class ApplyTest(CliBase):
 
     def test_tally_fresh_agent_records_its_total(self):
         self.tally_run("fresh", "plan", 277338, rnd=1)
-        rc, out, err = self.run_cmd(lib.cmd_apply, self.store)
+        rc, out, err = self.apply()
         self.assertEqual((rc, err), (0, ""))
         self.assertIn("1 tally samples added", out)
         self.assertEqual(self.samples(), {"plan": [{"v": 277338, "date": TODAY, "agent_id": "fresh", "effort": "unknown"}]})
@@ -2248,7 +2267,7 @@ class ApplyTest(CliBase):
         self.tally_run("b", "plan", 3000, rnd=1, effort="high", duration_ms=150000)
         self.tally_run("c", "plan", 5000, rnd=1, effort="xhigh", duration_ms=61000)
         self.tally_run("d", "plan", 7000, rnd=1, effort="")
-        rc, out, err = self.run_cmd(lib.cmd_apply, self.store)
+        rc, out, err = self.apply()
         self.assertEqual((rc, err), (0, ""))
         rows = json.loads(self.slurp("tallies.json"))["rows"]
         self.assertEqual(sorted(rows), ["plan|deep-reasoner|m|high", "plan|deep-reasoner|m|unknown",
@@ -2267,7 +2286,7 @@ class ApplyTest(CliBase):
     def test_tally_recapture_of_a_round_updates_the_duration(self):
         self.tally_run("a", "plan", 1000, rnd=1, effort="high", duration_ms=60000)
         self.tally_run("a", "plan", 1500, rnd=1, effort="high", duration_ms=95000)
-        self.run_cmd(lib.cmd_apply, self.store)
+        self.apply()
         got = json.loads(self.slurp("tallies.json"))["rows"]["plan|deep-reasoner|m|high"]["samples"]
         self.assertEqual([(s["v"], s["duration_ms"]) for s in got], [(1500, 95000)])
 
@@ -2296,17 +2315,17 @@ class ApplyTest(CliBase):
     def test_tally_resumed_round_with_a_new_kind_is_its_own_sample(self):
         self.tally_run("agent1", "plan", 277338, rnd=1)
         self.tally_run("agent1", "apply", 323550, rnd=2, prev=277338)
-        self.assertIn("2 tally samples added", self.run_cmd(lib.cmd_apply, self.store)[1])
+        self.assertIn("2 tally samples added", self.apply()[1])
         self.assertEqual(self.samples(), {
             "plan": [{"v": 277338, "date": TODAY, "agent_id": "agent1", "effort": "unknown"}],
             "apply+resumed": [{"v": 46212, "date": TODAY, "agent_id": "agent1", "effort": "unknown", "round": 2}]})
 
     def test_tally_resumed_round_after_an_earlier_apply_keeps_the_first_sample(self):
         self.tally_run("agent1", "plan", 277338, rnd=1)
-        self.run_cmd(lib.cmd_apply, self.store)
+        self.apply()
         self.tally_run("agent1", "apply", 323550, rnd=2, prev=277338)
         self.tally_run("agent1", "fix", 357047, rnd=3, prev=323550)
-        self.assertIn("2 tally samples added", self.run_cmd(lib.cmd_apply, self.store)[1])
+        self.assertIn("2 tally samples added", self.apply()[1])
         got = self.samples()
         self.assertEqual([s["v"] for s in got["plan"]], [277338])
         self.assertEqual((got["apply+resumed"][0]["v"], got["fix+resumed"][0]["v"], got["fix+resumed"][0]["round"]),
@@ -2315,12 +2334,12 @@ class ApplyTest(CliBase):
     def test_tally_a_round_captured_twice_keeps_one_sample_with_the_later_figure(self):
         self.tally_run("a", "plan", 1000, rnd=1)
         self.tally_run("a", "plan", 1500, rnd=1)
-        rc, out, err = self.run_cmd(lib.cmd_apply, self.store)
+        rc, out, err = self.apply()
         self.assertEqual((rc, err), (0, ""))
         self.assertIn("1 tally samples added, 1 replaced", out)
         self.assertEqual(self.samples(), {"plan": [{"v": 1500, "date": TODAY, "agent_id": "a", "effort": "unknown"}]})
         self.tally_run("a", "plan", 1800, rnd=1)
-        self.assertIn("0 tally samples added, 1 replaced", self.run_cmd(lib.cmd_apply, self.store)[1])
+        self.assertIn("0 tally samples added, 1 replaced", self.apply()[1])
         self.assertEqual([s["v"] for s in self.samples()["plan"]], [1800])
 
     def test_tally_two_captures_in_the_same_second_keep_the_later_figure(self):
@@ -2343,7 +2362,7 @@ class ApplyTest(CliBase):
                                         "deep-reasoner", "agent1")
         names = [os.path.basename(p) for p, _ in lib.load_runs(self.store)]
         self.assertEqual(names, [os.path.basename(p) for p in (second, third, fourth, first)])
-        rc, out, err = self.run_cmd(lib.cmd_apply, self.store)
+        rc, out, err = self.apply()
         self.assertEqual((rc, err), (0, ""))
         self.assertIn("2 tally samples added, 2 replaced", out)
         got = self.samples()
@@ -2354,7 +2373,7 @@ class ApplyTest(CliBase):
         self.tally_run("tw", "site-copy-round", 9000, rnd=1)
         self.tally_run("tw", "site-copy-round", 13000, rnd=2, prev=9000)
         self.tally_run("tw", "site-copy-round", 15000, rnd=2, prev=9000)
-        rc, out, err = self.run_cmd(lib.cmd_apply, self.store)
+        rc, out, err = self.apply()
         self.assertIn("2 tally samples added, 1 replaced", out)
         self.assertEqual(err, "")
         got = self.samples()
@@ -2364,14 +2383,14 @@ class ApplyTest(CliBase):
     def test_tally_a_later_round_lands_in_the_resumed_row_of_its_kind(self):
         self.tally_run("a", "plan", 1000, rnd=1)
         self.tally_run("a", "plan", 1700, rnd=2, prev=1000)
-        self.run_cmd(lib.cmd_apply, self.store)
+        self.apply()
         self.assertIn("| plan+resumed | deep-reasoner | m | unknown | 1 | 700 |", self.slurp("topics", "token-tallies.md"))
         self.assertIn("| plan | deep-reasoner | m | unknown | 1 | 1000 |", self.slurp("topics", "token-tallies.md"))
 
     def test_tally_9c7985a_round_two_is_skipped_as_unanchored(self):
         self.tally_run("a", "plan", 1000, rnd=1, anchor=None)
         self.tally_run("a", "apply", 1700, rnd=2, prev=1000, anchor=None)
-        rc, out, err = self.run_cmd(lib.cmd_apply, self.store)
+        rc, out, err = self.apply()
         self.assertIn("1 tally samples added", out)
         self.assertIn("(unanchored round 1)", err)
         self.assertEqual(self.samples(), {"plan": [{"v": 1000, "date": TODAY, "agent_id": "a", "effort": "unknown"}]})
@@ -2381,7 +2400,7 @@ class ApplyTest(CliBase):
         self.tally_run("a", "plan", 1000, rnd=1, anchor=None)
         self.tally_run("a", "plan", 1700, rnd=2, prev=1000, anchor=None)
         self.tally_run("a", "plan", 1900, rnd=2, prev=1000, anchor=None)
-        rc, out, err = self.run_cmd(lib.cmd_apply, self.store)
+        rc, out, err = self.apply()
         self.assertIn("1 tally samples added", out)
         self.assertIn("(unanchored round 2)", err)
         self.assertNotIn("duplicate", err)
@@ -2391,7 +2410,7 @@ class ApplyTest(CliBase):
         self.tally_run("a", "plan", 1000, rnd=1)
         self.tally_run("a", "plan", 1700, rnd=2, prev=1000)
         self.tally_run("a", "plan", 1900, rnd=2, prev=1000)
-        rc, out, err = self.run_cmd(lib.cmd_apply, self.store)
+        rc, out, err = self.apply()
         self.assertIn("2 tally samples added, 1 replaced", out)
         self.assertNotIn("duplicate", err)
         self.assertEqual([(s["v"], s.get("round", 1)) for s in self.samples()["plan+resumed"]], [(900, 2)])
@@ -2399,7 +2418,7 @@ class ApplyTest(CliBase):
     def test_tally_9c7985a_round_one_behaves_like_a_legacy_run_file(self):
         self.tally_run("a", "plan", 1000, rnd=1, anchor=None)
         self.tally_run("a", "plan", 1500, rnd=1, anchor=None)
-        rc, out, err = self.run_cmd(lib.cmd_apply, self.store)
+        rc, out, err = self.apply()
         self.assertIn("1 tally samples added, 0 replaced", out)
         self.assertIn("(duplicate 1)", err)
         self.assertEqual([s["v"] for s in self.samples()["plan"]], [1000])
@@ -2414,7 +2433,7 @@ class ApplyTest(CliBase):
             "plan+resumed|deep-reasoner|m": {"last_date": "2026-10-10", "samples": [
                 {"v": 5, "date": "2026-10-10", "agent_id": "c", "round": 2}]}}}
         self.write("tallies.json", json.dumps(old), self.store)
-        self.run_cmd(lib.cmd_apply, self.store)
+        self.apply()
         rows = json.loads(self.slurp("tallies.json"))["rows"]
         self.assertEqual(sorted(rows), ["fix+resumed|deep-reasoner|m|unknown",
                                         "plan+resumed|deep-reasoner|m|unknown", "plan|deep-reasoner|m|unknown"])
@@ -2433,7 +2452,7 @@ class ApplyTest(CliBase):
         for path in (os.path.join(rounds, "old.json"), os.path.join(rounds, "note.txt"),
                      os.path.join(self.store, "outside.json")):
             os.utime(path, (old_t, old_t))
-        rc, out, err = self.run_cmd(lib.cmd_apply, self.store)
+        rc, out, err = self.apply()
         self.assertEqual(rc, 0, err)
         self.assertEqual(sorted(os.listdir(rounds)), ["new.json", "note.txt"])
         self.assertTrue(os.path.exists(os.path.join(self.store, "outside.json")))
@@ -2445,7 +2464,7 @@ class ApplyTest(CliBase):
         self.tally_run("c", "apply", 200000, rnd=3, prev=200000)
         self.tally_run("c", "apply", 210000, rnd=4)
         self.tally_run("c", "apply", 210000, rnd=0)
-        rc, out, err = self.run_cmd(lib.cmd_apply, self.store)
+        rc, out, err = self.apply()
         self.assertEqual(rc, 0)
         self.assertIn("1 tally samples added", out)
         self.assertIn("apply: 4 run files gave no tally sample (bad round 1, no increase 2, no prev 1)", err)
@@ -2457,7 +2476,7 @@ class ApplyTest(CliBase):
         self.write("tallies.json", json.dumps(old), self.store)
         self.tally_run("agent1", "plan", 357047)
         self.tally_run("agent2", "plan", 1000)
-        rc, out, err = self.run_cmd(lib.cmd_apply, self.store)
+        rc, out, err = self.apply()
         self.assertIn("1 tally samples added", out)
         self.assertIn("(duplicate 1)", err)
         self.assertEqual([(s["agent_id"], s["v"]) for s in self.samples()["plan"]],
@@ -2476,7 +2495,7 @@ class ApplyTest(CliBase):
     def test_apply_honours_refresh_and_never_writes_active_days(self):
         self.init_git("2026-10-02T10:00:00")
         self.put("testing", [self.record("T-0001", "f", fp="deadbeef0000", refresh="yes")])
-        self.assertEqual(self.run_cmd(lib.cmd_apply, self.store)[0], 0)
+        self.assertEqual(self.apply()[0], 0)
         rec = self.topic()[0]
         self.assertEqual(rec["fp"], lib.fingerprint(self.root, ["src/a.py"])[0])
         self.assertNotIn("refresh", rec)
@@ -2486,12 +2505,279 @@ class ApplyTest(CliBase):
 
     def test_apply_leaves_incomplete_new_records_alone(self):
         self.put("testing", [{"id": "NEW", "title": "t", "fact": "f", "check": "c", "author": "a"}])
-        rc, out, err = self.run_cmd(lib.cmd_apply, self.store)
+        rc, out, err = self.apply()
         self.assertEqual(rc, 0)
         self.assertIn("0 ids assigned", out)
         self.assertIn("missing evidence", err)
         self.assertEqual(self.topic()[0]["id"], "NEW")
         self.assertEqual(self.run_cmd(lib.cmd_check, self.store)[0], 1)
+
+
+class PrepSnapshotTest(CliBase):
+    """H2: apply folds and deletes only the run files the last prep reported (inbox/prep-snapshot.json)."""
+
+    def setUp(self):
+        super().setUp()
+        self.init_store()
+        self.put("testing", [self.record("T-0001", "a", uses="0", last_used="2026-10-01")])
+
+    def inbox(self, name=None):
+        d = os.path.join(self.store, "inbox")
+        return os.path.join(d, name) if name else d
+
+    def prep(self, now=None):
+        if now:
+            with mock.patch.dict(os.environ, {"HIVEMIND_NOW": now}):
+                return self.run_cmd(lib.cmd_prep, self.store)
+        return self.run_cmd(lib.cmd_prep, self.store)
+
+    def test_run_file_captured_between_prep_and_apply_survives_for_the_next_round(self):
+        self.add_run(used=["T-0001"])
+        rc, out, err = self.prep()
+        self.assertEqual(rc, 0, err)
+        self.assertIn("Inbox: 1 run files", out)
+        late = self.add_run(agent_id="late", new=[{"topic": "testing", "fact": "Late fact", "check": "true",
+                                                    "evidence": ["src/a.py"]}])
+        with open(late, "rb") as fh:
+            late_bytes = fh.read()
+        rc, out, err = self.run_cmd(lib.cmd_apply, self.store)
+        self.assertEqual(rc, 0, out + err)
+        self.assertIn("1 uses folded", out)
+        self.assertIn("1 inbox files removed", out)
+        self.assertIn("1 run files captured after prep stay for the next consolidation", err)
+        self.assertFalse(os.path.exists(self.inbox("run0001.json")))
+        with open(late, "rb") as fh:
+            self.assertEqual(fh.read(), late_bytes)
+        self.assertFalse(os.path.exists(self.inbox(lib.PREP_SNAPSHOT)))
+        out = self.prep()[1]
+        self.assertIn("Inbox: 1 run files", out)
+        self.assertIn("Late fact", out)
+        rc, out, err = self.run_cmd(lib.cmd_apply, self.store)
+        self.assertEqual(rc, 0, out + err)
+        self.assertFalse(os.path.exists(late))
+
+    def test_apply_without_a_prep_snapshot_fails_clearly_and_changes_nothing(self):
+        self.add_run(used=["T-0001"])
+        before = self.snap(skip=(LOCK_REL,))
+        rc, out, err = self.run_cmd(lib.cmd_apply, self.store)
+        self.assertEqual(rc, 1)
+        self.assertIn("apply: no prep snapshot", out)
+        self.assertIn("run prep", out)
+        self.assertIn("(nothing changed)", out)
+        self.assertEqual(self.snap(skip=(LOCK_REL,)), before)
+
+    def test_a_second_apply_after_the_first_consumed_the_snapshot_fails_clearly(self):
+        self.add_run(used=["T-0001"])
+        self.prep()
+        self.assertEqual(self.run_cmd(lib.cmd_apply, self.store)[0], 0)
+        self.add_run(used=["T-0001"])
+        before = self.snap(skip=(LOCK_REL,))
+        rc, out, _ = self.run_cmd(lib.cmd_apply, self.store)
+        self.assertEqual(rc, 1)
+        self.assertIn("apply: no prep snapshot", out)
+        self.assertEqual(self.snap(skip=(LOCK_REL,)), before)
+        self.assertEqual(self.topic()[0]["uses"], "1")
+
+    def test_apply_refuses_while_another_consolidation_holds_the_lock(self):
+        self.add_run(used=["T-0001"])
+        self.prep()
+        before = self.snap(skip=(LOCK_REL,))
+        import fcntl
+        with open(self.inbox(lib.LOCK_NAME), "a+") as fh, mock.patch.object(lib, "LOCK_WAIT_S", 0.3):
+            fcntl.flock(fh, fcntl.LOCK_EX)
+            rc, out, err = self.run_cmd(lib.cmd_apply, self.store)
+            self.assertEqual(rc, 1)
+            self.assertIn("another consolidation", out)
+            self.assertIn("(nothing changed)", out)
+            rc, out, err = self.run_cmd(lib.cmd_prep, self.store)
+            self.assertEqual(rc, 1)
+            self.assertIn("another consolidation", err)
+        self.assertEqual(self.snap(skip=(LOCK_REL,)), before)
+        self.assertEqual(self.run_cmd(lib.cmd_apply, self.store)[0], 0)
+
+    def test_two_applies_started_together_fold_once(self):
+        self.add_run(used=["T-0001"], agent_id="a")
+        self.add_run(used=["T-0001"], agent_id="b")
+        self.assertEqual(self.cli("prep", self.store)[0], 0)
+        env = self.env(NOW, True)
+        procs = [subprocess.Popen([PY, LIB, "apply", self.store], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                  cwd=self.root, env=env) for _ in range(2)]
+        results = sorted((p.wait(timeout=60), p.stdout.read().decode()) for p in procs)
+        for p in procs:
+            p.stdout.close()
+            p.stderr.close()
+        self.assertEqual([rc for rc, _ in results], [0, 1], results)
+        self.assertIn("2 uses folded", results[0][1])
+        self.assertIn("apply: no prep snapshot", results[1][1])
+        self.assertEqual(self.topic()[0]["uses"], "2")
+
+    def test_stale_snapshot_is_refused_and_a_new_prep_replaces_it(self):
+        self.add_run(used=["T-0001"])
+        self.prep(now="2026-10-20T08:00:00")
+        before = self.snap(skip=(LOCK_REL,))
+        rc, out, _ = self.run_cmd(lib.cmd_apply, self.store)
+        self.assertEqual(rc, 1)
+        self.assertIn("prep snapshot is from 2026-10-20T08:00:00", out)
+        self.assertIn("run prep again", out)
+        self.assertEqual(self.snap(skip=(LOCK_REL,)), before)
+        self.add_run(used=["T-0001"], agent_id="y")
+        self.prep()
+        rc, out, err = self.run_cmd(lib.cmd_apply, self.store)
+        self.assertEqual(rc, 0, out + err)
+        self.assertIn("2 inbox files removed", out)
+
+    def test_a_second_prep_keeps_the_open_snapshot_and_marks_later_files(self):
+        self.add_run(used=["T-0001"], agent_id="early", new=[{"topic": "testing", "fact": "Early fact",
+                                                               "check": "true", "evidence": ["src/a.py"]}])
+        self.prep()
+        with open(self.inbox(lib.PREP_SNAPSHOT), "rb") as fh:
+            first = fh.read()
+        self.add_run(agent_id="late", new=[{"topic": "testing", "fact": "Late fact", "check": "true",
+                                             "evidence": ["src/a.py"]}],
+                     unparsed=[{"reason": "bad line", "text": "NEW nowhere"}])
+        rc, out, err = self.prep()
+        self.assertEqual(rc, 0, err)
+        self.assertIn("  - scout early %s: Early fact\n" % TODAY, out)
+        self.assertIn("  - scout late %s: Late fact [next round]\n" % TODAY, out)
+        self.assertIn("  - scout late %s: bad line [next round]\n" % TODAY, out)
+        self.assertIn("apply folds 1 of these 2 run files", out)
+        with open(self.inbox(lib.PREP_SNAPSHOT), "rb") as fh:
+            self.assertEqual(fh.read(), first)
+        rc, out, err = self.run_cmd(lib.cmd_apply, self.store)
+        self.assertEqual((rc, "1 inbox files removed" in out), (0, True), out + err)
+        self.assertTrue(os.path.exists(self.inbox("run0002.json")))
+
+    def test_a_run_file_changed_after_prep_is_left_alone(self):
+        path = self.add_run(used=["T-0001"])
+        self.prep()
+        self.write("inbox/run0001.json", json.dumps({"date": TODAY, "used": ["T-0001"], "new": [
+            {"topic": "testing", "fact": "Swapped in", "check": "true", "evidence": ["src/a.py"]}]}), self.store)
+        rc, out, err = self.run_cmd(lib.cmd_apply, self.store)
+        self.assertEqual(rc, 0, out + err)
+        self.assertIn("0 inbox files removed", out)
+        self.assertIn("1 run files changed after prep", err)
+        self.assertTrue(os.path.exists(path))
+        self.assertEqual(self.topic()[0]["uses"], "0")
+
+    def test_snapshot_names_outside_the_inbox_are_refused(self):
+        self.add_run(used=["T-0001"])
+        self.prep()
+        target = self.write("topics/victim.json", "{}", self.store)
+        with open(target, "rb") as fh:
+            digest = lib.hashlib.sha256(fh.read()).hexdigest()
+        snap = json.loads(self.slurp("inbox", lib.PREP_SNAPSHOT))
+        snap["files"]["../topics/victim.json"] = digest
+        self.write("inbox/" + lib.PREP_SNAPSHOT, json.dumps(snap), self.store)
+        before = self.snap(skip=(LOCK_REL,))
+        rc, out, _ = self.run_cmd(lib.cmd_apply, self.store)
+        self.assertEqual(rc, 1)
+        self.assertIn("not a valid prep snapshot", out)
+        self.assertEqual(self.snap(skip=(LOCK_REL,)), before)
+        self.assertTrue(os.path.exists(target))
+
+    def test_hook_errors_logged_after_prep_survive_apply(self):
+        self.write("inbox/errors.log", "seen\n", self.store)
+        self.add_run(used=["T-0001"])
+        self.assertIn("Hook errors: 1", self.prep()[1])
+        with open(self.inbox("errors.log"), "a") as fh:
+            fh.write("late\n")
+        self.assertEqual(self.run_cmd(lib.cmd_apply, self.store)[0], 0)
+        self.assertEqual(self.slurp("inbox", "errors.log"), "late\n")
+
+    def test_unreadable_files_in_the_snapshot_are_removed_and_vanished_ones_reported(self):
+        self.add_run(used=["T-0001"])
+        self.write("inbox/broken.json", "{not json", self.store)
+        self.write("inbox/gone.json", "{}", self.store)
+        self.assertIn("Inbox: 3 run files", self.prep()[1])
+        os.unlink(self.inbox("gone.json"))
+        rc, out, err = self.run_cmd(lib.cmd_apply, self.store)
+        self.assertEqual(rc, 0, out + err)
+        self.assertIn("2 inbox files removed", out)
+        self.assertIn("apply: removed 1 unreadable run files", err)
+        self.assertIn("apply: 1 run files from the prep snapshot were already gone", err)
+        self.assertEqual(lib.run_file_names(self.store), [])
+
+    def refused(self, text):
+        """apply exits 1 with text on stdout and changes nothing."""
+        before = self.snap(skip=(LOCK_REL,))
+        rc, out, _ = self.run_cmd(lib.cmd_apply, self.store)
+        self.assertEqual(rc, 1, out)
+        self.assertIn(text, out)
+        self.assertIn("(nothing changed)", out)
+        self.assertEqual(self.snap(skip=(LOCK_REL,)), before)
+
+    def edit_snapshot(self, **over):
+        snap = json.loads(self.slurp("inbox", lib.PREP_SNAPSHOT))
+        snap.update(over)
+        self.write("inbox/" + lib.PREP_SNAPSHOT, json.dumps(snap), self.store)
+
+    def test_snapshot_from_another_store_invalid_or_future_dated_is_refused(self):
+        self.add_run(used=["T-0001"])
+        self.prep()
+        self.edit_snapshot(store="/elsewhere/.claude/hivemind")
+        self.refused("the prep snapshot was written for /elsewhere/.claude/hivemind; run prep again")
+        self.edit_snapshot(store=os.path.realpath(self.store), time="2026-10-20T15:00:01")
+        self.refused("the prep snapshot is from 2026-10-20T15:00:01")
+        self.write("inbox/" + lib.PREP_SNAPSHOT, "{not json", self.store)
+        self.refused("is not a valid prep snapshot; run prep again")
+        self.prep()
+        self.assertEqual(self.run_cmd(lib.cmd_apply, self.store)[0], 0)
+
+    def test_a_case_alias_of_a_skipped_file_is_refused(self):
+        self.add_run(used=["T-0001"])
+        self.write("inbox/injected.json", "{}", self.store)
+        self.prep()
+        snap = json.loads(self.slurp("inbox", lib.PREP_SNAPSHOT))
+        snap["files"]["INJECTED.json"] = lib.hashlib.sha256(b"{}").hexdigest()
+        self.write("inbox/" + lib.PREP_SNAPSHOT, json.dumps(snap), self.store)
+        self.refused("not a valid prep snapshot")
+        self.assertTrue(os.path.exists(self.inbox("injected.json")))
+
+    def test_a_crash_after_the_unlinks_never_cuts_errors_log_twice(self):
+        self.write("inbox/errors.log", "seen\n", self.store)
+        self.add_run(used=["T-0001"])
+        self.prep()
+        with open(self.inbox("errors.log"), "a") as fh:
+            fh.write("late line one\n")
+        real = lib.atomic_write
+
+        def crash_on_errors(path, text):
+            if path.endswith("errors.log"):
+                raise OSError("disk gone")
+            return real(path, text)
+
+        with mock.patch.object(lib, "atomic_write", crash_on_errors), self.assertRaises(OSError):
+            self.run_cmd(lib.cmd_apply, self.store)
+        self.assertFalse(os.path.exists(self.inbox(lib.PREP_SNAPSHOT)))
+        self.refused("no prep snapshot")
+        self.prep()
+        self.assertEqual(self.run_cmd(lib.cmd_apply, self.store)[0], 0)
+        self.assertEqual(self.slurp("inbox", "errors.log"), "")
+
+    def test_a_prep_whose_report_fails_leaves_no_snapshot(self):
+        self.add_run(used=["T-0001"])
+        with mock.patch.object(lib, "prep_report", side_effect=RuntimeError("boom")), \
+                self.assertRaises(RuntimeError):
+            self.run_cmd(lib.cmd_prep, self.store)
+        self.assertFalse(os.path.exists(self.inbox(lib.PREP_SNAPSHOT)))
+
+    def test_a_filesystem_without_flock_fails_at_once(self):
+        self.add_run(used=["T-0001"])
+        self.prep()
+        fake = mock.Mock(LOCK_EX=2, LOCK_NB=4, flock=mock.Mock(side_effect=OSError(45, "Operation not supported")))
+        start = time.monotonic()
+        with mock.patch.object(lib, "fcntl", fake):
+            self.refused("cannot lock inbox/%s" % lib.LOCK_NAME)
+        self.assertLess(time.monotonic() - start, lib.LOCK_WAIT_S)
+
+    def test_snapshot_and_lock_are_not_run_files(self):
+        self.add_run(used=["T-0001"])
+        self.prep()
+        self.assertEqual(lib.run_file_names(self.store), ["run0001.json"])
+        self.assertIn("1 inbox files waiting", self.run_cmd(lib.cmd_status, self.store)[1])
+        snap = json.loads(self.slurp("inbox", lib.PREP_SNAPSHOT))
+        self.assertEqual((snap["version"], snap["time"], snap["store"]), (1, NOW, os.path.realpath(self.store)))
+        self.assertEqual(sorted(snap["files"]), ["run0001.json"])
 
 
 class FlowTest(CliBase):
@@ -3449,6 +3735,7 @@ class HistoryStatusPrepInitTest(HistBase):
     def test_apply_updates_the_history_line_of_the_store_index(self):
         self.put_entry("2026-10-20")
         self.write("rollup-2026-Q1.md", lib.serialize_rollup("2026-Q1", [self.ent(eid="F-0005")]), self.hdir)
+        self.assertEqual(self.run_cmd(lib.cmd_prep, self.store)[0], 0)
         rc, out, err = self.run_cmd(lib.cmd_apply, self.store)
         self.assertEqual(rc, 0, err)
         self.assertIn("- history: 1 entries, 1 rollups (history/INDEX.md)\n", self.slurp("INDEX.md"))
