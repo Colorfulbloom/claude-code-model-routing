@@ -36,6 +36,7 @@ import {
   PAGES, ALL_KEY, MAIN_KEY, parseHash, hashFor, sectionFor, navFor, showSection, onRouteChange,
 } from "./router.js";
 import { createShell } from "./shell.js";
+import * as live from "./pages/live.js";
 import * as overview from "./pages/overview.js";
 import * as agents from "./pages/agents.js";
 import * as agentDetail from "./pages/agent-detail.js";
@@ -50,7 +51,7 @@ import * as rules from "./pages/rules.js";
 import * as allProjects from "./pages/all-projects.js";
 
 const MODULES = {
-  overview, agents, "agent-detail": agentDetail, models, sessions, "session-detail": sessionDetail,
+  live, overview, agents, "agent-detail": agentDetail, models, sessions, "session-detail": sessionDetail,
   settings, trail, attention, files, rules, "all-projects": allProjects,
 };
 
@@ -226,6 +227,8 @@ function context() {
     },
     // patch is optional and wins over the current query, as in a link from All projects to one project.
     hashFor: (name, params, patch) => hashFor(name, params, Object.assign({}, state.route.query, patch)),
+    // The Live page polls this itself: live(projectKey, sessionId, etag) resolves to { ok, status, data }, never cached.
+    live: api.live,
     setRange: (range) => go(state.route.name, state.route.params, { range }),
     // The edit session. targets and history are { ok, status, data } or null. The actions fill in the
     // current project and resolve to an outcome { kind, res }. The token never leaves the session.
@@ -404,6 +407,8 @@ function handle(route, force) {
   document.title = t("tab_title", { project: projectInfo().name });
   updateShell();
   showSection(sections, sectionFor(parsed, state.project));
+  // The Live page polls only while it is the visible section. A new project resets it.
+  live.setActive(sectionFor(parsed, state.project) === "live", context());
   if (fetches) {
     loadProject(state.project);
     if (wantsTargets()) loadEdit();

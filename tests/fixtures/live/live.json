@@ -1,0 +1,411 @@
+{
+  "project": "tidewater-reporting",
+  "server_time": "2026-10-30T16:24:44-04:00",
+  "etag": "4f2a9c01b7d3e856",
+  "unchanged": false,
+  "unreadable": null,
+  "running": [
+    {
+      "session_id": "c57d41c0-3a1e-4b7a-9d52-6a8f0e1b2c34",
+      "started": "2026-10-30T16:01:12-04:00",
+      "branch": "feature/quarter-close",
+      "last_request": "2026-10-30T16:24:41-04:00",
+      "requests": 24
+    }
+  ],
+  "session_gone": false,
+  "session": {
+    "session_id": "c57d41c0-3a1e-4b7a-9d52-6a8f0e1b2c34",
+    "started": "2026-10-30T16:01:12-04:00",
+    "branch": "feature/quarter-close",
+    "last_request": "2026-10-30T16:24:41-04:00",
+    "active": true,
+    "totals": {
+      "tokens": 755000,
+      "input": 41000,
+      "output": 12800,
+      "cache_read": 640000,
+      "cache_write": 61200,
+      "cost": 0.94,
+      "unpriced_requests": 1,
+      "hit_rate": 0.79,
+      "requests": 24
+    },
+    "last_minute": {
+      "tokens": 29600,
+      "cost": 0.0231,
+      "unpriced_requests": 1,
+      "hit_rate": 0.64,
+      "requests": 2
+    },
+    "minutes": [
+      {
+        "start": "2026-10-30T15:55:00-04:00",
+        "tokens": 0,
+        "by_model": {}
+      },
+      {
+        "start": "2026-10-30T15:56:00-04:00",
+        "tokens": 0,
+        "by_model": {}
+      },
+      {
+        "start": "2026-10-30T15:57:00-04:00",
+        "tokens": 0,
+        "by_model": {}
+      },
+      {
+        "start": "2026-10-30T15:58:00-04:00",
+        "tokens": 52000,
+        "by_model": {
+          "claude-opus-5-5": 52000
+        }
+      },
+      {
+        "start": "2026-10-30T15:59:00-04:00",
+        "tokens": 0,
+        "by_model": {}
+      },
+      {
+        "start": "2026-10-30T16:00:00-04:00",
+        "tokens": 48000,
+        "by_model": {
+          "claude-opus-5-5": 48000
+        }
+      },
+      {
+        "start": "2026-10-30T16:01:00-04:00",
+        "tokens": 55000,
+        "by_model": {
+          "claude-opus-5-5": 55000
+        }
+      },
+      {
+        "start": "2026-10-30T16:02:00-04:00",
+        "tokens": 0,
+        "by_model": {}
+      },
+      {
+        "start": "2026-10-30T16:03:00-04:00",
+        "tokens": 45000,
+        "by_model": {
+          "claude-opus-5-5": 45000
+        }
+      },
+      {
+        "start": "2026-10-30T16:04:00-04:00",
+        "tokens": 52000,
+        "by_model": {
+          "claude-opus-5-5": 52000
+        }
+      },
+      {
+        "start": "2026-10-30T16:05:00-04:00",
+        "tokens": 0,
+        "by_model": {}
+      },
+      {
+        "start": "2026-10-30T16:06:00-04:00",
+        "tokens": 46000,
+        "by_model": {
+          "claude-opus-5-5": 29000,
+          "claude-sonnet-5-5": 11000,
+          "claude-haiku-5-5": 6000
+        }
+      },
+      {
+        "start": "2026-10-30T16:07:00-04:00",
+        "tokens": 30000,
+        "by_model": {
+          "claude-sonnet-5-5": 9000,
+          "claude-haiku-5-5": 21000
+        }
+      },
+      {
+        "start": "2026-10-30T16:08:00-04:00",
+        "tokens": 0,
+        "by_model": {}
+      },
+      {
+        "start": "2026-10-30T16:09:00-04:00",
+        "tokens": 0,
+        "by_model": {}
+      },
+      {
+        "start": "2026-10-30T16:10:00-04:00",
+        "tokens": 82000,
+        "by_model": {
+          "claude-opus-5-5": 61000,
+          "claude-sonnet-5-5": 9000,
+          "claude-haiku-5-5": 12000
+        }
+      },
+      {
+        "start": "2026-10-30T16:11:00-04:00",
+        "tokens": 38000,
+        "by_model": {
+          "claude-sonnet-5-5": 24000,
+          "claude-haiku-5-5": 14000
+        }
+      },
+      {
+        "start": "2026-10-30T16:12:00-04:00",
+        "tokens": 48000,
+        "by_model": {
+          "claude-opus-5-5": 30000,
+          "claude-sonnet-5-5": 18000
+        }
+      },
+      {
+        "start": "2026-10-30T16:13:00-04:00",
+        "tokens": 0,
+        "by_model": {}
+      },
+      {
+        "start": "2026-10-30T16:14:00-04:00",
+        "tokens": 56000,
+        "by_model": {
+          "claude-opus-5-5": 47000,
+          "claude-haiku-5-5": 9000
+        }
+      },
+      {
+        "start": "2026-10-30T16:15:00-04:00",
+        "tokens": 82000,
+        "by_model": {
+          "claude-opus-5-5": 53000,
+          "claude-sonnet-5-5": 21000,
+          "acme-test-model-1": 8000
+        }
+      },
+      {
+        "start": "2026-10-30T16:16:00-04:00",
+        "tokens": 40000,
+        "by_model": {
+          "claude-opus-5-5": 28000,
+          "claude-sonnet-5-5": 12000
+        }
+      },
+      {
+        "start": "2026-10-30T16:17:00-04:00",
+        "tokens": 27000,
+        "by_model": {
+          "claude-haiku-5-5": 21000,
+          "acme-test-model-1": 6000
+        }
+      },
+      {
+        "start": "2026-10-30T16:18:00-04:00",
+        "tokens": 34000,
+        "by_model": {
+          "claude-opus-5-5": 21000,
+          "claude-sonnet-5-5": 13000
+        }
+      },
+      {
+        "start": "2026-10-30T16:19:00-04:00",
+        "tokens": 0,
+        "by_model": {}
+      },
+      {
+        "start": "2026-10-30T16:20:00-04:00",
+        "tokens": 58000,
+        "by_model": {
+          "claude-opus-5-5": 36000,
+          "claude-sonnet-5-5": 22000
+        }
+      },
+      {
+        "start": "2026-10-30T16:21:00-04:00",
+        "tokens": 9000,
+        "by_model": {
+          "claude-haiku-5-5": 9000
+        }
+      },
+      {
+        "start": "2026-10-30T16:22:00-04:00",
+        "tokens": 0,
+        "by_model": {}
+      },
+      {
+        "start": "2026-10-30T16:23:00-04:00",
+        "tokens": 6000,
+        "by_model": {
+          "claude-opus-5-5": 6000
+        }
+      },
+      {
+        "start": "2026-10-30T16:24:00-04:00",
+        "tokens": 0,
+        "by_model": {}
+      }
+    ],
+    "axis": {
+      "top": 150000,
+      "ticks": [
+        0,
+        50000,
+        100000,
+        150000
+      ]
+    },
+    "by_model": [
+      {
+        "model": "claude-opus-5-5",
+        "display_name": "Opus 5.5",
+        "tokens": 563000
+      },
+      {
+        "model": "claude-sonnet-5-5",
+        "display_name": "Sonnet 5.5",
+        "tokens": 139000
+      },
+      {
+        "model": "claude-haiku-5-5",
+        "display_name": "Haiku 5.5",
+        "tokens": 92000
+      },
+      {
+        "model": "acme-test-model-1",
+        "display_name": "acme-test-model-1",
+        "tokens": 14000
+      }
+    ],
+    "agents": [
+      {
+        "route_key": "@main",
+        "agent": null,
+        "model": "claude-opus-5-5",
+        "model_display": "Opus 5.5",
+        "effort": "high",
+        "tokens": 503000,
+        "cost": 0.71,
+        "requests": 11,
+        "last_request": "2026-10-30T16:21:17-04:00",
+        "active": false
+      },
+      {
+        "route_key": "reviewer",
+        "agent": "reviewer",
+        "model": "claude-sonnet-5-5",
+        "model_display": "Sonnet 5.5",
+        "effort": "xhigh",
+        "tokens": 220000,
+        "cost": 0.14,
+        "requests": 8,
+        "last_request": "2026-10-30T16:24:41-04:00",
+        "active": true
+      },
+      {
+        "route_key": "scribe",
+        "agent": "scribe",
+        "model": "acme-test-model-1",
+        "model_display": "acme-test-model-1",
+        "effort": "high",
+        "tokens": 32000,
+        "cost": 0.0,
+        "requests": 5,
+        "last_request": "2026-10-30T16:24:17-04:00",
+        "active": true
+      }
+    ],
+    "requests": [
+      {
+        "id": "7c1d90e4a2b6",
+        "ts": "2026-10-30T16:24:41-04:00",
+        "route_key": "reviewer",
+        "agent": "reviewer",
+        "model": "claude-sonnet-5-5",
+        "model_display": "Sonnet 5.5",
+        "effort": "xhigh",
+        "tokens": 23400,
+        "output": 360,
+        "cost": 0.0231
+      },
+      {
+        "id": "2b84f17c03de",
+        "ts": "2026-10-30T16:24:17-04:00",
+        "route_key": "scribe",
+        "agent": "scribe",
+        "model": "acme-test-model-1",
+        "model_display": "acme-test-model-1",
+        "effort": "high",
+        "tokens": 6200,
+        "output": 225,
+        "cost": null
+      },
+      {
+        "id": "e90a5d3b71c4",
+        "ts": "2026-10-30T16:23:31-04:00",
+        "route_key": "scribe",
+        "agent": "scribe",
+        "model": "claude-haiku-5-5",
+        "model_display": "Haiku 5.5",
+        "effort": "high",
+        "tokens": 5800,
+        "output": 301,
+        "cost": 0.0042
+      },
+      {
+        "id": "5f3a6c28d19b",
+        "ts": "2026-10-30T16:22:50-04:00",
+        "route_key": "reviewer",
+        "agent": "reviewer",
+        "model": "claude-sonnet-5-5",
+        "model_display": "Sonnet 5.5",
+        "effort": "xhigh",
+        "tokens": 32100,
+        "output": 988,
+        "cost": 0.0244
+      },
+      {
+        "id": "a1b2c3d4e5f6",
+        "ts": "2026-10-30T16:21:21-04:00",
+        "route_key": "scribe",
+        "agent": "scribe",
+        "model": "claude-haiku-5-5",
+        "model_display": "Haiku 5.5",
+        "effort": "high",
+        "tokens": 4100,
+        "output": 593,
+        "cost": 0.0038
+      },
+      {
+        "id": "0d9e8f7a6b5c",
+        "ts": "2026-10-30T16:21:17-04:00",
+        "route_key": "@main",
+        "agent": null,
+        "model": "claude-opus-5-5",
+        "model_display": "Opus 5.5",
+        "effort": "high",
+        "tokens": 54300,
+        "output": 1210,
+        "cost": 0.0812
+      },
+      {
+        "id": "3c4d5e6f7a8b",
+        "ts": "2026-10-30T16:20:41-04:00",
+        "route_key": "scribe",
+        "agent": "scribe",
+        "model": "claude-haiku-5-5",
+        "model_display": "Haiku 5.5",
+        "effort": "high",
+        "tokens": 7000,
+        "output": 588,
+        "cost": 0.0049
+      },
+      {
+        "id": "9a8b7c6d5e4f",
+        "ts": "2026-10-30T16:20:20-04:00",
+        "route_key": "@main",
+        "agent": null,
+        "model": "claude-opus-5-5",
+        "model_display": "Opus 5.5",
+        "effort": "high",
+        "tokens": 55200,
+        "output": 1180,
+        "cost": 0.0705
+      }
+    ]
+  }
+}

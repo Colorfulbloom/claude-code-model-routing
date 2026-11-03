@@ -34,12 +34,12 @@ export function kinds() {
 // Pattern ids must be unique in the page. Every page renders at once and hidden sections do not
 // resolve a url(#id) that points inside them.
 let patternCount = 0;
-function patternId(base) {
+export function patternId(base) {
   patternCount += 1;
   return base + "-" + patternCount;
 }
 
-function hatchDefs(id) {
+export function hatchDefs(id) {
   return s("defs", null,
     s("pattern", { id, patternUnits: "userSpaceOnUse", width: 5, height: 5, patternTransform: "rotate(45)" },
       s("rect", { width: 5, height: 5, class: "pt-bg" }),

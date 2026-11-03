@@ -6,6 +6,7 @@ hivemind-guard.py) and by the CLI (`init | status | prep | apply | check`).
 Python 3.9 standard library only. Hooks never raise and always exit 0.
 """
 import bisect
+import contextlib
 import copy
 import datetime
 import fnmatch
@@ -35,7 +36,11 @@ TALLY_TOPIC = "token-tallies"
 INBOX_GITIGNORE = "*\n!.gitignore\n"
 STORE_IGNORE_LINES = ("active-days.txt",)   # local to each clone, never committed
 GIT_LOG_MAX = 400                           # commits read for the commit-day half of the active days
-INBOX_SKIP = ("injected.json", "fp-cache.json")
+PREP_SNAPSHOT = "prep-snapshot.json"        # inbox/: the run files the last prep reported; apply folds only these
+LOCK_NAME = "consolidating.lock"            # inbox/: flock held while prep writes the snapshot and while apply runs
+PREP_SNAPSHOT_MAX_AGE_S = 2 * 3600          # apply refuses an older snapshot; prep replaces it
+LOCK_WAIT_S = 10
+INBOX_SKIP = ("injected.json", "fp-cache.json", PREP_SNAPSHOT)
 GIT_TIMEOUT_DEFAULT = 2
 FP_CACHE_MAX = 5000
 INJECTED_KEEP_DAYS = 2
@@ -528,6 +533,122 @@ def inbox_uses(runs):
                 if isinstance(i, str) and d > uses.get(i, ""):
                     uses[i] = d
     return uses
+
+
+# ---------------------------------------------------------------- prep snapshot and consolidation lock
+
+class LockBusy(Exception):
+    pass
+
+
+@contextlib.contextmanager
+def consolidation_lock(store, who):
+    """Hold inbox/consolidating.lock (flock) while prep writes its snapshot or while apply runs.
+
+    Waits up to LOCK_WAIT_S, then raises LockBusy naming the holder. The kernel drops the lock when its holder
+    exits, so a crash never leaves it stuck. The file stays; deleting a lock file races with its waiters.
+    Without fcntl (not POSIX) there is no lock: the snapshot still stops H2, but two applies could fold twice.
+    """
+    try:
+        fh = open(os.path.join(ensure_inbox(store), LOCK_NAME), "a+", encoding="utf-8")
+    except OSError as e:
+        raise LockBusy("cannot open inbox/%s: %s" % (LOCK_NAME, e))
+    with fh:
+        if fcntl:
+            deadline = time.monotonic() + LOCK_WAIT_S
+            while True:
+                try:
+                    fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    break
+                except BlockingIOError:
+                    if time.monotonic() >= deadline:
+                        fh.seek(0)
+                        holder = fh.read().strip()[:200]
+                        raise LockBusy("another consolidation holds inbox/%s%s; try again when it finishes" % (
+                            LOCK_NAME, " (%s)" % holder if holder else ""))
+                    time.sleep(0.05)
+                except OSError as e:   # no flock on this filesystem: say so now instead of waiting
+                    raise LockBusy("cannot lock inbox/%s: %s" % (LOCK_NAME, e))
+            fh.seek(0)
+            fh.truncate()
+            fh.write("%s, pid %d, since %s\n" % (who, os.getpid(), now_str()))
+            fh.flush()
+        yield
+
+
+def parse_run_bytes(raw):
+    """The run file's dict from its bytes, else None (same rule as read_run)."""
+    try:
+        data = json.loads(raw.decode("utf-8"))
+    except ValueError:
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def run_listing(store):
+    """[(name, sha256, data or None)] for every run file, each read once, so the report and the snapshot agree."""
+    out = []
+    for name in run_file_names(store):
+        try:
+            with open(os.path.join(store, "inbox", name), "rb") as fh:
+                raw = fh.read()
+        except OSError:
+            continue
+        out.append((name, hashlib.sha256(raw).hexdigest(), parse_run_bytes(raw)))
+    return out
+
+
+SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+
+
+def plain_run_name(name):
+    """True for a name run_file_names could list: no directory part, so apply never deletes outside inbox/.
+
+    The INBOX_SKIP test ignores case, because APFS opens "INJECTED.json" as injected.json. apply also acts only
+    on names that os.listdir returns exactly.
+    """
+    return (isinstance(name, str) and name == os.path.basename(name) and "\\" not in name and "\x00" not in name
+            and name.endswith(".json") and not name.startswith(".") and name.lower() not in INBOX_SKIP)
+
+
+def load_prep_snapshot(store):
+    """(snapshot, None) when inbox/prep-snapshot.json is valid, belongs to this store and is fresh; else (None, why).
+
+    why is "" when there is no snapshot file at all.
+    """
+    path = os.path.join(store, "inbox", PREP_SNAPSHOT)
+    if not os.path.lexists(path):
+        return None, ""
+    snap = read_json(path, None)
+    files = snap.get("files") if isinstance(snap, dict) else None
+    try:
+        stamp = datetime.datetime.strptime(snap.get("time"), "%Y-%m-%dT%H:%M:%S")
+    except (AttributeError, TypeError, ValueError):
+        stamp = None
+    eb = snap.get("errors_bytes", 0) if isinstance(snap, dict) else None
+    if (not isinstance(snap, dict) or snap.get("version") != 1 or stamp is None
+            or not isinstance(snap.get("store"), str) or not isinstance(files, dict)
+            or not _is_int(eb) or eb < 0
+            or not all(plain_run_name(n) and isinstance(h, str) and SHA256_RE.match(h) for n, h in files.items())):
+        return None, "inbox/%s is not a valid prep snapshot; run prep again" % PREP_SNAPSHOT
+    if os.path.realpath(snap["store"]) != os.path.realpath(store):
+        return None, "the prep snapshot was written for %s; run prep again" % snap["store"]
+    if abs((now() - stamp).total_seconds()) > PREP_SNAPSHOT_MAX_AGE_S:
+        return None, "the prep snapshot is from %s, more than %d hours from now; run prep again" % (
+            snap["time"], PREP_SNAPSHOT_MAX_AGE_S // 3600)
+    return snap, None
+
+
+def write_prep_snapshot(store, listing):
+    """Write inbox/prep-snapshot.json naming the listed run files and their hashes; returns the snapshot."""
+    try:
+        errors_bytes = os.path.getsize(os.path.join(store, "inbox", "errors.log"))
+    except OSError:
+        errors_bytes = 0
+    snap = {"version": 1, "time": now_str(), "store": os.path.realpath(store),
+            "files": {n: h for n, h, _ in listing}, "errors_bytes": errors_bytes}
+    atomic_write(os.path.join(ensure_inbox(store), PREP_SNAPSHOT), json.dumps(snap, indent=1, sort_keys=True) + "\n")
+    return snap
 
 
 def write_run_file(store, data, agent_type, agent_id):
@@ -3164,14 +3285,36 @@ def history_report(store, cfg):
     return out
 
 
-def prep_report(store, root):
-    """Plain-text consolidation report for the lead."""
+def prep_report(store, root, listing=None, snapshot=None):
+    """Plain-text consolidation report for the lead. Read-only.
+
+    listing is run_listing(store) (read now when None). snapshot is the prep snapshot apply will use: items from
+    run files outside it (captured after it, or changed since) are marked [next round], because apply leaves them.
+    """
     st = Store(store)
+    if listing is None:
+        listing = run_listing(store)
+    st.runs = [(os.path.join(store, "inbox", n), d) for n, _, d in listing if d is not None]
     cfg, runs, today_s = st.cfg, st.runs, today()
+    held = snapshot.get("files", {}) if isinstance(snapshot, dict) else None
+    later = set() if held is None else {id(d) for n, h, d in listing if d is not None and held.get(n) != h}
+
+    def tag(data):
+        return " [next round]" if id(data) in later else ""
+
     out = ["HiveMind prep report for %s" % store]
     dates = sorted(d for d in (run_date(r) for _, r in runs) if d)
-    names = run_file_names(store)
+    names = [n for n, _, _ in listing]
     out.append("Inbox: %d run files%s" % (len(names), " (%s to %s)" % (dates[0], dates[-1]) if dates else ""))
+    if held is not None:
+        n_held = len(names) - sum(1 for n, h, _ in listing if held.get(n) != h)
+        if n_held == len(names):
+            out.append("Snapshot (%s): apply folds these %d run files; later captures wait for the next "
+                       "consolidation." % (snapshot.get("time"), n_held))
+        else:
+            out.append("Snapshot (%s): apply folds %d of these %d run files; items marked [next round] wait for "
+                       "the next consolidation (to review them now: apply, then prep again)." % (
+                           snapshot.get("time"), n_held, len(names)))
     errors = error_lines(store)
     out.append("Hook errors: %d" % len(errors))
     out += ["  " + ln for ln in errors[-5:]]
@@ -3185,8 +3328,8 @@ def prep_report(store, root):
     for topic in sorted(proposals):
         out.append("  [%s]" % topic)
         for data, item in proposals[topic]:
-            out.append("  - %s %s %s: %s" % (data.get("agent_type", ""), str(data.get("agent_id", ""))[:8],
-                                            run_date(data) or "?", item.get("fact", "")))
+            out.append("  - %s %s %s: %s%s" % (data.get("agent_type", ""), str(data.get("agent_id", ""))[:8],
+                                              run_date(data) or "?", item.get("fact", ""), tag(data)))
             out.append("      check: %s" % item.get("check", ""))
             out.append("      evidence: %s" % ", ".join(item.get("evidence") or []))
             if item.get("flagged"):
@@ -3194,8 +3337,8 @@ def prep_report(store, root):
     lost = unparsed_items(runs)
     out.append("Unparsed HIVEMIND lines: %d (salvage by hand: add a ### NEW record or discard)" % len(lost))
     for data, u in lost:
-        out.append("  - %s %s %s: %s" % (data.get("agent_type", ""), str(data.get("agent_id", ""))[:8],
-                                        run_date(data) or "?", u.get("reason", "")))
+        out.append("  - %s %s %s: %s%s" % (data.get("agent_type", ""), str(data.get("agent_id", ""))[:8],
+                                          run_date(data) or "?", u.get("reason", ""), tag(data)))
         out += ["      " + ln for ln in str(u.get("text", "")).splitlines()]
     notes = [(d, n) for _, d in runs for n in d.get("notes") or [] if isinstance(n, dict)]
     out.append("Notes on used or verified ids: %d" % len(notes))
@@ -3271,7 +3414,31 @@ def cmd_prep(args):
         sys.stderr.write("prep: no HiveMind store found\n")
         return 1
     root = store_root(store)
-    print(prep_report(store, root))
+    try:
+        with consolidation_lock(store, "prep"):
+            listing = run_listing(store)
+            snap = load_prep_snapshot(store)[0]
+            wrote = snap is None
+            if wrote:   # none, invalid, another store's or stale: this report becomes the snapshot
+                snap = write_prep_snapshot(store, listing)
+    except LockBusy as e:
+        sys.stderr.write("prep: %s (nothing written)\n" % e)
+        return 1
+    except OSError as e:
+        sys.stderr.write("prep: cannot write inbox/%s: %s\n" % (PREP_SNAPSHOT, e))
+        return 1
+    try:
+        report = prep_report(store, root, listing, snap)
+    except BaseException:   # nobody saw this report, so apply must not fold by its snapshot
+        if wrote:
+            try:
+                with consolidation_lock(store, "prep"):
+                    if load_prep_snapshot(store)[0] == snap:
+                        os.unlink(os.path.join(store, "inbox", PREP_SNAPSHOT))
+            except Exception:
+                pass
+        raise
+    print(report)
     return 0
 
 
@@ -3441,10 +3608,20 @@ def drop_old_round_states(store):
 
 
 def cmd_apply(args):
+    """Fold the run files the last prep reported, under the consolidation lock. Exit 1 changes nothing."""
     store = store_arg(args)
     if not store or not os.path.isdir(store):
         sys.stderr.write("apply: no HiveMind store found\n")
         return 1
+    try:
+        with consolidation_lock(store, "apply"):
+            return _apply(store)
+    except LockBusy as e:
+        print("apply: %s (nothing changed)" % e)
+        return 1
+
+
+def _apply(store):
     st = Store(store)
     cfg, root = st.cfg, store_root(store)
     if st.cfg_problem:
@@ -3463,11 +3640,34 @@ def cmd_apply(args):
             except (OSError, ParseError) as e:
                 print("apply: cannot parse archive/%s.md: %s (nothing changed)" % (topic, e))
                 return 1
-    # (1) snapshot the run files; only these are read, folded and deleted
-    names = run_file_names(store)
-    runs = [(n, read_run(os.path.join(store, "inbox", n))) for n in names]
-    unreadable = [n for n, d in runs if d is None]
-    runs = [(n, d) for n, d in runs if d is not None]
+    # (1) the run files the last prep reported; only these are read, folded and deleted. A file captured after
+    # prep, or changed since, stays for the next consolidation: its proposals were never shown to the lead.
+    snap, problem = load_prep_snapshot(store)
+    if snap is None:
+        print("apply: %s (nothing changed)" % (problem or "no prep snapshot (inbox/%s); run prep, decide its "
+                                               "proposals in topics/*.md, then apply" % PREP_SNAPSHOT))
+        return 1
+    names, runs, unreadable, changed, gone = [], [], [], [], 0
+    present = set(run_file_names(store))   # exact names, so a case alias never reaches another file
+    for n in sorted(snap["files"]):
+        if n not in present:
+            gone += 1
+            continue
+        try:
+            with open(os.path.join(store, "inbox", n), "rb") as fh:
+                raw = fh.read()
+        except OSError:
+            gone += 1
+            continue
+        if hashlib.sha256(raw).hexdigest() != snap["files"][n]:
+            changed.append(n)
+            continue
+        names.append(n)
+        data = parse_run_bytes(raw)
+        if data is None:
+            unreadable.append(n)
+        else:
+            runs.append((n, data))
     # (2) active days: the local file plus commit days, read once, never written back
     days, today_s, head = st.days, today(), git_head(root, cfg["git_timeout_s"])
 
@@ -3565,10 +3765,27 @@ def cmd_apply(args):
             os.unlink(os.path.join(store, "inbox", n))
         except OSError:
             pass
+    try:   # before errors.log: a rerun after a crash here must not cut errors.log a second time
+        os.unlink(os.path.join(store, "inbox", PREP_SNAPSHOT))
+    except OSError:
+        pass
     drop_old_round_states(store)
     errors = os.path.join(store, "inbox", "errors.log")
-    if os.path.exists(errors):
-        atomic_write(errors, "")
+    if os.path.exists(errors):   # drop only what prep reported; lines logged since stay for the next prep
+        try:
+            with open(errors, "rb") as fh:
+                raw = fh.read()
+        except OSError:
+            raw = b""
+        cut = snap.get("errors_bytes", 0)
+        atomic_write(errors, (raw[cut:] if len(raw) >= cut else raw).decode("utf-8", "replace"))
+    later = len([n for n in run_file_names(store) if n not in changed and n not in names])
+    if later:
+        sys.stderr.write("apply: %d run files captured after prep stay for the next consolidation\n" % later)
+    if changed:
+        sys.stderr.write("apply: %d run files changed after prep stay for the next consolidation\n" % len(changed))
+    if gone:
+        sys.stderr.write("apply: %d run files from the prep snapshot were already gone\n" % gone)
     if unreadable:
         sys.stderr.write("apply: removed %d unreadable run files\n" % len(unreadable))
     if tally_skipped:

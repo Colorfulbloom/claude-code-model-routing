@@ -54,6 +54,9 @@ class Cache(object):
     reader is None until the first read starts. warm turns True when a read ends.
     skipped is the old-file count of the last finished read (None before that).
     built maps a scope (a project key, or "all") to (fingerprint, payload, built_at).
+    live_lock guards live, which api_live keeps: a transcript folder name mapped to
+    (folder signature, session index). It is separate from lock, so a slow All
+    projects build does not hold the live route.
     """
 
     def __init__(self):
@@ -63,6 +66,8 @@ class Cache(object):
         self.skipped = None
         self.built = {}
         self.prices = None
+        self.live_lock = threading.Lock()
+        self.live = {}
 
 
 # --------------------------------------------------------------------------

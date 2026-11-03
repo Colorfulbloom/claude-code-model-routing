@@ -18,9 +18,9 @@ REPO = Path(__file__).resolve().parent.parent
 STATIC = REPO / "dashboard" / "static"
 JS_DIR = STATIC / "js"
 
-PAGES = ("overview", "agents", "agent-detail", "models", "sessions", "session-detail",
+PAGES = ("live", "overview", "agents", "agent-detail", "models", "sessions", "session-detail",
          "settings", "trail", "attention", "files", "rules", "all-projects")
-CORE = ("h", "format", "charts", "components", "icons", "shell", "api", "router", "app")
+CORE = ("h", "format", "charts", "components", "icons", "shell", "api", "router", "app", "live_poll")
 
 # A hard-coded color in app.css needs a named allowance with its reason. The approved screens had
 # hex colors only in their proposed-token blocks, and tokens.css holds those values now.
@@ -198,8 +198,10 @@ class IndexHtml(unittest.TestCase):
                 loaded.append(attrs.get("href", ""))
         self.assertIn("/static/tokens.css", loaded)
         self.assertIn("/static/app.css", loaded)
+        self.assertIn("/static/live.css", loaded)
         self.assertIn("/static/js/app.js", loaded)
         self.assertLess(loaded.index("/static/tokens.css"), loaded.index("/static/app.css"))
+        self.assertLess(loaded.index("/static/app.css"), loaded.index("/static/live.css"))
         for ref in loaded:
             self.assertTrue(ref.startswith("/static/"), ref)
             self.assertNotRegex(ref, r"^(?:[a-z]+:)?//")
@@ -597,6 +599,61 @@ class AppCss(unittest.TestCase):
         self.assertEqual(final_value(self.rules, ".sb", "display", "(max-width: 720px)"), "none")
         self.assertEqual(final_value(self.rules, ".sb.is-open", "display", "(max-width: 720px)"), "block")
         self.assertEqual(final_value(self.rules, ".content>[data-page]:not([hidden])", "display"), "contents")
+
+
+# ---------------------------------------------------------------- live.css
+
+class LiveCss(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.text = (STATIC / "live.css").read_text(encoding="utf-8")
+        cls.clean = strip_css_comments(cls.text)
+        cls.rules = parse_css(cls.text)
+
+    def test_braces_balance(self):
+        self.assertEqual(self.clean.count("{"), self.clean.count("}"))
+
+    def test_no_color_literals(self):
+        hits = re.findall(r"#[0-9a-fA-F]{3,8}\b|\brgba?\(|\bhsla?\(", self.clean)
+        self.assertEqual(hits, [])
+
+    def test_every_class_starts_lv_or_reuses_an_app_class(self):
+        # A new class in live.css starts lv-. The others are classes app.css or the shared components already define.
+        shared = {"btn", "kpi-v", "mono", "dx", "dx-min", "dbars", "col", "dchart", "klg", "dt", "es-h", "sw", "nt",
+                  "lnk", "muted", "cd", "est", "foot", "intro", "sr"}
+        for _media, selector, _decls in self.rules:
+            for name in re.findall(r"\.([A-Za-z][\w-]*)", selector):
+                self.assertTrue(name.startswith("lv-") or name in shared, "%s in %s" % (name, selector))
+
+    def test_tokens_only_and_no_new_colors(self):
+        tokens = (STATIC / "tokens.css").read_text(encoding="utf-8")
+        defined = set(re.findall(r"(--[\w-]+)\s*:", tokens))
+        used = set(re.findall(r"var\((--[\w-]+)", self.clean))
+        self.assertEqual(sorted(used - defined), [], "live.css uses a token the sheet does not define")
+        self.assertEqual(re.findall(r"(?m)^\s*(--[\w-]+)\s*:", self.clean), [], "live.css defines no token")
+
+    def test_motion_lives_only_under_no_preference(self):
+        # Animations and transitions are allowed only inside the prefers-reduced-motion: no-preference block. The
+        # keyframes themselves hold no animation property, so they may sit outside it.
+        for media, selector, decls in self.rules:
+            moving = {"animation", "animation-name", "transition", "transition-property"} & set(decls)
+            if moving:
+                self.assertEqual(media, "(prefers-reduced-motion: no-preference)", "%s moves outside the block" % selector)
+        self.assertRegex(self.clean, r"@media \(prefers-reduced-motion: no-preference\)")
+
+    def test_phone_table_shows_five_two_line_rows_without_model_effort_output(self):
+        phone = "(max-width: 720px)"
+        self.assertEqual(final_value(self.rules, ".lv-req .lv-hide-s", "display", phone), "none")
+        self.assertEqual(final_value(self.rules, ".lv-req tbody tr:nth-child(n+6)", "display", phone), "none")
+        self.assertEqual(final_value(self.rules, ".lv-req tbody tr", "display", phone), "grid")
+        self.assertEqual(final_value(self.rules, ".lv-g21", "grid-template-columns", phone), "minmax(0,1fr)")
+
+    def test_the_pills_keep_their_frame_and_a_mark_each(self):
+        self.assertEqual(final_value(self.rules, ".lv-pill", "border-radius"), "var(--radius-pill)")
+        self.assertEqual(final_value(self.rules, ".lv-pill[data-s=\"lost\"] .lv-mk::before", "content"), "var(--status-invalid-mark)")
+        for state in ("working", "idle"):
+            self.assertIsNotNone(final_value(self.rules, ".lv-act[data-a=\"%s\"]::before" % state, "content"), state)
+        self.assertIsNotNone(final_value(self.rules, ".lv-pill[data-s=\"paused\"] .lv-mk::before", "content"))
 
 
 # ---------------------------------------------------------------- served by the server

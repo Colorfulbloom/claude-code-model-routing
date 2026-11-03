@@ -217,7 +217,7 @@ export function createPage({ narrow = true } = {}) {
   app.appendChild(sidebar);
   app.appendChild(wrap);
   doc.appendChild(app);
-  const pages = ["overview", "all-projects", "agents", "agent-detail", "models", "sessions", "session-detail",
+  const pages = ["live", "overview", "all-projects", "agents", "agent-detail", "models", "sessions", "session-detail",
     "settings", "trail", "attention", "files", "rules"];
   const sections = {};
   for (const name of pages) {

@@ -86,6 +86,10 @@ export function createApi(fetcher = fetchJSON, poster = postJSON) {
     // setting names the setting the answer is for. Effort is the server's default, so its address stays as it was.
     editTargets: (key, setting) => fetcher("/api/edit/targets" + projectQuery(key)
       + (setting && setting !== "effortLevel" ? "&setting=" + encodeURIComponent(setting) : "")),
+    // The Live page polls this every few seconds, so it never goes through the cache. session and etag are optional.
+    live: (key, session, etag) => fetcher("/api/live" + projectQuery(key)
+      + (session ? "&session=" + encodeURIComponent(session) : "")
+      + (etag ? "&etag=" + encodeURIComponent(etag) : "")),
     editHistory: (key) => fetcher("/api/edit/history" + projectQuery(key)),
     editPreview: (body, token) => poster("/api/edit/preview", body, token),
     editSave: (body, token) => poster("/api/edit/save", body, token),

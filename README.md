@@ -102,7 +102,7 @@ END HIVEMIND
 ```
 
 3. The capture hook writes the parsed block to `inbox/`. Only the last block counts. There is no line or length limit: a USED or VERIFIED line may carry a note after the ids, and a NEW entry may span several lines. A block over 64KB is cut there and flagged `truncated`. Nothing is dropped: a line that does not parse, or a NEW that fails a rule (unknown topic, no evidence path inside the project root), goes to the run file's `unparsed` list with its reason, `status` reports how many wait, and `prep` lists them for CONSOLIDATION to salvage by hand. Lines that match a secret pattern are the one exception and are never stored.
-4. At the end of each feature `deep-reasoner` runs CONSOLIDATION with `hivemind_lib.py`: `prep` reports the proposals, it edits `topics/*.md`, `apply` folds in the inbox and regenerates the index, `history add` records the feature, and `check` must pass.
+4. At the end of each feature `deep-reasoner` runs CONSOLIDATION with `hivemind_lib.py`: `prep` reports the proposals and lists the run files it read in `inbox/prep-snapshot.json`, it edits `topics/*.md`, `apply` folds in and deletes only those files and regenerates the index, `history add` records the feature, and `check` must pass. A block captured after `prep` stays in the inbox for the next run, and `inbox/consolidating.lock` keeps two runs from folding at once.
 
 Limits are in `config.json`. `INDEX.md` gets 50 lines, each topic about 4KB, the reviewed tier 60 lines, and each agent type an injection budget. The `token-tallies` topic is a generated table that grows a row for each kind, agent, model and effort, so it gets its own limit of 16KB (`tally_topic_max_bytes`). A fact expires after 28 active days unused. An active day is a day the project had commits or agent runs, so time away loses nothing. Any USED or VERIFIED resets the clock.
 
@@ -335,6 +335,7 @@ To use it, copy it into a project's `.claude/agents/`, fill in the bracketed pla
 
 The Routing Dashboard is a local page that shows where your tokens went and which of your settings apply. It's read-only unless you start the server with `--allow-edits`. The Project dropdown picks one project, or All projects, the view across every project folder. Usage covers today, 7 days or 30 days.
 
+- Live. The project's running session minute by minute, refreshed every 3 seconds while the tab is in view.
 - Overview. Usage in the project over the range you pick, read from its transcripts.
 - Agents. Each agent's runs, tokens, estimated cost and cache, with the model and effort it ran with against its pin.
 - Models. Usage by model, with the agents that ran on each.
