@@ -95,3 +95,49 @@ export function dropIndex(order, cells, more, key, slot, onMore) {
   if (next === key) return at;
   return others.indexOf(next) < 0 ? at : others.indexOf(next);
 }
+
+// ---------------------------------------------------------------- while arranging (direction A)
+
+// The slot a mouse at (x, y) drops into among cells that may wrap onto several lines (the second row of the band
+// editor). edges: { left, right, top, bottom } of each cell, in reading order. The line is the one whose top and
+// bottom hold y, else the nearest one. In that line, the slot is the first cell whose middle is right of x, else the
+// slot after the line's last cell. One line gives the same answer as dropSlot.
+export function dropSlotIn(edges, x, y) {
+  if (!edges.length) return 0;
+  const lines = [];
+  edges.forEach((e, i) => {
+    const line = lines.find((l) => Math.abs(l.top - e.top) < 1);
+    if (line) line.at.push(i);
+    else lines.push({ top: e.top, bottom: e.bottom, at: [i] });
+  });
+  const gap = (l) => (y < l.top ? l.top - y : y > l.bottom ? y - l.bottom : 0);
+  const line = lines.reduce((best, l) => (gap(l) < gap(best) ? l : best), lines[0]);
+  for (const i of line.at) {
+    if ((edges[i].left + edges[i].right) / 2 > x) return i;
+  }
+  return line.at[line.at.length - 1] + 1;
+}
+
+// The index move() needs for a drop while arranging, when the band shows the saved order exactly: the band row holds
+// order[0..foldAt) and the second row order[foldAt..). foldAt equal to order.length means no second row. row is 0 for
+// the band and 1 for the second row, slot is from dropSlot or dropSlotIn over that row's cells, and onMore is a drop
+// on the More slot of the band, which counts as the second row's first slot.
+// It works by keys (before the cell right of the slot), then keeps the setting in the row it was dropped in: a drop
+// in the band lands at 0..foldAt-1, so the band's end slot makes it the last cell and the last cell moves under More,
+// and a drop in the second row lands at foldAt or later, so the first setting under More moves up into the band.
+export function dropIndexArranged(order, foldAt, key, row, slot, onMore) {
+  const at = order.indexOf(key);
+  if (at < 0) return order.length;
+  const fold = Math.max(0, Math.min(order.length, foldAt));
+  const inMore = Boolean(onMore) || row === 1;
+  const keys = inMore ? order.slice(fold) : order.slice(0, fold);
+  const s = onMore ? 0 : Math.max(0, Math.min(keys.length, Math.trunc(slot) || 0));
+  const next = keys[s];
+  if (next === key) return at;
+  const others = order.filter((k) => k !== key);
+  let index;
+  if (next !== undefined) index = others.indexOf(next);
+  else index = inMore ? others.length : fold;
+  if (inMore) return Math.max(index, Math.min(fold, others.length));
+  return Math.min(index, Math.max(0, fold - 1));
+}

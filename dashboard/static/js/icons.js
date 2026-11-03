@@ -35,6 +35,8 @@ const ICONS = {
   arrow: [path("M5 12h14M13 6l6 6-6 6")],
   up: [path("M12 19V5M6 11l6-6 6 6")],
   down: [path("M12 5v14M6 13l6 6 6-6")],
+  left: [path("M19 12H5M11 6l-6 6 6 6")],
+  right: [path("M5 12h14M13 6l6 6-6 6")],
   pin: [path("M12 17v5M8 3h8l-1 6 3 3H6l3-3z")],
   search: [circle(11, 11, 6.5), path("M20 20l-4.2-4.2")],
 };

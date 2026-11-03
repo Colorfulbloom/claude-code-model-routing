@@ -5241,7 +5241,7 @@ test("focus: a wish for a list row or a link that is not there ends, and takes n
   assert.equal(flowMod.S.want, null);
 });
 
-test("settings page: the rail's foot height goes in --s4-foot on the rail, one watcher at a time", async () => {
+test("settings page: the rail's foot height goes in --s4-foot on the rail and on the page, one watcher at a time", async () => {
   const watchers = [];
   globalThis.ResizeObserver = class {
     constructor(fn) { this.fn = fn; this.seen = []; this.off = false; watchers.push(this); }
@@ -5256,6 +5256,10 @@ test("settings page: the rail's foot height goes in --s4-foot on the rail, one w
     assert.equal(foot.getAttribute("data-slot"), "foot");
     watchers[0].fn();
     assert.equal(foot.parentNode.styleMap["--s4-foot"], "284px");
+    // The page holds it too, so the band's tray and list keep a scroll margin of the foot's height above the Save bar.
+    const page = foot.parentNode.parentNode.parentNode;
+    assert.equal(page.getAttribute("class"), "s4 s4-c s5-lock");
+    assert.equal(page.styleMap["--s4-foot"], "284px");
     a.draw();
     assert.equal(watchers.length, 2);
     assert.equal(watchers[0].off, true, "the old foot is no longer watched");

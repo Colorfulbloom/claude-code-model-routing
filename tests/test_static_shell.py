@@ -466,8 +466,8 @@ class AppCss(unittest.TestCase):
 
     def test_settings_page_layout_stays_inside_its_scope(self):
         # The white flat page, the locked panes and the Stat band belong to the Settings route alone. Every rule of the
-        # block starts from an s4-, s5- or s6- class, except the two that frame the route, and those name the Settings
-        # section. Nothing in it styles a shared class, a tag, or another page on its own.
+        # block starts from an s4-, s5-, s6- or s7- class, except the two that frame the route, and those name the
+        # Settings section. Nothing in it styles a shared class, a tag, or another page on its own.
         start = self.text.index("/* Settings page, round 6")
         end = self.text.index(" * Needs attention")
         block = parse_css(self.text[start:end])
@@ -478,7 +478,7 @@ class AppCss(unittest.TestCase):
             if selector in framing:
                 continue
             # The leftmost class is the page's own, so a shared class such as .st or .btn is only reached inside it.
-            self.assertRegex(selector, r"^(?:\.s[456]-[a-z]|\.s4(?![\w-]))", "outside the Settings scope: " + selector)
+            self.assertRegex(selector, r"^(?:\.s[4567]-[a-z]|\.s4(?![\w-]))", "outside the Settings scope: " + selector)
         self.assertEqual({s for _m, s, _d in block if s in framing}, framing)
         for media, selector, decls in block:
             if selector == ".main:has(>.content>[data-page=\"settings\"]:not([hidden]))>.topbar":
@@ -493,6 +493,48 @@ class AppCss(unittest.TestCase):
         self.assertNotRegex(self.clean, r"touch-action\s*:\s*none")
         for path in sorted(JS_DIR.rglob("*.js")):
             self.assertNotRegex(path.read_text(encoding="utf-8"), r"touch-action", path.name)
+
+    def test_arranging_in_the_band_keeps_its_sizes_fills_and_clearances(self):
+        # Stage 5 direction A. The step buttons are 28px in the band editor and 44px on a phone, and they take the card
+        # colour so they read as buttons on the band; a disabled one is transparent with the border token.
+        r = self.rules
+        phone = "(max-width: 720px)"
+        narrow = "(max-width: 1240px)"
+        for prop in ("width", "height"):
+            self.assertEqual(final_value(r, ".s6-mv button", prop), "28px", prop)
+            self.assertEqual(final_value(r, ".s6-mv button", prop, phone), "44px", prop)
+        self.assertEqual(final_value(r, ".s6-mv button", "background"), "var(--card-bg)")
+        self.assertEqual(final_value(r, ".s6-mv button[disabled]", "background"), "transparent")
+        self.assertEqual(final_value(r, ".s6-mv button[disabled]", "border-color"), "var(--border)")
+        self.assertEqual(final_value(r, ".s6-mv", "gap"), "4px", "4px between Earlier and Later, in the band and the phone list")
+        # The tray is in the flow: it pushes the page down and never floats over it.
+        for selector in (".s7-tray", ".s7-trow", ".s7-empty", ".s7-af", ".s7-note"):
+            self.assertNotIn(final_value(r, selector, "position"), ("absolute", "fixed"), selector)
+        self.assertEqual(final_value(r, ".s7-trow", "position"), "relative", "the tray's row holds the slot line and the ghost")
+        self.assertEqual(final_value(r, ".s7-trow", "display"), "grid")
+        self.assertEqual(final_value(r, ".s7-tray .s6-fold", "background"), "none", "the fold line sits on the card")
+        self.assertEqual(final_value(r, ".s7-af", "border-top"), "0")
+        self.assertIn("border-bottom", [p for m, s, d in r if s == ".s7-af" for p in d])
+        # The same dashed gap for a lifted tray cell as for a band cell.
+        for prop in ("background", "outline", "outline-offset"):
+            self.assertEqual(final_value(r, ".s7-trow .s6-ghost", prop), final_value(r, ".s6-a .s6-ghost", prop), prop)
+        # The More slot is not a button: no pointer cursor, the open More button's fill and turned chevron.
+        self.assertEqual(final_value(r, ".s7-ed .s5-more", "cursor"), "default")
+        self.assertEqual(final_value(r, ".s5-more.is-open:not(.s6-mdrop)", "background"), "var(--nav-hover-bg)")
+        self.assertEqual(final_value(r, ".s5-more.is-open .s5-chev", "transform"), "rotate(180deg)")
+        # The pressed Arrange button.
+        pressed = '.s4 .s6-arr[aria-pressed="true"]'
+        self.assertEqual(final_value(r, pressed, "background"), "var(--nav-active-bg)")
+        self.assertEqual(final_value(r, pressed, "border-color"), "var(--accent)")
+        # At 1240 and under the Save bar is fixed to the window's foot, so the controls of the tray, the list and the
+        # More list keep a scroll margin of the foot's measured height and 12px, and focus never lands under the bar.
+        clear = "calc(var(--s4-foot,108px) + 12px)"
+        for selector in (".s6-ap button", ".s7-tray button", ".s5-pop button", ".s5-pop a"):
+            self.assertEqual(final_value(r, selector, "scroll-margin-bottom", narrow), clear, selector)
+        # On a phone the band is sticky, so a list control that takes focus clears it from above too.
+        self.assertEqual(final_value(r, ".s6-ap button", "scroll-margin-top", phone), "124px")
+        # The foot's height is written on the page too, and the CSS reads it with a fallback.
+        self.assertIn("--s4-foot", (JS_DIR / "pages" / "settings.js").read_text(encoding="utf-8"))
 
     def test_the_rail_foot_docks_by_itself_at_1240_and_the_page_holds_no_second_dock(self):
         # One DOM, no copies: a second Save or a second radio set would be a safety risk. At 1240 and under the rail
