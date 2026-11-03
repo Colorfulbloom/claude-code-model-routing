@@ -2,7 +2,7 @@
 
 Owner-approved facts promoted from HiveMind. Only deep-reasoner edits this file, and only after the owner approves a promotion. Limit: 60 lines.
 
-- T-7629 Full suite: from the repo root, `/usr/bin/python3 -m unittest discover -s tests` runs 3110 tests (60 skipped) in about 283 seconds (2026-11-02, development at 057353e). 58 of the skips need `MR_E2E=1`, and the owner runs those. The other two need `MR_DOCS_LIVE=1` and `MR_SUBAGENT_DOCS`. Run it alone, not beside a harness batch.
+- T-7629 Full suite: from the repo root, `/usr/bin/python3 -m unittest discover -s tests` runs 3319 tests (77 skipped) in about 329 seconds (2026-11-03, development at a452d5d). 75 of the skips need `MR_E2E=1`, and the owner runs those. The other two need `MR_DOCS_LIVE=1` and `MR_SUBAGENT_DOCS`. Run it alone, not beside a harness batch.
 - T-5589 Test subsets: `discover -s tests -k <pattern>` or `-p test_x.py` works; dotted names such as `tests.test_x` fail with "No module named 'helpers'".
 - T-c826 MR_TEST_TMP is optional: tests/helpers.py creates the directory when it is set and missing; unset means the system temp dir. `_tmp_base` refuses a base inside a git work tree (any `.git` entry at or above its real path), so MR_TEST_TMP must sit outside every repo.
 - E-5b16 Write core: `edit_store.py` alone writes settings.
@@ -19,3 +19,4 @@ Owner-approved facts promoted from HiveMind. Only deep-reasoner edits this file,
 - K-819f String keys: `tests/test_static_strings.py` counts a key as used only in a literal `t("key"` or `tn("key"` call, so a key passed through a helper such as `pathLine("key", ...)` reads as unused.
 - T-3ad1 Test files: `NoHomePathsInTestsTest` bans home path prefixes in `tests/*.py`, so sample paths start at `/work/`; `tests/fixtures/` is not scanned. Import a test module whole (`import test_x as x`), because `from test_x import TestClass` makes discover run that class twice.
 - D-3ca7 Worktree agents: the worktree guard refuses `git -C <dir>`, a command named by a variable or by a quoted path with a space, and a heredoc that mixes quotes, backticks and `$( )`. A new isolation worktree starts at origin/main, not development.
+- L-13fb Plugin payload: any change to dashboard/, agents/, rules/, hooks/ (the HOOK_NAMES files), skills/, install.py, agent_md.py or docs/model-routing-reference.md needs a version bump in `plugins/routing-dashboard/.claude-plugin/plugin.json` and `python3 tools/build_plugins.py`, or test_plugin_build fails.

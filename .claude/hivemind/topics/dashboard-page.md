@@ -1,26 +1,26 @@
 # dashboard-page
 
 ### K-486e Browser trials: adoptedStyleSheets, narrow widths, drags
-fact: The CSP has style-src 'self', so an injected style tag does nothing and live CSS trials use document.adoptedStyleSheets. When resize_window leaves innerWidth alone, set document.documentElement.style.width, dispatch resize, adopt the inner rules of the @media (max-width) blocks, and read body.scrollWidth. The computer tool has no mouse-down, so mid-drag reads need scripted PointerEvents (pointerType mouse, buttons 1) on document.
+fact: The CSP has style-src 'self', so an injected style tag does nothing and live CSS trials use document.adoptedStyleSheets; style attributes in injected markup are blocked too, so set custom properties with style.setProperty. When resize_window leaves innerWidth alone, set document.documentElement.style.width, dispatch resize, adopt the inner rules of the @media (max-width) blocks, and read body.scrollWidth. The computer tool has no mouse-down, so mid-drag reads need scripted PointerEvents (pointerType mouse, buttons 1) on document.
 check: grep -n "Content-Security-Policy\|style-src" dashboard/server.py
 evidence: dashboard/server.py, dashboard/static/js/pages/band_drag.js
-fp: 2d721482bed6
-as_of: 02a9206 2026-11-02
+fp: 4d34f21fe3b4
+as_of: a452d5d 2026-11-03
 author: designer
 created: 2026-11-01
 last_used: 2026-11-02
-uses: 2
+uses: 7
 
 ### K-6860 Nested :has() drops the whole rule
 fact: Nested :has() is invalid CSS, so the browser drops the whole rule with no error. The Settings rail padding was dead this way while pages/settings.js set --s4-foot correctly. Check rail padding by computed value, not by the variable. test_the_rail_foot_docks_by_itself_at_1240_and_the_page_holds_no_second_dock pins the fixed selector.
 check: /usr/bin/python3 -m unittest discover -s tests -p test_static_shell.py -k the_rail_foot_docks
 evidence: dashboard/static/app.css, dashboard/static/js/pages/settings.js, tests/test_static_shell.py
-fp: bc8a98ebb069
-as_of: 6206393 2026-11-02
+fp: 2c45db1e3ac5
+as_of: a452d5d 2026-11-03
 author: designer
 created: 2026-11-01
 last_used: 2026-11-02
-uses: 2
+uses: 4
 promote: approved
 
 ### K-9709 Settings rail needs grid-auto-rows max-content
@@ -61,9 +61,9 @@ fact: tests/test_static_strings.py counts a string as used only in a literal t("
 check: /usr/bin/python3 -m unittest discover -s tests -k strings
 evidence: tests/test_static_strings.py, dashboard/static/js/edit_foot.js
 fp: 1c20ccb57cd5
-as_of: 399f865 2026-11-02
+as_of: a452d5d 2026-11-03
 author: fast-worker
 created: 2026-11-01
 last_used: 2026-11-02
-uses: 9
+uses: 10
 promote: approved

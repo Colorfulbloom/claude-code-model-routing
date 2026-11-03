@@ -25,6 +25,18 @@
         }
       ]
     },
+    "architecture-plan|deep-reasoner|claude-opus-5-5|high": {
+      "last_date": "2026-11-02",
+      "samples": [
+        {
+          "agent_id": "aeedd5bc9cc203c74",
+          "date": "2026-11-02",
+          "duration_ms": 674749,
+          "effort": "high",
+          "v": 168011
+        }
+      ]
+    },
     "artifact-page-build|fast-worker|claude-sonnet-5-5|high": {
       "last_date": "2026-10-31",
       "samples": [
@@ -248,6 +260,25 @@
           "duration_ms": 105944,
           "effort": "high",
           "v": 89154
+        },
+        {
+          "agent_id": "a2715b4604da3ab65",
+          "date": "2026-11-02",
+          "duration_ms": 169000,
+          "effort": "high",
+          "v": 130058
+        }
+      ]
+    },
+    "browser-qa|judge|claude-sonnet-5-5|high": {
+      "last_date": "2026-11-02",
+      "samples": [
+        {
+          "agent_id": "acf25fcc1f02c112a",
+          "date": "2026-11-02",
+          "duration_ms": 469109,
+          "effort": "high",
+          "v": 194626
         }
       ]
     },
@@ -572,6 +603,18 @@
         }
       ]
     },
+    "code-inventory|scout|claude-haiku-5-5|medium": {
+      "last_date": "2026-11-03",
+      "samples": [
+        {
+          "agent_id": "a9ac1e5b3df7a530e",
+          "date": "2026-11-03",
+          "duration_ms": 182117,
+          "effort": "medium",
+          "v": 85918
+        }
+      ]
+    },
     "collectors-build|fast-worker|claude-sonnet-5-5|high": {
       "last_date": "2026-10-29",
       "samples": [
@@ -621,6 +664,52 @@
           "duration_ms": 13501,
           "effort": "medium",
           "v": 23012
+        }
+      ]
+    },
+    "commit-and-pr-text+resumed|tech-writer|claude-opus-5-5|medium": {
+      "last_date": "2026-11-03",
+      "samples": [
+        {
+          "agent_id": "a4bf0e9caaf0ce3e1",
+          "date": "2026-11-03",
+          "duration_ms": 24497,
+          "effort": "medium",
+          "round": 2,
+          "v": 3855
+        }
+      ]
+    },
+    "commit-and-pr-text|tech-writer|claude-opus-5-5|medium": {
+      "last_date": "2026-11-03",
+      "samples": [
+        {
+          "agent_id": "a095aa623d600c173",
+          "date": "2026-11-03",
+          "duration_ms": 39842,
+          "effort": "medium",
+          "v": 32274
+        },
+        {
+          "agent_id": "a4bf0e9caaf0ce3e1",
+          "date": "2026-11-03",
+          "duration_ms": 49679,
+          "effort": "medium",
+          "v": 34698
+        },
+        {
+          "agent_id": "aad13580f5c21a09d",
+          "date": "2026-11-03",
+          "duration_ms": 32373,
+          "effort": "medium",
+          "v": 30845
+        },
+        {
+          "agent_id": "acb2e96204a5106fd",
+          "date": "2026-11-03",
+          "duration_ms": 39631,
+          "effort": "medium",
+          "v": 35765
         }
       ]
     },
@@ -895,6 +984,34 @@
           "duration_ms": 42468,
           "effort": "medium",
           "v": 32024
+        },
+        {
+          "agent_id": "a15f3b9b4879de6b7",
+          "date": "2026-11-02",
+          "duration_ms": 19556,
+          "effort": "medium",
+          "v": 22114
+        },
+        {
+          "agent_id": "a5768ca069cf68ace",
+          "date": "2026-11-02",
+          "duration_ms": 5277,
+          "effort": "medium",
+          "v": 18338
+        },
+        {
+          "agent_id": "a3ca7fbaba9020946",
+          "date": "2026-11-02",
+          "duration_ms": 31163,
+          "effort": "medium",
+          "v": 28118
+        },
+        {
+          "agent_id": "a71844af89ac41e3a",
+          "date": "2026-11-02",
+          "duration_ms": 74687,
+          "effort": "medium",
+          "v": 41526
         }
       ]
     },
@@ -1065,6 +1182,18 @@
           "duration_ms": 173786,
           "effort": "medium",
           "v": 70036
+        }
+      ]
+    },
+    "config-pin|fast-worker|claude-sonnet-5-5|high": {
+      "last_date": "2026-11-02",
+      "samples": [
+        {
+          "agent_id": "a8c47cca56f65e102",
+          "date": "2026-11-02",
+          "duration_ms": 564590,
+          "effort": "high",
+          "v": 94269
         }
       ]
     },
@@ -1260,6 +1389,25 @@
         }
       ]
     },
+    "design-directions|designer|claude-opus-5-5|high": {
+      "last_date": "2026-11-02",
+      "samples": [
+        {
+          "agent_id": "af6d053c73d45c4c6",
+          "date": "2026-11-02",
+          "duration_ms": 948535,
+          "effort": "high",
+          "v": 207276
+        },
+        {
+          "agent_id": "a23f3184409f476ec",
+          "date": "2026-11-02",
+          "duration_ms": 1022229,
+          "effort": "high",
+          "v": 227705
+        }
+      ]
+    },
     "design-files-move|fast-worker|claude-sonnet-5-5|high": {
       "last_date": "2026-10-30",
       "samples": [
@@ -1297,7 +1445,7 @@
       ]
     },
     "design-plan-review|designer|claude-opus-5-5|medium": {
-      "last_date": "2026-10-31",
+      "last_date": "2026-11-02",
       "samples": [
         {
           "agent_id": "a486407ae03c36786",
@@ -1305,6 +1453,13 @@
           "duration_ms": 150981,
           "effort": "medium",
           "v": 119794
+        },
+        {
+          "agent_id": "a476048f772a3cf9d",
+          "date": "2026-11-02",
+          "duration_ms": 133089,
+          "effort": "medium",
+          "v": 104961
         }
       ]
     },
@@ -1420,6 +1575,31 @@
           "duration_ms": 423578,
           "effort": "medium",
           "v": 176937
+        }
+      ]
+    },
+    "design-screenshot-compare+resumed|judge|claude-opus-5-5|high": {
+      "last_date": "2026-11-02",
+      "samples": [
+        {
+          "agent_id": "aad3bca6d336d3f87",
+          "date": "2026-11-02",
+          "duration_ms": 136049,
+          "effort": "high",
+          "round": 2,
+          "v": 22828
+        }
+      ]
+    },
+    "design-screenshot-compare|judge|claude-opus-5-5|high": {
+      "last_date": "2026-11-02",
+      "samples": [
+        {
+          "agent_id": "aad3bca6d336d3f87",
+          "date": "2026-11-02",
+          "duration_ms": 340145,
+          "effort": "high",
+          "v": 129888
         }
       ]
     },
@@ -1601,7 +1781,7 @@
       ]
     },
     "doc-lookup|scout|claude-haiku-5-5|medium": {
-      "last_date": "2026-11-02",
+      "last_date": "2026-11-03",
       "samples": [
         {
           "agent_id": "a1c3ffc50b696cc80",
@@ -1609,6 +1789,13 @@
           "duration_ms": 38579,
           "effort": "medium",
           "v": 37949
+        },
+        {
+          "agent_id": "a8e5d922f84eaca40",
+          "date": "2026-11-03",
+          "duration_ms": 146294,
+          "effort": "medium",
+          "v": 161650
         }
       ]
     },
@@ -1699,6 +1886,18 @@
         }
       ]
     },
+    "docs-and-ui-copy|tech-writer|claude-opus-5-5|medium": {
+      "last_date": "2026-11-03",
+      "samples": [
+        {
+          "agent_id": "ac70391131adfbe71",
+          "date": "2026-11-03",
+          "duration_ms": 59933,
+          "effort": "medium",
+          "v": 30042
+        }
+      ]
+    },
     "docs-apply|fast-worker|claude-sonnet-5-5|medium": {
       "last_date": "2026-10-30",
       "samples": [
@@ -1722,6 +1921,18 @@
           "duration_ms": 168954,
           "effort": "medium",
           "v": 78791
+        }
+      ]
+    },
+    "docs-edit|fast-worker|claude-sonnet-5-5|medium": {
+      "last_date": "2026-11-03",
+      "samples": [
+        {
+          "agent_id": "ad2121bbf365010e0",
+          "date": "2026-11-03",
+          "duration_ms": 96414,
+          "effort": "medium",
+          "v": 54658
         }
       ]
     },
@@ -1791,6 +2002,18 @@
           "duration_ms": 39334,
           "effort": "medium",
           "v": 37129
+        }
+      ]
+    },
+    "docs-quote-check|scout|claude-haiku-5-5|medium": {
+      "last_date": "2026-11-02",
+      "samples": [
+        {
+          "agent_id": "adcc61a2da289c86e",
+          "date": "2026-11-02",
+          "duration_ms": 35171,
+          "effort": "medium",
+          "v": 24806
         }
       ]
     },
@@ -1927,6 +2150,18 @@
         }
       ]
     },
+    "e2e-failure-fix|fast-worker|claude-sonnet-5-5|high": {
+      "last_date": "2026-11-03",
+      "samples": [
+        {
+          "agent_id": "a83b51a7694563fb5",
+          "date": "2026-11-03",
+          "duration_ms": 199378,
+          "effort": "high",
+          "v": 87065
+        }
+      ]
+    },
     "e2e-test-build|fast-worker|claude-sonnet-5-5|high": {
       "last_date": "2026-11-02",
       "samples": [
@@ -1936,6 +2171,18 @@
           "duration_ms": 295647,
           "effort": "high",
           "v": 152983
+        }
+      ]
+    },
+    "e2e-test-write|fast-worker|claude-sonnet-5-5|medium": {
+      "last_date": "2026-11-02",
+      "samples": [
+        {
+          "agent_id": "ae4210728deb11c3d",
+          "date": "2026-11-02",
+          "duration_ms": 124628,
+          "effort": "medium",
+          "v": 90301
         }
       ]
     },
@@ -1955,6 +2202,32 @@
           "duration_ms": 26836,
           "effort": "medium",
           "v": 33483
+        }
+      ]
+    },
+    "feature-bugfix|deep-reasoner|claude-opus-5-5|high": {
+      "last_date": "2026-11-02",
+      "samples": [
+        {
+          "agent_id": "ad196353c8d357e9f",
+          "date": "2026-11-02",
+          "duration_ms": 1044802,
+          "effort": "high",
+          "v": 164917
+        },
+        {
+          "agent_id": "ad2f1ade5cccb0960",
+          "date": "2026-11-02",
+          "duration_ms": 636980,
+          "effort": "high",
+          "v": 111655
+        },
+        {
+          "agent_id": "a8253b5a936d5f81b",
+          "date": "2026-11-02",
+          "duration_ms": 2012807,
+          "effort": "high",
+          "v": 203009
         }
       ]
     },
@@ -2000,6 +2273,13 @@
           "duration_ms": 396721,
           "effort": "medium",
           "v": 110065
+        },
+        {
+          "agent_id": "a32339df5f1d1b927",
+          "date": "2026-11-02",
+          "duration_ms": 435343,
+          "effort": "medium",
+          "v": 152423
         }
       ]
     },
@@ -2024,6 +2304,13 @@
           "duration_ms": 170922,
           "effort": "medium",
           "v": 81677
+        },
+        {
+          "agent_id": "a7fb9938cfb4eaa9f",
+          "date": "2026-11-02",
+          "duration_ms": 957473,
+          "effort": "medium",
+          "v": 299791
         }
       ]
     },
@@ -2524,8 +2811,52 @@
         }
       ]
     },
-    "feature-verification|verifier|claude-opus-5-5|high": {
+    "feature-ui-build+resumed|fast-worker|claude-sonnet-5-5|high": {
       "last_date": "2026-11-02",
+      "samples": [
+        {
+          "agent_id": "a39f45660881608c3",
+          "date": "2026-11-02",
+          "duration_ms": 934709,
+          "effort": "high",
+          "round": 2,
+          "v": 232491
+        }
+      ]
+    },
+    "feature-ui-build|deep-reasoner|claude-opus-5-5|high": {
+      "last_date": "2026-11-02",
+      "samples": [
+        {
+          "agent_id": "a34ae33a4693fc5b6",
+          "date": "2026-11-02",
+          "duration_ms": 2023338,
+          "effort": "high",
+          "v": 272983
+        },
+        {
+          "agent_id": "a089b360964f02af9",
+          "date": "2026-11-02",
+          "duration_ms": 2630961,
+          "effort": "high",
+          "v": 230049
+        }
+      ]
+    },
+    "feature-ui-build|fast-worker|claude-sonnet-5-5|high": {
+      "last_date": "2026-11-02",
+      "samples": [
+        {
+          "agent_id": "a39f45660881608c3",
+          "date": "2026-11-02",
+          "duration_ms": 27712,
+          "effort": "high",
+          "v": 61548
+        }
+      ]
+    },
+    "feature-verification|verifier|claude-opus-5-5|high": {
+      "last_date": "2026-11-03",
       "samples": [
         {
           "agent_id": "a4931e60c0cc56afc",
@@ -2533,6 +2864,13 @@
           "duration_ms": 337412,
           "effort": "high",
           "v": 127702
+        },
+        {
+          "agent_id": "abb0e8b6af28633e1",
+          "date": "2026-11-03",
+          "duration_ms": 469288,
+          "effort": "high",
+          "v": 189609
         }
       ]
     },
@@ -2657,6 +2995,27 @@
           "duration_ms": 499661,
           "effort": "high",
           "v": 221664
+        },
+        {
+          "agent_id": "af518e697501b6ce9",
+          "date": "2026-11-02",
+          "duration_ms": 339275,
+          "effort": "high",
+          "v": 120160
+        },
+        {
+          "agent_id": "a8760b87e717e84c3",
+          "date": "2026-11-02",
+          "duration_ms": 222480,
+          "effort": "high",
+          "v": 137447
+        },
+        {
+          "agent_id": "a9d6de9c7d8942c98",
+          "date": "2026-11-02",
+          "duration_ms": 308590,
+          "effort": "high",
+          "v": 141318
         }
       ]
     },
@@ -2686,7 +3045,7 @@
       ]
     },
     "fix-batch|fast-worker|claude-sonnet-5-5|medium": {
-      "last_date": "2026-11-02",
+      "last_date": "2026-11-03",
       "samples": [
         {
           "agent_id": "ab8dfc6401f137ea8",
@@ -2701,6 +3060,13 @@
           "duration_ms": 230210,
           "effort": "medium",
           "v": 81432
+        },
+        {
+          "agent_id": "ad00ecb2cdcd5f338",
+          "date": "2026-11-03",
+          "duration_ms": 244136,
+          "effort": "medium",
+          "v": 112346
         }
       ]
     },
@@ -2717,7 +3083,7 @@
       ]
     },
     "full-suite-run|scout|claude-haiku-5-5|medium": {
-      "last_date": "2026-11-02",
+      "last_date": "2026-11-03",
       "samples": [
         {
           "agent_id": "a906aaf5151b145d3",
@@ -2725,6 +3091,27 @@
           "duration_ms": 305244,
           "effort": "medium",
           "v": 19086
+        },
+        {
+          "agent_id": "a3ae0e42297a06a3e",
+          "date": "2026-11-02",
+          "duration_ms": 330131,
+          "effort": "medium",
+          "v": 18649
+        },
+        {
+          "agent_id": "a05699a029d9bd546",
+          "date": "2026-11-03",
+          "duration_ms": 342369,
+          "effort": "medium",
+          "v": 21297
+        },
+        {
+          "agent_id": "a7c436da36d44dc12",
+          "date": "2026-11-03",
+          "duration_ms": 344465,
+          "effort": "medium",
+          "v": 20785
         }
       ]
     },
@@ -2880,7 +3267,7 @@
       ]
     },
     "hivemind-consolidation+resumed|deep-reasoner|claude-opus-5-5|high": {
-      "last_date": "2026-11-01",
+      "last_date": "2026-11-02",
       "samples": [
         {
           "agent_id": "a2b1388f4cf4db703",
@@ -2921,6 +3308,14 @@
           "effort": "high",
           "round": 2,
           "v": 7970
+        },
+        {
+          "agent_id": "af49cb6f79cc3fb65",
+          "date": "2026-11-02",
+          "duration_ms": 62194,
+          "effort": "high",
+          "round": 2,
+          "v": 12695
         }
       ]
     },
@@ -3010,6 +3405,13 @@
           "duration_ms": 318015,
           "effort": "high",
           "v": 129154
+        },
+        {
+          "agent_id": "af49cb6f79cc3fb65",
+          "date": "2026-11-02",
+          "duration_ms": 223407,
+          "effort": "high",
+          "v": 104621
         }
       ]
     },
@@ -3141,6 +3543,18 @@
         }
       ]
     },
+    "launcher-build|fast-worker|claude-sonnet-5-5|medium": {
+      "last_date": "2026-11-03",
+      "samples": [
+        {
+          "agent_id": "a7cc68fdc5aa9a78b",
+          "date": "2026-11-03",
+          "duration_ms": 761804,
+          "effort": "medium",
+          "v": 165677
+        }
+      ]
+    },
     "mod-build|deep-reasoner|claude-opus-5-5|high": {
       "last_date": "2026-11-01",
       "samples": [
@@ -3199,6 +3613,18 @@
           "duration_ms": 611298,
           "effort": "high",
           "v": 207116
+        }
+      ]
+    },
+    "onboarding-message|tech-writer|claude-opus-5-5|medium": {
+      "last_date": "2026-11-03",
+      "samples": [
+        {
+          "agent_id": "acf49e7dad2475229",
+          "date": "2026-11-03",
+          "duration_ms": 54377,
+          "effort": "medium",
+          "v": 39211
         }
       ]
     },
@@ -3408,7 +3834,7 @@
       ]
     },
     "plan-ux-review|designer|claude-opus-5-5|medium": {
-      "last_date": "2026-10-31",
+      "last_date": "2026-11-02",
       "samples": [
         {
           "agent_id": "acc1937b33280a2a4",
@@ -3416,6 +3842,13 @@
           "duration_ms": 162867,
           "effort": "medium",
           "v": 116246
+        },
+        {
+          "agent_id": "a1abd6f5bea7d82a1",
+          "date": "2026-11-02",
+          "duration_ms": 51360,
+          "effort": "medium",
+          "v": 87869
         }
       ]
     },
@@ -3439,7 +3872,7 @@
       ]
     },
     "plan-verification|verifier|claude-opus-5-5|high": {
-      "last_date": "2026-11-02",
+      "last_date": "2026-11-03",
       "samples": [
         {
           "agent_id": "a6b06519f4a6aacda",
@@ -3447,6 +3880,13 @@
           "duration_ms": 489065,
           "effort": "high",
           "v": 157951
+        },
+        {
+          "agent_id": "a23d06acb97828845",
+          "date": "2026-11-03",
+          "duration_ms": 525717,
+          "effort": "high",
+          "v": 172547
         }
       ]
     },
@@ -3569,6 +4009,18 @@
         }
       ]
     },
+    "plugin-build|deep-reasoner|claude-opus-5-5|high": {
+      "last_date": "2026-11-03",
+      "samples": [
+        {
+          "agent_id": "a2c2ba84b1abbb11f",
+          "date": "2026-11-03",
+          "duration_ms": 3760853,
+          "effort": "high",
+          "v": 348318
+        }
+      ]
+    },
     "plugin-feasibility|scout|claude-haiku-5-5|medium": {
       "last_date": "2026-11-02",
       "samples": [
@@ -3578,6 +4030,18 @@
           "duration_ms": 81397,
           "effort": "medium",
           "v": 117964
+        }
+      ]
+    },
+    "plugin-packaging-build|fast-worker|claude-sonnet-5-5|high": {
+      "last_date": "2026-11-03",
+      "samples": [
+        {
+          "agent_id": "a429784ba9ce1dbce",
+          "date": "2026-11-03",
+          "duration_ms": 323219,
+          "effort": "high",
+          "v": 117184
         }
       ]
     },
@@ -3927,6 +4391,37 @@
         }
       ]
     },
+    "run-e2e-tests|scout|claude-haiku-5-5|medium": {
+      "last_date": "2026-11-03",
+      "samples": [
+        {
+          "agent_id": "a35f2a2bf0ae425c1",
+          "date": "2026-11-03",
+          "duration_ms": 69796,
+          "effort": "medium",
+          "v": 20210
+        },
+        {
+          "agent_id": "aa32eccb8f22e8dc4",
+          "date": "2026-11-03",
+          "duration_ms": 36278,
+          "effort": "medium",
+          "v": 26005
+        }
+      ]
+    },
+    "run-full-suite|scout|claude-haiku-5-5|medium": {
+      "last_date": "2026-11-03",
+      "samples": [
+        {
+          "agent_id": "a250c31706184ef91",
+          "date": "2026-11-03",
+          "duration_ms": 333451,
+          "effort": "medium",
+          "v": 20858
+        }
+      ]
+    },
     "schema-change|fast-worker|claude-sonnet-5-5|medium": {
       "last_date": "2026-10-29",
       "samples": [
@@ -4052,6 +4547,18 @@
         }
       ]
     },
+    "test-fixtures|fast-worker|claude-sonnet-5-5|high": {
+      "last_date": "2026-11-02",
+      "samples": [
+        {
+          "agent_id": "a276cb18af184d6d3",
+          "date": "2026-11-02",
+          "duration_ms": 277444,
+          "effort": "high",
+          "v": 105625
+        }
+      ]
+    },
     "test-run|scout|claude-haiku-5-5|medium": {
       "last_date": "2026-11-02",
       "samples": [
@@ -4068,6 +4575,20 @@
           "duration_ms": 298182,
           "effort": "medium",
           "v": 19163
+        },
+        {
+          "agent_id": "a0bc983b8a9a85aad",
+          "date": "2026-11-02",
+          "duration_ms": 325428,
+          "effort": "medium",
+          "v": 19645
+        },
+        {
+          "agent_id": "a0cad4ace14a95270",
+          "date": "2026-11-02",
+          "duration_ms": 310059,
+          "effort": "medium",
+          "v": 19365
         }
       ]
     },
@@ -4478,6 +4999,18 @@
         }
       ]
     },
+    "ui-bugfix|fast-worker|claude-sonnet-5-5|medium": {
+      "last_date": "2026-11-02",
+      "samples": [
+        {
+          "agent_id": "a7c21d230da76ab4d",
+          "date": "2026-11-02",
+          "duration_ms": 550022,
+          "effort": "medium",
+          "v": 112928
+        }
+      ]
+    },
     "ui-copy+resumed|tech-writer|claude-opus-5-5|medium": {
       "last_date": "2026-11-02",
       "samples": [
@@ -4635,6 +5168,18 @@
           "duration_ms": 29969,
           "effort": "xhigh",
           "v": 20139
+        }
+      ]
+    },
+    "ui-copy-strings|tech-writer|claude-opus-5-5|medium": {
+      "last_date": "2026-11-02",
+      "samples": [
+        {
+          "agent_id": "a08aabc64cd9c84a8",
+          "date": "2026-11-02",
+          "duration_ms": 24303,
+          "effort": "medium",
+          "v": 22509
         }
       ]
     },
@@ -4869,6 +5414,14 @@
           "effort": "medium",
           "round": 3,
           "v": 1413
+        },
+        {
+          "agent_id": "a6fc11dc335306434",
+          "date": "2026-11-02",
+          "duration_ms": 10276,
+          "effort": "medium",
+          "round": 2,
+          "v": 4614
         }
       ]
     },
@@ -4895,6 +5448,60 @@
           "duration_ms": 84672,
           "effort": "medium",
           "v": 31507
+        },
+        {
+          "agent_id": "adad6d21d73bbb40e",
+          "date": "2026-11-02",
+          "duration_ms": 25508,
+          "effort": "medium",
+          "v": 25590
+        },
+        {
+          "agent_id": "a3365120b9a5df2f1",
+          "date": "2026-11-02",
+          "duration_ms": 64901,
+          "effort": "medium",
+          "v": 35672
+        },
+        {
+          "agent_id": "a6fc11dc335306434",
+          "date": "2026-11-02",
+          "duration_ms": 84884,
+          "effort": "medium",
+          "v": 38529
+        }
+      ]
+    },
+    "untagged+resumed|tech-writer|claude-opus-5-5|medium": {
+      "last_date": "2026-11-03",
+      "samples": [
+        {
+          "agent_id": "a3f4d7d36e5d4e242",
+          "date": "2026-11-03",
+          "duration_ms": 41327,
+          "effort": "medium",
+          "round": 2,
+          "v": 6849
+        },
+        {
+          "agent_id": "a3f4d7d36e5d4e242",
+          "date": "2026-11-03",
+          "duration_ms": 20282,
+          "effort": "medium",
+          "round": 3,
+          "v": 3945
+        }
+      ]
+    },
+    "untagged|tech-writer|claude-opus-5-5|medium": {
+      "last_date": "2026-11-03",
+      "samples": [
+        {
+          "agent_id": "a3f4d7d36e5d4e242",
+          "date": "2026-11-03",
+          "duration_ms": 142825,
+          "effort": "medium",
+          "v": 68726
         }
       ]
     },
@@ -4970,6 +5577,30 @@
         }
       ]
     },
+    "verify-bugfix|verifier|claude-fable-5-1|high": {
+      "last_date": "2026-11-02",
+      "samples": [
+        {
+          "agent_id": "a35035e108cbfdffb",
+          "date": "2026-11-02",
+          "duration_ms": 446698,
+          "effort": "high",
+          "v": 119541
+        }
+      ]
+    },
+    "verify-bugfix|verifier|claude-opus-5-5|high": {
+      "last_date": "2026-11-02",
+      "samples": [
+        {
+          "agent_id": "af4cd598698f49fa0",
+          "date": "2026-11-02",
+          "duration_ms": 364433,
+          "effort": "high",
+          "v": 128067
+        }
+      ]
+    },
     "verify-fix+resumed|deep-reasoner|claude-opus-5-5|high": {
       "last_date": "2026-10-29",
       "samples": [
@@ -5032,6 +5663,18 @@
           "duration_ms": 218860,
           "effort": "medium",
           "v": 68719
+        }
+      ]
+    },
+    "web-lookup|scout|claude-sonnet-5-5|medium": {
+      "last_date": "2026-11-02",
+      "samples": [
+        {
+          "agent_id": "abc420b73f30b35b9",
+          "date": "2026-11-02",
+          "duration_ms": 118759,
+          "effort": "medium",
+          "v": 65557
         }
       ]
     },

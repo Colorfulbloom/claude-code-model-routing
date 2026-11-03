@@ -1,9 +1,9 @@
 ### F-3600 routing-dashboard plugin and model-routing marketplace
-status: in-progress
+status: shipped
 kind: code
 dates: 2026-11-03 .. 2026-11-03
 refs:
-  commit: pending (branch feature/routing-dashboard-plugin)
+  commit: a452d5de89bf1196258ee3fc68da254e1525fa1b (branch feature/routing-dashboard-plugin, merged into development)
 summary: The repo is a plugin marketplace (model-routing) with one plugin, routing-dashboard 0.1.0, that starts and stops dashboard servers from any session
 decisions:
 - Plugin root is plugins/routing-dashboard with the generated copy under payload/, so the default skills/ and agents/ scans never see the installer's files; payload is committed with a drift test (owner answer)

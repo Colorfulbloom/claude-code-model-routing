@@ -4,6 +4,7 @@
   "topic_max_bytes": 4096,
   "tally_topic_max_bytes": 32768,
   "reviewed_max_lines": 60,
+  "history_index_max_lines": 60,
   "inject_budget_tokens": {
     "default": 800,
     "deep-reasoner": 3000,
@@ -42,7 +43,9 @@
     "testing-node",
     "testing-install",
     "dashboard-browser",
-    "dashboard-git"
+    "dashboard-git",
+    "dashboard-plugin",
+    "dashboard-band"
   ],
   "id_prefix": {
     "testing": "T",
@@ -59,7 +62,9 @@
     "testing-node": "N",
     "testing-install": "I",
     "dashboard-browser": "X",
-    "dashboard-git": "G"
+    "dashboard-git": "G",
+    "dashboard-plugin": "L",
+    "dashboard-band": "A"
   },
   "slices": {
     "deep-reasoner": [

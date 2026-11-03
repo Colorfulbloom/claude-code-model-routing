@@ -1,9 +1,9 @@
 ### F-361e HiveMind consolidation after #91 and #104
-status: in-progress
+status: shipped
 kind: mixed
 dates: 2026-11-02 .. 2026-11-02
 refs:
-  commit: pending (branch chore/hivemind-consolidation-104)
+  commit: 6594de7493fa7a48165667141f5d68b9f187ac4e (branch chore/hivemind-consolidation-104, merged into development)
   file: .claude/hivemind/topics/testing.md
 summary: Commits the waiting HiveMind state from #91 and #104, decides the two open proposals, refreshes the full-suite count and fixes the #104 history entry.
 decisions:

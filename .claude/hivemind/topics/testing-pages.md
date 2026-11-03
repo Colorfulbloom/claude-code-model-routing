@@ -1,11 +1,11 @@
 # testing-pages
 
 ### P-db96 Static and node check traps
-fact: A new app.css block headed ' * Title' fails test_one_section_per_page_with_shared_first, so Settings CSS uses one-line comments inside "Settings and trail", and test_settings_page_layout_stays_inside_its_scope needs each selector to start with .s4-, .s5- or .s6-, so button.s4-x fails. Object.assign( on anything but an object literal in dashboard/static/js fails test_no_file_gets_around_the_link_helpers. fakedom createPage() swaps globalThis.document, so patch document after the page exists. edit_session_checks.mjs shows how to reach app.js's ctx from a copy. To prove a node check bites, mutate a scratch tar copy of the whole repo, not the tree.
+fact: A new app.css block headed ' * Title' fails test_one_section_per_page_with_shared_first, so Settings CSS uses one-line comments inside "Settings and trail", and test_settings_page_layout_stays_inside_its_scope needs each selector to start with .s4-, .s5-, .s6- or .s7-, so button.s4-x fails. setAttribute with a name worked out at run time fails outside h.js, so set data-* with literal names. Object.assign( on anything but an object literal in dashboard/static/js fails test_no_file_gets_around_the_link_helpers. fakedom createPage() swaps globalThis.document, so patch document after the page exists. edit_session_checks.mjs shows how to reach app.js's ctx from a copy. To prove a node check bites, mutate a scratch tar copy of the whole repo, not the tree.
 check: grep -n "Object.s.*assign\|shared_first" tests/test_static_shell.py
 evidence: tests/test_static_shell.py, tests/js/fakedom.mjs, tests/js/edit_session_checks.mjs
-fp: e319ec8a866d
-as_of: 6206393 2026-11-02
+fp: 0965cbf4fa42
+as_of: a452d5d 2026-11-03
 author: fast-worker
 created: 2026-11-01
 last_used: 2026-11-02
@@ -42,7 +42,7 @@ as_of: 6206393 2026-11-02
 author: fast-worker
 created: 2026-11-01
 last_used: 2026-11-02
-uses: 2
+uses: 3
 
 ### P-71ad One live object binds once per window
 fact: A page that keeps one live object binds window and document listeners once, as band.js and trail.js do with boundTo, because createPage makes a new window for each test page.
@@ -53,4 +53,15 @@ as_of: 6206393 2026-11-02
 author: deep-reasoner
 created: 2026-11-01
 last_used: 2026-11-01
+uses: 0
+
+### P-0fe8 A new page section needs three test changes
+fact: A new index.html section needs its name in fakedom createPage's pages list (or boot throws), a tests/e2e_checks/<page>.json and new counts in test_e2e_checks.py.
+check: /usr/bin/python3 -m unittest discover -s tests -p test_e2e_checks.py
+evidence: tests/js/fakedom.mjs, tests/test_e2e_checks.py, dashboard/static/index.html
+fp: b5c83dfb9a2a
+as_of: a452d5d 2026-11-03
+author: fast-worker
+created: 2026-11-03
+last_used: 2026-11-03
 uses: 0

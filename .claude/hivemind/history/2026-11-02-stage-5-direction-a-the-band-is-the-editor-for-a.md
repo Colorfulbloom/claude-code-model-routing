@@ -1,9 +1,9 @@
 ### F-84a0 Stage 5 direction A: the band is the editor for Arrange on the Settings page
-status: in-progress
+status: shipped
 kind: code
 dates: 2026-11-02 .. 2026-11-02
 refs:
-  commit: pending (branch feature/stage5-arrange-in-band)
+  commit: b39064af4c3019edeafaea90d89ed3f8179ee7f7 (branch feature/stage5-arrange-in-band, merged into development)
 summary: Over 720px, Arrange turns the Settings band into the editor. Each cell gets Earlier and Later buttons and a grip, the band shows the saved order with no borrowed cell, and the settings past the fold sit in a second row under the line "More starts here at this window size". Earlier, Later and mouse drag cross the fold and announce it. At 720px and under the in-flow list stays, with a note line and Earlier and Later names. Full suite 3136 tests, 68 skipped; band_reorder_checks 72 of 72; MR_E2E file test_band_arrange_e2e.py passed 8 of 8 on November 3 after a test fix (it now waits on the resting a.s4-stat links before pressing Arrange).
 decisions:
 - Arrange is a toggle (aria-pressed). Over 720px focus stays on it, and Tab walks the band. On a phone focus still moves into the list, because Tab from the head reaches More first and More closes arranging (designer review).
