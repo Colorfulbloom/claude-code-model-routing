@@ -3,6 +3,7 @@
 
     python3 dashboard/server.py [--config-dir DIR] [--project DIR]
                                 [--port N] [--fixture FOLDER] [--allow-edits]
+                                [--launch-fd N]
 
 It prints its URL, http://127.0.0.1:<port>/, and serves the files in
 dashboard/static/ plus the resolved settings as JSON. It binds 127.0.0.1 and
@@ -16,6 +17,12 @@ one settings file and to <config dir>/routing-dashboard/backups/. A save changes
 an effort value on a line that already exists in a user, project or local file.
 It adds no line and creates no file. The flag refuses to start on win32 or with
 a fixture inside the repo.
+
+Launcher. --launch-fd N writes the URL line to the open file descriptor N, closes
+it, and writes nothing to stdout. The routing-dashboard plugin's launcher uses it,
+so the edit key never lands in the log file it points stdout at. When the port is
+taken, that line is "error: port-in-use" and the exit code is 1. SIGTERM stops the
+server the way Ctrl-C does, and the exit code is 0.
 
 Config dir. --config-dir, else CLAUDE_CONFIG_DIR, else $HOME/.claude, the rule
 install.py uses (see default_config_dir). The project is --project, else the
@@ -68,6 +75,7 @@ import http.server  # noqa: E402
 import json  # noqa: E402
 import os  # noqa: E402
 import secrets  # noqa: E402
+import signal  # noqa: E402
 import socket  # noqa: E402
 import socketserver  # noqa: E402
 import urllib.parse  # noqa: E402
@@ -626,7 +634,25 @@ def build_parser():
                         help="turn on the edit routes and print a link with a key "
                         "for this launch; only that link unlocks editing "
                         "(default: off, and the server writes no file)")
+    parser.add_argument("--launch-fd", type=_fd, metavar="N",
+                        help="write the URL line to this open file descriptor, then "
+                        "close it, instead of to stdout (for a launcher)")
     return parser
+
+
+def _fd(text):
+    try:
+        value = int(text)
+    except ValueError:
+        raise argparse.ArgumentTypeError("not a file descriptor")
+    if not 3 <= value <= 65535:
+        raise argparse.ArgumentTypeError("not a file descriptor")
+    return value
+
+
+def _stop_on_sigterm(signum, frame):
+    """SIGTERM takes the Ctrl-C path, so the finally in main closes the socket."""
+    raise KeyboardInterrupt
 
 
 def _under(path, folder):
@@ -667,25 +693,47 @@ def main(argv=None, env=None):
         state = api_edit.EditState(token, secrets.token_urlsafe(16),
                                    edit_store.Store(ctx.config_dir, fixed_now=ctx.fixed_now))
         ctx = dataclasses.replace(ctx, edit=state)
+    launch = None
+    if args.launch_fd is not None:
+        try:
+            launch = os.fdopen(args.launch_fd, "w", encoding="ascii", closefd=True)
+        except OSError:
+            parser.error("--launch-fd needs an open file descriptor")
     try:
         server = Server(ctx, args.port, write_routes_for(args.allow_edits))
     except OSError:
         sys.stderr.write("server: cannot listen on 127.0.0.1:%d, the port may be in use\n"
                          % args.port)
+        if launch is not None:
+            _send_launch_line(launch, "error: port-in-use\n")
         return 1
-    api_usage.start_warm(ctx)
-    if token is None:
-        sys.stdout.write("http://%s:%d/\n" % (HOST, server.server_address[1]))
-    else:
-        sys.stdout.write("http://%s:%d/#/settings?edit=%s\n" % (HOST, server.server_address[1], token))
-    sys.stdout.flush()
+    signal.signal(signal.SIGTERM, _stop_on_sigterm)
     try:
+        api_usage.start_warm(ctx)
+        if token is None:
+            line = "http://%s:%d/\n" % (HOST, server.server_address[1])
+        else:
+            line = "http://%s:%d/#/settings?edit=%s\n" % (HOST, server.server_address[1], token)
+        if launch is None:
+            sys.stdout.write(line)
+            sys.stdout.flush()
+        else:
+            _send_launch_line(launch, line)
         server.serve_forever()
     except KeyboardInterrupt:
         pass
     finally:
         server.server_close()
     return 0
+
+
+def _send_launch_line(launch, line):
+    """Write one line to the launcher's descriptor and close it. A launcher that went away is ignored."""
+    try:
+        launch.write(line)
+        launch.close()
+    except OSError:
+        pass
 
 
 if __name__ == "__main__":

@@ -1,0 +1,9 @@
+{
+  "name": "routing-dashboard",
+  "version": "0.1.0",
+  "description": "Runs the Routing Dashboard, a local page of your Claude Code token usage and settings, from any session.",
+  "author": {"name": "Jorge Calderon"},
+  "homepage": "https://github.com/Colorfulbloom/claude-code-model-routing",
+  "repository": "https://github.com/Colorfulbloom/claude-code-model-routing",
+  "license": "MIT"
+}

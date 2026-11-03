@@ -870,7 +870,8 @@ class StartUp(TempCase):
         self.assertEqual(list(inspect.signature(server.Server.__init__).parameters),
                          ["self", "ctx", "port", "write_routes"])
         options = {a.dest for a in server.build_parser()._actions}
-        self.assertEqual(options, {"help", "config_dir", "project", "port", "fixture", "allow_edits"})
+        self.assertEqual(options, {"help", "config_dir", "project", "port", "fixture", "allow_edits",
+                                   "launch_fd"})
         for flag in ("--host", "--bind", "--address"):
             with open(os.devnull, "w") as null, contextlib.redirect_stderr(null):
                 with self.assertRaises(SystemExit):

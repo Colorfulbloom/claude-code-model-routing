@@ -317,6 +317,15 @@ From the repo root:
 /usr/bin/python3 -m unittest discover -s tests -v
 ```
 
+The plugin's `payload/` folder is a generated copy of the dashboard and installer files. After you change `dashboard/`, `agents/`, `rules/`, `hooks/`, `skills/`, `install.py`, `agent_md.py` or `docs/model-routing-reference.md`, rebuild it. A test fails while the copy is out of date, and `--check` lists the differences.
+
+Bump `version` in `plugins/routing-dashboard/.claude-plugin/plugin.json` before you rebuild. That version pins installed users, so a change without a bump would never reach them, and the build refuses a changed payload until the version goes up. It records the version and a hash of the payload in `payload/BUILD.json`, and `--check` fails when they don't match.
+
+```bash
+python3 tools/build_plugins.py
+python3 tools/build_plugins.py --check
+```
+
 ## Uninstall
 
 ```bash
@@ -345,7 +354,7 @@ The Routing Dashboard is a local page that shows where your tokens went and whic
 - Installed files. Files this repo installs into your Claude Code config, and whether each copy still matches.
 - Rules reference. Every rule the dashboard applies, what backs it and the Claude Code version it was checked on.
 
-The installer doesn't install the dashboard, so run it from a clone of this repo. It runs on Python 3.9 with the standard library alone. Start it from the folder of the project you want to see.
+The installer doesn't install the dashboard, so run it from a clone of this repo or install the [dashboard plugin](#dashboard-plugin). It runs on Python 3.9 with the standard library alone. Start it from the folder of the project you want to see.
 
 ```bash
 python3 /path/to/claude-code-model-routing/dashboard/server.py
@@ -430,6 +439,21 @@ After an undo from the server, compare against the row's `restored_from_backup`,
 The store keeps the newest 20 rows per file, and an undo counts as one. Older rows go after the next successful write, and their backups go with them. Backups older than a `ledger.json` you moved aside stay until you delete them by hand. A backup is read-only to the page, because no route edits or deletes one.
 
 Backups can hold secrets. The ledger masks its values, but a `.bak` file is an exact copy, and `settings.local.json` can hold API keys. The store's folders are mode 0700 and its files 0600. Keep those modes, and don't commit or paste a backup.
+
+## Dashboard plugin
+
+The `routing-dashboard` plugin runs the dashboard from any Claude Code session, with no clone. This repo is also a plugin marketplace named `model-routing`, and the plugin is its one entry.
+
+```bash
+claude plugin marketplace add Colorfulbloom/claude-code-model-routing#development
+claude plugin install routing-dashboard@model-routing
+```
+
+Start a new session, or run `/reload-plugins` in one that's open, then run `/routing-dashboard:dashboard`. It starts the server for the current project and opens the page in your browser. `/routing-dashboard:dashboard edits` turns on editing and sends the edit link straight to the browser, so the key never shows in the conversation. When the last Claude Code process that used a server exits, the plugin stops it.
+
+The plugin runs the dashboard only. The agents, rules and hooks still come from `install.sh`. Without them, Installed files lists those files as missing.
+
+The [plugin's README](plugins/routing-dashboard/README.md) covers every action, editing over SSH, the sandbox setting, updates, uninstall and the requirements.
 
 ## Known limits
 
