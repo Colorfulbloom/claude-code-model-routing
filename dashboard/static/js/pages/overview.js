@@ -7,6 +7,7 @@ import { h, clear } from "../h.js";
 import { t, rangeWord } from "../format.js";
 import { pageHead, rangeControl } from "../components.js";
 import { fillUsage } from "../usage-page.js";
+import { loadingCards } from "../usage-loading.js";
 import { overviewCard } from "./attention.js";
 import { usageKpis, perBucketCard, costByModelCard, tokensByAgentCard, cacheCard, effortCard } from "../usage-cards.js";
 
@@ -22,6 +23,9 @@ export function render(root, ctx) {
     h("div", { class: "g2 g2-fill" },
       tokensByAgentCard(u),
       h("div", { class: "stack" }, cacheCard(u), effortCard(u))),
-    overviewCard(ctx),
-  ]);
+  ], {
+    skeleton: () => loadingCards("overview", ctx),
+    // Needs attention comes from the settings payload, so it draws without waiting for usage.
+    after: () => overviewCard(ctx),
+  });
 }

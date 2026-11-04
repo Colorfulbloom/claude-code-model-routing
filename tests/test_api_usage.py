@@ -357,7 +357,7 @@ class Routes(unittest.TestCase):
 
     def test_projects_reports_the_reader(self):
         reader = self.listing["reader"]
-        self.assertEqual(set(reader), {"readable", "warm", "files", "skipped"})
+        self.assertEqual(set(reader), {"readable", "warm", "files", "files_read", "skipped"})
         self.assertIs(reader["readable"], True)
         self.assertIsInstance(reader["warm"], bool)
         # The usage calls in setUpClass have ended, so the reader has read.
@@ -365,6 +365,7 @@ class Routes(unittest.TestCase):
         want = sum(1 for _ in jsonl_files(os.path.join(self.out, "config", "projects")))
         self.assertEqual(after["reader"]["warm"], True)
         self.assertEqual(after["reader"]["files"], want)
+        self.assertEqual(after["reader"]["files_read"], want)
         self.assertGreater(after["reader"]["skipped"], 0)
         self.assertLess(after["reader"]["skipped"], want)
 
@@ -626,7 +627,8 @@ class InProcess(unittest.TestCase):
             self.assertFalse(any(t.is_alive() for t in threads), "a route waited on the lock")
             self.assertEqual(done["projects"][0], 200)
             self.assertEqual(done["projects"][1]["reader"],
-                             {"readable": True, "warm": False, "files": None, "skipped": None})
+                             {"readable": True, "warm": False, "files": None, "files_read": None,
+                              "skipped": None})
             self.assertEqual(done["settings"][0], 200)
             waiting = threading.Thread(target=run, args=("usage", api_usage.usage),
                                        kwargs={"project": self.keys[TIDEWATER]})
@@ -656,6 +658,9 @@ class InProcess(unittest.TestCase):
                 _s, payload = api_usage.api_projects(ctx, {})
                 self.assertFalse(payload["reader"]["warm"])
                 self.assertGreater(payload["reader"]["files"], 0)
+                # A file counts once it is parsed, so the one held in _load is not counted yet.
+                self.assertGreaterEqual(payload["reader"]["files_read"], 0)
+                self.assertLess(payload["reader"]["files_read"], payload["reader"]["files"])
                 self.assertIsNone(payload["reader"]["skipped"])
             finally:
                 release.set()

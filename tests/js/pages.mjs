@@ -274,15 +274,15 @@ test("usage held back: data-rendered reaches 1 and data-usage stays unset, then 
   assert.equal(byClass(app.section("overview"), "kpi").length, 4);
 });
 
-test("usage failing: data-usage is set whatever the status, and the page keeps its head and the transcripts state", async () => {
+test("usage failing: data-usage is set whatever the status, and the page keeps its head and shows the error notice", async () => {
   const app = await boot({ hash: "#/overview", respond: async (pathname) => (pathname === "/api/usage" ? [503, { error: "down" }] : null) });
   assert.equal(app.root.getAttribute("data-usage"), "1");
   const page = app.section("overview");
   assert.equal(byClass(page, "kpi").length, 0);
   assert.equal(byClass(page, "foot").length, 0);
   assert.equal(byClass(page, "ph").length, 1);
-  assert.deepEqual(texts(page, "cd-h"), ["Can't read the transcripts"]);
-  assert.ok(flat(page).includes(DATA["/api/projects"].body.transcripts_dir_display), "the state names the folder");
+  assert.deepEqual(texts(page, "ld-err-h"), ["Couldn't load usage"]);
+  assert.ok(!flat(page).includes("Can't read the transcripts"), "a failed answer is not the transcripts state");
 });
 
 // ---------------------------------------------------------------- other projects
@@ -480,64 +480,372 @@ test("reader.readable false shows at once, with usage held back", async () => {
   await until(() => app.root.getAttribute("data-usage") === "1", "data-usage");
 });
 
-// ---------------------------------------------------------------- the waiting line
+// ---------------------------------------------------------------- the loading strip
 
 const WAITING = ["settings", "attention", "files", "rules"];
+const GRACE_MS = 300;
 
-test("usage held back: one waiting line with the file count, then it clears on the answer", async () => {
+// A usage answer held until release(). fix changes the /api/projects body, as projectsWith does, and projects(n)
+// may replace it per request (n counts that path's calls, from 1). Returns the app once boot has finished. The
+// 300 ms grace is not waited for here.
+async function bootHeld({ hash = "#/overview", fix = () => {}, projects = null } = {}) {
   let release;
   const gate = new Promise((resolve) => { release = resolve; });
   const app = await boot({
-    hash: "#/overview",
+    hash,
     usage: false,
     respond: async (pathname, params, n) => {
       if (pathname === "/api/usage") await gate;
-      return projectsWith((b) => { b.reader.files = 538; })(pathname, params, n);
+      if (pathname === "/api/projects" && projects) return projects(n);
+      return projectsWith(fix)(pathname, params, n);
     },
   });
-  const status = () => byClass(app.section("overview"), "es-t").filter((n) => n.getAttribute("role") === "status");
-  assert.equal(status().length, 1);
-  assert.equal(flat(status()[0]), "Reading 538 transcript files. Only the first load takes this long.");
-  assert.equal(byClass(app.section("overview"), "foot").length, 0);
-  release();
+  app.release = release;
+  return app;
+}
+
+const projectsBody = (reader) => {
+  const body = structuredClone(DATA["/api/projects"].body);
+  Object.assign(body.reader, reader);
+  return [200, body];
+};
+
+const stripOf = (page) => byClass(page, "ld-strip")[0];
+const stageOf = (page) => flat(byClass(stripOf(page), "ld-stage")[0]);
+const statusOf = (page) => byClass(stripOf(page), "sr").filter((n) => n.getAttribute("role") === "status");
+const meterOf = (page) => byClass(stripOf(page), "ld-meter")[0];
+const showStrip = (app, name = "overview") => until(() => byClass(app.section(name), "ld-strip").length === 1, "the loading strip");
+const finish = async (app) => {
+  app.release();
   await until(() => app.root.getAttribute("data-usage") === "1", "data-usage");
-  assert.equal(status().length, 0, "the line is gone once the page redraws");
+};
+
+test("usage held back: nothing under the head for the first 300 ms, then the strip", async () => {
+  const app = await bootHeld({ fix: (b) => { b.reader.files = 538; } });
+  const page = app.section("overview");
+  assert.equal(byClass(page, "ph").length, 1);
+  assert.equal(kids(page).length, 1, "only the head is drawn in the grace period");
+  assert.equal(byClass(page, "cd").length, 0, "no strip, no placeholders and no Needs attention yet");
+  await showStrip(app);
+  assert.deepEqual(texts(stripOf(page), "cd-h"), ["Reading your transcripts"]);
+  assert.deepEqual(texts(stripOf(page), "cd-sub"), [STRINGS.load_note]);
+  assert.equal(byClass(page, "kpi").length, 0);
+  assert.equal(byClass(page, "foot").length, 0);
+  assert.equal(byClass(page, "es-t").length, 0, "the old waiting line is gone");
+  await finish(app);
+  assert.equal(byClass(page, "ld-strip").length, 0, "the strip is gone once the page redraws");
+  assert.equal(byClass(page, "kpi").length, 4);
+});
+
+test("usage answered inside 300 ms: the strip never draws", async () => {
+  const app = await boot({ hash: "#/overview" });
+  assert.equal(byClass(app.section("overview"), "ld-strip").length, 0);
   assert.equal(byClass(app.section("overview"), "kpi").length, 4);
+  await tick(GRACE_MS + 100);
+  assert.equal(byClass(app.section("overview"), "ld-strip").length, 0);
 });
 
-test("usage held back: no file count gives the line without a number", async () => {
+test("loading strip stages: find, read with files_read, singular, and add, each with its status line", async () => {
+  const cases = [
+    { reader: { files: null, files_read: null, warm: false }, stage: "Finding transcript files.", status: "Finding transcript files.", kind: "find" },
+    { reader: { files: 1538, files_read: 1312, warm: false }, stage: "Read 1,312 of 1,538 transcript files.", status: "Reading 1,538 transcript files.", kind: "read" },
+    { reader: { files: 1, files_read: 0, warm: false }, stage: "Read 0 of 1 transcript file.", status: "Reading 1 transcript file.", kind: "read" },
+    { reader: { files: 538, files_read: 538, warm: true }, stage: "Adding up usage for Tidewater reporting.", status: "Adding up usage for Tidewater reporting.", kind: "add" },
+    { reader: { files: 538, files_read: 9999, warm: false }, stage: "Read 538 of 538 transcript files.", status: "Reading 538 transcript files.", kind: "read" },
+  ];
+  for (const c of cases) {
+    const app = await bootHeld({ fix: (b) => { Object.assign(b.reader, c.reader); } });
+    await showStrip(app);
+    const page = app.section("overview");
+    assert.equal(stageOf(page), c.stage);
+    assert.deepEqual(statusOf(page).map(flat), [c.status]);
+    assert.equal(meterOf(page).getAttribute("role") === "progressbar", c.kind !== "find", c.kind);
+    await finish(app);
+  }
+  const all = await bootHeld({ hash: "#/overview?project=all", fix: (b) => { Object.assign(b.reader, { files: 538, files_read: 538, warm: true }); } });
+  await showStrip(all, "all-projects");
+  assert.equal(stageOf(all.section("all-projects")), "Adding up usage for all projects.");
+  await finish(all);
+});
+
+test("loading strip: the progress bar carries the count, and the find stage keeps the track with no role", async () => {
+  const app = await bootHeld({ fix: (b) => { Object.assign(b.reader, { files: 1538, files_read: 1312, warm: false }); } });
+  await showStrip(app);
+  const page = app.section("overview");
+  const meter = meterOf(page);
+  const heading = byClass(stripOf(page), "cd-h")[0];
+  assert.equal(meter.getAttribute("role"), "progressbar");
+  assert.equal(meter.getAttribute("aria-valuemin"), "0");
+  assert.equal(meter.getAttribute("aria-valuemax"), "1538");
+  assert.equal(meter.getAttribute("aria-valuenow"), "1312");
+  assert.equal(meter.getAttribute("aria-valuetext"), "Read 1,312 of 1,538 transcript files.");
+  assert.ok(heading.getAttribute("id"));
+  assert.equal(meter.getAttribute("aria-labelledby"), heading.getAttribute("id"));
+  assert.equal(meter.getAttribute("aria-hidden"), null);
+  assert.equal(byClass(meter, "ld-fill")[0].styleMap["--ld-pct"], "85.3%");
+  assert.equal(byClass(meter, "ld-fill")[0].getAttribute("style"), null, "geometry never goes through a style attribute");
+  await finish(app);
+
+  const find = await bootHeld({ fix: (b) => { Object.assign(b.reader, { files: null, files_read: null }); } });
+  await showStrip(find);
+  const track = meterOf(find.section("overview"));
+  assert.ok(track, "the empty track keeps the bar's space");
+  assert.equal(track.getAttribute("role"), null);
+  assert.equal(track.getAttribute("aria-hidden"), "true");
+  assert.equal(track.getAttribute("aria-valuenow"), null);
+  assert.equal(byClass(track, "ld-fill").length, 0);
+  await finish(find);
+});
+
+test("loading strip: a wait that began warm gets the warm note, and the note is decided once", async () => {
+  const warm = await bootHeld({ fix: (b) => { Object.assign(b.reader, { files: 538, files_read: 538, warm: true }); } });
+  await showStrip(warm);
+  assert.deepEqual(texts(stripOf(warm.section("overview")), "cd-sub"), [STRINGS.load_note_warm]);
+  await finish(warm);
+});
+
+test("loading placeholders: Overview and All projects keep the real layout as busy cards, Agents shows the strip alone", async () => {
+  const titles = (page) => page.find((n) => n.getAttribute("aria-busy") === "true").map((c) => flat(byClass(c, "cd-h")[0]));
+  const app = await bootHeld({ fix: (b) => { b.reader.files = 538; } });
+  await showStrip(app);
+  const page = app.section("overview");
+  const expected = ["Tokens per day", "Estimated cost by model", "Tokens by agent", "Cache hit rate by agent", "Tokens by effort level"];
+  assert.deepEqual(titles(page), expected);
+  for (const card of page.find((n) => n.getAttribute("aria-busy") === "true")) {
+    const sr = byClass(card, "sr").map(flat);
+    assert.deepEqual(sr, [flat(byClass(card, "cd-h")[0]) + ", loading"]);
+    assert.equal(byClass(card, "ld-body")[0].getAttribute("aria-hidden"), "true");
+    assert.equal(byClass(card, "cd-sub").length, 1);
+  }
+  assert.equal(byClass(page, "g21").length, 1);
+  assert.equal(byClass(page, "g2-fill").length, 1);
+  assert.equal(byClass(page, "stack").length, 1);
+  assert.ok(indexOfNode(page, stripOf(page)) < indexOfNode(page, byClass(page, "g21")[0]), "the strip sits where the tiles do");
+  await finish(app);
+
+  const all = await bootHeld({ hash: "#/overview?project=all", fix: (b) => { b.reader.files = 538; } });
+  await showStrip(all, "all-projects");
+  assert.deepEqual(titles(all.section("all-projects")), ["Tokens per day", "Estimated cost by model", "Tokens by project", "Projects"]);
+  await finish(all);
+
+  const agents = await bootHeld({ hash: "#/agents", fix: (b) => { b.reader.files = 538; } });
+  await showStrip(agents, "agents");
+  assert.equal(agents.section("agents").find((n) => n.getAttribute("aria-busy") === "true").length, 0);
+  assert.deepEqual(byClass(agents.section("agents"), "cd"), [stripOf(agents.section("agents"))], "the strip is the only card");
+  await finish(agents);
+});
+
+test("loading: Needs attention draws on Overview under the placeholders, and only after the grace period", async () => {
+  const app = await bootHeld({ fix: (b) => { b.reader.files = 538; } });
+  const page = app.section("overview");
+  assert.equal(byClass(page, "cd").length, 0);
+  await showStrip(app);
+  const last = kids(page)[kids(page).length - 1];
+  assert.deepEqual(texts(last, "cd-h"), ["Needs attention"]);
+  assert.ok(indexOfNode(page, byClass(page, "g2-fill")[0]) < indexOfNode(page, last), "under the placeholders");
+  assert.equal(byClass(page, "foot").length, 0);
+  await app.go("#/agents");
+  await showStrip(app, "agents");
+  assert.ok(!texts(app.section("agents"), "cd-h").includes("Needs attention"), "Agents has no Needs attention card");
+  await finish(app);
+  await app.go("#/overview");
+  assert.equal(byClass(app.section("overview"), "kpi").length, 4);
+  assert.deepEqual(texts(kids(app.section("overview"))[kids(app.section("overview")).length - 2], "cd-h"), ["Needs attention"]);
+});
+
+test("loading poll: it updates the count in place, keeps the node, and stops when usage lands", async () => {
+  const app = await bootHeld({
+    projects: (n) => projectsBody(n === 1 ? { files: 538, files_read: 0, warm: false }
+      : n === 2 ? { files: 538, files_read: 100, warm: false } : { files: 538, files_read: 538, warm: true }),
+  });
+  await showStrip(app);
+  const page = app.section("overview");
+  const node = stripOf(page);
+  const meter = meterOf(page);
+  const status = statusOf(page)[0];
+  await until(() => stageOf(page) === "Read 100 of 538 transcript files.", "the first poll answer");
+  assert.equal(stripOf(page), node, "the strip node is not replaced");
+  assert.equal(meterOf(page), meter);
+  assert.equal(meter.getAttribute("aria-valuenow"), "100");
+  assert.equal(meter.getAttribute("aria-valuetext"), "Read 100 of 538 transcript files.");
+  assert.equal(flat(status), "Reading 538 transcript files.", "the status line holds the total, not the running count");
+  await until(() => stageOf(page) === "Adding up usage for Tidewater reporting.", "the add stage");
+  assert.equal(stripOf(page), node);
+  assert.equal(statusOf(page)[0], status, "the same live region");
+  assert.equal(flat(status), "Adding up usage for Tidewater reporting.", "it changes when the stage changes");
+  assert.equal(meter.getAttribute("aria-valuenow"), "538");
+  assert.deepEqual(texts(node, "cd-sub"), [STRINGS.load_note], "the note was decided when the wait began");
+  const asked = app.count("/api/projects");
+  assert.ok(asked >= 3, "polled at least twice after boot, got " + asked);
+  await finish(app);
+  const after = app.count("/api/projects");
+  await tick(1300);
+  assert.equal(app.count("/api/projects"), after, "no poll once usage landed");
+});
+
+test("loading poll: one request at a time, and it stops when the page is not a usage page", async () => {
+  const app = await bootHeld({ projects: () => projectsBody({ files: 538, files_read: 10, warm: false }) });
+  await showStrip(app);
+  await until(() => app.count("/api/projects") >= 2, "a poll request");
+  await app.go("#/settings");
+  await tick(100);
+  const stopped = app.count("/api/projects");
+  await tick(1300);
+  assert.equal(app.count("/api/projects"), stopped, "no poll while Settings is showing");
+  await app.go("#/overview");
+  await until(() => app.count("/api/projects") > stopped, "the poll restarts on a usage page");
+  await finish(app);
+});
+
+test("loading poll: an answer that lands after the project changed is dropped", async () => {
   let release;
   const gate = new Promise((resolve) => { release = resolve; });
-  const app = await boot({
-    hash: "#/models",
-    usage: false,
-    respond: async (pathname, params, n) => {
-      if (pathname === "/api/usage") await gate;
-      return projectsWith((b) => { b.reader.files = null; b.reader.warm = true; })(pathname, params, n);
+  const app = await bootHeld({
+    projects: async (n) => {
+      if (n === 2) { await gate; return projectsBody({ files: 538, files_read: 999, warm: false }); }
+      return projectsBody({ files: 538, files_read: 0, warm: false });
     },
   });
-  const lines = byClass(app.section("models"), "es-t").map(flat);
-  assert.deepEqual(lines, ["Reading your transcripts. Only the first load takes this long."]);
+  await showStrip(app);
+  await until(() => app.count("/api/projects") >= 2, "the poll request");
+  await app.go("#/overview?project=" + keyOf("Driftwood"));
   release();
-  await until(() => app.root.getAttribute("data-usage") === "1", "data-usage");
+  await tick(50);
+  await showStrip(app);
+  assert.equal(stageOf(app.section("overview")), "Read 0 of 538 transcript files.");
+  await finish(app);
 });
 
-test("usage held back: Settings, Needs attention, Installed files and Rules reference never show the waiting line", async () => {
-  let release;
-  const gate = new Promise((resolve) => { release = resolve; });
-  const app = await boot({
-    hash: "#/settings",
-    usage: false,
-    respond: async (pathname) => { if (pathname === "/api/usage") await gate; return null; },
+test("loading poll: a reader that turns unreadable redraws the page as the transcripts state", async () => {
+  const app = await bootHeld({
+    projects: (n) => projectsBody(n === 1 ? { files: 538, files_read: 0 } : { readable: false }),
   });
+  // The first poll answer comes in the same tick as the strip, so the check waits for the state it leads to.
+  await until(() => texts(app.section("overview"), "cd-h").join() === "Can't read the transcripts", "the transcripts state");
+  assert.equal(byClass(app.section("overview"), "ld-strip").length, 0);
+  assert.equal(byClass(app.section("overview"), "kpi").length, 0);
+  await finish(app);
+});
+
+test("usage held back: Settings, Needs attention, Installed files and Rules reference never show the strip", async () => {
+  const app = await bootHeld({ hash: "#/settings" });
+  await tick(GRACE_MS + 100);
   for (const name of WAITING) {
     await app.go("#/" + name);
     assert.deepEqual(visible(app), [name]);
-    assert.ok(!flat(app.section(name)).includes("Only the first load takes this long"), name);
+    assert.equal(byClass(app.section(name), "ld-strip").length, 0, name);
+    assert.ok(!flat(app.section(name)).includes("Only the first load after the dashboard starts takes this long"), name);
     assert.equal(byClass(app.section(name), "es-t").filter((n) => n.getAttribute("role") === "status").length, 0, name);
   }
+  await finish(app);
+});
+
+// ---------------------------------------------------------------- the error notice and Try again
+
+const noticeOf = (page) => byClass(page, "ld-err")[0];
+const buttonOf = (node) => node.find((n) => n.tagName === "button")[0];
+const failing = (status, then = null) => async (pathname, params, n) => {
+  if (pathname !== "/api/usage") return null;
+  if (n === 1 || !then) return [status, status ? { error: "down" } : null];
+  return then(n);
+};
+
+test("usage error notice: the cause by status, on every usage page, with Needs attention under it on Overview", async () => {
+  const cases = [
+    { name: "offline", respond: failing(0), text: STRINGS.err_t_offline },
+    { name: "503", respond: failing(503), text: STRINGS.err_t_server },
+    { name: "404", respond: failing(404), text: STRINGS.err_t_server },
+    { name: "ok without a view", respond: async (pathname) => (pathname === "/api/usage" ? [200, { ...usageOf(TIDEWATER), views: {} }] : null), text: STRINGS.err_t_server },
+  ];
+  for (const c of cases) {
+    const app = await boot({ hash: "#/overview", respond: c.respond });
+    const page = app.section("overview");
+    const notice = noticeOf(page);
+    assert.equal(byClass(page, "ld-err").length, 1, c.name);
+    assert.equal(notice.tagName, "section");
+    assert.equal(notice.getAttribute("role"), "alert", c.name);
+    assert.ok(hasClass(notice, "nt") && hasClass(notice, "p2-nt") && hasClass(notice, "p2-nt-err"), c.name);
+    assert.deepEqual(texts(notice, "ld-err-h"), ["Couldn't load usage"]);
+    assert.equal(byClass(notice, "p2-mk")[0].getAttribute("aria-hidden"), "true");
+    assert.equal(flat(notice.find((n) => n.tagName === "p")[0]), c.text, c.name);
+    assert.equal(flat(buttonOf(notice)), "Try again");
+    assert.equal(buttonOf(notice).getAttribute("aria-disabled"), null);
+    assert.equal(byClass(page, "ld-strip").length, 0);
+    assert.equal(byClass(page, "kpi").length, 0);
+    assert.ok(!flat(page).includes("Can't read the transcripts"), c.name);
+    const order = kids(page);
+    assert.deepEqual(texts(order[order.length - 1], "cd-h"), ["Needs attention"], c.name + ": Needs attention under the notice");
+    assert.ok(indexOfNode(page, notice) < indexOfNode(page, order[order.length - 1]));
+    assert.equal(byClass(page, "foot").length, 0);
+  }
+  for (const [hash, section] of [["#/agents", "agents"], ["#/models", "models"], ["#/sessions", "sessions"], ["#/overview?project=all", "all-projects"]]) {
+    const app = await boot({ hash, respond: failing(503) });
+    assert.equal(byClass(app.section(section), "ld-err").length, 1, hash);
+    assert.ok(!texts(app.section(section), "cd-h").includes("Needs attention"), hash);
+  }
+});
+
+test("usage retry: the notice stays and only the button changes, then a good answer draws the page", async () => {
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  const app = await boot({ hash: "#/overview", respond: failing(503, async () => { await gate; return null; }) });
+  const page = app.section("overview");
+  const notice = noticeOf(page);
+  const button = buttonOf(notice);
+  button.focus();
+  button.click();
+  await tick(20);
+  assert.equal(noticeOf(page), notice, "the same notice node, so the alert is not announced again");
+  assert.equal(buttonOf(notice), button);
+  assert.equal(flat(button), "Trying again");
+  assert.equal(button.getAttribute("aria-disabled"), "true");
+  assert.equal(button.find((n) => n.tagName === "svg").length, 1, "the refresh icon sits before the text");
+  assert.equal(notice.getAttribute("role"), "alert");
+  assert.equal(app.doc.activeElement, button, "focus stays on the button");
+  button.click();
+  await tick(20);
+  assert.equal(app.count("/api/usage"), 2, "a click while it is disabled asks for nothing");
+  await app.go("#/overview?range=7d");
+  assert.equal(noticeOf(page), notice, "a render while the retry runs keeps the node");
+  assert.equal(flat(buttonOf(notice)), "Trying again");
   release();
-  await until(() => app.root.getAttribute("data-usage") === "1", "data-usage");
+  await until(() => byClass(page, "kpi").length === 4, "the tiles");
+  assert.equal(app.root.getAttribute("data-usage"), "1");
+  assert.equal(byClass(page, "ld-err").length, 0);
+  assert.equal(app.doc.activeElement.tagName, "h1", "focus moves to the page heading, not the body");
+  assert.equal(app.doc.activeElement.getAttribute("tabindex"), "-1");
+});
+
+test("usage retry: a retry that fails draws a new alert and puts focus on the new Try again button", async () => {
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  const app = await boot({ hash: "#/overview", respond: failing(503, async () => { await gate; return [0, null]; }) });
+  const page = app.section("overview");
+  const notice = noticeOf(page);
+  assert.equal(flat(notice.find((n) => n.tagName === "p")[0]), STRINGS.err_t_server);
+  buttonOf(notice).focus();
+  buttonOf(notice).click();
+  await tick(20);
+  assert.equal(flat(buttonOf(notice)), "Trying again");
+  release();
+  await until(() => noticeOf(page) !== notice, "a new notice");
+  const next = noticeOf(page);
+  assert.equal(next.getAttribute("role"), "alert");
+  assert.equal(flat(next.find((n) => n.tagName === "p")[0]), STRINGS.err_t_offline, "the new answer's cause");
+  assert.equal(flat(buttonOf(next)), "Try again");
+  assert.equal(buttonOf(next).getAttribute("aria-disabled"), null);
+  assert.equal(app.doc.activeElement, buttonOf(next));
+  assert.equal(app.count("/api/usage"), 2);
+});
+
+test("usage retry: focus elsewhere stays where it was", async () => {
+  const app = await boot({ hash: "#/overview", respond: failing(503, async () => null) });
+  const page = app.section("overview");
+  const radio = byClass(page, "seg")[0];
+  buttonOf(noticeOf(page)).click();
+  radio.focus();
+  await until(() => byClass(page, "kpi").length === 4, "the tiles");
+  assert.notEqual(app.doc.activeElement.tagName, "h1");
 });
 
 // ---------------------------------------------------------------- the helpers pages share

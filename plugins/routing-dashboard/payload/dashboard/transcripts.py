@@ -337,6 +337,11 @@ class Reader:
         # How many transcript files the last scan found. Set while a read runs, and
         # read by other threads without the lock. None until the first scan ends.
         self.files_found = None
+        # How many of those files the current scan has gone through: skipped as old,
+        # loaded, or failed to open. Zero when a scan starts, then counts up to
+        # files_found. Read by other threads without the lock. None until the first
+        # scan starts.
+        self.files_read = None
 
     def read(self, now):
         with self._lock:
@@ -348,7 +353,7 @@ class Reader:
         It shares the per-file cache and the lock with read, applies the same
         horizon, and parses only the new bytes of a file that grew. It drops
         cache entries only for files inside this folder that it no longer finds.
-        It never changes files_found. A folder that does not exist gives no
+        It never changes files_found or files_read. A folder that does not exist gives no
         records and is not unreadable. unreadable is True when the folder exists
         but could not be listed, or all its files failed to open.
         """
@@ -397,6 +402,7 @@ class Reader:
         if now.tzinfo is None:
             now = now.replace(tzinfo=_UTC)
         cutoff = (now - datetime.timedelta(days=self.horizon_days)).timestamp()
+        self.files_read = 0
         found, ignored, unlisted, top_unreadable = self._scan(os.path.join(self.config_dir, "projects"))
         self.files_found = len(found)
 
@@ -414,7 +420,10 @@ class Reader:
         opened, failed = set(), set()
         signature = []
         for item in sorted(found, key=lambda f: f.path):
+            # files_read counts a file once it is done with, so the page never says a file was read
+            # while it is still being parsed. Old files count as read too: they are part of the total.
             if item.st.st_mtime < cutoff:
+                self.files_read += 1
                 signature.append((item.path,))
                 notes["skipped_old_files"] += 1
                 opened.add(item.folder)
@@ -425,6 +434,7 @@ class Reader:
                     skipped_by_folder[item.folder] = item.st.st_mtime
                 continue
             entry = self._load(item)
+            self.files_read += 1
             if entry is None:
                 failed.add(item.folder)
                 continue

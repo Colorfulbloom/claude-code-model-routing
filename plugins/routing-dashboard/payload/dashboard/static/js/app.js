@@ -14,8 +14,16 @@
 // and data-ox="1" when the page scrolls sideways, for the end-to-end checks. Boot waits for /api/projects,
 // /api/settings, rules and files, and never for /api/usage, so a held-back usage payload leaves the
 // Settings pages working. A retry that recovers /api/projects sets data-rendered back to "1".
-// data-usage="1" follows the first /api/usage answer for the current project, once it is stored and drawn,
-// whatever its status. It never resets, and a page that needs usage numbers waits for it.
+// data-usage="1" follows an /api/usage answer for the current project, once it is stored and drawn, whatever
+// its status, and a Try again answer counts as one. It never resets, and a page that needs usage numbers waits for it.
+//
+// The usage loading state (js/usage-loading.js). Each usage request keeps a record: when it started and whether the
+// reader was already warm. For the first 300 ms the usage pages draw nothing under their head, so a fast answer never
+// flashes a loader. After that the page shows the loading strip, and a poll asks /api/projects every second (it
+// bypasses the api cache, one request at a time) and updates the strip's files-read count in place. The poll stops
+// when usage lands, the project or the data generation changes, or the visible page is not a usage page, and an
+// answer that arrives after one of those is dropped. A failed answer draws an error notice with Try again, which
+// asks /api/usage again and draws the answer, and moves focus off the notice when the notice goes away.
 //
 // Editing (js/edit_session.js). The edit token comes in the printed link as #/...?edit=<token>. One session
 // takes it from the address before the router reads the hash, at boot and on every hashchange, and then asks
@@ -36,6 +44,7 @@ import {
   PAGES, ALL_KEY, MAIN_KEY, parseHash, hashFor, sectionFor, navFor, showSection, onRouteChange,
 } from "./router.js";
 import { createShell } from "./shell.js";
+import { updateStrips, setRetrying, noticeFocused, settleFocus } from "./usage-loading.js";
 import * as live from "./pages/live.js";
 import * as overview from "./pages/overview.js";
 import * as agents from "./pages/agents.js";
@@ -80,6 +89,13 @@ const state = {
   editSetting: null, // the setting the targets held, or on their way, are for
 };
 const loading = new Map();
+const GRACE_MS = 300; // a usage answer faster than this never shows the loader
+const POLL_MS = 1000; // the pause between one reader poll's answer and the next request
+const usageRecs = new Map(); // project key -> { id, started, warm, graced, timer } while its /api/usage answer is pending
+let usageSeq = 0;
+let retryingKey = null; // the project whose Try again request is running
+let pollTimer = null;
+let polling = false;
 let generation = 0;
 let editSeq = 0;
 let sections = {};
@@ -150,6 +166,16 @@ function dropProjectData() {
   loading.clear();
   state.settings.clear();
   state.usage.clear();
+  for (const rec of usageRecs.values()) if (rec.timer) clearTimeout(rec.timer);
+  usageRecs.clear();
+  if (pollTimer) {
+    clearTimeout(pollTimer);
+    pollTimer = null;
+  }
+  if (retryingKey !== null) {
+    retryingKey = null;
+    setRetrying(false);
+  }
 }
 
 // Forgets the project data and loads it again, with fresh targets and history. It runs after a write, and when
@@ -207,8 +233,11 @@ function go(name, params, patch) {
 
 // What a page module receives. data.* is null until that payload arrives, then { ok, status, data }.
 // transcriptsDir and configFile are the display forms of the transcripts folder and routing-dashboard.json
-// (a string, or null), and reader is the reader's state ({ readable, warm, files, skipped }, or null), both from /api/projects.
+// (a string, or null), and reader is the reader's state ({ readable, warm, files, files_read, skipped }, or null), both from /api/projects.
+// usageLoading is the state of the current project's /api/usage request: key (one value for the whole wait), show (false
+// during the first 300 ms), warm (the reader was already warm when the wait began), retrying and retry().
 function context() {
+  const rec = usageRecs.get(state.project);
   return {
     // query.setting is the cell of the Settings band the address names, or null.
     route: { name: state.route.name, params: state.route.params, query: state.route.query },
@@ -219,6 +248,13 @@ function context() {
     transcriptsDir: state.transcriptsDir,
     configFile: state.configFile,
     reader: state.reader,
+    usageLoading: {
+      key: rec ? rec.id : 0,
+      show: !rec || graceOver(rec),
+      warm: rec ? rec.warm : false,
+      retrying: retryingKey === state.project,
+      retry: retryUsage,
+    },
     data: {
       usage: state.usage.get(state.project) || null,
       settings: state.settings.get(state.project) || null,
@@ -291,18 +327,73 @@ function measure() {
 
 // ---------------------------------------------------------------- data
 
+// The flag, not the clock, says the 300 ms are over: a timer can fire a millisecond early, and a wait after boot
+// also waits for its reader refresh below before it shows anything.
+const graceOver = (rec) => rec.graced;
+
+const readerOf = (res) => (res && res.ok && res.data && typeof res.data === "object"
+  && res.data.reader && typeof res.data.reader === "object" ? res.data.reader : null);
+
+// Notes that a project's usage answer is pending. Once the 300 ms are over and the answer has not come, the usage
+// pages draw again with the loading strip and the poll starts. A fast answer clears the timer and asks for nothing more.
+// After boot the reader state may be old (a fast first load never polled), so a wait that starts later first asks
+// /api/projects once, then shows the strip on the reader's real stage. warm, which picks the strip's note, is read then.
+function startUsage(key) {
+  const rec = { id: (usageSeq += 1), started: Date.now(), warm: false, graced: false, timer: null };
+  usageRecs.set(key, rec);
+  const fresh = started;
+  const gen = generation;
+  const show = () => {
+    rec.graced = true;
+    rec.warm = Boolean(state.reader && state.reader.warm === true);
+    if (usageRecs.get(key) !== rec || key !== state.project) return;
+    renderPages(USAGE_PAGES);
+    if (!fresh) {
+      syncPoll();
+    } else if (pollWanted() && !pollTimer && !polling) {
+      // The refresh just read the reader, so the poll's first request waits its usual second.
+      pollTimer = setTimeout(() => { pollTimer = null; if (pollWanted()) pollOnce(); }, POLL_MS);
+    }
+  };
+  rec.timer = setTimeout(() => {
+    rec.timer = null;
+    // The refresh is only for a strip that will be on screen: a usage page of the current project, whose folder is there.
+    const shown = key === state.project && projectInfo().state !== "missing_folder"
+      && USAGE_PAGES.includes(sectionFor(state.route, state.project));
+    if (!fresh || !shown) {
+      show();
+      return;
+    }
+    api.projectsFresh().then((res) => {
+      if (gen !== generation || usageRecs.get(key) !== rec) return;
+      const reader = readerOf(res);
+      if (reader) state.reader = reader;
+      show();
+    });
+  }, GRACE_MS);
+  return rec;
+}
+
+function endUsage(key, rec) {
+  if (rec.timer) clearTimeout(rec.timer);
+  if (usageRecs.get(key) === rec) usageRecs.delete(key);
+}
+
 // Asks for a project's two payloads once. Later calls return the same promise.
 function loadProject(key) {
   if (loading.has(key)) return loading.get(key);
   const gen = generation;
+  const rec = startUsage(key);
   const done = Promise.all([
     api.usage(key).then((res) => {
+      endUsage(key, rec);
       if (gen !== generation) return;
       state.usage.set(key, res);
       if (key === state.project) {
         renderPages(USAGE_PAGES);
         root.setAttribute("data-usage", "1");
       }
+      syncPoll();
     }),
     api.settings(key).then((res) => {
       if (gen !== generation) return;
@@ -322,6 +413,79 @@ function loadShared() {
     api.rules().then((res) => { if (state.rules !== res) { state.rules = res; renderPages(["rules"]); } }),
     api.files().then((res) => { if (state.files !== res) { state.files = res; renderPages(["files"]); } }),
   ]);
+}
+
+// ---------------------------------------------------------------- the usage loading state
+
+// Asks again for the current project's usage after a failed answer. The notice's button turns to Trying again
+// at once and goes on being the same node. The answer is drawn like the first one: an answer that works draws the
+// page, and one that fails draws a new notice. Focus on the notice goes to the new button or, when the notice is
+// gone, to the page heading.
+async function retryUsage() {
+  if (retryingKey !== null) return;
+  const key = state.project;
+  const gen = generation;
+  retryingKey = key;
+  setRetrying(true);
+  const res = await api.usageAgain(key);
+  if (gen !== generation) return; // a save dropped everything, and dropProjectData already reset the button
+  retryingKey = null;
+  state.usage.set(key, res);
+  if (key !== state.project) {
+    setRetrying(false);
+    return;
+  }
+  const section = sections[sectionFor(state.route, state.project)];
+  const focused = Boolean(section) && noticeFocused(section);
+  renderPages(USAGE_PAGES);
+  root.setAttribute("data-usage", "1");
+  if (focused) settleFocus(section);
+}
+
+// The poll runs while the loader is on screen: usage is pending, the 300 ms are over and the visible page is a
+// usage page of a project whose folder is there.
+function pollWanted() {
+  const rec = usageRecs.get(state.project);
+  if (!rec || state.usage.has(state.project)) return false;
+  if (!graceOver(rec)) return false;
+  if (projectInfo().state === "missing_folder") return false;
+  return USAGE_PAGES.includes(sectionFor(state.route, state.project));
+}
+
+const readerUnreadable = (reader) => Boolean(reader) && reader.readable === false;
+
+// One request at a time: the next one is set up after the answer, about a second later. An answer that comes
+// after the project or the data generation changed, or after usage landed, is dropped.
+async function pollOnce() {
+  polling = true;
+  const gen = generation;
+  const key = state.project;
+  const rec = usageRecs.get(key);
+  const res = await api.projectsFresh();
+  polling = false;
+  const current = gen === generation && key === state.project && rec && usageRecs.get(key) === rec;
+  const reader = res.ok && res.data && typeof res.data === "object" ? res.data.reader : null;
+  if (current && reader && typeof reader === "object") {
+    const flipped = readerUnreadable(state.reader) !== readerUnreadable(reader);
+    state.reader = reader;
+    // Only the reader changes, never the project list. A flip between readable and not changes the whole state of
+    // the page, so it draws again. Any other answer updates the strip in place, which keeps focus where it was.
+    if (flipped) renderPages(USAGE_PAGES);
+    else updateStrips(reader, projectInfo());
+  }
+  if (pollWanted() && !pollTimer) {
+    pollTimer = setTimeout(() => { pollTimer = null; if (pollWanted()) pollOnce(); }, POLL_MS);
+  }
+}
+
+// Starts the poll when it is wanted and not running, and stops a waiting one that is no longer wanted.
+function syncPoll() {
+  if (pollWanted()) {
+    if (!pollTimer && !polling) pollOnce();
+  } else if (pollTimer) {
+    clearTimeout(pollTimer);
+    pollTimer = null;
+  }
 }
 
 let projectsOk = false;
@@ -420,6 +584,7 @@ function handle(route, force) {
     loadEdit();
   }
   renderPages([sectionFor(parsed, state.project)]);
+  syncPoll();
   if (started && !force && previous !== parsed.name) window.scrollTo(0, 0);
 }
 

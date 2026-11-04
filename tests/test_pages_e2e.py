@@ -32,6 +32,8 @@ FULL_PAGE_WIDTH = 375  # the sweep also saves a full-page screenshot at this wid
 THEMES = ("light", "dark")
 TIDEWATER = "Tidewater reporting"
 SESSION_TOKEN = "{session}"
+with open(os.path.join(helpers.REPO, "dashboard", "static", "strings.json"), encoding="utf-8") as _fh:
+    STRINGS = json.load(_fh)  # the words the page shows, so the loading checks read them from here
 LOG_LINE = re.compile(r"^(\S+) (['\"])(/.*)\2 (\S+)$")
 
 # Every status cell and pill needs its mark glyph and its word (components.js chip and pinPill, app.css .st).
@@ -352,21 +354,21 @@ class PagesE2E(unittest.TestCase):
             while len(self.paused()) == seen and time.time() < deadline:
                 page.drain(0.2)
             self.assertGreater(len(self.paused()), seen, "no /api/usage request was held back")
-            # The four pages that never go through fillUsage show no waiting line while the answer is held.
-            wait_tail = "Only the first load takes this long"
+            # The four pages that never go through fillUsage show no loading strip while the answer is held.
+            wait_tail = "Only the first load after the dashboard starts takes this long"
             for section in ("settings", "attention", "files", "rules"):
                 text = page.eval("(document.querySelector('main [data-page=%s]') || {textContent: ''}).textContent" % section)
-                self.assertNotIn(wait_tail, text, "the waiting line shows on " + section)
-            # A usage page does show it. The demo's reader has counted its files by now, so the line has a
-            # number, whatever that number is.
+                self.assertNotIn(wait_tail, text, "the loading strip shows on " + section)
+            # A usage page shows the strip once 300 ms have passed. Its stage line depends on how far the demo's
+            # reader has got, so the check accepts any of the three stage sentences.
             page.eval("location.hash = '#/overview'")
             page.wait_for("""(() => {
               const s = document.querySelector('main [data-page=overview]');
-              const w = s && s.querySelector('[role=status]');
-              return Boolean(s && !s.hidden && w && w.textContent.trim().indexOf('Reading') === 0);
+              const stage = s && s.querySelector('.ld-strip .ld-stage');
+              return Boolean(s && !s.hidden && stage && stage.textContent.trim().length > 0);
             })()""")
-            waiting = page.eval("document.querySelector('main [data-page=overview] [role=status]').textContent")
-            self.assertRegex(waiting, r"^Reading [\d,]+ transcript files\. " + wait_tail)
+            stage = page.eval("document.querySelector('main [data-page=overview] .ld-strip .ld-stage').textContent")
+            self.assertRegex(stage, r"^(Finding transcript files\.|Read [\d,]+ of [\d,]+ transcript files?\.|Adding up usage for .+\.)$")
             # Boot does not wait on /api/usage: data-rendered is set while the request is still held, and
             # data-usage stays unset until the answer is drawn.
             page.wait_for(DATA_RENDERED + " === '1'")
@@ -382,6 +384,210 @@ class PagesE2E(unittest.TestCase):
                 page.call("Fetch.disable")
             except (AssertionError, EOFError, OSError):
                 pass
+        self.wait_rendered()
+
+    # ------------------------------------------------------------ forced /api/usage answers (CDP Fetch)
+
+    def intercept_start(self, usage_default="continue", usage_plan=(), reader=None):
+        """Pause /api/usage and /api/projects. usage_plan is used one entry per /api/usage request, then usage_default.
+        An entry is "hold", "500", "fail" (ConnectionRefused) or "continue". With reader set, /api/projects is answered
+        with the server's real body and those reader fields replaced. Call intercept_pump while waiting, or nothing is answered."""
+        self.page.call("Fetch.enable", patterns=[{"urlPattern": "*/api/usage*", "requestStage": "Request"},
+                                                  {"urlPattern": "*/api/projects*", "requestStage": "Request"}])
+        self.icpt = {"default": usage_default, "plan": list(usage_plan), "held": [], "reader": reader,
+                     "seen": len(self.page.events)}
+
+    def intercept_pump(self, wait=0.05):
+        """Answer the requests that were paused since the last call."""
+        state = self.icpt
+        self.page.drain(wait)
+        while state["seen"] < len(self.page.events):
+            event = self.page.events[state["seen"]]
+            state["seen"] += 1
+            if event.get("method") != "Fetch.requestPaused":
+                continue
+            params = event["params"]
+            request_id = params["requestId"]
+            url = urllib.parse.urlparse(params["request"]["url"])
+            try:
+                if url.path == "/api/usage":
+                    action = state["plan"].pop(0) if state["plan"] else state["default"]
+                    if action == "hold":
+                        state["held"].append(request_id)
+                    elif action == "500":
+                        self.fulfill(request_id, 500, {"error": "forced for the test"})
+                    elif action == "fail":
+                        self.page.call("Fetch.failRequest", requestId=request_id, errorReason="ConnectionRefused")
+                    else:
+                        self.page.call("Fetch.continueRequest", requestId=request_id)
+                elif url.path == "/api/projects" and state["reader"] is not None:
+                    status, _heads, body = self.srv.request("GET", url.path + ("?" + url.query if url.query else ""))
+                    data = json.loads(body)
+                    data["reader"] = dict(data.get("reader") or {}, **state["reader"])
+                    self.fulfill(request_id, status, data)
+                else:
+                    self.page.call("Fetch.continueRequest", requestId=request_id)
+            except AssertionError:
+                pass  # that request already finished or was cancelled by a navigation
+
+    def fulfill(self, request_id, status, data):
+        body = base64.b64encode(json.dumps(data).encode("utf-8")).decode("ascii")
+        self.page.call("Fetch.fulfillRequest", requestId=request_id, responseCode=status, body=body,
+                       responseHeaders=[{"name": "Content-Type", "value": "application/json"},
+                                        {"name": "Cache-Control", "value": "no-store"}])
+
+    def intercept_release(self):
+        """Let every held /api/usage request through."""
+        held, self.icpt["held"] = self.icpt["held"], []
+        for request_id in held:
+            try:
+                self.page.call("Fetch.continueRequest", requestId=request_id)
+            except AssertionError:
+                pass
+
+    def intercept_stop(self):
+        try:
+            self.intercept_pump(0.05)
+            self.icpt["default"] = "continue"
+            self.intercept_release()
+            self.page.call("Fetch.disable")
+        except (AssertionError, EOFError, OSError):
+            pass
+
+    def wait_pumped(self, expression, timeout=20):
+        """Like Page.wait_for, but it keeps answering paused requests, because boot needs /api/projects."""
+        deadline = time.time() + timeout
+        value = None
+        while time.time() < deadline:
+            self.intercept_pump(0.05)
+            value = self.page.eval(expression)
+            if value:
+                return value
+            time.sleep(0.1)
+        raise AssertionError("timed out waiting for %s (last value %r)" % (expression, value))
+
+    def open_intercepted(self, hash_, width):
+        self.icpt["held"] = []  # a navigation cancels the requests held for the old page
+        self.page.call("Emulation.setDeviceMetricsOverride", width=width, height=900, deviceScaleFactor=1, mobile=False)
+        self.page.call("Page.navigate", url="about:blank")
+        time.sleep(0.2)
+        self.page.call("Page.navigate", url=self.base + hash_)
+        self.wait_pumped(DATA_RENDERED + " !== null")
+
+    def click_button(self, selector):
+        """A real mouse click, because element.click() does not move focus (A-aed6)."""
+        rect = self.page.eval("""(() => { const r = document.querySelector(%s).getBoundingClientRect();
+          return [r.left + r.width / 2, r.top + r.height / 2]; })()""" % json.dumps(selector))
+        for kind in ("mouseMoved", "mousePressed", "mouseReleased"):
+            self.page.call("Input.dispatchMouseEvent", type=kind, x=rect[0], y=rect[1],
+                           button="none" if kind == "mouseMoved" else "left",
+                           buttons=1 if kind == "mousePressed" else 0, clickCount=0 if kind == "mouseMoved" else 1)
+
+    OVERVIEW = "document.querySelector('main [data-page=overview]')"
+    # True when the Needs attention card (found by its heading) comes after the first node matching a selector.
+    ATTENTION_AFTER = """(() => {
+      const root = %s;
+      const card = [...root.querySelectorAll('section.cd')].find((c) => {
+        const h = c.querySelector('.cd-h');
+        return h && h.textContent.trim() === %s;
+      });
+      const before = root.querySelector(%s);
+      return Boolean(card && before && (before.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING));
+    })()"""
+
+    def test_slow_usage_shows_the_strip_then_the_page(self):
+        # The wording comes from strings.json at run time.
+        stage = STRINGS["load_stage_read"].format(n="312", total="538")
+        self.intercept_start(usage_default="hold", reader={"warm": False, "files": 538, "files_read": 312})
+        try:
+            self.open_intercepted("#/overview", 1440)
+            self.wait_pumped("""(() => { const s = %s; const g = s && s.querySelector('.ld-strip .ld-stage');
+              return Boolean(g && g.textContent.trim() === %s); })()""" % (self.OVERVIEW, json.dumps(stage)))
+            seen = self.page.eval("""(() => {
+              const s = %s;
+              const meter = s.querySelector('.ld-strip .ld-meter');
+              return {
+                h2: s.querySelector('.ld-strip h2').textContent.trim(),
+                role: meter.getAttribute('role'),
+                now: meter.getAttribute('aria-valuenow'),
+                max: meter.getAttribute('aria-valuemax'),
+                busy: s.querySelectorAll('section.cd[aria-busy=true]').length,
+                kpis: s.querySelectorAll('.kpi').length,
+                usage: document.documentElement.getAttribute('data-usage'),
+              };
+            })()""" % self.OVERVIEW)
+            self.assertEqual(seen["h2"], STRINGS["load_h"])
+            self.assertEqual(seen["role"], "progressbar")
+            self.assertEqual(seen["now"], "312")
+            self.assertEqual(seen["max"], "538")
+            self.assertGreater(seen["busy"], 0, "no placeholder card is aria-busy")
+            self.assertEqual(seen["kpis"], 0, "a KPI shows while usage is held")
+            self.assertIsNone(seen["usage"], "data-usage was set while /api/usage was held")
+            self.assertTrue(self.page.eval(self.ATTENTION_AFTER % (self.OVERVIEW, json.dumps(STRINGS["nav_attention"]), ".ld-strip")),
+                            "Needs attention is missing or is not under the strip")
+            # The answer lands: the KPIs draw, the strip goes, data-usage turns to 1.
+            self.icpt["default"] = "continue"
+            self.intercept_release()
+            self.wait_pumped(DATA_USAGE + " === '1'")
+            self.wait_pumped("%s.querySelectorAll('.kpi').length > 0" % self.OVERVIEW)
+            self.assertEqual(self.page.eval("%s.querySelectorAll('.ld-strip').length" % self.OVERVIEW), 0, "the strip stayed after usage drew")
+        finally:
+            self.intercept_stop()
+        self.wait_rendered()
+
+    def test_failed_usage_shows_the_notice_and_try_again_recovers(self):
+        notice = "main [data-page=overview] section.ld-err[role=alert]"
+        button = notice + " button"
+        self.intercept_start(usage_default="continue", usage_plan=["500"])
+        try:
+            self.open_intercepted("#/overview", 1440)
+            self.wait_pumped("Boolean(document.querySelector(%s))" % json.dumps(notice))
+            seen = self.page.eval("""(() => { const n = document.querySelector(%s);
+              return {h: n.querySelector('h2').textContent.trim(), p: n.querySelector('p').textContent.trim(),
+                      b: n.querySelector('button').textContent.trim(), strips: %s.querySelectorAll('.ld-strip').length,
+                      kpis: %s.querySelectorAll('.kpi').length}; })()""" % (json.dumps(notice), self.OVERVIEW, self.OVERVIEW))
+            self.assertEqual(seen["h"], STRINGS["err_h"])
+            self.assertEqual(seen["p"], STRINGS["err_t_server"])
+            self.assertEqual(seen["b"], STRINGS["ed_try_again"])
+            self.assertEqual(seen["strips"], 0)
+            self.assertEqual(seen["kpis"], 0)
+            self.assertTrue(self.page.eval(self.ATTENTION_AFTER % (self.OVERVIEW, json.dumps(STRINGS["nav_attention"]), "section.ld-err")),
+                            "Needs attention is missing or is not under the notice")
+            # Try again, with the next /api/usage request held.
+            self.icpt["default"] = "hold"
+            self.click_button(button)
+            self.wait_pumped("""(() => { const b = document.querySelector(%s);
+              return Boolean(b && b.getAttribute('aria-disabled') === 'true' && b.textContent.trim() === %s); })()"""
+                             % (json.dumps(button), json.dumps(STRINGS["err_retrying"])))
+            self.assertTrue(self.page.eval("document.activeElement === document.querySelector(%s)" % json.dumps(button)),
+                            "the click did not leave focus on Try again")
+            self.assertEqual(self.page.eval("%s.querySelectorAll('.kpi').length" % self.OVERVIEW), 0)
+            # The retry answers: the KPIs draw and focus lands on the Overview heading.
+            self.icpt["default"] = "continue"
+            self.intercept_release()
+            self.wait_pumped(DATA_USAGE + " === '1'")
+            self.wait_pumped("%s.querySelectorAll('.kpi').length > 0" % self.OVERVIEW)
+            self.assertEqual(self.page.eval("document.querySelectorAll('section.ld-err').length"), 0, "the notice stayed after the retry")
+            self.assertTrue(self.page.eval("document.activeElement === %s.querySelector('h1')" % self.OVERVIEW),
+                            "focus is not on the Overview heading after the retry")
+        finally:
+            self.intercept_stop()
+        self.wait_rendered()
+
+    def test_offline_usage_shows_the_offline_text(self):
+        notice = "main [data-page=overview] section.ld-err[role=alert]"
+        self.intercept_start(usage_default="continue", usage_plan=["fail"])
+        try:
+            self.open_intercepted("#/overview", 1440)
+            self.wait_pumped("Boolean(document.querySelector(%s))" % json.dumps(notice))
+            self.assertEqual(self.page.eval("document.querySelector(%s + ' p').textContent.trim()" % json.dumps(notice)),
+                             STRINGS["err_t_offline"])
+            self.assertEqual(self.page.eval("document.querySelector(%s + ' h2').textContent.trim()" % json.dumps(notice)),
+                             STRINGS["err_h"])
+        finally:
+            self.intercept_stop()
+        # Load again with nothing forced, so the shared page ends in a drawn state.
+        self.page.open(self.base + "#/overview", 1440)
         self.wait_rendered()
 
     # ------------------------------------------------------------ the window-size spike

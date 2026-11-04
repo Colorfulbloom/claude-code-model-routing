@@ -9,6 +9,7 @@ import { t, rangeWord, fmtTokens, fmtCost, pct } from "../format.js";
 import { pageHead, rangeControl, card, table3 } from "../components.js";
 import { stackedTokens, kindsLegend } from "../charts.js";
 import { fillUsage } from "../usage-page.js";
+import { loadingCards } from "../usage-loading.js";
 import { usageKpis, perBucketCard, costByModelCard } from "../usage-cards.js";
 
 // The folders with the most tokens first. Array sort is stable, so equal tokens keep the server's order.
@@ -75,5 +76,5 @@ export function render(root, ctx) {
       h("div", { class: "g21" }, perBucketCard(u), costByModelCard(u)),
       h("div", { class: "g2" }, tokensByProjectCard(u.view, rows), projectsCard(u, rows)),
     ];
-  });
+  }, { skeleton: () => loadingCards("all-projects", ctx) });
 }
