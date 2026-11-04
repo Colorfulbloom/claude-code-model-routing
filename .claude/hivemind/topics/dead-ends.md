@@ -8,8 +8,8 @@ fp: 50d53980d8c5
 as_of: 72a81f7 2026-10-29
 author: deep-reasoner
 created: 2026-10-21
-last_used: 2026-10-30
-uses: 2
+last_used: 2026-11-02
+uses: 3
 
 ### D-c684 macOS traps: python3 shim vars, sed \b, no timeout
 fact: /usr/bin/python3 adds CPATH, LIBRARY_PATH, SDKROOT, MANPATH and __CF_USER_TEXT_ENCODING to every child, so env-leak asserts ignore them (SYSTEM_ADDED in tests/test_harness_guard.py). BSD sed has no \b, so s/\bX\b/Y/ changes nothing and exits 0, and there is no timeout command. Rewrite files with Python re.sub.
@@ -20,19 +20,19 @@ as_of: 6206393 2026-11-02
 author: fast-worker
 created: 2026-10-29
 last_used: 2026-11-02
-uses: 2
+uses: 3
 promote: approved
 
 ### D-1534 Doc anchors and quotes need the rendered page and curl
 fact: code.claude.com headings carry custom ids, so check anchors against the rendered HTML id="..." attributes, not .md slugs. urllib needs a custom User-Agent, as tests/test_doc_anchors.py sends. WebFetch summarises, so confirm a new quote with curl -sL <url>.md | grep.
 check: curl -sL https://code.claude.com/docs/en/sub-agents | grep -o 'id="supported-frontmatter-fields"'
 evidence: tests/test_doc_anchors.py, dashboard/rules.json
-fp: 72b5eaa28430
-as_of: 399f865 2026-11-02
+fp: 85e8db8cfa8f
+as_of: a452d5d 2026-11-03
 author: verifier
 created: 2026-10-29
-last_used: 2026-11-02
-uses: 22
+last_used: 2026-11-03
+uses: 28
 promote: approved
 
 ### D-6bed Patching os.stat alone misses pathlib on Python 3.9
@@ -51,11 +51,11 @@ fact: The owner's global git ignore lists **/.claude/settings.local.json, which 
 check: git check-ignore -v --no-index tests/fixtures/resolution/effort-max-in-settings-invalid/project/.claude/settings.local.json
 evidence: .gitignore
 fp: 2e3aab966fe0
-as_of: 02a9206 2026-11-02
+as_of: a452d5d 2026-11-03
 author: verifier
 created: 2026-10-29
 last_used: 2026-11-02
-uses: 6
+uses: 7
 promote: approved
 
 ### D-2e12 Rows with one message.id can carry growing output_tokens
@@ -70,13 +70,13 @@ last_used: 2026-10-31
 uses: 1
 
 ### D-3ca7 Worktree agents: git -C, computed command names, busy heredocs
-fact: The worktree guard refuses git -C <dir>, a command named by a variable or a quoted path with a space, and a heredoc mixing quotes, backticks and $( ). Plain heredocs, variables as arguments, gh --jq pipes and for loops ran. A new isolation worktree starts at origin/main, not development.
+fact: The worktree guard refuses git -C <dir>, a command named by a variable or a quoted path with a space, and a heredoc mixing quotes, backticks and $( ). Heredocs, for loops, a pipe into diff and ${VAR:-x} were each refused in some runs, so use one plain command per call with literal paths; compare with a ref through git archive <ref> <path> | tar -x -C <scratch>. A new isolation worktree starts at origin/main, not development.
 check: in a worktree-isolated agent run: git -C . log -1 --oneline
 evidence: .gitignore
 fp: 2e3aab966fe0
-as_of: ce1f71d 2026-10-30
+as_of: a452d5d 2026-11-03
 author: deep-reasoner
 created: 2026-10-30
-last_used: 2026-10-30
-uses: 7
+last_used: 2026-11-03
+uses: 12
 promote: approved

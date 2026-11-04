@@ -64,4 +64,15 @@ as_of: 057353e 2026-11-02
 author: verifier
 created: 2026-11-01
 last_used: 2026-11-02
-uses: 8
+uses: 9
+
+### S-b40c Compact window: commits on change, commas in one place
+fact: The Compact window box commits on change, so typing shows no review until Enter or blur. Its thousands commas come from withCommas in format.js; inputs stay raw.
+check: grep -rn "withCommas\|change: (ev) => commitWindow" dashboard/static/js
+evidence: dashboard/static/js/format.js, dashboard/static/js/edit_card.js, dashboard/static/js/edit_words.js
+fp: c3638c3bbd1a
+as_of: a452d5d 2026-11-03
+author: fast-worker
+created: 2026-11-03
+last_used: 2026-11-03
+uses: 0

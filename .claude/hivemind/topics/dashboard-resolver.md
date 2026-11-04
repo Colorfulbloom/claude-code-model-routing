@@ -48,10 +48,32 @@ uses: 0
 fact: Adding or removing a rule in rules.json breaks test_api_rules until the All, Tested, Documented and Assumed texts in tests/e2e_checks/rules.json change and docs/rules-reference.md is rebuilt with /usr/bin/python3 dashboard/reference_page.py.
 check: /usr/bin/python3 -m unittest discover -s tests -p test_api_rules.py
 evidence: tests/e2e_checks/rules.json, tests/test_api_rules.py, dashboard/reference_page.py
-fp: 95e2d621a37d
-as_of: 399f865 2026-11-02
+fp: 255b4ac29c79
+as_of: a452d5d 2026-11-03
 author: deep-reasoner
 created: 2026-11-02
 last_used: 2026-11-02
-uses: 2
+uses: 6
 promote: approved
+
+### R-3ecc Agent rule ids start with agent- or subagent-
+fact: pin-view.js isAgentRule picks the agent sentences by a rule_id starting "agent-", so agent-scope rule ids start with agent- or subagent- and no other scope uses agent-.
+check: grep -n isAgentRule dashboard/static/js/pin-view.js
+evidence: dashboard/static/js/pin-view.js, dashboard/rules.json
+fp: 56e198f73bac
+as_of: a452d5d 2026-11-03
+author: verifier
+created: 2026-11-03
+last_used: 2026-11-03
+uses: 0
+
+### R-c047 Fixture expected.json pairs entries one to one
+fact: resolve.compare pairs a named (key, scope, agent) row's entries one to one, so expected.json lists every entry of such a row. Fields it leaves out go unchecked, so a missing key such as model needs a unit test.
+check: grep -n "def compare" -A12 dashboard/resolve.py
+evidence: dashboard/resolve.py, tests/test_resolve.py
+fp: 58b05f5b61dd
+as_of: a452d5d 2026-11-03
+author: deep-reasoner
+created: 2026-11-03
+last_used: 2026-11-03
+uses: 0

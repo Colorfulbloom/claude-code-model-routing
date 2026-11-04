@@ -1,11 +1,11 @@
 # testing-edit
 
 ### E-5b16 Write core: one writer, lock exceptions, Python 3.9 flags
-fact: edit_store.py alone writes settings; test_edit_security lints write calls and exempts only reference_page.py's one open. api_edit's save recomputes inside the store's locked commit, so _StaleSignal and _Answer must not subclass StoreError or OSError, or _commit_locked wraps them as WriteFailed. A preview or save reports every row that moved, agent rows included. On /usr/bin/python3 3.9.6, O_NOFOLLOW|O_DIRECTORY on a symlink raises ENOTDIR and O_NOFOLLOW on a leaf raises ELOOP.
+fact: edit_store.py alone writes settings; test_edit_security allows only two other named writes: reference_page.py's PAGE_PATH open and server.py's --launch-fd descriptor. api_edit's save recomputes inside the store's locked commit, so _StaleSignal and _Answer must not subclass StoreError or OSError, or _commit_locked wraps them as WriteFailed. A preview or save reports every row that moved, agent rows included. On Python 3.9.6, O_NOFOLLOW|O_DIRECTORY on a symlink raises ENOTDIR and O_NOFOLLOW on a leaf raises ELOOP.
 check: grep -n "class _StaleSignal\|class _Answer" dashboard/api_edit.py
 evidence: dashboard/api_edit.py, dashboard/edit_store.py, tests/test_edit_security.py
-fp: 55a53289a427
-as_of: 399f865 2026-11-02
+fp: 241bce98cf1f
+as_of: a452d5d 2026-11-03
 author: verifier
 created: 2026-10-31
 last_used: 2026-11-02
@@ -23,11 +23,11 @@ last_used: 2026-11-01
 uses: 8
 
 ### E-83df Effort edge cases: unknown model, max, dotted paths
-fact: With no known model, _computed_becomes returns None, so a cap lowers nothing and an in_effect effort row can overstate the level. max is invalid as effortLevel in every settings file: Claude Code skips it, so a file edit can't reach it. max stays valid for maxEffortLevel, where it means no cap. A modelSettings entry's path is dot-joined and model ids hold dots, so never split it.
+fact: With no known model, _computed_becomes' cap branch uses the top-level cap, so the (agent-)effort-lowered-by-cap-model-unknown rules lower the row; only the unsupported-level branch returns None. A user effortLevel on an agent row still resolves Unknown (WINNER_PRECEDENCE). max is invalid as effortLevel in every settings file: Claude Code skips it, so a file edit can't reach it. max stays valid for maxEffortLevel, where it means no cap. A modelSettings entry's path is dot-joined and model ids hold dots, so never split it.
 check: ls tests/fixtures/resolution/effort-max-in-settings-invalid; grep -n 'path="modelSettings' dashboard/resolve.py
 evidence: dashboard/resolve.py, dashboard/rules.json, dashboard/experiments/2026-10-29-effort-invalid-values.json
-fp: 96a1bdd84fb1
-as_of: 6206393 2026-11-02
+fp: 7cab5451bf3b
+as_of: a452d5d 2026-11-03
 author: deep-reasoner
 created: 2026-10-31
 last_used: 2026-11-02

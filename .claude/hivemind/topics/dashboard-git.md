@@ -8,8 +8,8 @@ fp: 87b70513655e
 as_of: c5bce3a 2026-11-01
 author: deep-reasoner
 created: 2026-11-01
-last_used: 2026-11-02
-uses: 4
+last_used: 2026-11-03
+uses: 5
 
 ### G-b77c Real-git tests: wrapper git, partial clone
 fact: ignore_state builds its own env, so real-git tests use a wrapper git script in a throwaway bin dir that sets GIT_CONFIG_NOSYSTEM and execs the real git by absolute path. To prove a lazy-fetch safeguard, clone --filter=blob:none --no-checkout from a file:// bare repo with uploadpack.allowFilter and allowAnySHA1InWant true, then read-tree HEAD and update-index --skip-worktree .gitignore. A raw check-ignore then fires core.sshCommand, and with --no-lazy-fetch it doesn't.
@@ -31,4 +31,15 @@ as_of: 057353e 2026-11-02
 author: fast-worker
 created: 2026-11-02
 last_used: 2026-11-02
+uses: 0
+
+### G-066f Build tests copy by the payload's own file list and close git
+fact: Drift tests copy sources into a temp folder by the payload's relative file list, because git ls-files fails outside a repo and the build then walks folders. A test that commits in a copied tree sets GIT_CONFIG_NOSYSTEM=1, GIT_CONFIG_GLOBAL=/dev/null, HOME at the temp folder, and author and committer names and emails.
+check: grep -n "GIT_CONFIG_NOSYSTEM\|def payload_files" tests/test_plugin_build.py
+evidence: tests/test_plugin_build.py, tools/build_plugins.py
+fp: 5e65a757e626
+as_of: a452d5d 2026-11-03
+author: fast-worker
+created: 2026-11-03
+last_used: 2026-11-03
 uses: 0

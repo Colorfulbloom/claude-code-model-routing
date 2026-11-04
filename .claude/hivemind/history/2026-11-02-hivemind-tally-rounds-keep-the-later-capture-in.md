@@ -1,9 +1,9 @@
 ### F-8e49 HiveMind tally rounds keep the later capture in one second
-status: in-progress
+status: shipped
 kind: code
 dates: 2026-11-02 .. 2026-11-02
 refs:
-  commit: pending (branch fix/tally-resumed-agents)
+  commit: 7a99bebd3e7bf93a59dd7d2c4b6e3398ced15e2c (branch fix/tally-resumed-agents, merged into development)
 summary: Re-requested resumed-agent tally fix was already shipped (F-1906) and live; this closes its one open gap, where two captures of an agent in the same second let the earlier figure win.
 decisions:
 - Diagnosis: capture-anchored rounds, per-round Kind and increase over prev shipped in 0b75193 and deb3d7e, and the live ~/.claude/hooks/hivemind_lib.py equals development 6594de7 byte for byte. The brief came from a memory note last updated before that fix.

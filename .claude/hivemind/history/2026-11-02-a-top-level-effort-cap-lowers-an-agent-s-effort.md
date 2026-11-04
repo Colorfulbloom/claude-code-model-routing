@@ -1,9 +1,9 @@
 ### F-d83b A top-level effort cap lowers an agent's effort row with no model known (#136)
-status: in-progress
+status: shipped
 kind: code
 dates: 2026-11-02 .. 2026-11-02
 refs:
-  commit: pending (branch fix/136-agent-rows-no-model)
+  commit: a7d636ff1ea53bf77f4ef50b59aa79252e94d1c5 (branch fix/136-agent-rows-no-model, merged into development)
 summary: New rule agent-effort-lowered-by-cap-model-unknown lowers an agent effort row with no known model under a top-level maxEffortLevel; agent pins say "the agent's model".
 decisions:
 - Data-only resolver fix: a scope-agent twin of #91's effort-lowered-by-cap-model-unknown (layers env to user, no default). The #91 guard in _condition_matches and the cap branch of _computed_becomes already handle it, so resolve.py is unchanged.

@@ -1,9 +1,9 @@
 ### F-2650 HiveMind apply folds only what prep reported
-status: in-progress
+status: shipped
 kind: code
 dates: 2026-11-02 .. 2026-11-02
 refs:
-  commit: pending (branch fix/consolidation-prep-snapshot)
+  commit: 670fe1928a485f18079c6c4769a90ba2aa53d4cc (branch fix/consolidation-prep-snapshot, merged into development)
 summary: Fixes ticket H2. apply used to list the inbox when it started, so a run file captured between prep and apply was folded and deleted with its NEW proposals unseen; prep now writes inbox/prep-snapshot.json and apply folds only those files under an flock.
 decisions:
 - prep reads each run file once (name, sha256, data), writes inbox/prep-snapshot.json {version 1, time, store, files, errors_bytes} under the lock, and builds its report from the same listing.
