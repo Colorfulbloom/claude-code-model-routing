@@ -473,7 +473,8 @@ class ShellE2E(unittest.TestCase):
 
         # A nav link.
         self.page.eval(menu + ".click()")
-        self.page.eval("document.querySelectorAll('#sidebar .nv')[1].click()")
+        # Found by its text: since the Live page, the second link is Overview, not Agents.
+        self.page.eval("[...document.querySelectorAll('#sidebar .nv')].find((a) => a.textContent.trim() === 'Agents').click()")
         self.assertEqual(self.page.eval(state), "false")
         self.assertEqual(self.page.eval(inert), [])
         self.assertTrue(self.page.eval(on_button))

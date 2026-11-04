@@ -523,7 +523,7 @@ class PagesE2E(unittest.TestCase):
             self.assertGreater(seen["busy"], 0, "no placeholder card is aria-busy")
             self.assertEqual(seen["kpis"], 0, "a KPI shows while usage is held")
             self.assertIsNone(seen["usage"], "data-usage was set while /api/usage was held")
-            self.assertTrue(self.page.eval(self.ATTENTION_AFTER % (self.OVERVIEW, json.dumps(STRINGS["nav_attention"]), ".ld-strip")),
+            self.assertTrue(self.page.eval(self.ATTENTION_AFTER % (self.OVERVIEW, json.dumps(STRINGS["nav_attention"]), json.dumps(".ld-strip"))),
                             "Needs attention is missing or is not under the strip")
             # The answer lands: the KPIs draw, the strip goes, data-usage turns to 1.
             self.icpt["default"] = "continue"
@@ -551,7 +551,7 @@ class PagesE2E(unittest.TestCase):
             self.assertEqual(seen["b"], STRINGS["ed_try_again"])
             self.assertEqual(seen["strips"], 0)
             self.assertEqual(seen["kpis"], 0)
-            self.assertTrue(self.page.eval(self.ATTENTION_AFTER % (self.OVERVIEW, json.dumps(STRINGS["nav_attention"]), "section.ld-err")),
+            self.assertTrue(self.page.eval(self.ATTENTION_AFTER % (self.OVERVIEW, json.dumps(STRINGS["nav_attention"]), json.dumps("section.ld-err"))),
                             "Needs attention is missing or is not under the notice")
             # Try again, with the next /api/usage request held.
             self.icpt["default"] = "hold"
