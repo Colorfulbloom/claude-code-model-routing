@@ -48,6 +48,24 @@
 .lv-g21{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:var(--space-4);align-items:stretch}
 .lv-g21 .dchart .dbars{height:236px}
 .lv-g21 .klg{min-height:1.5em}
+
+/* The chart card: the session bar by kind, the New tokens chart, the cache lane, the note and the wait line.
+   The chart and the lane share the minute columns and the x labels under the lane. */
+.lv-meter{margin-bottom:var(--space-4);padding-bottom:var(--space-3);border-bottom:var(--border-width) solid var(--border)}
+.lv-meter .klg{margin-top:var(--space-2)}
+.lv-meter .sb-row{grid-template-columns:auto minmax(0,1fr) 48px}
+.lv-row-h{display:flex;flex-wrap:wrap;gap:4px var(--space-4);align-items:center;margin:0 0 var(--space-2) 50px}
+.lv-row-h .klg{margin:0}
+.lv-row-t{font:var(--weight-semibold) var(--text-xs)/1.3 var(--font-sans);color:var(--text)}
+.lv-g21 .lv-main .dbars{height:170px}
+.lv-lane-h{display:flex;gap:var(--space-2);align-items:center;margin:var(--space-3) 0 var(--space-1) 50px;font:var(--weight-medium) var(--text-xs)/1.3 var(--font-sans);color:var(--text)}
+.swatch.lv-sw-rk1{box-shadow:inset 0 0 0 1px var(--border-strong);margin-right:0}
+.lv-g21 .lv-lane .dbars{height:48px}
+.lv-lane .dy span:first-child{transform:translateY(-2px)}
+.lv-lane .dy span:only-child{margin-top:auto;transform:translateY(1px)}
+.lv-cr{fill:var(--rk-1);stroke:var(--border-strong);stroke-width:1}
+.lv-nowband{fill:var(--chart-track);stroke:none}
+.lv-note,.lv-wait{margin:var(--space-2) 0 0;font:var(--text-xs)/1.4 var(--font-sans);color:var(--text-muted)}
 .dx-min span{position:absolute;transform:translateX(-50%)}
 .dx.dx-min span:first-child{transform:translateX(-50%)}
 .dx .lv-now-x{display:block!important;transform:translateX(-50%)!important;font-weight:var(--weight-semibold);color:var(--text)}
@@ -75,16 +93,22 @@
 @media (max-width: 720px){
   .lv-g21{grid-template-columns:minmax(0,1fr)}
   .lv-g21 .dchart .dbars{height:150px}
+  .lv-g21 .lv-main .dbars{height:140px}
+  .lv-g21 .lv-lane .dbars{height:48px}
+  .lv-meter .sb-row{grid-template-columns:minmax(0,1fr) 44px}
+  .lv-lane-h,.lv-row-h{margin-left:0}
   .lv-ph-r{align-self:auto;width:100%}
   .lv-pick{margin-left:0}
   .lv-req .lv-hide-s{display:none}
   .lv-req tbody tr{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:var(--space-3);padding:var(--space-2) 0}
   .lv-req tbody tr:nth-child(n+6){display:none}
-  .lv-req tbody td{display:block;padding:1px 0;height:auto}
+  /* Flex with a gap keeps the label and the value apart ("TIME 4:23:47"), which display:block would drop. */
+  .lv-req tbody td{display:flex;align-items:baseline;justify-content:flex-start;gap:6px;padding:1px 0;height:auto}
+  .lv-req tbody td .lv-new{margin-left:0}
   .lv-req tbody td:nth-child(1){grid-column:1;grid-row:1;color:var(--text-muted);font-size:var(--text-xs)}
   .lv-req tbody td:nth-child(2){grid-column:1;grid-row:2;font-weight:var(--weight-medium)}
-  .lv-req tbody td:nth-child(5){grid-column:2;grid-row:2;text-align:right}
-  .lv-req tbody td:nth-child(7){grid-column:2;grid-row:1;text-align:right;color:var(--text-muted);font-size:var(--text-xs)}
+  .lv-req tbody td:nth-child(5){grid-column:2;grid-row:2;justify-content:flex-end}
+  .lv-req tbody td:nth-child(8){grid-column:2;grid-row:1;justify-content:flex-end;color:var(--text-muted);font-size:var(--text-xs)}
 }
 
 /* Motion: once on a changed answer, then hold. Nothing moves under reduced motion. The New marker is text and always shows. */

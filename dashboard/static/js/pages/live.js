@@ -1,5 +1,5 @@
-// Live, at #/live. One session of one project, minute by minute, read from /api/live every three seconds while this
-// page is the visible section, the tab is in view and the page is not paused (js/live_poll.js does the asking).
+// Live, at #/live. One session of one project, minute by minute, read from /api/live every second while this page is
+// the visible section, the tab is in view and the page is not paused (js/live_poll.js does the asking).
 //
 // The page is built once and then updated in place, so a focused button or select keeps focus between answers, a
 // column can grow with a transition and a changed value can flash. section data-live names the state:
@@ -9,19 +9,27 @@
 //   pick        All projects, nothing is fetched   unknown   the server does not know the project (4xx)
 //   unreadable  the transcripts folder cannot be read
 //
-// Every relative time ("n s ago", the New marker, the idle line) is worked out from the answer's server_time, so
-// an unchanged answer still moves them. Flashes, the blink on the update time and the screen reader line happen
-// on a changed answer only. The payload holds usage fields, never message text, and nothing here reads any.
+// One clock serves every relative time: nowMs() is the newest answer's server_time plus the time that passed since the
+// answer landed. The "Last request n s ago" text in the header, the agents' last request lines, the activity pills, the
+// New markers, the Working and Idle state and the wait line all read it, with session.last_request as the newest
+// request, so they always agree. A one-second clock moves the "Last request n s ago" text between answers. It runs
+// only while the page is active, the tab is in view and the state is live or idle, and it repaints the words that
+// depend on the clock (paint) and nothing else. Reduced motion does not stop it, because a changing number is not
+// motion, and Pause does. Flashes, the blink on the age and the screen reader line happen on a changed answer only,
+// and the blink only when that answer brings a new newest request. The wait line ("A request shows up here once it's
+// written to the transcript") shows while the state is live or idle and the newest request is 15 seconds old or more.
+// The payload holds usage fields, never message text, and nothing here reads any.
 //
-// createLive(env) holds all the state, so a check can run it with fake timers. render and setActive at the bottom
-// are the page module's two exports, bound to one instance that uses the real timers and the tab's visibility.
+// createLive(env) holds all the state, so a check can run it with fake timers and a fake ticker. render and setActive
+// at the bottom are the page module's two exports, bound to one instance that uses the real timers and the tab's
+// visibility.
 
 import { h, s, clear, setLocalHref } from "../h.js";
 import {
   t, fmtClock, fmtTime, fmtTokens, fmtTick, fmtCost, pct,
 } from "../format.js";
 import { card, emptyState } from "../components.js";
-import { modelClass, patternId, hatchDefs } from "../charts.js";
+import { modelClass, patternId, hatchDefs, stackedTokens, kindsLegend } from "../charts.js";
 import { ALL_KEY, MAIN_KEY } from "../router.js";
 import { createLivePoller, RETRY_MS } from "../live_poll.js";
 
@@ -33,6 +41,9 @@ const MAX_ROWS = 8;
 const COLS = 30; // one column per minute
 const H = 150; // the chart's height in its own units
 const W = 600;
+const LH = 48; // the cache lane's height in its own units
+const STEP_BACK_MS = 2000; // the most a poll's latency can pull the clock back
+const WAIT_MS = 15000; // a request not yet in the transcript: the wait line shows from this age
 const NBSP = " ";
 
 let secondsFormat = null;
@@ -94,8 +105,11 @@ export function createLive(env) {
     paused: false,
     payload: null, // the last full answer
     serverTime: null, // Date of the newest answer, full or unchanged
+    receivedAt: null, // env.now() when that answer landed
+    lastNow: null, // the newest nowMs() handed out, so a poll's latency never steps the clock back
     prevIds: new Set(), // request ids of the answer before the last full one
     flash: false, // the next paint follows a changed answer
+    blink: false, // the next paint follows a changed answer with a new newest request
     gone: false, // the viewer's session ended and the page moved to another
     picks: new Map(), // project key to the session its viewer picked
     announcedAt: null,
@@ -103,6 +117,7 @@ export function createLive(env) {
   };
   let view = null;
   let unlisten = null;
+  let tickId = null;
 
   const poller = createLivePoller({
     fetchLive: (session, etag) => S.ctx.live(S.key, session, etag),
@@ -119,9 +134,28 @@ export function createLive(env) {
     return S.payload && S.payload.session && typeof S.payload.session === "object" ? S.payload.session : null;
   }
 
+  // The one clock: the newest answer's server time plus what passed since it landed.
+  function nowMs() {
+    if (!S.serverTime || S.receivedAt === null) return null;
+    const at = S.serverTime.getTime() + (env.now() - S.receivedAt);
+    // A step back under STEP_BACK_MS is the request's latency, so hold the clock. A bigger one is a real clock change.
+    if (S.lastNow !== null && at < S.lastNow && S.lastNow - at < STEP_BACK_MS) return S.lastNow;
+    S.lastNow = at;
+    return at;
+  }
+
+  // Seconds since the newest request, or null when the clock or the request time is missing.
+  function sinceLast() {
+    const shown = session();
+    const now = nowMs();
+    const last = shown ? ms(shown.last_request) : null;
+    return now === null || last === null ? null : Math.max(0, Math.floor((now - last) / 1000));
+  }
+
   const working = (lastRequest) => {
     const last = ms(lastRequest);
-    return last !== null && S.serverTime !== null && S.serverTime.getTime() - last <= ACTIVE_MS;
+    const now = nowMs();
+    return last !== null && now !== null && now - last <= ACTIVE_MS;
   };
 
   function stateOf() {
@@ -144,36 +178,65 @@ export function createLive(env) {
     return { el: h("div", { class: "kpi" }, h("div", { class: "kpi-top" }, h("span", { class: "tl-l" }, label)), value, line), value, line };
   }
 
+  // The Now band is the current minute's slot, drawn under the bars. fillChart sets its geometry.
+  function nowBand() {
+    const title = s("title", null);
+    const rect = s("rect", { class: "lv-nowband", y: 0, height: 0, width: 0 }, title);
+    rect.lvTitle = title;
+    return rect;
+  }
+
   function buildChart() {
     const id = patternId("oth-live");
     const dy = h("div", { class: "dy", "aria-hidden": "true" });
     const grid = s("g", null);
-    const bars = s("g", null);
+    const band = nowBand();
+    const bars = s("g", null, band);
     const svg = s("svg", {
       class: "dbars", viewBox: "0 0 " + W + " " + H, preserveAspectRatio: "none", role: "img", "aria-label": t("live_chart_sr"),
     }, hatchDefs(id), grid, s("line", { x1: 0, y1: H, x2: W, y2: H, class: "base" }), bars);
+    // The cache lane has its own scale and shares the x labels under it.
+    const laneDy = h("div", { class: "dy", "aria-hidden": "true" });
+    const laneBand = nowBand();
+    const laneBars = s("g", null);
+    const laneSvg = s("svg", {
+      class: "dbars lv-lane-svg", viewBox: "0 0 " + W + " " + LH, preserveAspectRatio: "none", "aria-hidden": "true",
+    }, laneBand, laneBars, s("line", { x1: 0, y1: LH, x2: W, y2: LH, class: "base" }));
     const dx = h("div", { class: "dx dx-min", "aria-hidden": "true" });
-    return { id, dy, grid, bars, svg, dx, rects: new Map(), order: [], el: h("div", { class: "dchart" }, dy, svg, dx) };
+    return {
+      id, dy, grid, bars, svg, band, dx, laneDy, laneBand, laneBars, rects: new Map(), order: [],
+      el: h("div", { class: "dchart lv-main" }, dy, svg),
+      laneEl: h("div", { class: "dchart lv-lane" }, laneDy, laneSvg, dx),
+    };
   }
 
   function buildDash() {
     const tiles = [tile(t("kpi_tokens")), tile(t("kpi_cost")), tile(t("kpi_hit"), true), tile(t("h_requests"))];
     const chart = buildChart();
+    const meter = h("div", { class: "lv-meter" });
     const legend = h("ul", { class: "klg" });
+    const rowHead = h("div", { class: "lv-row-h" }, h("span", { class: "lv-row-t" }, t("live_new_h")), legend);
+    const laneHead = h("div", { class: "lv-lane-h" },
+      h("span", { class: "swatch rk-1 lv-sw-rk1", "aria-hidden": "true" }), h("span", { class: "lv-row-t" }, t("live_lane_h")));
+    const note = h("p", { class: "lv-note" }, t("live_chart_note"));
+    const wait = h("p", { class: "lv-wait", hidden: true }, t("live_wait"));
     const agents = h("div", { class: "lv-ags" });
-    const cols = [t("live_col_time"), t("h_agent"), t("f_model"), t("f_effort"), t("kpi_tokens"), t("k_output"), t("kpi_cost")];
-    const hide = [false, false, true, true, false, true, false];
+    const cols = [t("live_col_time"), t("h_agent"), t("f_model"), t("f_effort"), t("kpi_tokens"), t("k_cache_read"), t("k_output"), t("kpi_cost")];
+    const hide = [false, false, true, true, false, true, true, false];
     const tbody = h("tbody", null);
     const table = h("table", { class: "dt lv-req" },
       h("thead", null, h("tr", null, cols.map((c, i) => h("th", { scope: "col", class: hide[i] && "lv-hide-s" }, c)))), tbody);
     const foot = h("p", { class: "foot" });
     const grid = h("div", { class: "lv-g21" },
-      card({ title: t("live_chart_h"), sub: t("live_chart_sub"), icon: "pulse", body: [chart.el, legend] }),
+      card({
+        title: t("live_chart_h"), sub: t("live_chart_sub"), icon: "pulse",
+        body: [meter, rowHead, chart.el, laneHead, chart.laneEl, note, wait],
+      }),
       card({ title: t("live_agents_h"), sub: t("live_agents_sub"), icon: "agents", body: agents }));
     const requests = card({ title: t("live_req_h"), sub: t("live_req_sub"), icon: "list", body: [table, h("p", { class: "est" }, t("est_short"))] });
     return {
       nodes: [h("div", { class: "kpis" }, tiles.map((x) => x.el)), grid, requests, foot],
-      tiles, chart, legend, agents, agentRows: new Map(), tbody, rows: new Map(), foot, hide, cols,
+      tiles, chart, meter, legend, wait, agents, agentRows: new Map(), tbody, rows: new Map(), foot, hide, cols,
     };
   }
 
@@ -249,9 +312,14 @@ export function createLive(env) {
       v.word.textContent = word;
     }
     v.button.textContent = label;
+    if ((state === "live" || state === "idle") && sinceLast() !== null) {
+      const seconds = sinceLast();
+      timeText = seconds < 60 ? t("live_agent_last_s", { n: seconds }) : t("live_agent_last_min", { n: Math.floor(seconds / 60) });
+    }
     if (!hasControl) timeText = "";
-    // One blink when a changed answer lands: a new node starts its animation, an old one only changes its text.
-    if (S.flash && (state === "live" || state === "idle")) {
+    // One blink when a changed answer brings a new newest request: a new node starts its animation, an old one only
+    // changes its text. A tick never blinks.
+    if (S.blink && (state === "live" || state === "idle")) {
       const next = h("span", { class: "lv-time lv-tick" }, timeText);
       v.time.replaceWith(next);
       v.time = next;
@@ -302,6 +370,7 @@ export function createLive(env) {
       return;
     }
     const isWorking = working(shown.last_request);
+    const now = nowMs();
     setActivity(v.sessPill, isWorking);
     v.sessLink.textContent = t("session_from", { time: fmtTime(shown.started) });
     setLocalHref(v.sessLink, S.ctx.hashFor("session-detail", { id: shown.session_id }));
@@ -310,7 +379,7 @@ export function createLive(env) {
     const last = dateOf(shown.last_request);
     if (isWorking) {
       const start = ms(shown.started);
-      const minutes = start !== null && S.serverTime ? Math.max(0, Math.floor((S.serverTime.getTime() - start) / 60000)) : 0;
+      const minutes = start !== null && now !== null ? Math.max(0, Math.floor((now - start) / 60000)) : 0;
       v.when.textContent = t("live_started", { time: fmtClock(new Date(shown.started)), n: minutes });
     } else {
       v.when.textContent = last ? t("live_last_at", { time: fmtClock(last) }) : "";
@@ -357,6 +426,47 @@ export function createLive(env) {
     setLine(requests, num(last.requests) > 0 ? t("live_last_min_count", { n: num(last.requests).toLocaleString("en-US") }) : t("live_last_min_none"), !(num(last.requests) > 0));
   }
 
+  // The Now band covers the current minute's slot, from the top of the plot down to one unit above that minute's bar.
+  // Its title says so when the minute has no requests yet, and is empty otherwise.
+  function placeBand(rect, index, bw, bottom, full, empty) {
+    if (index < 0) {
+      rect.setAttribute("width", "0");
+      rect.setAttribute("height", "0");
+      rect.lvTitle.textContent = "";
+      return;
+    }
+    rect.setAttribute("x", (index * bw + bw * 0.18 - 2).toFixed(1));
+    rect.setAttribute("width", (bw * 0.64 + 4).toFixed(1));
+    rect.setAttribute("y", "0");
+    rect.setAttribute("height", (bottom >= full ? full : Math.max(bottom - 1, 0)).toFixed(2));
+    rect.lvTitle.textContent = empty ? t("live_now_sr") : "";
+  }
+
+  // The cache lane: one rect per minute with cache reads, on its own scale (the peak minute fills the lane).
+  function fillLane(c, minutes, bw, mainBottom) {
+    const reads = minutes.map((m) => num(m.cache_read));
+    const peak = Math.max(0, ...reads);
+    clear(c.laneBars);
+    clear(c.laneDy);
+    if (peak > 0) c.laneDy.appendChild(h("span", null, fmtTokens(peak)));
+    c.laneDy.appendChild(h("span", null, "0"));
+    let laneBottom = LH;
+    minutes.forEach((m, i) => {
+      if (reads[i] <= 0) return;
+      const height = (reads[i] / peak) * (LH - 2);
+      const stamp = dateOf(m.start);
+      c.laneBars.appendChild(s("rect", {
+        class: "lv-cr", x: (i * bw + bw * 0.18).toFixed(2), width: (bw * 0.64).toFixed(2),
+        y: (LH - height).toFixed(2), height: height.toFixed(2), "vector-effect": "non-scaling-stroke",
+      }, s("title", null, (stamp ? fmtClock(stamp) + " " : "") + t("live_lane_h") + " " + fmtTokens(reads[i]))));
+      if (i === minutes.length - 1) laneBottom = LH - height;
+    });
+    const last = minutes.length - 1;
+    const empty = last >= 0 && num(minutes[last].tokens) <= 0 && reads[last] <= 0;
+    placeBand(c.band, last, bw, mainBottom, H, empty);
+    placeBand(c.laneBand, last, bw, laneBottom, LH, empty);
+  }
+
   function fillChart(c, shown) {
     const minutes = shown ? list(shown.minutes).slice(-COLS) : [];
     const axis = shown && shown.axis ? shown.axis : null;
@@ -370,6 +480,7 @@ export function createLive(env) {
     }
     for (const model of order) if (!c.order.includes(model)) c.order.push(model);
     const bw = W / COLS;
+    let lastBottom = H; // the top of the current minute's stack
     minutes.forEach((m, i) => {
       let bottom = H;
       const stamp = dateOf(m.start);
@@ -397,6 +508,7 @@ export function createLive(env) {
           bottom = y;
         }
       }
+      lastBottom = bottom;
     });
     // A column with no minute (the wait state, or a shorter list) holds nothing.
     for (const [key, rect] of c.rects) {
@@ -410,6 +522,7 @@ export function createLive(env) {
     }
     clear(c.dy);
     for (const tick of ticks.slice().reverse()) c.dy.appendChild(h("span", null, fmtTick(tick)));
+    fillLane(c, minutes, bw, lastBottom);
     clear(c.dx);
     minutes.forEach((m, i) => {
       if (i % 5 !== 4 || i >= minutes.length - 1) return;
@@ -419,6 +532,19 @@ export function createLive(env) {
     if (minutes.length) {
       c.dx.appendChild(h("span", { class: "lv-now-x", style: { left: (((minutes.length - 0.5) / COLS) * 100).toFixed(2) + "%" } }, t("live_now")));
     }
+  }
+
+  // The session bar by kind with its legend, rebuilt on each changed answer. The legend lists all four kinds.
+  function fillMeter(d, shown) {
+    clear(d.meter);
+    if (!shown) return;
+    const totals = shown.totals || {};
+    const kinds = {
+      tokens: num(totals.tokens), input: num(totals.input), output: num(totals.output),
+      cache_read: num(totals.cache_read), cache_write: num(totals.cache_write),
+    };
+    d.meter.appendChild(stackedTokens([{ label: t("live_kinds_h"), a: kinds }]));
+    d.meter.appendChild(kindsLegend(kinds));
   }
 
   function fillLegend(d, shown) {
@@ -497,7 +623,7 @@ export function createLive(env) {
       r.stamp.textContent = at ? clockSeconds(at) : "";
       const cost = rec.cost === null || rec.cost === undefined ? t("not_priced")
         : rec.cost > 0 && rec.cost < 0.005 ? t("live_cost_lt_cent") : fmtCost(rec.cost);
-      const texts = [null, agentName(rec), modelName(rec), effortText(rec), fmtTokens(num(rec.tokens)), fmtTokens(num(rec.output)), cost];
+      const texts = [null, agentName(rec), modelName(rec), effortText(rec), fmtTokens(num(rec.tokens)), fmtTokens(num(rec.cache_read)), fmtTokens(num(rec.output)), cost];
       texts.forEach((text, i) => { if (i > 0 && r.cells[i].textContent !== text) r.cells[i].textContent = text; });
       d.tbody.appendChild(r.el);
     }
@@ -508,7 +634,7 @@ export function createLive(env) {
 
   // The words that depend on the clock: the agents' last request, the New markers and the foot.
   function drawTimes(d) {
-    const now = S.serverTime ? S.serverTime.getTime() : null;
+    const now = nowMs();
     for (const r of d.agentRows.values()) {
       const last = ms(r.data.last_request);
       const isWorking = now !== null && last !== null && now - last <= ACTIVE_MS;
@@ -528,6 +654,10 @@ export function createLive(env) {
         r.mark = null;
       }
     }
+    // The wait line: a request is written to the transcript a moment after it is made, so the newest one can be late.
+    const age = sinceLast();
+    const state = stateOf();
+    d.wait.hidden = !((state === "live" || state === "idle") && age !== null && age * 1000 >= WAIT_MS);
     const dir = S.ctx.transcriptsDir;
     const foot = dir ? t("live_foot", { config_dir: configDirOf(dir) }) + " " + t("live_hidden_note") : "";
     if (d.foot.textContent !== foot) d.foot.textContent = foot;
@@ -539,6 +669,7 @@ export function createLive(env) {
     if (view.filled !== S.payload) {
       const fresh = S.flash && view.filled !== undefined && view.filled !== null;
       fillKpis(d, shown, fresh);
+      fillMeter(d, shown);
       fillChart(d.chart, shown);
       fillLegend(d, shown);
       fillAgents(d, shown);
@@ -605,6 +736,22 @@ export function createLive(env) {
     drawHead(state);
     drawBody(state);
     S.flash = false;
+    S.blink = false;
+    syncTick(state);
+  }
+
+  // The one-second clock runs only while the page is active, the tab is in view and the state is live or idle.
+  // The state is never live or idle while paused, lost or waiting, so those stop it too. A tick only paints.
+  function syncTick(state) {
+    const want = S.active && env.isVisible() && (state === "live" || state === "idle");
+    if (want && tickId === null) tickId = env.startTick(paint);
+    else if (!want && tickId !== null) { env.stopTick(tickId); tickId = null; }
+  }
+
+  function onVisibility() {
+    poller.visibilityChanged();
+    if (env.isVisible()) paint(); // coming back repaints at once, so the age does not wait for the next tick
+    else syncTick(stateOf());
   }
 
   // ---------------------------------------------------------------- answers
@@ -624,7 +771,7 @@ export function createLive(env) {
   function onAnswer({ data, unchanged }) {
     if (data.project !== undefined && data.project !== S.key) return; // an answer for the project the page left
     const at = dateOf(data.server_time);
-    if (at) S.serverTime = at;
+    if (at) { S.serverTime = at; S.receivedAt = env.now(); }
     if (unchanged) {
       paint();
       return;
@@ -635,6 +782,9 @@ export function createLive(env) {
     if (data.session_gone === true && session()) S.gone = true;
     if (!session()) S.gone = false;
     S.flash = !S.quiet && data.session_gone !== true;
+    // The age blinks only when this answer brings a newer newest request than the one before.
+    const newest = session() ? list(session().requests)[0] : null;
+    S.blink = S.flash && Boolean(newest) && !S.prevIds.has(newest.id);
     S.quiet = false;
     paint();
     announce();
@@ -650,11 +800,14 @@ export function createLive(env) {
     S.key = key;
     S.payload = null;
     S.serverTime = null;
+    S.receivedAt = null;
+    S.lastNow = null;
     S.prevIds = new Set();
     S.paused = false;
     S.gone = false;
     S.mode = "ok";
     S.flash = false;
+    S.blink = false;
     if (view) { view.filled = undefined; if (view.dash) view.shown = ""; }
     S.quiet = true;
     poller.reset(S.picks.get(key) || null);
@@ -673,6 +826,7 @@ export function createLive(env) {
         S.active = false;
         poller.setActive(false);
         stopListening();
+        syncTick("");
         return;
       }
       const key = S.ctx.project.key;
@@ -684,7 +838,7 @@ export function createLive(env) {
         poller.setActive(false);
         stopListening();
       } else {
-        if (!unlisten) unlisten = env.listenVisibility(() => poller.visibilityChanged());
+        if (!unlisten) unlisten = env.listenVisibility(onVisibility);
         poller.setActive(true);
       }
       paint();
@@ -697,6 +851,8 @@ export function createLive(env) {
 const live = createLive({
   setTimer: (fn, wait) => setTimeout(fn, wait),
   clearTimer: (id) => clearTimeout(id),
+  startTick: (fn) => setInterval(fn, 1000),
+  stopTick: (id) => clearInterval(id),
   now: () => Date.now(),
   isVisible: () => document.visibilityState !== "hidden",
   listenVisibility: (fn) => {

@@ -13,7 +13,7 @@
 // onAnswer({ data, unchanged }) is called for every good answer. onState(mode) is called when the mode changes:
 // "ok", "lost" or "unknown".
 
-export const POLL_MS = 3000;
+export const POLL_MS = 1000; // one /api/live call takes about 7 ms (30 ms after a change) with 300 transcript files
 export const RETRY_MS = 10000;
 
 export function createLivePoller({ fetchLive, setTimer, clearTimer, isVisible, onAnswer, onState }) {

@@ -87,9 +87,13 @@ function boot({ key = KEY } = {}) {
   const vis = { on: true, fn: null };
   const calls = [];
   const pending = [];
+  // The one-second ticker is separate from the timers, so a check fires it by hand with app.tick().
+  const ticker = { seq: 0, fns: new Map(), started: 0, stopped: 0 };
   const env = {
     setTimer: clock.set,
     clearTimer: clock.clear,
+    startTick: (fn) => { ticker.seq += 1; ticker.started += 1; ticker.fns.set(ticker.seq, fn); return ticker.seq; },
+    stopTick: (id) => { if (ticker.fns.delete(id)) ticker.stopped += 1; },
     now: () => clock.now,
     isVisible: () => vis.on,
     listenVisibility: (fn) => { vis.fn = fn; return () => { vis.fn = null; }; },
@@ -106,7 +110,9 @@ function boot({ key = KEY } = {}) {
     },
   });
   const app = {
-    page, section, clock, live, vis, calls, pending, ctx: makeCtx(key),
+    page, section, clock, live, vis, calls, pending, ticker, ctx: makeCtx(key),
+    ticking: () => ticker.fns.size,
+    tick() { for (const fn of [...ticker.fns.values()]) fn(); },
     // The order handle() in app.js uses: setActive first, then render.
     start() { live.setActive(true, app.ctx); live.render(section, app.ctx); },
     go(next) { app.ctx = makeCtx(next); live.setActive(true, app.ctx); live.render(section, app.ctx); },
@@ -155,7 +161,7 @@ test("live: the header, the control and the session line", async () => {
   const link = byClass(sess, "lnk")[0];
   assert.equal(link.getAttribute("href"), "#/sessions/" + SID1 + "?project=" + KEY, "the session detail route");
   assert.equal(app.pill().hidden, true, "live has no pill");
-  assert.equal(text(one(app.section, "lv-time")), "Updated 4:24 PM");
+  assert.equal(text(one(app.section, "lv-time")), "Last request 3 s ago", "the header shows the age of the newest request");
   assert.equal(text(app.button()), "Pause");
   assert.equal(one(app.section, "lv-gone").hidden, true);
   assert.equal(one(app.section, "lv-lost-nt").hidden, true);
@@ -201,7 +207,8 @@ test("live: the chart has 30 columns by model, a legend with totals, y ticks and
   app.start();
   const payload = fixture("live");
   await app.reply(ok(payload));
-  const svg = one(app.section, "dbars");
+  const main = one(app.section, "lv-main");
+  const svg = one(main, "dbars");
   assert.equal(svg.getAttribute("role"), "img");
   assert.equal(svg.getAttribute("aria-label"), STRINGS.live_chart_sr);
   const drawn = byClass(svg, "col").filter((r) => parseFloat(r.styleMap.height) > 0);
@@ -213,10 +220,12 @@ test("live: the chart has 30 columns by model, a legend with totals, y ticks and
   assert.ok(other.every((r) => /^url\(#oth-live-\d+\)$/.test(r.getAttribute("fill"))));
   const columns = new Set(drawn.map((r) => r.getAttribute("x")));
   assert.ok(columns.size <= 30);
-  assert.deepEqual(byTag(one(app.section, "dy"), "span").map(text), ["150K", "100K", "50K", "0"]);
-  assert.deepEqual(byTag(one(app.section, "dx"), "span").map(text), ["3:59", "4:04", "4:09", "4:14", "4:19", "Now"]);
+  assert.deepEqual(byTag(one(main, "dy"), "span").map(text), ["20K", "10K", "0"], "the main chart's ticks follow the axis over new tokens");
+  assert.equal(byClass(main, "dx").length, 0, "the x labels moved under the lane");
+  const lane = one(app.section, "lv-lane");
+  assert.deepEqual(byTag(one(lane, "dx"), "span").map(text), ["3:59", "4:04", "4:09", "4:14", "4:19", "Now"]);
   assert.equal(one(app.section, "lv-now-x").styleMap.left, "98.33%", "Now sits at the right edge");
-  const legend = byTag(one(app.section, "klg"), "li");
+  const legend = byTag(one(one(app.section, "lv-row-h"), "klg"), "li");
   assert.equal(legend.length, payload.session.by_model.length);
   assert.ok(text(legend[0]).startsWith("Opus 5.5 "), text(legend[0]));
   assert.ok(text(legend[legend.length - 1]).startsWith("acme-test-model-1 "), text(legend[legend.length - 1]));
@@ -248,18 +257,21 @@ test("live: eight request rows with a New marker, an unpriced row and the footer
   const rows = app.rows();
   assert.equal(rows.length, 8);
   assert.deepEqual(byTag(one(app.section, "lv-req"), "th").map(text),
-    ["Time", "Agent", "Model", "Effort", "Tokens", "Output", "Estimated cost"]);
+    ["Time", "Agent", "Model", "Effort", "Tokens", "Cache read", "Output", "Estimated cost"]);
   assert.equal(byClass(app.section, "lv-new").length, 2, "two requests are under 30 seconds old");
   const cells = (row) => byTag(row, "td").map(text);
-  assert.deepEqual(cells(rows[0]), ["4:24:41New", "reviewer", "Sonnet 5.5", "xhigh", "23K", "360", "$0.02"]);
-  assert.deepEqual(cells(rows[1]), ["4:24:17New", "scribe", "acme-test-model-1", "high", "6,200", "225", "Not priced"]);
+  assert.deepEqual(cells(rows[0]), ["4:24:41New", "reviewer", "Sonnet 5.5", "xhigh", "23K", "20K", "360", "$0.02"]);
+  assert.deepEqual(cells(rows[1]), ["4:24:17New", "scribe", "acme-test-model-1", "high", "6,200", "5,100", "225", "Not priced"]);
   assert.deepEqual(cells(rows[2]).slice(0, 2), ["4:23:31", "scribe"]);
   assert.equal(cells(rows[5])[1], "Main session");
   assert.equal(byClass(rows[0], "lv-new").length, 1);
   assert.equal(text(byClass(rows[0], "lv-new")[0]), "New");
   assert.equal(byTag(rows[0], "td")[2].classList.contains("lv-hide-s"), true, "model hides at 375");
+  assert.deepEqual(byTag(one(app.section, "lv-req"), "th").map((n) => hasClass(n, "lv-hide-s")), [false, false, true, true, false, true, true, false]);
+  assert.deepEqual(byTag(rows[0], "td").map((n) => hasClass(n, "lv-hide-s")), [false, false, true, true, false, true, true, false], "the Cache read cell hides at 375 too");
+  assert.equal(byTag(rows[0], "td")[5].getAttribute("data-l"), "Cache read");
   assert.equal(text(one(app.section, "est")), "Estimated at API list price");
-  assert.equal(text(one(app.section, "foot")).startsWith("Read from the transcripts in ~/.claude/projects every 3 seconds"), true);
+  assert.equal(text(one(app.section, "foot")).startsWith("Read from the transcripts in ~/.claude/projects every second while this tab is in view"), true);
   assert.ok(text(one(app.section, "foot")).endsWith(STRINGS.live_hidden_note));
 });
 
@@ -283,7 +295,7 @@ test("idle: the last request time, no New marker and idle pills", async () => {
   assert.ok(text(sess).includes("Last request at 4:24 PM"), text(sess));
   assert.ok(!text(sess).includes("Started"));
   assert.ok(!text(sess).includes("Ended"));
-  assert.equal(text(one(app.section, "lv-time")), "Updated 4:52 PM");
+  assert.equal(text(one(app.section, "lv-time")), "Last request 27 min ago");
   assert.equal(app.pill().hidden, true);
   assert.equal(byClass(app.section, "lv-new").length, 0);
   assert.deepEqual(app.agents().map((r) => text(byClass(r, "lv-act")[0])), ["Idle", "Idle", "Idle"]);
@@ -394,7 +406,7 @@ test("lost: it retries every 10 seconds, Try now asks at once and a good answer 
   assert.equal(app.state(), "live");
   assert.equal(app.pill().hidden, true);
   assert.equal(one(app.section, "lv-lost-nt").hidden, true);
-  assert.equal(app.clock.nextIn(), POLL_MS, "back to 3 seconds");
+  assert.equal(app.clock.nextIn(), POLL_MS, "back to the normal pace");
 });
 
 test("lost: before any answer the page shows Not updating over the empty cards", async () => {
@@ -442,13 +454,13 @@ test("paused: the button keeps focus across states because it is one element", a
 
 // ---------------------------------------------------------------- the poller
 
-test("poll: every 3 seconds, never two requests in flight", async () => {
+test("poll: one request per POLL_MS, never two requests in flight", async () => {
   const app = boot();
   app.start();
   await app.reply(ok(fixture("live")));
   assert.equal(app.calls.length, 1);
-  assert.equal(app.clock.nextIn(), 3000);
-  await app.clock.advance(2999);
+  assert.equal(app.clock.nextIn(), POLL_MS);
+  await app.clock.advance(POLL_MS - 1);
   assert.equal(app.calls.length, 1);
   await app.clock.advance(1);
   assert.equal(app.calls.length, 2);
@@ -456,7 +468,7 @@ test("poll: every 3 seconds, never two requests in flight", async () => {
   assert.equal(app.calls.length, 2, "the answer is still out, so nothing else goes");
   assert.equal(app.pending.length, 1);
   await app.reply(ok(fixture("unchanged")));
-  assert.equal(app.clock.nextIn(), 3000, "the next one is 3 seconds after the answer");
+  assert.equal(app.clock.nextIn(), POLL_MS, "the next one is one poll after the answer");
 });
 
 test("poll: the session is sticky and the etag of the last full answer is sent", async () => {
@@ -577,7 +589,7 @@ test("unchanged: the DOM stays, nothing flashes and the relative times move", as
   assert.equal(app.fresh().length, 0, "no flash and no blink on an unchanged answer");
   assert.equal(text(byClass(app.agents()[1], "lv-ag-last")[0]), "Last request 39 s ago", "the relative time moved");
   assert.equal(byClass(app.section, "lv-new").length, 0, "the New markers ran out");
-  assert.equal(text(one(app.section, "lv-time")), "Updated 4:25 PM");
+  assert.equal(text(one(app.section, "lv-time")), "Last request 39 s ago");
   assert.equal(app.state(), "live");
 });
 
@@ -664,11 +676,11 @@ test("announce: at most once a minute, on a changed answer only", async () => {
   };
   await app.clock.advance(POLL_MS);
   await app.reply(ok(change("2026-10-30T16:24:47-04:00", 760000, "a1a1a1a1a1a1a1a1")));
-  assert.equal(text(sr), "Updated at 4:24 PM. 755K tokens, $0.94 estimated cost.", "3 seconds later: nothing new is read");
+  assert.equal(text(sr), "Updated at 4:24 PM. 755K tokens, $0.94 estimated cost.", "one poll later: nothing new is read");
   await app.clock.advance(POLL_MS);
   await app.reply(ok(fixture("unchanged")));
   assert.equal(text(sr), "Updated at 4:24 PM. 755K tokens, $0.94 estimated cost.");
-  await app.clock.advance(57000 - POLL_MS * 0);
+  await app.clock.advance(60000 - POLL_MS * 2);
   await app.reply(ok(change("2026-10-30T16:25:44-04:00", 800000, "b2b2b2b2b2b2b2b2")));
   assert.equal(text(sr), "Updated at 4:25 PM. 800K tokens, $0.94 estimated cost.", "a minute on, the change is read");
 });
@@ -782,6 +794,361 @@ test("markup in data stays text, and no innerHTML is set", async () => {
   assert.equal(byTag(app.section, "img").length, 0);
   assert.equal(byTag(app.section, "b").length, 0);
   assert.deepEqual(parsed, []);
+});
+
+// ---------------------------------------------------------------- the chart card: session bar, New tokens, cache lane, Now band
+
+const KINDS = [["cache_read", "Cache read", "rk-1"], ["input", "Input", "rk-2"], ["cache_write", "Cache write", "rk-3"], ["output", "Output", "rk-4"]];
+const laneRects = (app) => byClass(one(app.section, "lv-lane"), "lv-cr");
+const mainBand = (app) => one(one(app.section, "lv-main"), "lv-nowband");
+const laneBand = (app) => one(one(app.section, "lv-lane"), "lv-nowband");
+const titleOf = (n) => text(byTag(n, "title")[0]);
+
+test("session bar: one row by kind, segments and a legend of four totals", async () => {
+  const app = boot();
+  app.start();
+  const payload = fixture("live");
+  await app.reply(ok(payload));
+  const meter = one(app.section, "lv-meter");
+  assert.equal(byClass(meter, "sb-row").length, 1);
+  assert.equal(text(one(meter, "sb-n")), STRINGS.live_kinds_h);
+  assert.equal(text(one(meter, "sb-v")), "755K");
+  const totals = payload.session.totals;
+  const segs = byClass(meter, "sb-seg");
+  assert.deepEqual(segs.map((n) => n.getAttribute("class").replace("sb-seg ", "")), KINDS.map((k) => k[2]));
+  segs.forEach((seg, i) => {
+    assert.equal(seg.styleMap.width, ((100 * totals[KINDS[i][0]]) / totals.tokens).toFixed(2) + "%");
+    assert.equal(text(byClass(seg, "sr")[0]), KINDS[i][1] + " " + format.fmtTokens(totals[KINDS[i][0]]));
+  });
+  const legend = byTag(one(meter, "klg"), "li");
+  assert.deepEqual(legend.map(text), KINDS.map((k) => k[1] + " " + format.fmtTokens(totals[k[0]])));
+  assert.deepEqual(legend.map(text), ["Cache read 640K", "Input 41K", "Cache write 61K", "Output 13K"]);
+  assert.equal(byClass(legend[0], "swatch")[0].getAttribute("aria-hidden"), "true");
+});
+
+test("session bar: a kind with nothing still shows in the legend, and a new answer rebuilds the bar", async () => {
+  const app = boot();
+  app.start();
+  const zero = fixture("live");
+  zero.session.totals.cache_read = 0;
+  zero.session.totals.tokens = 115000;
+  await app.reply(ok(zero));
+  const meter = one(app.section, "lv-meter");
+  assert.equal(byClass(meter, "sb-seg").length, 3, "no segment for a kind of zero");
+  const legend = byTag(one(meter, "klg"), "li").map(text);
+  assert.equal(legend.length, 4);
+  assert.equal(legend[0], "Cache read 0");
+  await app.clock.advance(POLL_MS);
+  const next = withTime(fixture("live"), "2026-10-30T16:24:50-04:00");
+  next.etag = "2323232323232323";
+  await app.reply(ok(next));
+  assert.equal(one(app.section, "lv-meter"), meter, "the wrapper stays");
+  assert.equal(byClass(meter, "sb-seg").length, 4);
+  assert.equal(byTag(one(meter, "klg"), "li").map(text)[0], "Cache read 640K");
+});
+
+test("chart: the New tokens head carries the model legend with new-token totals", async () => {
+  const app = boot();
+  app.start();
+  const payload = fixture("live");
+  await app.reply(ok(payload));
+  const head = one(app.section, "lv-row-h");
+  assert.equal(text(one(head, "lv-row-t")), STRINGS.live_new_h);
+  assert.equal(head.childNodes[0], one(head, "lv-row-t"), "the label comes first");
+  const legend = byTag(one(head, "klg"), "li");
+  assert.deepEqual(legend.map(text), payload.session.by_model.map((m) => m.display_name + " " + format.fmtTokens(m.tokens)));
+  assert.equal(text(legend[0]), "Opus 5.5 113K");
+  assert.equal(text(one(app.section, "lv-note")), STRINGS.live_chart_note);
+  assert.equal(text(one(one(app.section, "lv-lane-h"), "lv-row-t")), "Cache reads");
+  assert.ok(hasClass(byClass(one(app.section, "lv-lane-h"), "swatch")[0], "rk-1"));
+});
+
+test("lane: one rect per minute with cache reads, a peak label and a title like the model bars", async () => {
+  const app = boot();
+  app.start();
+  const payload = fixture("live");
+  await app.reply(ok(payload));
+  const lane = one(app.section, "lv-lane");
+  const svg = one(lane, "lv-lane-svg");
+  assert.equal(svg.getAttribute("viewBox"), "0 0 600 48");
+  assert.equal(svg.getAttribute("aria-hidden"), "true");
+  assert.equal(svg.getAttribute("preserveAspectRatio"), "none");
+  const minutes = payload.session.minutes;
+  const rects = laneRects(app);
+  assert.equal(rects.length, minutes.filter((m) => m.cache_read > 0).length);
+  const peak = Math.max(...minutes.map((m) => m.cache_read));
+  assert.deepEqual(byTag(one(lane, "dy"), "span").map(text), [format.fmtTokens(peak), "0"]);
+  assert.equal(text(byTag(one(lane, "dy"), "span")[0]), "66K");
+  const tall = rects.filter((r) => r.getAttribute("height") === "46.00");
+  assert.equal(tall.length, 2, "the two peak minutes (4:10 and 4:15) fill the lane minus its two units");
+  assert.equal(tall[0].getAttribute("y"), "2.00");
+  assert.equal(titleOf(tall[0]), "4:10 PM Cache reads 66K");
+  assert.equal(tall[0].getAttribute("x"), "303.60");
+  assert.equal(tall[0].getAttribute("width"), "12.80");
+  assert.equal(tall[0].getAttribute("vector-effect"), "non-scaling-stroke");
+  assert.ok(rects.every((r) => hasClass(r, "lv-cr") && !r.attrs.has("style")), "geometry is attributes, never a style attribute");
+  assert.equal(byClass(svg, "base").length, 1);
+  assert.equal(one(svg, "lv-nowband").parentNode, svg);
+});
+
+test("lane: a session with no cache reads draws the baseline and labels only 0", async () => {
+  const app = boot();
+  app.start();
+  const payload = fixture("live");
+  payload.session.minutes.forEach((m) => { m.cache_read = 0; });
+  await app.reply(ok(payload));
+  const lane = one(app.section, "lv-lane");
+  assert.equal(laneRects(app).length, 0);
+  assert.deepEqual(byTag(one(lane, "dy"), "span").map(text), ["0"]);
+  assert.equal(byClass(lane, "base").length, 1);
+  assert.ok(!text(lane).includes("NaN") && !text(lane).includes("Infinity"));
+  assert.ok(byClass(lane, "lv-nowband").every((n) => !Number.isNaN(Number(n.getAttribute("height")))));
+});
+
+test("now band: it covers the current minute in the chart and the lane and stops above the bar", async () => {
+  const app = boot();
+  app.start();
+  await app.reply(ok(fixture("live")));
+  const slot = (581.6).toFixed(1);
+  for (const band of [mainBand(app), laneBand(app)]) {
+    assert.equal(band.getAttribute("x"), slot);
+    assert.equal(band.getAttribute("width"), "16.8");
+    assert.equal(band.getAttribute("y"), "0");
+    assert.equal(titleOf(band), "", "the minute has requests, so the band says nothing");
+    assert.ok(!band.attrs.has("style"));
+  }
+  const bars = byClass(one(app.section, "lv-main"), "col").filter((r) => r.getAttribute("x") === "583.60" && parseFloat(r.styleMap.height) > 0);
+  assert.equal(bars.length, 2);
+  const barTop = Math.min(...bars.map((r) => parseFloat(r.styleMap.y)));
+  assert.equal(mainBand(app).getAttribute("height"), (barTop - 1).toFixed(2), "one unit above the bar");
+  assert.equal(mainBand(app).parentNode.childNodes[0], mainBand(app), "drawn under the bars");
+  const laneBar = laneRects(app).find((r) => r.getAttribute("x") === "583.60");
+  assert.equal(laneBand(app).getAttribute("height"), (Number(laneBar.getAttribute("y")) - 1).toFixed(2));
+});
+
+test("now band: an empty current minute gets the full height and the Current minute title, and it follows the data", async () => {
+  const app = boot();
+  app.start();
+  const empty = fixture("live");
+  Object.assign(empty.session.minutes[29], { tokens: 0, by_model: {}, cache_read: 0 });
+  await app.reply(ok(empty));
+  assert.equal(mainBand(app).getAttribute("height"), "150.00");
+  assert.equal(laneBand(app).getAttribute("height"), "48.00");
+  assert.equal(titleOf(mainBand(app)), "Current minute, no requests yet");
+  assert.equal(titleOf(laneBand(app)), STRINGS.live_now_sr);
+  assert.equal(mainBand(app).getAttribute("x"), "581.6");
+  await app.clock.advance(POLL_MS);
+  const next = withTime(fixture("live"), "2026-10-30T16:25:05-04:00");
+  next.etag = "3434343434343434";
+  next.session.minutes = next.session.minutes.slice(1).concat([{ start: "2026-10-30T16:25:00-04:00", tokens: 0, by_model: {}, cache_read: 0 }]);
+  await app.reply(ok(next));
+  assert.equal(mainBand(app).getAttribute("x"), "581.6", "a new minute shifts the columns, and the band stays on the last one");
+  assert.equal(mainBand(app).getAttribute("height"), "150.00", "the new minute is empty");
+  await app.clock.advance(POLL_MS);
+  const still = withTime(fixture("live"), "2026-10-30T16:25:09-04:00");
+  still.etag = "4545454545454545";
+  await app.reply(ok(still));
+  assert.notEqual(mainBand(app).getAttribute("height"), "150.00", "a request in the minute pulls the band down to the bar");
+  assert.equal(titleOf(mainBand(app)), "");
+});
+
+// ---------------------------------------------------------------- the clock: header age, tick, wait line
+
+test("header age: it moves on a tick, switches to minutes at 60 s and the agents and pills agree", async () => {
+  const app = boot();
+  app.start();
+  assert.equal(app.ticking(), 0, "no tick before an answer");
+  await app.reply(ok(withTime(fixture("live"), "2026-10-30T16:25:38-04:00")));
+  const age = () => text(one(app.section, "lv-time"));
+  const reviewer = () => text(byClass(app.agents()[1], "lv-ag-last")[0]);
+  assert.equal(app.state(), "live");
+  assert.equal(age(), "Last request 57 s ago");
+  assert.equal(app.ticking(), 1);
+  await app.clock.advance(1000);
+  assert.equal(age(), "Last request 57 s ago", "nothing moves between ticks");
+  app.tick();
+  assert.equal(age(), "Last request 58 s ago");
+  assert.equal(reviewer(), "Last request 58 s ago", "the agent line reads the same clock");
+  await app.clock.advance(2000);
+  app.tick();
+  assert.equal(age(), "Last request 1 min ago", "60 seconds reads in minutes");
+  assert.equal(app.state(), "live", "exactly 60 seconds is still working");
+  await app.clock.advance(1000);
+  app.tick();
+  assert.equal(app.state(), "idle", "61 seconds is idle, and the tick keeps going");
+  assert.equal(age(), "Last request 1 min ago");
+  assert.deepEqual(byClass(app.section, "lv-act").map((n) => n.getAttribute("data-a")), ["idle", "idle", "idle", "idle"]);
+  assert.equal(app.ticking(), 1);
+});
+
+test("header age: Pause shows As of and stops the ticker, and Resume repaints at once", async () => {
+  const app = boot();
+  app.start();
+  await app.reply(ok(withTime(fixture("live"), "2026-10-30T16:25:38-04:00")));
+  app.button().click();
+  assert.equal(app.state(), "paused");
+  assert.equal(text(one(app.section, "lv-time")), "As of 4:25 PM");
+  assert.equal(app.ticking(), 0, "the ticker is stopped on pause");
+  await app.clock.advance(5000);
+  app.tick();
+  assert.equal(text(one(app.section, "lv-time")), "As of 4:25 PM", "a stopped ticker repaints nothing");
+  app.button().click();
+  assert.equal(app.ticking(), 1, "restarted on resume");
+  assert.equal(text(one(app.section, "lv-time")), "Last request 1 min ago", "and repainted before the next tick: 57 + 5 seconds");
+});
+
+test("header age: a hidden tab and a page left both stop the ticker, and coming back repaints", async () => {
+  const app = boot();
+  app.start();
+  await app.reply(ok(withTime(fixture("live"), "2026-10-30T16:24:50-04:00")));
+  const age = () => text(one(app.section, "lv-time"));
+  assert.equal(age(), "Last request 9 s ago");
+  app.vis.on = false;
+  app.vis.fn();
+  assert.equal(app.ticking(), 0, "stopped on hide");
+  await app.clock.advance(10000);
+  app.vis.on = true;
+  app.vis.fn();
+  assert.equal(app.ticking(), 1, "restarted on show");
+  assert.equal(age(), "Last request 19 s ago", "repainted at once");
+  app.leave();
+  assert.equal(app.ticking(), 0, "stopped on setActive(false)");
+  app.start();
+  assert.equal(app.ticking(), 1, "and back when the page returns");
+  assert.equal(app.ticker.started - app.ticker.stopped, 1, "never more than one ticker");
+});
+
+test("header age: lost, empty, pick and wait run no ticker, and Updated returns for lost", async () => {
+  const app = boot();
+  app.start();
+  assert.equal(app.ticking(), 0);
+  await app.reply(ok(fixture("live")));
+  assert.equal(app.ticking(), 1);
+  await app.clock.advance(POLL_MS);
+  await app.reply(fail(0));
+  assert.equal(app.state(), "lost");
+  assert.equal(app.ticking(), 0);
+  assert.equal(text(one(app.section, "lv-time")), "Updated 4:24 PM");
+  const other = boot();
+  other.start();
+  await other.reply(ok(fixture("empty")));
+  assert.equal(other.ticking(), 0);
+  const all = boot({ key: "all" });
+  all.start();
+  assert.equal(all.ticking(), 0);
+});
+
+test("blink: only an answer that brings a new newest request blinks, never a tick", async () => {
+  const app = boot();
+  app.start();
+  await app.reply(ok(fixture("live")));
+  const time = one(app.section, "lv-time");
+  assert.ok(!hasClass(time, "lv-tick"), "the first answer does not blink");
+  await app.clock.advance(POLL_MS);
+  app.tick();
+  assert.equal(app.section.find((n) => hasClass(n, "lv-tick")).length, 0, "a tick does not blink");
+  assert.equal(one(app.section, "lv-time"), time, "and keeps the node");
+  const sr = text(app.sr());
+  const other = withTime(fixture("live"), "2026-10-30T16:25:00-04:00");
+  other.etag = "5656565656565656";
+  other.session.totals.tokens = 760000;
+  other.session.last_minute.tokens = 31000;
+  await app.reply(ok(other));
+  assert.equal(one(app.section, "lv-time"), time, "a changed answer with the same newest request keeps the node");
+  assert.equal(app.section.find((n) => hasClass(n, "lv-tick")).length, 0, "no blink for other numbers");
+  assert.deepEqual(byClass(app.section, "kpi-v").map((v) => hasClass(v, "lv-fresh")), [true, false, false, false], "the value still flashes");
+  await app.clock.advance(POLL_MS);
+  const added = withTime(fixture("live"), "2026-10-30T16:25:02-04:00");
+  added.etag = "6767676767676767";
+  const request = Object.assign(copy(added.session.requests[0]), { id: "123456789abc", ts: "2026-10-30T16:25:01-04:00" });
+  added.session.requests = [request].concat(added.session.requests.slice(0, 7));
+  added.session.last_request = request.ts;
+  await app.reply(ok(added));
+  const blinked = one(app.section, "lv-time");
+  assert.notEqual(blinked, time);
+  assert.ok(hasClass(blinked, "lv-tick"), "a new newest request blinks");
+  assert.equal(text(blinked), "Last request 1 s ago");
+  await app.clock.advance(1000);
+  app.tick();
+  assert.equal(text(one(app.section, "lv-time")), "Last request 2 s ago");
+  assert.equal(one(app.section, "lv-time"), blinked, "a tick changes the text and keeps the node");
+  assert.equal(text(app.sr()), sr, "the screen reader line is answer-driven");
+});
+
+test("blink: a tick never writes to the screen reader line", async () => {
+  const app = boot();
+  app.start();
+  await app.reply(ok(fixture("live")));
+  const sr = app.sr();
+  const before = text(sr);
+  assert.ok(before.startsWith("Updated at 4:24 PM"));
+  for (let i = 0; i < 5; i += 1) {
+    await app.clock.advance(100);
+    app.tick();
+  }
+  assert.equal(text(sr), before);
+  assert.equal(app.sr(), sr);
+});
+
+test("wait line: hidden at 14 s, shown at 15 s, in Working and in Idle, and hidden when paused, lost and waiting", async () => {
+  const wait = (app) => one(app.section, "lv-wait");
+  const at = (iso) => withTime(fixture("live"), iso);
+  const app = boot();
+  app.start();
+  assert.equal(app.state(), "wait");
+  assert.equal(wait(app).hidden, true, "nothing to wait for before the first answer");
+  const early = boot();
+  early.start();
+  await early.reply(ok(at("2026-10-30T16:24:55-04:00")));
+  assert.equal(wait(early).hidden, true, "14 seconds");
+  assert.equal(text(wait(early)), STRINGS.live_wait);
+  await early.clock.advance(1000);
+  early.tick();
+  assert.equal(wait(early).hidden, false, "15 seconds, moved in by a tick");
+  assert.equal(early.state(), "live");
+  const working = boot();
+  working.start();
+  await working.reply(ok(at("2026-10-30T16:24:56-04:00")));
+  assert.equal(wait(working).hidden, false, "15 seconds at load");
+  assert.equal(working.state(), "live");
+  working.button().click();
+  assert.equal(working.state(), "paused");
+  assert.equal(wait(working).hidden, true, "paused hides it");
+  working.button().click();
+  assert.equal(wait(working).hidden, false, "resume shows it again");
+  await working.clock.advance(POLL_MS);
+  await working.reply(fail(0));
+  assert.equal(working.state(), "lost");
+  assert.equal(wait(working).hidden, true, "lost hides it");
+  const idle = boot();
+  idle.start();
+  await idle.reply(ok(fixture("idle")));
+  assert.equal(idle.state(), "idle");
+  assert.equal(wait(idle).hidden, false, "idle shows it too");
+  const empty = boot();
+  empty.start();
+  await empty.reply(ok(fixture("empty")));
+  assert.equal(byClass(empty.section, "lv-wait").length, 0, "the card states have no chart card");
+});
+
+test("one clock: the header, the wait line, the agents and the New markers all move with env.now", async () => {
+  const app = boot();
+  app.start();
+  await app.reply(ok(fixture("live")));
+  assert.equal(byClass(app.section, "lv-new").length, 2);
+  await app.clock.advance(20000);
+  await app.reply(ok(fixture("unchanged")));
+  assert.equal(byClass(app.section, "lv-new").length, 2, "at 16:24:47 the older request is 30 seconds old");
+  await app.clock.advance(5000);
+  app.tick();
+  assert.equal(byClass(app.section, "lv-new").length, 1, "a tick ages out the older marker");
+  assert.equal(text(one(app.section, "lv-time")), "Last request 11 s ago", "server_time 16:24:47 plus 5 seconds of tick");
+  assert.equal(text(byClass(app.agents()[2], "lv-ag-last")[0]), "Last request 35 s ago");
+  assert.equal(one(app.section, "lv-wait").hidden, true, "11 seconds");
+  await app.clock.advance(4000);
+  app.tick();
+  assert.equal(one(app.section, "lv-wait").hidden, false, "15 seconds");
+  assert.equal(text(one(app.section, "lv-time")), "Last request 15 s ago");
 });
 
 // ---------------------------------------------------------------- the wiring
