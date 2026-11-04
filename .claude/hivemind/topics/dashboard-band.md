@@ -10,6 +10,7 @@ author: fast-worker
 created: 2026-11-03
 last_used: 2026-11-03
 uses: 0
+promote: approved
 
 ### A-cb5f band_reorder_checks.mjs runs from test_settings_js.py
 fact: tests/js/band_reorder_checks.mjs is run by tests/test_settings_js.py (REORDER), not by test_shell_js.py or test_pages_js.py. A status-line string change updates its assertions there and in tests/test_band_arrange_e2e.py. fakedom createPage() defaults to narrow (matchMedia answers phone), so desktop band checks pass {narrow: false}.

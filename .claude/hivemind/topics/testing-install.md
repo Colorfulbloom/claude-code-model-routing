@@ -76,3 +76,4 @@ author: fast-worker
 created: 2026-11-03
 last_used: 2026-11-03
 uses: 0
+promote: approved
