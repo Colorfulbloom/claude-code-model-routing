@@ -2819,10 +2819,11 @@ FACTS_TEMPLATE = ("# Project facts (reviewed)\n\nOwner-approved facts promoted f
                   "Limit: 60 lines.\n")
 INIT_REMINDER = ("Review and commit the store: git add .claude/hivemind .claude/rules/project-facts.md "
                  "(inbox/ and active-days.txt stay ignored).")
-USAGE = ("usage: hivemind_lib.py init [<root dir>] | status|prep|apply|check [<store dir>]\n"
+USAGE = ("usage: hivemind_lib.py init [<root dir>] | status|summary|prep|preview|apply|check [<store dir>]\n"
          "       hivemind_lib.py history add <draft file | -> | link <id> <sha | base..head> | rollup | index | "
          "recent | template [--store DIR]\n"
          "       hivemind_lib.py related <path>... [--store DIR]\n")
+PREVIEW_LINE = "This was a preview, so nothing was written. A consolidation runs prep itself."
 STATUS_TAIL = "Run CONSOLIDATION at the end of the next feature."
 NEXT_STEPS = ("Next: edit topics/*.md (add ### NEW records; set superseded_by, retired or refresh), "
               "then apply, then add this feature's history entry (history template, then history add), "
@@ -3087,6 +3088,57 @@ def status_line(store):
     return "HiveMind: %s.%s" % ("; ".join(problems), "" if problems == [only] else " " + STATUS_TAIL)
 
 
+def summary_text(store):
+    """The lines of the summary command for a store. Read-only: calls no writer and takes no lock."""
+    st = Store(store)
+    root = store_root(store)
+    snap = load_prep_snapshot(store)[0]
+    waiting = len(run_file_names(store))
+    unparsed = len(unparsed_items(st.runs))
+    new_records = sum(1 for recs in st.topics.values() for r in recs if r["id"] == "NEW")
+    facts, keys = expired_items(st, inbox_uses(st.runs), today())
+    expired = len(facts) + len(keys)
+    sizes = size_report(st, root)
+    over = [text for text, flag in sizes if flag]
+    # apply regenerates topics/token-tallies.md, so folding cannot shrink it: it shows under "Over limit:" only.
+    tally_prefix = "topics/%s.md " % TALLY_TOPIC
+    topics_over = sum(1 for text, flag in sizes
+                      if flag and text.startswith("topics/") and not text.startswith(tally_prefix))
+    pending = pending_history_ids(store)
+    out = ["HiveMind summary for %s" % store, "Inbox: %d run files waiting" % waiting]
+    if snap:
+        out.append("Prep snapshot: open since %s, apply folds %d run files" % (snap["time"], len(snap["files"])))
+    out.append("Unparsed HIVEMIND lines: %d" % unparsed)
+    out.append("Unapplied NEW records: %d" % new_records)
+    out.append("Expired: %d" % expired)
+    out.append("Over limit: " + ("; ".join(over) or "none"))
+    out.append("Hook errors: %d" % len(error_lines(store)))
+    if st.cfg_problem:
+        out.append("config.json invalid, using defaults")
+    out.append("Pending history: %d%s" % (len(pending), " (%s)" % ", ".join(pending) if pending else ""))
+    recent = recent_block(store, st.cfg)
+    if recent:
+        out.append(recent)
+    if snap:
+        out.append("consolidate: in progress (prep snapshot from %s)" % snap["time"])
+    else:
+        reasons = [text for n, text in ((waiting, "%d inbox files" % waiting), (new_records, "%d NEW records" % new_records),
+                                        (expired, "%d expired" % expired),
+                                        (topics_over, "%d topics over limit" % topics_over)) if n]
+        out.append("consolidate: work waiting (%s)" % ", ".join(reasons) if reasons else "consolidate: nothing to do")
+    return out
+
+
+def cmd_summary(args):
+    """Print the store summary and the consolidation verdict. Read-only; exits 1 only when there is no store."""
+    store = store_arg(args)
+    if not store or not os.path.isdir(store):
+        print("summary: no HiveMind store found")
+        return 1
+    print("\n".join(summary_text(store)))
+    return 0
+
+
 def cmd_status(args):
     """SessionStart hook: one status line when something is wrong, then the Recent work block on startup, clear
     and compact (never on resume). Creates nothing; always exits 0."""
@@ -3271,8 +3323,8 @@ def suspect_hint(root, rec, timeout):
     return " / ".join(lines[:HINT_LINES]) + more
 
 
-def history_report(store, cfg):
-    """The History section of the prep report, as lines."""
+def history_report(store, cfg, preview=False):
+    """The History section of the prep report, as lines. A preview leaves out the add-an-entry hint."""
     hist = load_history(store)
     n, cap = len(history_index_lines(store)), cfg["history_index_max_lines"]
     out = ["History: %d entries, %d rollups; INDEX %d/%d lines%s" % (
@@ -3281,12 +3333,16 @@ def history_report(store, cfg):
         for e in rec["entries"][:1]:
             out += ["  %s %s: commit pending%s" % (e["id"], e["title"], " (%s)" % note if note else "")
                     for note in pending_notes(e)]
-    out.append("  Add this feature's entry: history template, then history add <draft or ->")
+    if not preview:
+        out.append("  Add this feature's entry: history template, then history add <draft or ->")
     return out
 
 
-def prep_report(store, root, listing=None, snapshot=None):
+def prep_report(store, root, listing=None, snapshot=None, preview=False):
     """Plain-text consolidation report for the lead. Read-only.
+
+    preview=True is for the read-only preview: it drops the "apply, then prep again" advice and the History hint,
+    and ends with PREVIEW_LINE instead of NEXT_STEPS.
 
     listing is run_listing(store) (read now when None). snapshot is the prep snapshot apply will use: items from
     run files outside it (captured after it, or changed since) are marked [next round], because apply leaves them.
@@ -3313,8 +3369,9 @@ def prep_report(store, root, listing=None, snapshot=None):
                        "consolidation." % (snapshot.get("time"), n_held))
         else:
             out.append("Snapshot (%s): apply folds %d of these %d run files; items marked [next round] wait for "
-                       "the next consolidation (to review them now: apply, then prep again)." % (
-                           snapshot.get("time"), n_held, len(names)))
+                       "the next consolidation%s." % (
+                           snapshot.get("time"), n_held, len(names),
+                           "" if preview else " (to review them now: apply, then prep again)"))
     errors = error_lines(store)
     out.append("Hook errors: %d" % len(errors))
     out += ["  " + ln for ln in errors[-5:]]
@@ -3403,8 +3460,8 @@ def prep_report(store, root, listing=None, snapshot=None):
                               []).append(v)
     out.append("Tallies in this inbox (%s):" % cfg["tally_metric"])
     out += ["  %s | %s | %s: n=%d median=%d" % (k + (len(v), median_int(v))) for k, v in sorted(groups.items())]
-    out += history_report(store, cfg)
-    out.append(NEXT_STEPS)
+    out += history_report(store, cfg, preview)
+    out.append(PREVIEW_LINE if preview else NEXT_STEPS)
     return "\n".join(out)
 
 
@@ -3439,6 +3496,16 @@ def cmd_prep(args):
                 pass
         raise
     print(report)
+    return 0
+
+
+def cmd_preview(args):
+    """The prep report with nothing written: no lock, no snapshot, no inbox/ directory. Exits 1 without a store."""
+    store = store_arg(args)
+    if not store or not os.path.isdir(store):
+        print("preview: no HiveMind store found")
+        return 1
+    print(prep_report(store, store_root(store), run_listing(store), load_prep_snapshot(store)[0], preview=True))
     return 0
 
 
@@ -3798,12 +3865,13 @@ def _apply(store):
     return 0
 
 
-COMMANDS = {"init": cmd_init, "status": cmd_status, "prep": cmd_prep, "apply": cmd_apply, "check": cmd_check}
+COMMANDS = {"init": cmd_init, "status": cmd_status, "summary": cmd_summary, "prep": cmd_prep,
+            "preview": cmd_preview, "apply": cmd_apply, "check": cmd_check}
 NEW_COMMANDS = {"history": cmd_history, "related": cmd_related}
 
 
 def main(argv):
-    """Dispatch `init | status | prep | apply | check | history | related`; returns the exit code (2 on a usage error)."""
+    """Dispatch `init | status | summary | prep | preview | apply | check | history | related`; returns the exit code (2 on a usage error)."""
     if argv and argv[0] in NEW_COMMANDS:
         return NEW_COMMANDS[argv[0]](argv[1:])
     if not argv or argv[0] not in COMMANDS or len(argv) > 2:

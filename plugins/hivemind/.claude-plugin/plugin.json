@@ -1,0 +1,9 @@
+{
+  "name": "hivemind",
+  "version": "0.1.0",
+  "description": "Manages HiveMind, the per-project memory your Claude Code agents share, from any session.",
+  "author": {"name": "Jorge Calderon"},
+  "homepage": "https://github.com/Colorfulbloom/claude-code-model-routing",
+  "repository": "https://github.com/Colorfulbloom/claude-code-model-routing",
+  "license": "MIT"
+}

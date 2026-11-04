@@ -8,6 +8,7 @@ Standard library only, Python 3.9.
 import contextlib
 import copy
 import datetime
+import hashlib
 import io
 import json
 import os
@@ -3755,6 +3756,197 @@ class HistoryStatusPrepInitTest(HistBase):
         cfg, problem = lib.load_config(self.store)
         self.assertTrue(problem)
         self.assertEqual((cfg["history_inject_lines"], cfg["history_recent_lines"]), ({"deep-reasoner": 15}, 3))
+
+
+class SummaryPreviewTest(HistBase):
+    """The read-only summary and preview commands."""
+
+    NEW_FACT = {"topic": "testing", "fact": "A proposed fact", "check": "true", "evidence": ["src/a.py"]}
+
+    def summary(self):
+        rc, out, err = self.run_cmd(lib.cmd_summary, self.store)
+        self.assertEqual((rc, err), (0, ""), out)
+        return out.rstrip("\n").split("\n")
+
+    def preview(self):
+        rc, out, err = self.run_cmd(lib.cmd_preview, self.store)
+        self.assertEqual((rc, err), (0, ""), out)
+        return out
+
+    def tree_hash(self):
+        """Every path (files and directories, relative) with each file's hash."""
+        out = {}
+        for dp, dn, fn in os.walk(self.root):
+            for d in dn:
+                out[os.path.relpath(os.path.join(dp, d), self.root) + "/"] = None
+            for f in fn:
+                path = os.path.join(dp, f)
+                with open(path, "rb") as fh:
+                    out[os.path.relpath(path, self.root)] = hashlib.sha256(fh.read()).hexdigest()
+        return out
+
+    def new_record(self, fact="f"):
+        return {"id": "NEW", "title": "t", "fact": fact, "check": "c", "evidence": "src/a.py", "author": "a"}
+
+    def test_summary_on_an_empty_fresh_store(self):
+        lines = self.summary()
+        self.assertEqual(lines[0], "HiveMind summary for " + self.store)
+        self.assertEqual(lines[1:7], ["Inbox: 0 run files waiting", "Unparsed HIVEMIND lines: 0",
+                                      "Unapplied NEW records: 0", "Expired: 0",
+                                      "Over limit: none", "Hook errors: 0"])
+        self.assertEqual(lines[7], "Pending history: 0")
+        self.assertEqual(lines[-1], "consolidate: nothing to do")
+        self.assertFalse([ln for ln in lines if ln.startswith("Prep snapshot")])
+
+    def test_no_store_prints_and_exits_1(self):
+        rc, out, err = self.run_cmd(lib.cmd_summary, os.path.join(self.tmp, "none"))
+        self.assertEqual((rc, out, err), (1, "summary: no HiveMind store found\n", ""))
+        rc, out, err = self.run_cmd(lib.cmd_preview, os.path.join(self.tmp, "none"))
+        self.assertEqual((rc, out, err), (1, "preview: no HiveMind store found\n", ""))
+
+    def test_waiting_inbox_file_is_work(self):
+        self.add_run()
+        lines = self.summary()
+        self.assertEqual(lines[1], "Inbox: 1 run files waiting")
+        self.assertEqual(lines[-1], "consolidate: work waiting (1 inbox files)")
+
+    def test_new_record_is_work(self):
+        self.put("testing", [self.new_record()])
+        lines = self.summary()
+        self.assertIn("Unapplied NEW records: 1", lines)
+        self.assertEqual(lines[-1], "consolidate: work waiting (1 NEW records)")
+
+    def test_expired_fact_is_work(self):
+        self.put("testing", [self.record("T-0001", "f", created="2026-01-01", last_used="2026-01-01")])
+        self.write("active-days.txt", "".join(d + "\n" for d in days_after("2026-01-01", 29)), self.store)
+        lines = self.summary()
+        self.assertIn("Expired: 1", lines)
+        self.assertEqual(lines[-1], "consolidate: work waiting (1 expired)")
+
+    def test_topic_over_its_limit_is_work(self):
+        self.put("testing", [self.record("T-0001", "f", fact="x" * 5000)])
+        lines = self.summary()
+        over = [ln for ln in lines if ln.startswith("Over limit: ")]
+        self.assertEqual(len(over), 1)
+        self.assertIn("topics/testing.md", over[0])
+        self.assertEqual(lines[-1], "consolidate: work waiting (1 topics over limit)")
+
+    def test_tally_topic_over_its_limit_shows_but_is_not_work(self):
+        self.write("topics/%s.md" % lib.TALLY_TOPIC, "x" * (self.cfg["tally_topic_max_bytes"] + 100), self.store)
+        lines = self.summary()
+        over = [ln for ln in lines if ln.startswith("Over limit: ")]
+        self.assertEqual(len(over), 1)
+        self.assertIn("topics/%s.md" % lib.TALLY_TOPIC, over[0])
+        self.assertEqual(lines[-1], "consolidate: nothing to do")
+        self.put("testing", [self.record("T-0001", "f", fact="x" * 5000)])
+        self.assertEqual(self.summary()[-1], "consolidate: work waiting (1 topics over limit)")
+
+    def test_reasons_come_in_a_fixed_order(self):
+        self.add_run()
+        self.put("testing", [self.new_record("x" * 5000)])
+        self.assertEqual(self.summary()[-1],
+                         "consolidate: work waiting (1 inbox files, 1 NEW records, 1 topics over limit)")
+
+    def test_other_problems_are_not_work(self):
+        self.write("inbox/errors.log", "boom\nbang\n", self.store)
+        self.write("config.json", "{bad", self.store)
+        self.write("INDEX.md", "x\n" * 500, self.store)
+        self.write(lib.FACTS_REL, "x\n" * 500)
+        lines = self.summary()
+        self.assertIn("Hook errors: 2", lines)
+        self.assertIn("config.json invalid, using defaults", lines)
+        over = [ln for ln in lines if ln.startswith("Over limit: ")][0]
+        self.assertIn("INDEX 500/", over)
+        self.assertIn("project-facts.md 500/", over)
+        self.assertEqual(lines[-1], "consolidate: nothing to do")
+
+    def test_hook_errors_alone_are_not_work(self):
+        self.write("inbox/errors.log", "boom\n", self.store)
+        lines = self.summary()
+        self.assertIn("Hook errors: 1", lines)
+        self.assertEqual(lines[-1], "consolidate: nothing to do")
+
+    def test_pending_history_ids_are_listed_before_the_recent_block(self):
+        self.put_entry("2026-10-10", self.ent(eid="F-0001", title="One", status="in-progress",
+                                              refs=[("commit", "pending (branch b1)")]))
+        self.put_entry("2026-10-11", self.ent(eid="F-0002", title="Two", status="in-progress",
+                                              refs=[("commit", "pending (branch b2)")]))
+        lines = self.summary()
+        at = lines.index("Pending history: 2 (F-0002, F-0001)")
+        self.assertEqual(lines[at + 1], lib.RECENT_HEAD.split("\n")[0])
+        self.assertEqual(lines[-1], "consolidate: nothing to do")
+
+    def test_open_snapshot_wins(self):
+        self.add_run()
+        self.assertEqual(self.run_cmd(lib.cmd_prep, self.store)[0], 0)
+        self.add_run()
+        lines = self.summary()
+        self.assertIn("Prep snapshot: open since %s, apply folds 1 run files" % NOW, lines)
+        self.assertIn("Inbox: 2 run files waiting", lines)
+        self.assertEqual(lines[-1], "consolidate: in progress (prep snapshot from %s)" % NOW)
+
+    def populated(self):
+        self.add_run(new=[self.NEW_FACT])
+        self.put("testing", [self.new_record()])
+        self.put_entry("2026-10-10", self.ent(eid="F-0001", title="One", status="in-progress",
+                                              refs=[("commit", "pending (branch b1)")]))
+
+    def test_summary_check_and_preview_write_nothing(self):
+        self.populated()
+        before = self.tree_hash()
+        self.summary()
+        self.run_cmd(lib.cmd_check, self.store)
+        self.preview()
+        self.assertEqual(self.tree_hash(), before)
+
+    def test_summary_and_preview_do_not_create_inbox(self):
+        self.populated()
+        shutil.rmtree(os.path.join(self.store, "inbox"))
+        before = self.tree_hash()
+        self.summary()
+        self.run_cmd(lib.cmd_check, self.store)
+        self.preview()
+        self.assertEqual(self.tree_hash(), before)
+        for name in ("inbox", "inbox/" + lib.PREP_SNAPSHOT, "inbox/" + lib.LOCK_NAME):
+            self.assertFalse(os.path.lexists(os.path.join(self.store, name)), name)
+
+    def test_cli_wiring_and_usage(self):
+        self.assertIn("status|summary|prep|preview|apply|check", lib.USAGE)
+        rc, out, err = self.cli("summary", self.store)
+        self.assertEqual((rc, err), (0, ""))
+        self.assertTrue(out.startswith("HiveMind summary for " + self.store))
+        rc, out, err = self.cli("preview", self.store)
+        self.assertEqual((rc, err), (0, ""))
+        self.assertIn("HiveMind prep report for " + self.store, out)
+        self.assertEqual(self.cli("summary", "a", "b")[0], 2)
+
+    def test_preview_beside_an_open_snapshot_tags_later_files(self):
+        self.add_run(agent_id="early")
+        rc, _, err = self.run_cmd(lib.cmd_prep, self.store)
+        self.assertEqual(rc, 0, err)
+        self.add_run(agent_id="late", new=[self.NEW_FACT])
+        out = self.preview()
+        self.assertIn("A proposed fact [next round]", out)
+        self.assertIn("apply folds 1 of these 2 run files; items marked [next round] wait for the next "
+                      "consolidation.\n", out)
+        self.assertNotIn("history add", out)
+        self.assertNotIn("apply, then prep again", out)
+        self.assertNotIn(lib.NEXT_STEPS, out)
+        self.assertTrue(out.endswith(lib.PREVIEW_LINE + "\n"))
+        self.assertEqual(lib.PREVIEW_LINE,
+                         "This was a preview, so nothing was written. A consolidation runs prep itself.")
+        rc, out, err = self.run_cmd(lib.cmd_prep, self.store)   # prep's own report is unchanged
+        self.assertIn("(to review them now: apply, then prep again)", out)
+        self.assertIn("history add <draft or ->", out)
+        self.assertTrue(out.rstrip().endswith(lib.NEXT_STEPS))
+
+    def test_preview_without_a_snapshot_matches_prep_apart_from_the_ending(self):
+        self.add_run(new=[self.NEW_FACT])
+        pre = self.preview()
+        out = self.run_cmd(lib.cmd_prep, self.store)[1]
+        cut = out.index("  Add this feature's entry")
+        body = [ln for ln in out[:cut].split("\n") if not ln.startswith("Snapshot (")]   # prep alone opens one
+        self.assertEqual(pre.rstrip("\n"), "\n".join(body) + lib.PREVIEW_LINE)
 
 
 class HistoryRecentTest(HistBase):

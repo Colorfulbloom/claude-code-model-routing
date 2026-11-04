@@ -1,0 +1,283 @@
+#!/usr/bin/env python3
+"""Run HiveMind commands for the hivemind plugin's skills.
+
+Each skill runs this as
+python3 "<plugin root>/bin/hivemind" --project "<project dir>" <action> [args]
+and relays what it prints. Python 3.9 standard library only, and no imports from the repo.
+
+Actions: status, consolidate, check, inbox, related <path>..., link [<id> <rev>], init.
+status and consolidate print the same text, because consolidate decides from the same summary.
+
+The wrapper always exits 0 and prints every message on stdout, because a non-zero exit
+from a skill's ! line aborts the skill. A failure is one line that starts "error:", and a
+warning or note starts "warning:" or "note:". It loads the plugin's own copy of the HiveMind
+library from <plugin root>/payload/hooks/hivemind_lib.py and calls its main() in process, with
+the store path always passed explicitly. It reads no transcripts and no settings files.
+"""
+import sys
+sys.dont_write_bytecode = True
+
+import contextlib
+import importlib.util
+import io
+import os
+import re
+import subprocess
+
+PLUGIN_ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+LIB_REL = os.path.join("payload", "hooks", "hivemind_lib.py")
+MAX_RELATED = 20
+GIT_TIMEOUT = 20
+REV_RE = re.compile(r"[0-9a-f]{7,40}(\.\.[0-9a-f]{7,40})?")
+DEV_REFS = ("refs/heads/development", "refs/remotes/origin/development")
+
+ORDER = ("status", "check", "inbox", "init", "consolidate", "link", "related")
+USAGE = {
+    "status": "/hivemind:status",
+    "check": "/hivemind:check",
+    "inbox": "/hivemind:inbox",
+    "init": "/hivemind:init",
+    "consolidate": "/hivemind:consolidate",
+    "link": "/hivemind:link [<id> <sha or base..head>]",
+    "related": "/hivemind:related <path>... (1 to 20 paths, none starting with -)",
+}
+
+MSG_STORE_MISSING = "HiveMind is off in {root}. Run /hivemind:init to turn it on."
+MSG_NO_PROJECT = "error: no project found. Start Claude Code from inside a git repository."
+MSG_LIB_MISSING = ("error: the plugin's copy of the HiveMind library is missing at {path}. "
+                   "Reinstall the plugin.")
+MSG_USAGE = "error: wrong arguments. Use {usage}"
+MSG_INIT_EXISTS = "HiveMind is already on in {store}. Nothing changed."
+MSG_LINK_NONE = "No history entries are waiting for a commit."
+MSG_LINK_HEADING = ("These history entries are waiting for a commit. "
+                    "Link each one with /hivemind:link <id> <sha>.")
+MSG_BAD_ID = "error: {id} isn't a history entry id. Ids look like F-1a2b."
+MSG_BAD_REV = "error: {rev} isn't a commit. Give a SHA of 7 to 40 hex characters, or base..head."
+MSG_UNKNOWN_COMMIT = "error: commit {rev} isn't in {root}. Nothing changed."
+MSG_OFF_DEVELOPMENT = "warning: commit {sha7} isn't on development. Linking it anyway."
+MSG_HOOKS_MISSING = ("note: the HiveMind hooks aren't installed at {path}, so nothing captures "
+                     "new facts. Run ./install.sh from the model routing repo.")
+MSG_HOOKS_DIFFER = ("note: the installed HiveMind library differs from this plugin's copy. "
+                    "Rerun ./install.sh from an up-to-date clone of the repo.")
+MSG_LIB_EXIT = "error: the HiveMind library stopped with exit {code}."
+MSG_LIB_EXIT_QUIET = "error: the HiveMind library stopped with exit {code} and printed nothing."
+MSG_LIB_RAISED = "error: the HiveMind library raised {name}: {text}"
+MSG_FAILED = "error: the HiveMind command failed with {name}: {text}"
+
+
+def say(text):
+    sys.stdout.write(text if text.endswith("\n") else text + "\n")
+
+
+def first_line(exc):
+    lines = str(exc).splitlines()
+    return lines[0] if lines else "no message"
+
+
+def usage_line(action=None):
+    usage = USAGE[action] if action in USAGE else " | ".join(USAGE[a] for a in ORDER)
+    return MSG_USAGE.format(usage=usage)
+
+
+def grammar_ok(action, rest):
+    """True when rest is a valid argument list for action."""
+    if action in ("status", "consolidate", "check", "inbox", "init"):
+        return not rest
+    if action == "link":
+        return len(rest) in (0, 2)
+    if action == "related":
+        return 1 <= len(rest) <= MAX_RELATED and not any(p.startswith("-") or "\0" in p for p in rest)
+    return False
+
+
+def harden_git_env():
+    """Keep every child git from taking locks, fetching lazily or starting fsmonitor (G-3a73)."""
+    os.environ["GIT_OPTIONAL_LOCKS"] = "0"
+    os.environ["GIT_NO_LAZY_FETCH"] = "1"
+    try:
+        count = max(0, int(os.environ.get("GIT_CONFIG_COUNT", "0")))
+    except ValueError:
+        count = 0
+    os.environ["GIT_CONFIG_KEY_%d" % count] = "core.fsmonitor"
+    os.environ["GIT_CONFIG_VALUE_%d" % count] = "false"
+    os.environ["GIT_CONFIG_COUNT"] = str(count + 1)
+
+
+def load_lib():
+    path = os.path.join(PLUGIN_ROOT, LIB_REL)
+    if not os.path.isfile(path):
+        return None, path
+    spec = importlib.util.spec_from_file_location("hivemind_lib", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module, path
+
+
+def call_lib(lib, argv, problems_exit_ok=False):
+    """Run lib.main(argv) in process; its stdout and stderr both land on our stdout, in order.
+
+    problems_exit_ok: exit 1 with output means "problems found and listed" (check), not a failure."""
+    buf = io.StringIO()
+    code = 0
+    raised = None
+    with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(buf):
+        old_stdin = sys.stdin
+        sys.stdin = io.StringIO("")
+        try:
+            code = lib.main(list(argv))
+        except SystemExit as exc:
+            code = exc.code
+        except Exception as exc:
+            raised = exc
+        finally:
+            sys.stdin = old_stdin
+    out = buf.getvalue()
+    if out:
+        say(out)
+    if raised is not None:
+        say(MSG_LIB_RAISED.format(name=type(raised).__name__, text=first_line(raised)))
+        return
+    if code is None:
+        code = 0
+    if not isinstance(code, int):
+        code = 1
+    if code == 1 and out and problems_exit_ok:
+        return
+    if code != 0:
+        say((MSG_LIB_EXIT if out else MSG_LIB_EXIT_QUIET).format(code=code))
+
+
+def installed_library_note(payload_lib):
+    """The note about the library the hooks run, or None when it matches the plugin's copy."""
+    config = os.environ.get("CLAUDE_CONFIG_DIR") or os.path.expanduser("~/.claude")
+    installed = os.path.join(config, "hooks", "hivemind_lib.py")
+    if not os.path.isfile(installed):
+        return MSG_HOOKS_MISSING.format(path=installed)
+    try:
+        with open(installed, "rb") as fh, open(payload_lib, "rb") as ref:
+            same = fh.read() == ref.read()
+    except OSError:
+        same = False
+    return None if same else MSG_HOOKS_DIFFER
+
+
+def git_ok(root, args):
+    """True when `git <args>` exits 0 in root."""
+    try:
+        proc = subprocess.run(["git", "-c", "core.fsmonitor=false"] + list(args), cwd=root,
+                              stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                              stderr=subprocess.DEVNULL, timeout=GIT_TIMEOUT)
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return proc.returncode == 0
+
+
+def off_development(root, head):
+    """True when a local or origin development branch exists and none of them contains head."""
+    refs = [ref for ref in DEV_REFS if git_ok(root, ["rev-parse", "--verify", "--quiet", ref])]
+    if not refs:
+        return False
+    return not any(git_ok(root, ["merge-base", "--is-ancestor", head, ref]) for ref in refs)
+
+
+def run_link(lib, root, store, rest):
+    if not rest:
+        ids = lib.pending_history_ids(store)
+        if not ids:
+            say(MSG_LINK_NONE)
+            return
+        say(MSG_LINK_HEADING)
+        lines = lib.history_index_lines(store)
+        for eid in ids:
+            found = None
+            for line in lines:
+                match = lib.HIST_PENDING_LINE_RE.match(line)
+                if match and match.group(1) == eid:
+                    found = line
+                    break
+            say(found or eid)
+        return
+    eid, rev = rest
+    if not lib.HIST_ID_RE.fullmatch(eid):
+        say(MSG_BAD_ID.format(id=eid))
+        return
+    if not REV_RE.fullmatch(rev):
+        say(MSG_BAD_REV.format(rev=rev))
+        return
+    timeout = lib.hist_timeout(lib.load_config(store)[0])
+    full = [lib.resolve_commit(root, end, timeout) for end in rev.split("..")]
+    if not all(full):
+        say(MSG_UNKNOWN_COMMIT.format(rev=rev, root=root))
+        return
+    head = full[-1]
+    if off_development(root, head):
+        say(MSG_OFF_DEVELOPMENT.format(sha7=head[:7]))
+    call_lib(lib, ["history", "link", eid, rev, "--store", store])
+
+
+def run(argv):
+    if len(argv) < 3 or argv[0] != "--project" or argv[2] not in USAGE:
+        say(usage_line())
+        return
+    project, action, rest = argv[1], argv[2], argv[3:]
+    if not grammar_ok(action, rest):
+        say(usage_line(action))
+        return
+    harden_git_env()
+    try:
+        lib, lib_path = load_lib()
+    except SystemExit as exc:   # main() catches Exception only; an import-time exit must not abort the skill
+        say(MSG_LIB_RAISED.format(name="SystemExit", text=first_line(exc)))
+        return
+    if lib is None:
+        say(MSG_LIB_MISSING.format(path=lib_path))
+        return
+    if project and os.path.isdir(project):
+        os.environ["CLAUDE_PROJECT_DIR"] = project
+    root = lib.resolve_root(os.getcwd())
+    if not root:
+        say(MSG_NO_PROJECT)
+        return
+    store = lib.store_path(root)
+    if action == "init":
+        if os.path.isdir(store):
+            say(MSG_INIT_EXISTS.format(store=store))
+            return
+        call_lib(lib, ["init", root])
+        return
+    if not os.path.isdir(store):
+        say(MSG_STORE_MISSING.format(root=root))
+        return
+    if action in ("status", "consolidate"):
+        note = installed_library_note(lib_path)
+        if note:
+            say(note)
+        call_lib(lib, ["summary", store])
+    elif action == "check":
+        call_lib(lib, ["check", store], problems_exit_ok=True)
+    elif action == "inbox":
+        call_lib(lib, ["preview", store])
+    elif action == "related":
+        call_lib(lib, ["related"] + rest + ["--store", store])
+    elif action == "link":
+        run_link(lib, root, store, rest)
+
+
+def main(argv):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError):
+        pass
+    try:
+        run(argv)
+    except Exception as exc:
+        say(MSG_FAILED.format(name=type(exc).__name__, text=first_line(exc)))
+    try:
+        sys.stdout.flush()
+    except (OSError, ValueError):
+        pass
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
