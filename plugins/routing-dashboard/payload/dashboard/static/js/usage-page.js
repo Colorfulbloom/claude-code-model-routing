@@ -1,7 +1,7 @@
 // The one place every usage page goes through. A page module does clear(root), appends its own page head,
 // then calls fillUsage(root, ctx, (u) => nodes). Overview, Agents, Models, Sessions and the detail pages all
-// share this, so the empty, waiting and error states (#62) are drawn by this one function and no page checks
-// ctx.data.usage itself.
+// share this, so the empty, loading and error states (#62) are drawn by this one function and no page checks
+// ctx.data.usage itself. The loading strip, the placeholder cards and the error notice are in usage-loading.js.
 //
 // u, the argument draw receives:
 //   payload   the /api/usage body
@@ -17,8 +17,10 @@ import { h, frag } from "./h.js";
 import { t, renderText } from "./format.js";
 import { card, estLine, footerLine, emptyState } from "./components.js";
 import { ALL_KEY } from "./router.js";
+import { loadingStrip, errorNotice } from "./usage-loading.js";
 
 const LONGEST_RANGE = "30d";
+const IDLE = { key: 0, show: true, warm: false, retrying: false, retry: () => {} };
 
 // The server sends axis ticks as a list from 0, such as [0, 5, 10, 15]. daybars wants the step and the
 // number of steps. A list shorter than two cannot give a step, so it draws one step of 1.
@@ -106,12 +108,19 @@ function transcriptsState(ctx, path = ctx.transcriptsDir) {
 //      exception is a project whose payload answered with a view and some usage, on a transcripts folder
 //      the dashboard can read. That draws a note above the body and goes on with the steps below.
 //   2. a transcripts folder the dashboard cannot read, or a payload that names an unreadable folder
-//   3. the payload has not arrived: one waiting line
-//   4. the payload failed or has no view for this range: the transcripts state (nothing until the folder is known)
+//   3. the payload has not arrived: nothing for the first 300 ms (ctx.usageLoading.show is false), then the
+//      loading strip, with the placeholder cards of opts.skeleton under it when the page has them
+//   4. the payload failed or has no view for this range: the error notice with a Try again button
 //   5. the project has no usage at all
 //   6. the view holds no requests (skipped when opts.anyRange is set, for a page that ignores the range)
 //   7. draw(u)
+// opts.after is a function that returns nodes drawn after the body, the loading strip with its placeholders or the
+// error notice, and before the footer (Overview passes Needs attention, which comes from the settings payload and
+// so needs no usage). It runs in the states of steps 3, 4 and 7 only: not in the Folder not found state, not
+// during the first 300 ms and not in the other states.
 export function fillUsage(root, ctx, draw, opts = {}) {
+  // A context built without the loading state, as a page check may do, behaves as if the 300 ms had passed.
+  if (!ctx.usageLoading) ctx = { ...ctx, usageLoading: IDLE };
   const res = ctx.data.usage;
   const payload = res && res.ok && res.data && typeof res.data === "object" ? res.data : null;
   const view = payload && payload.views ? payload.views[ctx.range] : null;
@@ -134,14 +143,18 @@ export function fillUsage(root, ctx, draw, opts = {}) {
     root.appendChild(transcriptsState(ctx, payload.unreadable));
     return;
   }
+  const after = () => { if (opts.after) root.appendChild(frag(opts.after())); };
   if (!res) {
-    const files = ctx.reader ? ctx.reader.files : null;
-    const line = typeof files === "number" ? t("usage_wait", { n: files.toLocaleString("en-US") }) : t("usage_wait_no_count");
-    root.appendChild(h("p", { class: "es-t", role: "status" }, renderText(line)));
+    // A fast answer never shows the strip: the page stays bare for the first 300 ms.
+    if (!ctx.usageLoading.show) return;
+    root.appendChild(loadingStrip(root, ctx));
+    if (opts.skeleton) root.appendChild(opts.skeleton());
+    after();
     return;
   }
   if (!view) {
-    if (ctx.transcriptsDir) root.appendChild(transcriptsState(ctx));
+    root.appendChild(errorNotice(root, ctx, res));
+    after();
     return;
   }
   if (note) root.appendChild(note);
@@ -172,5 +185,6 @@ export function fillUsage(root, ctx, draw, opts = {}) {
     est: () => estLine(payload.prices ? payload.prices.verified_on : null),
   };
   root.appendChild(frag(draw(u)));
+  after();
   footer();
 }

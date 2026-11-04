@@ -154,10 +154,12 @@ def api_projects(ctx, query):
 
     It never takes the cache lock and never calls Reader.read, so it answers
     while the reader is busy. files is None until the first scan has counted
-    them, and skipped is None until the first read ends. config_file_display
-    is the display form of routing-dashboard.json in the config dir. readable
-    is a stat at request time: True when <config_dir>/projects is a directory
-    the process can read and enter, else False.
+    them, and skipped is None until the first read ends. files_read is None
+    until the first scan starts, then counts up to files during a read.
+    config_file_display is the display form of routing-dashboard.json in the
+    config dir. readable is a stat at request time: True when
+    <config_dir>/projects is a directory the process can read and enter, else
+    False.
     """
     status, payload = projects.api_projects(ctx, query)
     tz, label, _fixed = _zone(ctx)
@@ -176,6 +178,7 @@ def api_projects(ctx, query):
         "readable": os.path.isdir(folder) and os.access(folder, os.R_OK | os.X_OK),
         "warm": cache.warm,
         "files": reader.files_found if reader is not None else None,
+        "files_read": reader.files_read if reader is not None else None,
         "skipped": cache.skipped,
     }
     return status, payload

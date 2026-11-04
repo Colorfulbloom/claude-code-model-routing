@@ -903,3 +903,42 @@ body{background:var(--page-bg)}
   .p2-df li{grid-template-columns:26px 16px minmax(0,1fr);padding-right:var(--space-2)}
   .p2-df .p2-n{padding-right:var(--space-1)}
 }
+
+/* Usage loading: the strip that takes the KPI row's place, the placeholder cards and the error notice.
+   Shapes are flat blocks with no shimmer or pulse. The one motion is the bar's width, and only when motion is welcome.
+   The min-heights are the loaded card bodies (Tokens per day, Estimated cost by model) and four rows (the rest),
+   at 1440 and at 375, so the page does not jump when the numbers land. */
+.ld-strip{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:var(--space-5);align-items:center;padding:var(--space-4)}
+.ld-strip .cd-sub{max-width:62ch}
+.ld-strip-l{display:flex;gap:var(--space-3);align-items:flex-start}
+.ld-strip-r{display:grid;gap:var(--space-2)}
+.ld-meter{position:relative;height:8px;border-radius:var(--radius-pill);background:var(--chart-track);box-shadow:inset 0 0 0 var(--border-width) var(--border-strong);overflow:hidden}
+.ld-fill{position:absolute;inset:0 auto 0 0;width:var(--ld-pct,0%);background:var(--accent);border-radius:var(--radius-pill)}
+.ld-stage{font-size:var(--text-sm);color:var(--text);font-variant-numeric:tabular-nums}
+@media (prefers-reduced-motion: no-preference){ .ld-fill{transition:width .2s linear} }
+.ld-body{display:grid;gap:var(--space-3);align-content:start}
+.ld-bone{display:block;height:12px;background:var(--surface-2);border-radius:var(--radius-sm)}
+.ld-bone-l{width:96px}
+.ld-bone-s{width:64px}
+.ld-plot{height:auto;border-radius:var(--radius-md);background:var(--surface)}
+.ld-k-chart{grid-template-rows:minmax(0,1fr);min-height:198px}
+.ld-ring{display:block;width:128px;height:128px;border-radius:50%;border:18px solid var(--surface-2);box-sizing:border-box}
+.ld-ring-s{width:64px;height:64px;border-width:8px}
+.ld-k-ring{grid-template-columns:auto minmax(0,1fr);align-items:center;gap:var(--space-4);min-height:165px}
+.ld-lines{display:grid;gap:var(--space-3);width:100%}
+.ld-lines .ld-bone:nth-child(1){width:90%} .ld-lines .ld-bone:nth-child(2){width:75%} .ld-lines .ld-bone:nth-child(3){width:85%} .ld-lines .ld-bone:nth-child(4){width:60%}
+.ld-k-rows{min-height:188px}
+.ld-row{display:grid;grid-template-columns:auto minmax(0,1fr);gap:var(--space-4);align-items:center;padding:var(--space-3) 0}
+.ld-track{width:auto;height:14px;background:var(--surface)}
+.ld-k-minis{grid-template-columns:repeat(4,minmax(0,1fr));justify-items:center;min-height:84px}
+.ld-mini{display:grid;justify-items:center;gap:var(--space-2)}
+.ld-err-h{font-size:var(--text-md);font-weight:var(--weight-semibold)}
+.btn[aria-disabled="true"]{color:var(--text-muted);cursor:default}
+@media (max-width: 720px){
+  .ld-strip{grid-template-columns:minmax(0,1fr);gap:var(--space-3)}
+  .ld-k-chart{min-height:224px}
+  .ld-k-ring{grid-template-columns:minmax(0,1fr);justify-items:center;min-height:338px}
+  .ld-k-rows{min-height:244px}
+  .ld-row{grid-template-columns:minmax(0,1fr);gap:var(--space-2)}
+  .ld-k-minis{grid-template-columns:repeat(2,minmax(0,1fr));min-height:180px}
+}

@@ -73,12 +73,18 @@ export function createApi(fetcher = fetchJSON, poster = postJSON) {
     return "?project=" + encodeURIComponent(key);
   }
 
+  const usage = (key) => once(perProject, "usage:" + key, "/api/usage" + projectQuery(key));
+
   return {
     strings: () => once(shared, "strings", "/static/strings.json"),
     projects: () => once(shared, "projects", "/api/projects"),
+    // The usage loading poll reads the reader's counts from this every second, so it never goes through the cache.
+    projectsFresh: () => fetcher("/api/projects"),
     rules: () => once(shared, "rules", "/api/rules"),
     files: () => once(shared, "files", "/api/files"),
-    usage: (key) => once(perProject, "usage:" + key, "/api/usage" + projectQuery(key)),
+    usage,
+    // Try again on a failed usage answer. The api keeps a 4xx and an answer with no view, so this drops the kept answer before it asks again.
+    usageAgain: (key) => { perProject.delete("usage:" + key); return usage(key); },
     settings: (key) => once(perProject, "settings:" + key, "/api/settings" + projectQuery(key)),
     // True once both of a project's payloads were asked for.
     // The edit routes never go through the cache, so a save is never followed by an old answer.

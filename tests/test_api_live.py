@@ -688,7 +688,7 @@ class ReadFolder(unittest.TestCase):
         self.assertEqual(len(calls), 1, "an unchanged file is not parsed again")
         self.assertEqual(third.signature, second.signature)
 
-    def test_it_leaves_another_folders_cache_and_files_found_alone(self):
+    def test_it_leaves_another_folders_cache_and_the_file_counts_alone(self):
         w = World(self)
         a = w.add(S1, 100, "a", 1, 1)
         b = w.add(S2, 100, "b", 1, 1, name="other")
@@ -709,6 +709,7 @@ class ReadFolder(unittest.TestCase):
         self.assertEqual(len(result.records), 1)
         self.assertIn(b, reader._cache)
         self.assertEqual(reader.files_found, found)
+        self.assertEqual(reader.files_read, found)
         reader.read(NOW)
         self.assertNotIn(b, reader._cache, "a full read still evicts it")
 

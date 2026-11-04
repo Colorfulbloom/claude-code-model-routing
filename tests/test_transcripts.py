@@ -477,6 +477,80 @@ class ScanTests(TmpCase):
         self.assertEqual({one}, set(reader._cache))
 
 
+class FilesReadTests(TmpCase):
+    def setup_files(self):
+        """Four files: one loads, one is older than the horizon, one is malformed, one cannot be opened."""
+        cfg = self.config()
+        ids = ["33333333-3333-4333-8333-333333333333", "44444444-4444-4444-8444-444444444444"]
+        good, old, bad, denied = (self.main_path(cfg, sid) for sid in (S1, S2, ids[0], ids[1]))
+        write_lines(good, [row_line("m1", "r1", "2026-11-02T10:00:00.000Z")])
+        write_lines(old, [row_line("m2", "r2", "2026-08-01T10:00:00.000Z", sid=S2)])
+        age(old, 90)
+        write_lines(bad, ["{not json", "also not json"])
+        write_lines(denied, [row_line("m3", "r3", "2026-11-02T10:00:01.000Z", sid=ids[1])])
+        return cfg, denied
+
+    def denying(self, denied):
+        real = open
+
+        def fake(file, mode="r", *args, **kwargs):
+            if os.fspath(file) == denied:
+                raise PermissionError(13, "denied")
+            return real(file, mode, *args, **kwargs)
+
+        return mock.patch("builtins.open", fake)
+
+    def test_it_is_none_on_a_new_reader(self):
+        self.assertIsNone(transcripts.Reader(self.config()).files_read)
+
+    def test_a_read_counts_every_file_whether_it_loads_is_old_or_fails(self):
+        cfg, denied = self.setup_files()
+        reader = transcripts.Reader(cfg)
+        with self.denying(denied):
+            result = reader.read(NOW)
+        self.assertEqual(1, result.notes["skipped_old_files"])
+        self.assertEqual(frozenset(), result.unreadable)
+        self.assertEqual(["m1"], [r.message_id for r in result.records])
+        self.assertEqual(4, reader.files_found)
+        self.assertEqual(reader.files_found, reader.files_read)
+
+    def test_a_second_read_ends_at_the_same_count(self):
+        cfg, denied = self.setup_files()
+        reader = transcripts.Reader(cfg)
+        with self.denying(denied):
+            reader.read(NOW)
+            first = reader.files_read
+            reader.read(NOW)
+        self.assertEqual(4, first)
+        self.assertEqual(first, reader.files_read)
+
+    def test_a_scan_starts_at_zero(self):
+        cfg, _denied = self.setup_files()
+        reader = transcripts.Reader(cfg)
+        reader.read(NOW)
+        seen = []
+        real = reader._scan
+
+        def scan(root):
+            seen.append(reader.files_read)
+            return real(root)
+
+        with mock.patch.object(reader, "_scan", scan):
+            reader.read(NOW)
+        self.assertEqual([0], seen)
+
+    def test_read_folder_leaves_it_alone(self):
+        cfg, _denied = self.setup_files()
+        reader = transcripts.Reader(cfg)
+        reader.read_folder(FOLDER, NOW)
+        self.assertIsNone(reader.files_read)
+        reader.read(NOW)
+        count = reader.files_read
+        self.assertEqual(4, count)
+        reader.read_folder(FOLDER, NOW)
+        self.assertEqual(count, reader.files_read)
+
+
 class UnreadableTests(TmpCase):
     def failing_listing(self, bad):
         real = transcripts._listdir_checked
