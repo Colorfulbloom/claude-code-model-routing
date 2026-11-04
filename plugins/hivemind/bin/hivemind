@@ -61,8 +61,8 @@ MSG_HOOKS_DIFFER = ("note: the installed HiveMind library differs from this plug
                     "Rerun ./install.sh from an up-to-date clone of the repo.")
 MSG_LIB_EXIT = "error: the HiveMind library stopped with exit {code}."
 MSG_LIB_EXIT_QUIET = "error: the HiveMind library stopped with exit {code} and printed nothing."
-MSG_LIB_RAISED = "error: the HiveMind library raised {name}: {text}"
-MSG_FAILED = "error: the HiveMind command failed with {name}: {text}"
+MSG_LIB_RAISED = "error: the HiveMind library stopped on an unexpected {name} ({text})."
+MSG_FAILED = "error: the plugin's wrapper stopped on an unexpected {name} ({text})."
 
 
 def say(text):
