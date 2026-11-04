@@ -8,6 +8,7 @@ default for none. Screenshots land in <MR_TEST_TMP>/e2e-live for review. Importi
 import base64
 import json
 import os
+import re
 import sys
 import tempfile
 import unittest
@@ -27,6 +28,10 @@ WIDTHS = (1440, 375)
 THEMES = ("light", "dark")
 ROWS_AT_375 = 5
 ROWS_MAX = 8
+KIND_NAMES = ["Cache read", "Input", "Cache write", "Output"]
+TOKEN_SHAPE = r"^[0-9][0-9,.]*[KMB]?$"
+COLUMNS = ["Time", "Agent", "Model", "Effort", "Tokens", "Cache read", "Output", "Estimated cost"]
+NOTE = "New means input, cache write and output. The chart and the lane have separate scales."
 
 SECTION = "document.querySelector('main [data-page=live]')"
 LIVE_STATE = "(" + SECTION + ".getAttribute('data-live') || '')"
@@ -56,6 +61,54 @@ COUNTS = """(() => {
     rows: rows.length,
     shown: rows.filter((r) => getComputedStyle(r).display !== 'none').length,
     pills: s.querySelectorAll('.lv-act').length,
+  };
+})()"""
+
+# The chart card of direction B: the session bar by kind, the New tokens chart, the cache lane with the Now band,
+# the note, the wait line, the header age and the eight-column table. Read from the DOM, so it works at any width.
+CARD_FACTS = """(() => {
+  const s = document.querySelector('main [data-page=live]');
+  const q = (sel, root) => (root || s).querySelector(sel);
+  const text = (el) => (el ? el.textContent.trim() : '');
+  const bar = q('.lv-meter .sb-bar');
+  const lane = q('.lv-lane');
+  const main = q('.lv-main');
+  const wait = q('.lv-wait');
+  const mainBand = main && q('.lv-nowband', main);
+  const laneBand = lane && q('.lv-nowband', lane);
+  const row = q('.lv-req tbody tr');
+  const cells = row ? [...row.querySelectorAll('td')] : [];
+  const box = (el) => (el ? el.getBoundingClientRect() : { height: 0, width: 0 });
+  return {
+    edge: bar ? parseFloat(getComputedStyle(bar).borderLeftWidth) : -1,
+    segs: s.querySelectorAll('.lv-meter .sb-seg').length,
+    bars: s.querySelectorAll('.lv-meter .sb-row').length,
+    kindsHead: text(q('.lv-meter .sb-n')),
+    legend: [...s.querySelectorAll('.lv-meter .klg li')].map((li) => text(li)),
+    newHead: text(q('.lv-row-h .lv-row-t')),
+    modelLegend: s.querySelectorAll('.lv-row-h .klg li').length,
+    laneHead: text(q('.lv-lane-h .lv-row-t')),
+    laneRects: lane ? lane.querySelectorAll('.lv-cr').length : -1,
+    laneTitles: lane ? [...lane.querySelectorAll('.lv-cr title')].map((t) => t.textContent) : [],
+    laneDy: lane ? [...lane.querySelectorAll('.dy span')].map((x) => text(x)) : [],
+    laneAxis: lane ? [...lane.querySelectorAll('.dx span')].map((x) => text(x)) : [],
+    mainAxis: main ? main.querySelectorAll('.dx').length : -1,
+    bands: [mainBand ? 1 : 0, laneBand ? 1 : 0],
+    bandX: mainBand ? mainBand.getAttribute('x') : '',
+    bandFill: mainBand ? getComputedStyle(mainBand).fill : '',
+    bandH: [mainBand ? parseFloat(mainBand.getAttribute('height')) : -1, laneBand ? parseFloat(laneBand.getAttribute('height')) : -1],
+    mainHeight: Math.round(box(q('.dbars', main)).height),
+    laneHeight: Math.round(box(q('.dbars', lane)).height),
+    note: text(q('.lv-note')),
+    age: text(q('.lv-time')),
+    waitShown: Boolean(wait) && getComputedStyle(wait).display !== 'none',
+    waitText: text(wait),
+    heads: [...s.querySelectorAll('.lv-req thead th')].map((th) => text(th)),
+    cellCount: cells.length,
+    cacheCell: cells[5] ? text(cells[5]) : '',
+    cacheCellDisplay: cells[5] ? getComputedStyle(cells[5]).display : '',
+    cellDisplay: cells[0] ? getComputedStyle(cells[0]).display : '',
+    cellGap: cells[0] ? parseFloat(getComputedStyle(cells[0]).columnGap) : -1,
   };
 })()"""
 
@@ -139,6 +192,60 @@ class LiveE2E(unittest.TestCase):
             bad.append("%s: pill, %s" % (where, found))
         return bad
 
+    def check_card(self, where, width, facts, state):
+        """What the chart card, the header and the table must show. Returns the failures."""
+        bad = []
+        if facts["bars"] != 1 or facts["segs"] < 1:
+            bad.append("%s: session bar has %d rows and %d segments" % (where, facts["bars"], facts["segs"]))
+        if facts["edge"] <= 0:
+            bad.append("%s: the session bar's start edge is %r px wide, wanted more than 0" % (where, facts["edge"]))
+        if facts["kindsHead"] != "This session by kind":
+            bad.append("%s: session bar label is %r" % (where, facts["kindsHead"]))
+        names = [item.rsplit(" ", 1)[0] for item in facts["legend"]]
+        if names != KIND_NAMES:
+            bad.append("%s: session bar legend reads %r, wanted all four kinds in order" % (where, facts["legend"]))
+        for item in facts["legend"]:
+            if not re.match(TOKEN_SHAPE, item.rsplit(" ", 1)[-1]):
+                bad.append("%s: legend item %r has no total" % (where, item))
+        if facts["newHead"] != "New tokens" or facts["modelLegend"] < 1:
+            bad.append("%s: New tokens head is %r with %d legend items" % (where, facts["newHead"], facts["modelLegend"]))
+        if facts["laneHead"] != "Cache reads":
+            bad.append("%s: lane head is %r" % (where, facts["laneHead"]))
+        if facts["note"] != NOTE:
+            bad.append("%s: note reads %r" % (where, facts["note"]))
+        if facts["mainAxis"] != 0 or len(facts["laneAxis"]) < 2:
+            bad.append("%s: the x labels belong under the lane (%r in the chart, %r under the lane)" % (where, facts["mainAxis"], facts["laneAxis"]))
+        if facts["bands"] != [1, 1] or facts["bandX"] != "581.6" or facts["bandFill"] in ("", "none"):
+            bad.append("%s: Now band %r at x %r fill %r" % (where, facts["bands"], facts["bandX"], facts["bandFill"]))
+        if min(facts["bandH"]) < 0:
+            bad.append("%s: Now band heights %r" % (where, facts["bandH"]))
+        if facts["mainHeight"] != (140 if width == 375 else 170) or facts["laneHeight"] != 48:
+            bad.append("%s: chart is %r px and lane %r px tall" % (where, facts["mainHeight"], facts["laneHeight"]))
+        if facts["heads"] != COLUMNS:
+            bad.append("%s: table columns are %r" % (where, facts["heads"]))
+        if facts["cellCount"] != len(COLUMNS):
+            bad.append("%s: a row has %d cells, wanted %d" % (where, facts["cellCount"], len(COLUMNS)))
+        if width == 375:
+            if facts["cellDisplay"] != "flex" or not facts["cellGap"] > 0:
+                bad.append("%s: a request cell is display %r with a column gap of %r" % (where, facts["cellDisplay"], facts["cellGap"]))
+            if facts["cacheCellDisplay"] != "none":
+                bad.append("%s: the Cache read cell shows on the phone (display %r)" % (where, facts["cacheCellDisplay"]))
+        elif facts["cacheCellDisplay"] == "none":
+            bad.append("%s: the Cache read cell is hidden at %d" % (where, width))
+        if state == "live":
+            if facts["laneRects"] < 1 or len(facts["laneDy"]) != 2 or facts["laneDy"][1] != "0":
+                bad.append("%s: lane has %r rects and labels %r, wanted rects and a peak label above 0" % (where, facts["laneRects"], facts["laneDy"]))
+            if any("Cache reads " not in title for title in facts["laneTitles"]):
+                bad.append("%s: lane titles %r" % (where, facts["laneTitles"]))
+            if not re.match(r"^Last request \d+ (s|min) ago$", facts["age"]):
+                bad.append("%s: header reads %r, wanted a Last request age" % (where, facts["age"]))
+        if state == "idle":
+            if not re.match(r"^Last request \d+ min ago$", facts["age"]):
+                bad.append("%s: header reads %r, wanted a Last request age in minutes" % (where, facts["age"]))
+            if not facts["waitShown"] or facts["waitText"] != "A request shows up here once it's written to the transcript.":
+                bad.append("%s: the wait line is %r, shown %r, wanted it shown when idle" % (where, facts["waitText"], facts["waitShown"]))
+        return bad
+
     # ------------------------------------------------------------ the states
 
     def test_a_working_session(self):
@@ -165,6 +272,7 @@ class LiveE2E(unittest.TestCase):
                     failures.append("%s: %d rows on screen, wanted 1 to %d" % (where, counts["shown"], limit))
                 if counts["pills"] < 2:
                     failures.append("%s: %d activity pills, wanted the session and its agents" % (where, counts["pills"]))
+                failures += self.check_card(where, width, self.page.eval(CARD_FACTS), "live")
                 self.save_shot("live-working-%d-%s.png" % (width, theme))
         self.assertEqual(failures, [], "\n".join(failures))
 
@@ -184,6 +292,7 @@ class LiveE2E(unittest.TestCase):
                 shown = self.page.eval("(" + SECTION + ".querySelector('.lv-sess') || {}).innerText || ''")
                 if "Last request at" not in shown or "Ended" in shown:
                     failures.append("%s: the session line reads %r" % (where, shown))
+                failures += self.check_card(where, width, self.page.eval(CARD_FACTS), "idle")
                 self.save_shot("live-idle-%d-%s.png" % (width, theme))
         self.assertEqual(failures, [], "\n".join(failures))
 

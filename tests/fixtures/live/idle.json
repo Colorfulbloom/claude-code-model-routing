@@ -42,170 +42,199 @@
       {
         "start": "2026-10-30T16:23:00-04:00",
         "tokens": 0,
-        "by_model": {}
+        "by_model": {},
+        "cache_read": 0
       },
       {
         "start": "2026-10-30T16:24:00-04:00",
-        "tokens": 6000,
+        "tokens": 1200,
         "by_model": {
-          "claude-opus-5-5": 6000
-        }
+          "claude-opus-5-5": 1200
+        },
+        "cache_read": 4800
       },
       {
         "start": "2026-10-30T16:25:00-04:00",
         "tokens": 0,
-        "by_model": {}
+        "by_model": {},
+        "cache_read": 0
       },
       {
         "start": "2026-10-30T16:26:00-04:00",
         "tokens": 0,
-        "by_model": {}
+        "by_model": {},
+        "cache_read": 0
       },
       {
         "start": "2026-10-30T16:27:00-04:00",
         "tokens": 0,
-        "by_model": {}
+        "by_model": {},
+        "cache_read": 0
       },
       {
         "start": "2026-10-30T16:28:00-04:00",
         "tokens": 0,
-        "by_model": {}
+        "by_model": {},
+        "cache_read": 0
       },
       {
         "start": "2026-10-30T16:29:00-04:00",
         "tokens": 0,
-        "by_model": {}
+        "by_model": {},
+        "cache_read": 0
       },
       {
         "start": "2026-10-30T16:30:00-04:00",
         "tokens": 0,
-        "by_model": {}
+        "by_model": {},
+        "cache_read": 0
       },
       {
         "start": "2026-10-30T16:31:00-04:00",
         "tokens": 0,
-        "by_model": {}
+        "by_model": {},
+        "cache_read": 0
       },
       {
         "start": "2026-10-30T16:32:00-04:00",
         "tokens": 0,
-        "by_model": {}
+        "by_model": {},
+        "cache_read": 0
       },
       {
         "start": "2026-10-30T16:33:00-04:00",
         "tokens": 0,
-        "by_model": {}
+        "by_model": {},
+        "cache_read": 0
       },
       {
         "start": "2026-10-30T16:34:00-04:00",
         "tokens": 0,
-        "by_model": {}
+        "by_model": {},
+        "cache_read": 0
       },
       {
         "start": "2026-10-30T16:35:00-04:00",
         "tokens": 0,
-        "by_model": {}
+        "by_model": {},
+        "cache_read": 0
       },
       {
         "start": "2026-10-30T16:36:00-04:00",
         "tokens": 0,
-        "by_model": {}
+        "by_model": {},
+        "cache_read": 0
       },
       {
         "start": "2026-10-30T16:37:00-04:00",
         "tokens": 0,
-        "by_model": {}
+        "by_model": {},
+        "cache_read": 0
       },
       {
         "start": "2026-10-30T16:38:00-04:00",
         "tokens": 0,
-        "by_model": {}
+        "by_model": {},
+        "cache_read": 0
       },
       {
         "start": "2026-10-30T16:39:00-04:00",
         "tokens": 0,
-        "by_model": {}
+        "by_model": {},
+        "cache_read": 0
       },
       {
         "start": "2026-10-30T16:40:00-04:00",
         "tokens": 0,
-        "by_model": {}
+        "by_model": {},
+        "cache_read": 0
       },
       {
         "start": "2026-10-30T16:41:00-04:00",
         "tokens": 0,
-        "by_model": {}
+        "by_model": {},
+        "cache_read": 0
       },
       {
         "start": "2026-10-30T16:42:00-04:00",
         "tokens": 0,
-        "by_model": {}
+        "by_model": {},
+        "cache_read": 0
       },
       {
         "start": "2026-10-30T16:43:00-04:00",
         "tokens": 0,
-        "by_model": {}
+        "by_model": {},
+        "cache_read": 0
       },
       {
         "start": "2026-10-30T16:44:00-04:00",
         "tokens": 0,
-        "by_model": {}
+        "by_model": {},
+        "cache_read": 0
       },
       {
         "start": "2026-10-30T16:45:00-04:00",
         "tokens": 0,
-        "by_model": {}
+        "by_model": {},
+        "cache_read": 0
       },
       {
         "start": "2026-10-30T16:46:00-04:00",
         "tokens": 0,
-        "by_model": {}
+        "by_model": {},
+        "cache_read": 0
       },
       {
         "start": "2026-10-30T16:47:00-04:00",
         "tokens": 0,
-        "by_model": {}
+        "by_model": {},
+        "cache_read": 0
       },
       {
         "start": "2026-10-30T16:48:00-04:00",
         "tokens": 0,
-        "by_model": {}
+        "by_model": {},
+        "cache_read": 0
       },
       {
         "start": "2026-10-30T16:49:00-04:00",
         "tokens": 0,
-        "by_model": {}
+        "by_model": {},
+        "cache_read": 0
       },
       {
         "start": "2026-10-30T16:50:00-04:00",
         "tokens": 0,
-        "by_model": {}
+        "by_model": {},
+        "cache_read": 0
       },
       {
         "start": "2026-10-30T16:51:00-04:00",
         "tokens": 0,
-        "by_model": {}
+        "by_model": {},
+        "cache_read": 0
       },
       {
         "start": "2026-10-30T16:52:00-04:00",
         "tokens": 0,
-        "by_model": {}
+        "by_model": {},
+        "cache_read": 0
       }
     ],
     "axis": {
-      "top": 150000,
+      "top": 2000,
       "ticks": [
         0,
-        50000,
-        100000,
-        150000
+        1000,
+        2000
       ]
     },
     "by_model": [
       {
         "model": "claude-opus-5-5",
         "display_name": "Opus 5.5",
-        "tokens": 6000
+        "tokens": 1200
       }
     ],
     "agents": [
@@ -257,7 +286,8 @@
         "effort": "xhigh",
         "tokens": 23400,
         "output": 360,
-        "cost": 0.0231
+        "cost": 0.0231,
+        "cache_read": 20400
       },
       {
         "id": "2b84f17c03de",
@@ -269,7 +299,8 @@
         "effort": "high",
         "tokens": 6200,
         "output": 225,
-        "cost": null
+        "cost": null,
+        "cache_read": 5100
       },
       {
         "id": "e90a5d3b71c4",
@@ -281,7 +312,8 @@
         "effort": "high",
         "tokens": 5800,
         "output": 301,
-        "cost": 0.0042
+        "cost": 0.0042,
+        "cache_read": 4600
       },
       {
         "id": "5f3a6c28d19b",
@@ -293,7 +325,8 @@
         "effort": "xhigh",
         "tokens": 32100,
         "output": 988,
-        "cost": 0.0244
+        "cost": 0.0244,
+        "cache_read": 28000
       },
       {
         "id": "a1b2c3d4e5f6",
@@ -305,7 +338,8 @@
         "effort": "high",
         "tokens": 4100,
         "output": 593,
-        "cost": 0.0038
+        "cost": 0.0038,
+        "cache_read": 3200
       },
       {
         "id": "0d9e8f7a6b5c",
@@ -317,7 +351,8 @@
         "effort": "high",
         "tokens": 54300,
         "output": 1210,
-        "cost": 0.0812
+        "cost": 0.0812,
+        "cache_read": 48000
       },
       {
         "id": "3c4d5e6f7a8b",
@@ -329,7 +364,8 @@
         "effort": "high",
         "tokens": 7000,
         "output": 588,
-        "cost": 0.0049
+        "cost": 0.0049,
+        "cache_read": 5600
       },
       {
         "id": "9a8b7c6d5e4f",
@@ -341,7 +377,8 @@
         "effort": "high",
         "tokens": 55200,
         "output": 1180,
-        "cost": 0.0705
+        "cost": 0.0705,
+        "cache_read": 49500
       }
     ]
   }

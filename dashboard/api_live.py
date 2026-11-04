@@ -4,7 +4,7 @@ A route is a function (ctx, query) -> (status, payload). ctx is the server's
 Context and query is the parsed query string. The server turns the payload into
 JSON.
 
-The page polls this route every few seconds, so the work per request stays
+The page polls this route every second, so the work per request stays
 small. The route reads only the transcript folder of the asked project
 (transcripts.Reader.read_folder), which re-parses only the bytes a file gained.
 The deduped records of that folder are grouped by session and kept on the
@@ -29,6 +29,14 @@ ACTIVE_SECONDS old. A session counts every record of its id in the project
 folder with a time up to now, so records after now (a fixture clock) are
 ignored. usage.dedupe runs first, so the largest row per message id wins and a
 total never steps back when a row grows.
+
+Chart numbers. In minutes[], tokens and by_model count new tokens only, which
+are input, cache writes (5 minute and 1 hour) and output, and tokens is the sum
+of by_model. A model with no new tokens in a minute is left out of by_model.
+cache_read is that minute's cache read tokens, so tokens plus cache_read is the
+minute's total. axis is drawn over the tallest new-token minute, and the
+session by_model legend sums new tokens over the 30 minutes. Each request in
+requests[] keeps tokens as its total of all kinds and adds its cache_read.
 
 Times are ISO strings in the page zone (api_usage._zone). The etag is the first
 16 hex digits of a sha256 over the JSON of every field except server_time and
@@ -190,12 +198,17 @@ def _session_answer(ctx, sid, sess, count, now, tz, prices, catalog):
     floor_utc = now.replace(second=0, microsecond=0).astimezone(_UTC)
     first = floor_utc - _MINUTE * (BUCKETS - 1)
     buckets = [{} for _ in range(BUCKETS)]
+    reads = [0] * BUCKETS
     low = bisect.bisect_left(sess.ts, first, 0, count)
     for req in reqs[low:]:
         at = int((req.ts - first) // _MINUTE)
         at = min(max(at, 0), BUCKETS - 1)
-        slot = buckets[at]
-        slot[req.model] = slot.get(req.model, 0) + req.tokens
+        rec = req.rec
+        reads[at] += rec.cache_read
+        fresh = rec.input + rec.output + rec.cache_write_5m + rec.cache_write_1h
+        if fresh > 0:
+            slot = buckets[at]
+            slot[req.model] = slot.get(req.model, 0) + fresh
     sums = [sum(b.values()) for b in buckets]
     top, ticks = usage_views.token_ticks(max(sums))
     minutes = []
@@ -204,6 +217,7 @@ def _session_answer(ctx, sid, sess, count, now, tz, prices, catalog):
             "start": (first + _MINUTE * i).astimezone(tz).isoformat(),
             "tokens": sums[i],
             "by_model": dict(buckets[i]),
+            "cache_read": reads[i],
         })
     per_model = {}
     for slot in buckets:
@@ -259,6 +273,7 @@ def _session_answer(ctx, sid, sess, count, now, tz, prices, catalog):
             "model_display": _model_display(req.model, names),
             "effort": rec.effort,
             "tokens": req.tokens,
+            "cache_read": rec.cache_read,
             "output": rec.output,
             "cost": req.cost,
         })

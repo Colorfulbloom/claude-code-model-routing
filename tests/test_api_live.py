@@ -359,18 +359,37 @@ def tokens_of(row):
     return row[2] + row[3] + row[4] + row[5]
 
 
+def new_of(row):
+    """New tokens only: input, output and cache write (no cache read)."""
+    return row[2] + row[3] + row[5]
+
+
 FIRST_BUCKET = datetime.datetime(2026, 10, 30, 21, 31, 0, tzinfo=UTC)
 
 
+def bucket_of(row):
+    at = NOW - datetime.timedelta(seconds=row[0])
+    return int((at - FIRST_BUCKET).total_seconds() // 60)
+
+
 def expected_buckets(rows):
-    """{bucket index: {model: tokens}} for rows, worked out from their times."""
+    """{bucket index: {model: new tokens}} for rows, worked out from their times."""
     out = {}
     for row in rows:
-        at = NOW - datetime.timedelta(seconds=row[0])
-        index = int((at - FIRST_BUCKET).total_seconds() // 60)
-        if 0 <= index < 30:
+        index = bucket_of(row)
+        if 0 <= index < 30 and new_of(row) > 0:
             slot = out.setdefault(index, {})
-            slot[row[6]] = slot.get(row[6], 0) + tokens_of(row)
+            slot[row[6]] = slot.get(row[6], 0) + new_of(row)
+    return out
+
+
+def expected_reads(rows):
+    """{bucket index: cache read tokens} for rows."""
+    out = {}
+    for row in rows:
+        index = bucket_of(row)
+        if 0 <= index < 30:
+            out[index] = out.get(index, 0) + row[4]
     return out
 
 
@@ -427,7 +446,7 @@ class Numbers(unittest.TestCase):
         for m in minutes:
             self.assertEqual(m["tokens"], sum(m["by_model"].values()))
         self.assertEqual(minutes[4]["by_model"], {SONNET: 230})
-        self.assertEqual(minutes[29]["by_model"], {MYSTERY: 10})
+        self.assertEqual(minutes[29]["by_model"], {MYSTERY: 7})
         self.assertEqual(minutes[0]["tokens"], 0)
         self.assertEqual(minutes[0]["by_model"], {})
         want = expected_buckets(self.rows)
@@ -435,6 +454,60 @@ class Numbers(unittest.TestCase):
             self.assertEqual(m["by_model"], want.get(index, {}), index)
         # the row 3000 s ago is before the first bucket, and the future row is in none
         self.assertNotIn(1000 + 150, [m["tokens"] for m in minutes])
+
+    def test_cache_read_per_minute_matches_the_rows(self):
+        minutes = self.session["minutes"]
+        want = expected_reads(self.rows)
+        for index, m in enumerate(minutes):
+            self.assertIsInstance(m["cache_read"], int)
+            self.assertEqual(m["cache_read"], want.get(index, 0), index)
+        self.assertEqual(minutes[28]["cache_read"], 500)
+        self.assertEqual(minutes[29]["cache_read"], 3)
+        self.assertEqual(minutes[0]["cache_read"], 0)
+        self.assertEqual(set(minutes[0]), {"start", "tokens", "by_model", "cache_read"})
+
+    def test_tokens_plus_cache_read_is_the_old_all_kinds_total(self):
+        for index, m in enumerate(self.session["minutes"]):
+            old = sum(tokens_of(r) for r in self.rows if bucket_of(r) == index)
+            self.assertEqual(m["tokens"] + m["cache_read"], old, index)
+
+    def test_a_minute_with_only_cache_reads_has_no_new_tokens(self):
+        w = World(self)
+        w.add(S1, 10, "reads", 0, 0, cache_read=700)
+        minute = w.live()["session"]["minutes"][29]
+        self.assertEqual(minute["cache_read"], 700)
+        self.assertEqual(minute["tokens"], 0)
+        self.assertEqual(minute["by_model"], {})
+        session = w.live()["session"]
+        self.assertEqual(session["by_model"], [])
+        self.assertEqual(session["axis"], {"top": usage.token_ticks(0)[0], "ticks": usage.token_ticks(0)[1]})
+
+    def test_a_model_with_only_cache_reads_is_not_in_by_model(self):
+        w = World(self)
+        w.add(S1, 10, "new", 10, 5, model=OPUS)
+        w.add(S1, 8, "reads", 0, 0, cache_read=900, model=SONNET)
+        minute = w.live()["session"]["minutes"][29]
+        self.assertEqual(minute["by_model"], {OPUS: 15})
+        self.assertEqual(minute["cache_read"], 900)
+        self.assertEqual([r["model"] for r in w.live()["session"]["by_model"]], [OPUS])
+
+    def test_the_axis_ignores_cache_reads(self):
+        w = World(self)
+        w.add(S1, 100, "big-reads", 1, 1, cache_read=5000000)
+        w.add(S1, 10, "small", 20, 10)
+        session = w.live()["session"]
+        top, ticks = usage.token_ticks(30)
+        self.assertEqual(session["axis"], {"top": top, "ticks": ticks})
+
+    def test_requests_carry_their_cache_read_and_total(self):
+        latest = self.session["requests"]
+        self.assertEqual(latest[0]["cache_read"], 3)
+        self.assertEqual(latest[0]["tokens"], 10)
+        for r in latest:
+            self.assertIsInstance(r["cache_read"], int)
+        want = {(row[6], row[3], tokens_of(row)): row[4] for row in self.rows}
+        for r in latest:
+            self.assertEqual(r["cache_read"], want[(r["model"], r["output"], r["tokens"])])
 
     def test_the_axis_follows_the_tallest_bucket(self):
         tallest = max(m["tokens"] for m in self.session["minutes"])

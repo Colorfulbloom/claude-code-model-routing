@@ -620,7 +620,7 @@ class LiveCss(unittest.TestCase):
     def test_every_class_starts_lv_or_reuses_an_app_class(self):
         # A new class in live.css starts lv-. The others are classes app.css or the shared components already define.
         shared = {"btn", "kpi-v", "mono", "dx", "dx-min", "dbars", "col", "dchart", "klg", "dt", "es-h", "sw", "nt",
-                  "lnk", "muted", "cd", "est", "foot", "intro", "sr"}
+                  "lnk", "muted", "cd", "est", "foot", "intro", "sr", "sb-row", "swatch", "dy"}
         for _media, selector, _decls in self.rules:
             for name in re.findall(r"\.([A-Za-z][\w-]*)", selector):
                 self.assertTrue(name.startswith("lv-") or name in shared, "%s in %s" % (name, selector))
