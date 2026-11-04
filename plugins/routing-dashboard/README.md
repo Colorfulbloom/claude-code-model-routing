@@ -116,7 +116,7 @@ A plugin runs code with your user privileges. The [plugin security page](https:/
 
 This plugin starts a Python server on 127.0.0.1 only, so it's reachable from your own machine and no other. The server writes a file only in edit mode, and then only the settings file you save and its backups. The plugin keeps its server records and logs in its data folder.
 
-While the command runs, Claude can't use Bash at all. So it can't run the launcher again with another action, such as `edits` or `stop`.
+While the command runs, Claude can't run the launcher again without asking you, so it can't quietly follow up with another action such as `edits` or `stop`. The block also covers Claude's subagents and any background agents during that turn. Every other Bash command keeps working.
 
 ## Requirements
 

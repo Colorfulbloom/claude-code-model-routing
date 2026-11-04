@@ -34,6 +34,15 @@ NAME_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 RESERVED_PREFIXES = ("claude-", "anthropic-", "anthropics-", "cc-plugin-")
 ONE_MB = 1024 * 1024
 LAUNCHER_PATH_TEXT = 'python3 "${CLAUDE_PLUGIN_ROOT}/bin/routing-dashboard"'
+# Denies the launcher to the model, its subagents and background agents while the skill's turn
+# runs, and nothing else. The skill's own ! line still runs (probed on Claude Code 2.1.302).
+DENY_RULE = "Bash(python3 *bin/routing-dashboard*)"
+
+
+def bash_rule_regex(rule):
+    """A Bash(...) permission rule as a regex: * matches any run of characters, the rest is literal."""
+    assert rule.startswith("Bash(") and rule.endswith(")"), rule
+    return re.compile(".*".join(re.escape(part) for part in rule[len("Bash("):-1].split("*")), re.S)
 
 
 def load_module(name, path):
@@ -416,7 +425,42 @@ class SkillTest(unittest.TestCase):
         self.assertEqual(self.fields["name"], "dashboard")
         self.assertEqual(self.fields["disable-model-invocation"], "true")
         self.assertEqual(self.fields["model"], "haiku")
-        self.assertEqual(self.fields["disallowed-tools"], "Bash")
+        self.assertEqual(self.fields["disallowed-tools"], DENY_RULE)
+
+    def test_disallowed_tools_is_never_a_bare_tool_name(self):
+        # A bare name such as "Bash" takes the tool from the whole session for the rest of the
+        # turn, subagents included, and from background agents until the next user message
+        # (probed on Claude Code 2.1.302). A Bash(...) pattern denies only matching commands.
+        rule = self.fields["disallowed-tools"]
+        self.assertRegex(rule, r"^Bash\(.+\)$")
+        # ${CLAUDE_PLUGIN_ROOT} is not expanded in disallowed-tools, so the pattern must not need it.
+        self.assertNotIn("$", rule)
+
+    def rendered_line(self, arguments):
+        command = self.bang_lines()[0][2:-1]
+        for name, value in (("${CLAUDE_PLUGIN_ROOT}", "/work/cache/routing-dashboard/0.1.2"),
+                            ("${CLAUDE_PLUGIN_DATA}", "/work/data/routing-dashboard"),
+                            ("${CLAUDE_PROJECT_DIR}", "/work/proj"), ("${CLAUDE_SESSION_ID}", "abc-123"),
+                            ("$ARGUMENTS", arguments)):
+            command = command.replace(name, value)
+        return command.strip()
+
+    def test_deny_rule_covers_every_launcher_command_the_grant_allows(self):
+        allow = bash_rule_regex(self.fields["allowed-tools"].replace(
+            "${CLAUDE_PLUGIN_ROOT}", "/work/cache/routing-dashboard/0.1.2"))
+        deny = bash_rule_regex(self.fields["disallowed-tools"])
+        hint = self.fields["argument-hint"].strip('"')
+        actions = [part.split()[0] for part in re.match(r"\[([^\]]+)\]", hint).group(1).split("|")]
+        for arguments in [""] + actions + ["edits --key-file", "stop --all", 'project "/work/other dir"']:
+            command = self.rendered_line(arguments)
+            self.assertTrue(allow.fullmatch(command), command)
+            self.assertTrue(deny.fullmatch(command), command)
+
+    def test_deny_rule_leaves_other_commands_alone(self):
+        deny = bash_rule_regex(self.fields["disallowed-tools"])
+        for command in ("ls", "git status", "python3 -m unittest discover -s tests",
+                        "python3 tools/build_plugins.py", "/usr/bin/python3 -B tests/test_plugin_launcher.py"):
+            self.assertIsNone(deny.fullmatch(command), command)
 
     def bang_lines(self):
         return [line for line in self.body.split("\n") if "!`" in line]
