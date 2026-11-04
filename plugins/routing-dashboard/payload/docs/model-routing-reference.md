@@ -107,7 +107,7 @@ It lets through: plugin agents (names containing `:`), a dispatch with no agent 
 
 ## HiveMind hooks
 
-Four more entries are installed. They do nothing in a project without `.claude/hivemind/`, which only `python3 ~/.claude/hooks/hivemind_lib.py init` creates. The README's "HiveMind" section explains the store.
+Four more entries are installed. They do nothing in a project without `.claude/hivemind/`, which `python3 ~/.claude/hooks/hivemind_lib.py init` or the HiveMind plugin's `/hivemind:init` creates. The README's "HiveMind" section explains the store.
 
 | Event | Matcher | Command | What it does |
 |-------|---------|---------|--------------|

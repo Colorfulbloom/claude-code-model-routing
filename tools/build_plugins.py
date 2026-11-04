@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the generated payload of each plugin under plugins/.
+"""Build the generated payload of each plugin under plugins/ (routing-dashboard and hivemind).
 
     python3 tools/build_plugins.py           write plugins/<name>/payload/ and plugins/<name>/LICENSE
     python3 tools/build_plugins.py --check   write nothing, print each differing path, exit 1 on drift
@@ -10,8 +10,9 @@ BUILD.json itself; the plugin-level LICENSE sits outside payload/ and is not has
 version in plugin.json pins what installed users get, so a plain build refuses to write a
 changed payload under an unchanged version. Bump the version, then build again.
 
-The payload is a byte copy of the dashboard and installer files, so a colleague who installs
-the plugin gets the same code the repo holds. Nobody edits the payload by hand. The drift test
+The payload is a byte copy of repo files (the dashboard and installer for routing-dashboard,
+hooks/hivemind_lib.py for hivemind), so a colleague who installs a plugin gets the same code
+the repo holds. Nobody edits the payload by hand. The drift test
 in tests/test_plugin_build.py runs --check, so a change to a source file without a rebuild
 fails the suite.
 
@@ -106,8 +107,13 @@ def routing_dashboard_files(repo):
     return sorted(set(rels))
 
 
-# One row per plugin. A later `hivemind` row fits here. `folders` is what the --check message
-# names as the sources to rebuild from.
+def hivemind_files(repo):
+    """Source paths for the hivemind payload: the HiveMind library and nothing else."""
+    return ["hooks/hivemind_lib.py"]
+
+
+# One row per plugin. `files` is a callable(repo) that returns the source paths. `folders` is
+# what the --check message names as the sources to rebuild from.
 PLUGINS = [
     {
         "name": "routing-dashboard",
@@ -115,6 +121,7 @@ PLUGINS = [
         "folders": ["install.py", "agent_md.py", "dashboard/", "agents/", "rules/", "hooks/",
                     "skills/", "docs/model-routing-reference.md", "LICENSE"],
     },
+    {"name": "hivemind", "files": hivemind_files, "folders": ["hooks/hivemind_lib.py", "LICENSE"]},
 ]
 
 

@@ -1,8 +1,9 @@
 {
   "name": "model-routing",
   "owner": {"name": "Jorge Calderon"},
-  "metadata": {"description": "Claude Code plugins from the model routing repo, currently the Routing Dashboard."},
+  "metadata": {"description": "Claude Code plugins from the model routing repo, the Routing Dashboard and HiveMind."},
   "plugins": [
-    {"name": "routing-dashboard", "source": "./plugins/routing-dashboard", "description": "Runs the Routing Dashboard, a local page of your Claude Code token usage and settings, from any session."}
+    {"name": "routing-dashboard", "source": "./plugins/routing-dashboard", "description": "Runs the Routing Dashboard, a local page of your Claude Code token usage and settings, from any session."},
+    {"name": "hivemind", "source": "./plugins/hivemind", "description": "Manages HiveMind, the per-project memory your Claude Code agents share, from any session."}
   ]
 }

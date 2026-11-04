@@ -26,19 +26,21 @@ git checkout development
 
 Then restart Claude Code so the hooks and agents load. Run `/setup-model-routing` once if you want the optional global settings. [Install](#install) and [What the installer changes](#what-the-installer-changes) have the details.
 
-The dashboard is a separate plugin, and it installs from the same branch.
+The dashboard and the HiveMind commands are separate plugins, and they install from the same branch.
 
 ```bash
 claude plugin marketplace add Colorfulbloom/claude-code-model-routing#development
 claude plugin install routing-dashboard@model-routing
+claude plugin install hivemind@model-routing
 ```
 
-Start a new session and run `/routing-dashboard:dashboard`. Run `/routing-dashboard:dashboard edits` to turn on editing. [Dashboard plugin](#dashboard-plugin) covers the rest.
+Start a new session and run `/routing-dashboard:dashboard`. Run `/routing-dashboard:dashboard edits` to turn on editing. [Dashboard plugin](#dashboard-plugin) covers the rest. Run `/hivemind:init` in a project to turn HiveMind on there, and [HiveMind plugin](#hivemind-plugin) covers its other commands.
 
 Each one has its own uninstall.
 
 - Routing files. Run `./install.sh --uninstall` from the clone. [Uninstall](#uninstall) says what it keeps.
 - Dashboard plugin. Run `/routing-dashboard:dashboard stop --all` in a session, then `claude plugin uninstall routing-dashboard@model-routing` from your shell. Stop the servers first, because uninstalling deletes the plugin's data folder. The [plugin's README](plugins/routing-dashboard/README.md#uninstall) has more.
+- HiveMind plugin. Run `claude plugin uninstall hivemind@model-routing` from your shell. Each project's store and the installed hooks stay where they are.
 
 Report bugs and send feedback in [GitHub issues](https://github.com/Colorfulbloom/claude-code-model-routing/issues).
 
@@ -108,11 +110,13 @@ The four HiveMind hooks do nothing in a project without `.claude/hivemind/`. All
 
 HiveMind is a per-project memory that all agents share. It is opt-in and reviewed. Agents propose facts, one agent (`deep-reasoner`) decides which to keep, and the result is committed like code.
 
-To opt a project in, run this from the project root:
+To opt a project in, run this from the project root.
 
 ```bash
 python3 ~/.claude/hooks/hivemind_lib.py init
 ```
+
+Or run `/hivemind:init` in a session, if you installed the [HiveMind plugin](#hivemind-plugin).
 
 The store is committed and reviewed in each feature's diff. Only `inbox/` is ignored. Layout:
 
@@ -355,9 +359,11 @@ From the repo root:
 /usr/bin/python3 -m unittest discover -s tests -v
 ```
 
-The plugin's `payload/` folder is a generated copy of the dashboard and installer files. After you change `dashboard/`, `agents/`, `rules/`, `hooks/`, `skills/`, `install.py`, `agent_md.py` or `docs/model-routing-reference.md`, rebuild it. A test fails while the copy is out of date, and `--check` lists the differences.
+Each plugin's `payload/` folder is a generated copy of files from this repo. The `routing-dashboard` payload copies the dashboard and installer files, and the `hivemind` payload copies `hooks/hivemind_lib.py`. After you change `dashboard/`, `agents/`, `rules/`, `hooks/`, `skills/`, `install.py`, `agent_md.py` or `docs/model-routing-reference.md`, rebuild them. A test fails while a copy is out of date, and `--check` lists the differences.
 
-Bump `version` in `plugins/routing-dashboard/.claude-plugin/plugin.json` before you rebuild. That version pins installed users, so a change without a bump would never reach them, and the build refuses a changed payload until the version goes up. It records the version and a hash of the payload in `payload/BUILD.json`, and `--check` fails when they don't match.
+Bump `version` in the `plugin.json` of each plugin whose payload changed, then rebuild. That version pins installed users, so a change without a bump would never reach them, and the build refuses a changed payload until the version goes up.
+
+A change to `hooks/hivemind_lib.py` lands in both payloads, so it needs a bump in `plugins/routing-dashboard/.claude-plugin/plugin.json` and in `plugins/hivemind/.claude-plugin/plugin.json`. Each payload records its version and a hash in `payload/BUILD.json`, and `--check` fails when they don't match.
 
 ```bash
 python3 tools/build_plugins.py
@@ -480,7 +486,7 @@ Backups can hold secrets. The ledger masks its values, but a `.bak` file is an e
 
 ## Dashboard plugin
 
-The `routing-dashboard` plugin runs the dashboard from any Claude Code session, with no clone. This repo is also a plugin marketplace named `model-routing`, and the plugin is its one entry.
+The `routing-dashboard` plugin runs the dashboard from any Claude Code session, with no clone. This repo is also a plugin marketplace named `model-routing`, with two entries, this plugin and the [HiveMind plugin](#hivemind-plugin).
 
 ```bash
 claude plugin marketplace add Colorfulbloom/claude-code-model-routing#development
@@ -492,6 +498,17 @@ Start a new session, or run `/reload-plugins` in one that's open, then run `/rou
 The plugin runs the dashboard only. The agents, rules and hooks still come from `install.sh`. Without them, Installed files lists those files as missing.
 
 The [plugin's README](plugins/routing-dashboard/README.md) covers every action, editing over SSH, the sandbox setting, updates, uninstall and the requirements.
+
+## HiveMind plugin
+
+The `hivemind` plugin runs HiveMind's commands from any Claude Code session, with no clone. It installs from the same `model-routing` marketplace as the dashboard.
+
+```bash
+claude plugin marketplace add Colorfulbloom/claude-code-model-routing#development
+claude plugin install hivemind@model-routing
+```
+
+Run `/hivemind:init` in a project to turn HiveMind on, then `/hivemind:status` to see what waits. `/hivemind:consolidate` sends `deep-reasoner` to fold in waiting facts and leaves the changes uncommitted for you to review. The hooks that capture facts and the `deep-reasoner` agent still come from `install.sh`. The [plugin's README](plugins/hivemind/README.md) covers every command, the sandbox setting, updates and uninstall.
 
 ## Known limits
 
