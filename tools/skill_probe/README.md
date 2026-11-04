@@ -1,68 +1,72 @@
 # Skill permission probe
 
-This probe checks how a skill's `disallowed-tools` rule reaches the main session, subagents and background agents. The routing-dashboard skill depends on it. Its front matter denies `Bash(python3 *bin/routing-dashboard*)` so the model can't run the launcher itself, while the skill's own `!` line still runs and other Bash commands still work.
+The probe checks how a skill's `disallowed-tools` rule reaches the main session, subagents and background agents. The routing-dashboard skill depends on that rule. Its front matter denies `Bash(python3 *bin/routing-dashboard*)`, so the model can't run the launcher itself. The skill's own `!` line still runs, and other Bash commands still work.
 
 ## When to run it
 
-Run it after every Claude Code upgrade, and before you change the `disallowed-tools` or `allowed-tools` lines in `plugins/routing-dashboard/skills/dashboard/SKILL.md`.
+Run it after every Claude Code upgrade. Claude Code decides how far the rule reaches, so a new release can change it. Run it too before you change the `disallowed-tools` or `allowed-tools` line in `plugins/routing-dashboard/skills/dashboard/SKILL.md`.
 
-## Command
+## Running the probe
 
-From the repo root.
+Run it from the repo root.
 
     python3 tools/skill_probe/probe.py
 
-It takes about a minute. It makes no real API call.
+One run takes about a minute and makes no real API call. It prints the Claude Code version, a pass or fail table, and a line that says whether the shipped skill's `disallowed-tools` still matches the rule it probed.
 
-Options.
+The probe has four options.
 
-- `--root DIR` works under `DIR` and keeps it. `DIR` must not exist or must be empty.
-- `--keep` keeps the throwaway root of a passing run.
-- `--variant bare|narrow|both` picks what to run. The default is `both`.
+- `--root DIR` works under `DIR` and keeps it afterward. `DIR` must be new or empty.
+- `--keep` keeps the throwaway folder even when the run passes.
+- `--variant bare|narrow|both` picks the rules to probe. The default is `both`.
 - `-v` prints what each command did, not only the table.
 
 ## What it checks
 
-It writes a plugin with one skill, then runs `claude -p --input-format stream-json` with three user turns in one process. The skill has the same `!` line and `allowed-tools` rule as the shipped skill. `scriptapi.py` plays the model. It answers each request with a scripted tool call, and logs the result Claude Code gives back.
+The probe writes a plugin with one skill and runs `claude -p --input-format stream-json` with three user turns in one process. The skill copies the shipped skill's `!` line and `allowed-tools` rule. Then `scriptapi.py` plays the model. It answers each request with a scripted tool call and logs what Claude Code sends back.
 
-The table has one row for each check, and one column for each deny rule.
+The table has a row for each check and a column for each deny rule.
 
 - `bare` is `disallowed-tools: Bash`, kept for comparison.
 - `narrow` is `disallowed-tools: Bash(python3 *bin/routing-dashboard*)`, the rule the skill ships.
 
-The six checks.
+It runs six checks.
 
-- The `!` line runs. Its output reaches the model.
-- The main session, later in the same turn. `echo` runs and the launcher is denied.
-- A foreground subagent in the turn. Same expectation.
-- A background agent started inside the turn. Same expectation.
-- A background agent started before the skill. Same expectation during the turn. After the turn the launcher must not run, and `echo` runs again once the next user message arrives.
-- The next turn. `echo` runs, and the launcher needs approval, so it does not run.
+- The `!` line runs, and its output reaches the model.
+- The main session, later in the skill's turn, can run `echo` but not the launcher.
+- A foreground subagent in that turn can run `echo` but not the launcher.
+- A background agent started inside the turn can run `echo` but not the launcher.
+- A background agent started before the skill can run `echo` but not the launcher during the turn. After the turn the launcher still must not run, and `echo` works again once the next user message arrives.
+- In the next turn, `echo` runs. The launcher needs approval, and since `-p` mode has no one to approve it, it doesn't run.
 
-For `bare`, a pass means Bash is blocked the way it was when the probe was written. That column is information only.
+A call the probe expects inside the skill's turn has to land before that turn ends. A result that arrives later shows as `late` and fails the check.
+
+The `bare` column records how a plain `Bash` deny behaved when the probe was written. It blocks all Bash in the turn and takes the Bash tool away from subagents. That column is for information only, and a change there prints a note but doesn't fail the run.
 
 ## Exit codes
 
 - `0` means every `narrow` check passed.
-- `1` means a `narrow` check failed. The lines under the table say which command did what. The files stay in the folder the probe prints.
-- `2` means the probe refused to run or could not finish, for example because `claude` is not on `PATH`, or a turn timed out.
+- `1` means a `narrow` check failed. The lines under the table name the command, what the probe expected and what it saw. The files stay in the folder the probe prints.
+- `2` means the probe refused to run or couldn't finish. For example, `claude` isn't on `PATH`, or a turn didn't finish within 90 seconds.
 
 ## Safety
 
-- It refuses to start if `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN` or `ANTHROPIC_BASE_URL` is set in your shell. It reuses the check and the fixed environment values from `dashboard/experiments/harness/runcase.py`.
-- It refuses to run if `HOME` or `CLAUDE_CONFIG_DIR` would be, or sit inside, your real home or `~/.claude`. It checks the final values, right before `claude` starts.
-- `claude` gets a throwaway `HOME`, config folder and project under `$TMPDIR`, and a fake API key. `scriptapi.py` listens on 127.0.0.1 only.
+The probe never talks to the real API and never reads or writes your real home or `~/.claude`.
+
+- `claude` gets a throwaway `HOME`, config folder and project under `$TMPDIR` or under the `--root` folder, plus a fake API key. Its API address points at `scriptapi.py`, which listens on 127.0.0.1 only.
+- It refuses to start if `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN` or `ANTHROPIC_BASE_URL` is set in your shell. That check and the fixed values come from `dashboard/experiments/harness/runcase.py`.
+- It refuses to run if `HOME` or `CLAUDE_CONFIG_DIR` would be your real home, or would be or overlap your real `~/.claude`. It checks the final values, right before `claude` starts.
 - It never reads your real settings or transcripts.
 
-## Recorded behavior
+## One check depends on timing
 
-Recorded on Claude Code 2.1.302. The expected outcomes sit in `EXPECTED` in `probe.py`.
+A background agent started before the skill can get either of two answers when it calls the launcher after the turn. If the skill also started its own background agent, the call is still denied until the next user message. Without that second agent, the same call needs approval instead. The probe accepts both, because in both cases the launcher doesn't run.
 
-One result depends on timing. When the skill starts its own background agent, a background agent started before the skill is still denied for about three seconds after the turn ends, until the next user message. Without that second agent the same call needs approval instead. The probe accepts both, because in both cases the launcher does not run.
+The expected outcomes sit in `EXPECTED` in `probe.py`, recorded on Claude Code 2.1.302.
 
 ## Files
 
-- `probe.py` runs the three turns for each variant and prints the table.
+- `probe.py` runs the three turns for each rule and prints the table.
 - `scriptapi.py` is the scripted fake API. The steps it understands are listed at the top of the file.
 
-Both live under `tools/`, not `dashboard/`, so they are not part of the plugin payload and don't change its version.
+Both live under `tools/`, outside the plugin payload, so changing them doesn't change the plugin's version.
