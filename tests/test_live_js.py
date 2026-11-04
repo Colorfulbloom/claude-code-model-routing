@@ -33,7 +33,8 @@ class LiveScripts(unittest.TestCase):
         self.assertNotIn("FAIL", run.stdout)
 
     def test_fixtures_exist(self):
-        names = sorted(p.stem for p in FIXTURES.glob("*.json"))
+        # The flow_* files are the dispatch card's payloads, checked by tests/test_live_flow_js.py.
+        names = sorted(p.stem for p in FIXTURES.glob("*.json") if not p.stem.startswith("flow_"))
         self.assertEqual(names, ["empty", "idle", "live", "session_gone", "two_running", "unchanged", "unreadable"])
 
 

@@ -236,7 +236,8 @@ class MarkerTests(TmpCase):
             with self.subTest(path=os.path.basename(path)):
                 # The entry's own bookkeeping, and nothing else.
                 self.assertEqual(
-                    ("dev", "ino", "size", "mtime_ns", "offset", "records", "stats", "meta_sig", "agent_type"),
+                    ("dev", "ino", "size", "mtime_ns", "offset", "records", "stats", "meta_sig", "agent_type",
+                     "links", "lstate"),
                     entry._fields)
                 for name in ("dev", "ino", "size", "mtime_ns", "offset"):
                     self.assertIsInstance(getattr(entry, name), int, name)

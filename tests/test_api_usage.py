@@ -99,9 +99,9 @@ def spy_on_parse():
     original = transcripts.Reader._parse
     calls = []
 
-    def spy(item, offset, records, stats, agent_type):
+    def spy(item, offset, records, stats, agent_type, *rest):
         calls.append((item.path, offset))
-        return original(item, offset, records, stats, agent_type)
+        return original(item, offset, records, stats, agent_type, *rest)
 
     return mock.patch.object(transcripts.Reader, "_parse", staticmethod(spy)), calls
 

@@ -111,12 +111,86 @@
   .lv-req tbody td:nth-child(8){grid-column:2;grid-row:1;justify-content:flex-end;color:var(--text-muted);font-size:var(--text-xs)}
 }
 
+/* Dispatches in this session (pages/live_flow.js), direction A: a dotted canvas of run cards with curved connectors.
+   The script sets every position and size through style.setProperty. Working and Idle reuse the .lv-act colors, and
+   Done uses the in-effect status tokens with a check mark, so each state is a shape plus a word. */
+.lv-fl-srw{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.lv-fl-note{margin:var(--space-2) 0 0;font:var(--text-xs)/1.4 var(--font-sans);color:var(--text-muted)}
+.lv-fl-empty{display:grid;gap:4px;margin-top:var(--space-3)}
+.lv-fl-empty p{margin:0}
+.lv-fl-st{display:inline-flex;align-items:center;gap:5px;font:var(--weight-semibold) var(--text-xs)/1 var(--font-sans);padding:4px 8px 4px 6px;border-radius:var(--radius-pill);background:var(--surface-2);color:var(--text);white-space:nowrap}
+.lv-fl-st::before{display:inline-block;width:1em;text-align:center}
+.lv-fl-st[data-s="working"]::before{content:"\25CF";color:var(--accent)}
+.lv-fl-st[data-s="idle"]{color:var(--text-muted)}
+.lv-fl-st[data-s="idle"]::before{content:"\25CB"}
+.lv-fl-st[data-s="done"]{background:var(--status-in-effect-bg);color:var(--status-in-effect-fg)}
+.lv-fl-st[data-s="done"]::before{content:"\2713"}
+.lv-fl-bdg{display:inline-block;font:var(--weight-medium) var(--text-xs)/1 var(--font-sans);color:var(--text-muted);background:var(--surface-2);border-radius:var(--radius-sm);padding:4px 6px;white-space:nowrap}
+.lv-fl-rnd{display:inline-block;font:var(--weight-semibold) var(--text-xs)/1 var(--font-sans);color:var(--accent);border:var(--border-width) solid var(--accent);border-radius:var(--radius-sm);padding:3px 5px;white-space:nowrap}
+.lv-fl-n{display:inline-grid;place-items:center;min-width:20px;height:20px;border-radius:var(--radius-pill);border:var(--border-width) solid var(--border-strong);font:var(--weight-semibold) 11px/1 var(--font-sans);color:var(--text);font-variant-numeric:tabular-nums}
+.lv-fl-n:empty{visibility:hidden}
+.lv-fl-name{font:var(--weight-semibold) var(--text-sm)/1.25 var(--font-sans);color:var(--text);overflow-wrap:anywhere}
+.lv-fl-tc{font-variant-numeric:tabular-nums;color:var(--text)}
+
+.lv-fl-box{position:relative}
+.lv-fl-canvas{position:relative;overflow:auto;border:var(--border-width) solid var(--border);border-radius:var(--radius-md);background-color:var(--page-bg);background-image:radial-gradient(circle,var(--border-strong) 0.7px,transparent 1px);background-size:16px 16px;max-height:660px}
+.lv-fl-stage{position:relative}
+.lv-fl-cards{position:absolute;inset:0}
+.lv-fl-edges{position:absolute;inset:0;overflow:visible}
+.lv-fl-e{fill:none;stroke:var(--border-strong);stroke-width:1.5}
+.lv-fl-e-live{stroke:var(--accent);stroke-width:2}
+.lv-fl-e-guess{stroke-dasharray:5 4}
+.lv-fl-node{position:absolute;box-sizing:border-box;width:252px;height:84px;display:grid;grid-template-rows:auto auto 1fr;gap:5px;padding:9px 12px;background:var(--card-bg);border:var(--border-width) solid var(--border-strong);border-radius:var(--radius-md);box-shadow:var(--shadow-card);text-align:left;font-family:var(--font-sans)}
+.lv-fl-node[data-s="working"]{box-shadow:inset 3px 0 0 var(--accent),var(--shadow-card)}
+.lv-fl-r1,.lv-fl-r2,.lv-fl-r3{display:flex;align-items:center;gap:6px;min-width:0}
+.lv-fl-r2{justify-content:space-between}
+.lv-fl-r3{justify-content:space-between;font:var(--text-xs)/1.3 var(--font-sans);color:var(--text-muted);align-self:end}
+.lv-fl-r1 .lv-fl-rnd{margin-left:auto}
+.lv-fl-port{position:absolute;top:24px;width:10px;height:10px;border-radius:50%;background:var(--card-bg);border:2px solid var(--border-strong);box-sizing:border-box}
+.lv-fl-in{left:-6px}
+.lv-fl-out{right:-6px}
+.lv-fl-bot{left:48px;top:auto;bottom:-6px}
+.lv-fl-node[data-s="working"] .lv-fl-in,.lv-fl-node[data-s="idle"] .lv-fl-in{border-color:var(--accent)}
+.lv-fl-stub{cursor:pointer;height:72px;grid-template-rows:auto 1fr;box-shadow:4px 4px 0 -1px var(--card-bg),4px 4px 0 0 var(--border-strong),var(--shadow-card)}
+.lv-fl-stub .lv-fl-name{color:var(--accent);text-decoration:underline;text-underline-offset:2px}
+.lv-fl-chip{position:absolute;font:var(--weight-semibold) 11px/1 var(--font-sans);padding:4px 6px;border-radius:var(--radius-sm);background:var(--card-bg);border:var(--border-width) solid var(--border-strong);color:var(--text);white-space:nowrap}
+.lv-fl-chip-r{color:var(--accent);border-color:var(--accent)}
+.lv-fl-chip-g{color:var(--text-muted);transform:translateX(-100%)}
+.lv-fl-hints{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:var(--space-1) var(--space-2)}
+.lv-fl-more{margin-top:var(--space-2);font:var(--weight-semibold) var(--text-xs)/1 var(--font-sans);padding:6px 10px;border-radius:var(--radius-pill);background:var(--card-bg);border:var(--border-width) solid var(--border-strong);color:var(--text);white-space:nowrap}
+.lv-fl-empty-in{position:absolute;right:var(--space-4);margin:0;max-width:440px;box-sizing:border-box;padding:10px 12px;background:var(--card-bg);border:var(--border-width) dashed var(--border-strong);border-radius:var(--radius-md)}
+
+/* Phone: an indented list in dispatch-tree order. No connectors or chips, a rail and a dot show who dispatched whom. */
+.lv-fl-narrow .lv-fl-stage{display:grid;gap:10px;padding:12px}
+.lv-fl-narrow .lv-fl-cards{display:contents}
+.lv-fl-narrow .lv-fl-edges{display:none}
+.lv-fl-narrow .lv-fl-node{position:relative;width:auto;height:auto}
+.lv-fl-narrow .lv-fl-node .lv-fl-in{left:-12px;border-color:var(--border-strong)}
+.lv-fl-narrow .lv-fl-out{display:none}
+.lv-fl-narrow .lv-fl-bot{display:none}
+.lv-fl-narrow .lv-fl-node:not([data-run="@main"])::before{content:"";position:absolute;left:-8px;top:-11px;height:40px;border-left:1.5px solid var(--border-strong)}
+.lv-fl-narrow .lv-fl-node[data-link="guess"]::before{border-left-style:dashed}
+.lv-fl-narrow .lv-fl-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lv-fl-narrow .lv-fl-r3{flex-wrap:wrap;row-gap:2px}
+.lv-fl-narrow .lv-fl-tc{white-space:nowrap;margin-left:auto}
+.lv-fl-narrow.lv-fl-canvas{max-height:none}
+@media (max-width: 720px){
+  .lv-fl-node{padding:10px}
+}
+
 /* Motion: once on a changed answer, then hold. Nothing moves under reduced motion. The New marker is text and always shows. */
 @keyframes lv-blink{0%{opacity:1}35%{opacity:.25}100%{opacity:1}}
 @keyframes lv-flash{0%{background-color:color-mix(in srgb,var(--accent) 20%,transparent)}100%{background-color:transparent}}
+@keyframes lv-fl-in-x{from{opacity:0;translate:-8px 0}to{opacity:1;translate:0 0}}
+@keyframes lv-fl-draw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@keyframes lv-fl-fade{from{opacity:0}to{opacity:1}}
 @media (prefers-reduced-motion: no-preference){
   .lv-tick{animation:lv-blink .7s ease-out 1}
   .lv-fresh{animation:lv-flash 1.4s ease-out 1}
   .lv-g21 .dbars .col{transition:y .45s ease-out,height .45s ease-out}
   .lv-bar span{transition:width .45s ease-out}
+  .lv-fl-node.lv-fl-enter{animation:lv-fl-in-x .32s ease-out 1}
+  .lv-fl-node.lv-fl-renew,.lv-fl-node.lv-fl-renew .lv-fl-rnd{animation:lv-fl-in-x .32s ease-out 1}
+  .lv-fl-e.lv-fl-draw{stroke-dasharray:1;animation:lv-fl-draw .5s ease-out 1}
+  .lv-fl-e-guess.lv-fl-draw{stroke-dasharray:5 4;animation:lv-fl-fade .5s ease-out 1}
 }

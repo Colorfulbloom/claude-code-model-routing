@@ -8,8 +8,10 @@ The page polls this route every second, so the work per request stays
 small. The route reads only the transcript folder of the asked project
 (transcripts.Reader.read_folder), which re-parses only the bytes a file gained.
 The deduped records of that folder are grouped by session and kept on the
-usage Cache (live, under live_lock), keyed by the folder signature, so they are
-rebuilt only when a file changes. A request then touches one session's records.
+usage Cache (live, under live_lock), keyed by the folder signature, together
+with the session's links (transcripts.Links per file: which agents it launched,
+when it was resumed, when it stopped), so they are rebuilt only when a file
+changes. A request then touches one session's records.
 The route takes cache.lock only to create the reader or load the prices, and
 never while it reads, so a slow All projects build on /api/usage does not hold
 it.
@@ -38,15 +40,28 @@ minute's total. axis is drawn over the tallest new-token minute, and the
 session by_model legend sums new tokens over the 30 minutes. Each request in
 requests[] keeps tokens as its total of all kinds and adds its cache_read.
 
+Runs. session.runs lists the main session and every agent run of the session
+with a request up to now, in dispatch order (main first), for the dispatch
+canvas. A run has its parent (the earliest link row up to now that names it, with
+a link to itself or to an ancestor dropped; "@main" with parent_known false when
+no usable link exists), its rounds (round 1 from its first request, later ones
+from briefs that came after the agent stopped), a state of working, idle or done,
+and the totals the agents card counts. A foreground agent is linked only when it
+finishes, so it reads as not linked until then. Links, briefs and stops after now
+are ignored.
+
 Times are ISO strings in the page zone (api_usage._zone). The etag is the first
 16 hex digits of a sha256 over the JSON of every field except server_time and
 etag. It does not depend on the clock except through the values listed there:
-the minute buckets, last_minute and active.
+the minute buckets, last_minute and active, and runs[].state, which is working
+or idle by the age of the run's last activity.
 
 No response holds message text, tool data, a cwd or an agent description: the
 reader keeps none, and this module adds only counts, ids hashed from message
-ids, model and agent names, and git branch names. The one path in an answer is
-the display path in unreadable.
+ids, model and agent names, and git branch names. Run ids in runs[] are hashed
+from agent ids (the first 12 hex digits of a sha256), so no raw agent id leaves
+the server, and the rounds say only who briefed a run (the main session, another
+run, or nobody). The one path in an answer is the display path in unreadable.
 
 Standard library only, Python 3.9. Nothing here writes a file.
 """
@@ -76,24 +91,32 @@ class _Sess(object):
     """The deduped records of one session, oldest first, with their times and
     (built on first use) the priced requests that usage.build_views would make."""
 
-    __slots__ = ("records", "ts", "reqs")
+    __slots__ = ("records", "ts", "reqs", "links")
 
-    def __init__(self, records):
+    def __init__(self, records, links=None):
         self.records = records
         self.ts = [r.ts_utc for r in records]
         self.reqs = None
+        # {run id, or None for the main session: transcripts.Links} over the session's files.
+        self.links = links or {}
 
 
-def _index(records):
-    """{session id: _Sess} over the deduped records of one folder."""
+def _index(records, links=None):
+    """{session id: _Sess} over the deduped records of one folder.
+
+    links is FolderResult.links, {(session id, run id or None): Links}, or None.
+    """
     kept, _no_id = usage_views.dedupe(records)
     grouped = {}
     for rec in kept:
         grouped.setdefault(rec.session_id, []).append(rec)
+    by_session = {}
+    for (sid, run), item in (links or {}).items():
+        by_session.setdefault(sid, {})[run] = item
     out = {}
     for sid, recs in grouped.items():
         recs.sort(key=lambda r: r.ts_utc)  # stable: equal times keep file order
-        out[sid] = _Sess(recs)
+        out[sid] = _Sess(recs, by_session.get(sid))
     return out
 
 
@@ -172,6 +195,212 @@ def _summary(acc, keys):
     for key in keys:
         out[key] = done[key]
     return out
+
+
+MAIN_RUN = usage_views.MAIN_KEY
+_TOGETHER = datetime.timedelta(seconds=5)
+
+
+def _run_id(agent_id):
+    """First 12 hex of a sha256 over an agent id, so the raw id never leaves the server."""
+    return hashlib.sha256(agent_id.encode("utf-8")).hexdigest()[:12]
+
+
+def _parents(sess, now_utc):
+    """{child agent id: (dispatcher run key, link time)} from the links up to now.
+
+    The dispatcher key is None for the main session. The earliest link wins. A link
+    from a run to itself, or to one of its own ancestors, is dropped, so there is no cycle.
+    """
+    found = []
+    for dispatcher, item in sess.links.items():
+        for child, ts in item.launched:
+            if ts <= now_utc:
+                found.append((ts, dispatcher or "", dispatcher, child))
+    found.sort(key=lambda f: f[:2] + (f[3],))
+    parent_of = {}
+    for ts, _tie, dispatcher, child in found:
+        if child in parent_of or child == dispatcher:
+            continue
+        up, cycle = dispatcher, False
+        while up is not None:
+            if up == child:
+                cycle = True
+                break
+            up = parent_of[up][0] if up in parent_of else None
+        if not cycle:
+            parent_of[child] = (dispatcher, ts)
+    return parent_of
+
+
+def _group_runs(reqs):
+    """{run key: group} over the requests, oldest first. The key is None for the main session."""
+    groups = {}
+    for req in reqs:
+        key = req.rec.run_id
+        group = groups.get(key)
+        if group is None:
+            group = groups[key] = {"acc": usage_views._Acc(), "pairs": {}, "ts": [],
+                                   "route_key": req.route_key, "agent": req.agent}
+        group["acc"].add(req)
+        pair = (req.model, req.rec.effort)
+        group["pairs"][pair] = group["pairs"].get(pair, 0) + 1
+        group["ts"].append(req.ts)
+    return groups
+
+
+def _run_rounds(key, group, sess, now_utc, tz, ids, parent):
+    """The rounds of one run: round 1 from its first request, the rest from briefs up to now.
+
+    Each round is a dict plus "_at", its start as a datetime (the caller drops it).
+    """
+    ts = group["ts"]
+    starts = [(ts[0], parent)]
+    item = sess.links.get(key)
+    if key is not None and item is not None:
+        briefs = sorted((r for r in item.rounds if r[0] <= now_utc), key=lambda r: r[0])
+        for at, kind, sender in briefs:
+            if kind == "coordinator":
+                by = MAIN_RUN
+            elif kind == "peer" and sender is not None and sender != key and sender in ids:
+                by = ids[sender]
+            else:
+                by = None
+            starts.append((at, by))
+    out = []
+    for i, (at, by) in enumerate(starts):
+        lo = bisect.bisect_left(ts, at)
+        hi = bisect.bisect_left(ts, starts[i + 1][0]) if i + 1 < len(starts) else len(ts)
+        last = ts[hi - 1] if hi > lo else at
+        out.append({"n": i + 1, "started": at.astimezone(tz).isoformat(),
+                    "last_request": last.astimezone(tz).isoformat(), "by": by, "_at": at})
+    return out
+
+
+def _runs(sess, reqs, now_utc, tz, names):
+    """session.runs: the main session and each agent run with a request up to now.
+
+    See the module docstring. reqs are the session's priced requests up to now.
+    """
+    groups = _group_runs(reqs)
+    ids = {key: (MAIN_RUN if key is None else _run_id(key)) for key in groups}
+    parent_of = _parents(sess, now_utc)
+
+    # The parent as drawn: the dispatcher when it is a run of this session, else the main session.
+    pkey, known, linked = {}, {}, {}
+    for key in groups:
+        if key is None:
+            continue
+        found = parent_of.get(key)
+        if found is not None and (found[0] is None or found[0] in groups):
+            pkey[key], known[key], linked[key] = found[0], True, found[1]
+        else:
+            pkey[key], known[key], linked[key] = None, False, None
+    order = sorted((key for key in groups if key is not None),
+                   key=lambda key: (groups[key]["ts"][0], ids[key]))
+    if None in groups:
+        order.insert(0, None)
+
+    # label_n: the rank among runs of one route key, in dispatch order.
+    rank, total = {}, {}
+    for key in order:
+        route = groups[key]["route_key"]
+        total[route] = total.get(route, 0) + 1
+        rank[key] = total[route]
+
+    # together: siblings drawn under one parent, each launched within 5 s of the one before.
+    together = {}
+    siblings = {}
+    for key in order:
+        if key is not None:
+            siblings.setdefault(pkey[key], []).append(key)
+    for members in siblings.values():
+        launch = {}
+        for key in members:
+            first = groups[key]["ts"][0]
+            launch[key] = min(linked[key], first) if linked[key] is not None else first
+        members.sort(key=lambda k: (launch[k], ids[k]))
+        chains = []
+        for key in members:
+            if chains and launch[key] - launch[chains[-1][-1]] <= _TOGETHER:
+                chains[-1].append(key)
+            else:
+                chains.append([key])
+        for chain in chains:
+            if len(chain) > 1:
+                for key in chain:
+                    together[key] = {"key": ids[chain[0]], "n": len(chain)}
+
+    rounds = {}
+    for key in groups:
+        rounds[key] = _run_rounds(key, groups[key], sess, now_utc, tz, ids,
+                                  None if key is None else MAIN_RUN if pkey[key] is None else ids[pkey[key]])
+
+    # done: the last stop up to now is a finished one, no round started after it, and every
+    # child run is done. Deepest runs first, so the children are known.
+    children = {}
+    for key, up in pkey.items():
+        children.setdefault(up, []).append(key)
+    depth = {}
+
+    def depth_of(key):
+        steps = 0
+        while key is not None and steps <= len(groups):
+            key = pkey.get(key)
+            steps += 1
+        return steps
+
+    for key in groups:
+        depth[key] = depth_of(key)
+    done = {}
+    for key in sorted(groups, key=lambda k: -depth[k]):
+        stop = None
+        item = sess.links.get(key)
+        if key is not None and item is not None:
+            for at, finished in reversed(item.stops):
+                if at <= now_utc:
+                    stop = (at, finished)
+                    break
+        done[key] = bool(stop is not None and stop[1] and rounds[key][-1]["_at"] <= stop[0]
+                         and all(done[c] for c in children.get(key, ())))
+
+    result = []
+    first = 0 if None in groups else 1  # dispatch_order 0 is the main session; agents start at 1
+    for place, key in enumerate(order):
+        group = groups[key]
+        model, effort = _pair(group["pairs"])
+        acc = group["acc"]
+        ts = group["ts"]
+        active_at = max(ts[-1], rounds[key][-1]["_at"])
+        if done[key]:
+            state = "done"
+        elif now_utc - active_at < datetime.timedelta(seconds=ACTIVE_SECONDS):
+            state = "working"
+        else:
+            state = "idle"
+        route = group["route_key"]
+        named = route not in (usage_views.MAIN_KEY, usage_views.UNNAMED_KEY)
+        result.append({
+            "run_id": ids[key],
+            "route_key": route,
+            "agent": group["agent"] if named else None,
+            "label_n": rank[key] if key is not None and total[route] > 1 else None,
+            "model": model,
+            "model_display": _model_display(model, names),
+            "effort": effort,
+            "parent": None if key is None else MAIN_RUN if pkey[key] is None else ids[pkey[key]],
+            "parent_known": True if key is None else known[key],
+            "dispatch_order": place + first,
+            "together": together.get(key),
+            "started": ts[0].astimezone(tz).isoformat(),
+            "last_request": ts[-1].astimezone(tz).isoformat(),
+            "active_at": active_at.astimezone(tz).isoformat(),
+            "state": state,
+            "rounds": [{k: v for k, v in r.items() if k != "_at"} for r in rounds[key]],
+            "tokens": acc.total_tokens(),
+            "cost": acc.cost if acc.requests > acc.unpriced_requests else None,
+        })
+    return result
 
 
 def _session_answer(ctx, sid, sess, count, now, tz, prices, catalog):
@@ -291,6 +520,7 @@ def _session_answer(ctx, sid, sess, count, now, tz, prices, catalog):
         "axis": {"top": top, "ticks": ticks},
         "by_model": by_model,
         "agents": rows,
+        "runs": _runs(sess, reqs, now_utc, tz, names),
         "requests": latest,
     }
 
@@ -344,7 +574,7 @@ def live(ctx, query):
     if folder is not None and kept is not None and kept[0] == result.signature:
         index = kept[1]
     else:
-        index = _index(result.records)
+        index = _index(result.records, result.links)
         if folder is not None:
             with cache.live_lock:
                 cache.live[folder] = (result.signature, index)
