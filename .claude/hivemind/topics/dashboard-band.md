@@ -8,8 +8,8 @@ fp: 65d978477e91
 as_of: a452d5d 2026-11-03
 author: fast-worker
 created: 2026-11-03
-last_used: 2026-11-03
-uses: 0
+last_used: 2026-11-04
+uses: 1
 promote: approved
 
 ### A-cb5f band_reorder_checks.mjs runs from test_settings_js.py
@@ -31,8 +31,8 @@ fp: 5deb0676307f
 as_of: a452d5d 2026-11-03
 author: verifier
 created: 2026-11-03
-last_used: 2026-11-03
-uses: 0
+last_used: 2026-11-04
+uses: 2
 
 ### A-8f4c Band drag classes and where their styles apply
 fact: A drag adds .s6-ghost to the source cell, .is-dragging to the rows and a .s6-lift copy, and Esc is a capture-phase keydown on document. .s6-ghost and .s6-mdrop styles sit under .s6-a (the band nav) and again under .s7-trow for the tray row, so a cell anywhere else gets no ghost or drop styling. The lift and slot line stay in the nav.

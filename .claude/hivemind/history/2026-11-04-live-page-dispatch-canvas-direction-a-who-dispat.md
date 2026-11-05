@@ -1,9 +1,9 @@
 ### F-fd33 Live page dispatch canvas, direction A: who dispatched whom, rounds and states
-status: in-progress
+status: shipped
 kind: code
 dates: 2026-11-04 .. 2026-11-04
 refs:
-  commit: pending (branch feature/live-dispatch-canvas)
+  commit: abaaff31c06b96ad68193484d8790af9e800db3e (branch feature/live-dispatch-canvas, merged into development)
 summary: A "Dispatches in this session" canvas on the Live page, fed by session.runs[] from dispatch links and resume rows the transcript reader now keeps.
 decisions:
 - Parent link from the dispatcher's user row toolUseResult.agentId only; meta.json parentAgentId, spawnDepth and toolUseId are undocumented (only the demo builder writes them), so unused.

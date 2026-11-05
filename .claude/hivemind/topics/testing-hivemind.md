@@ -1,0 +1,34 @@
+# testing-hivemind
+
+### H-1324 History rollup leaves the current quarter alone
+fact: hivemind_lib.py history rollup rolls only quarters before the current one, so a quarter with more entries than history_index_max_lines keeps check failing until it ends. This store sets that cap to 60 in config.json.
+check: grep -n "if q >= current" hooks/hivemind_lib.py; grep -n "history_index_max_lines" .claude/hivemind/config.json
+evidence: hooks/hivemind_lib.py, .claude/hivemind/config.json
+fp: 79d5c01d166b
+as_of: abaaff3 2026-11-04
+author: deep-reasoner
+created: 2026-11-04
+last_used: 2026-11-04
+uses: 0
+
+### H-0fa6 summary's last line and prep's Snapshot line
+fact: hivemind_lib.py summary ends with exactly one of "consolidate: nothing to do", "consolidate: work waiting (...)" or "consolidate: in progress (prep snapshot from ...)". Work is inbox files, NEW records, expired items or topics over their limit, token-tallies.md excepted. A prep report written after prep opened a snapshot has a "Snapshot (...)" line that preview lacks, so compare the two without it.
+check: /usr/bin/python3 -m unittest discover -s tests -p test_hivemind.py -k SummaryPreview
+evidence: hooks/hivemind_lib.py, tests/test_hivemind.py
+fp: 583ee765cf12
+as_of: abaaff3 2026-11-04
+author: verifier
+created: 2026-11-04
+last_used: 2026-11-04
+uses: 0
+
+### H-65be hivemind wrapper: exit 0, explicit store, sealed tests
+fact: plugins/hivemind/bin/hivemind always exits 0, prints every message on stdout and calls lib.main in process with an explicit store, so it resolves root and store first. tests/test_plugin_hivemind.py sets GIT_CEILING_DIRECTORIES to its temp base so the no-project case finds no repo above it, and calls install_lib when the summary must be the first line, because the library-differs note prints first.
+check: /usr/bin/python3 -m unittest discover -s tests -p test_plugin_hivemind.py
+evidence: plugins/hivemind/bin/hivemind, tests/test_plugin_hivemind.py
+fp: ea5994c4d82d
+as_of: abaaff3 2026-11-04
+author: fast-worker
+created: 2026-11-04
+last_used: 2026-11-04
+uses: 0

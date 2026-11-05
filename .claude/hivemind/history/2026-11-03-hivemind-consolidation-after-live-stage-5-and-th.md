@@ -1,9 +1,9 @@
 ### F-919d HiveMind consolidation after Live, Stage 5 and the plugin
-status: in-progress
+status: shipped
 kind: mixed
 dates: 2026-11-03 .. 2026-11-03
 refs:
-  commit: pending (branch chore/hivemind-consolidation-nov3)
+  commit: 8d07d20054ae479036a57bc04c399fb753135a4d (branch chore/hivemind-consolidation-nov3, merged into development)
   file: .claude/hivemind/topics/dashboard-plugin.md
 summary: Folds the 107 inbox run files from #144 to #147, salvages the plugin and Live proposals the capture hook dropped, adds two topics, and applies the two owner-approved project-facts edits.
 decisions:

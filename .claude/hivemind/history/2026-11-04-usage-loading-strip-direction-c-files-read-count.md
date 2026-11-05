@@ -1,9 +1,9 @@
 ### F-1512 Usage loading strip, direction C: files-read count, placeholders, retry notice
-status: in-progress
+status: shipped
 kind: code
 dates: 2026-11-04 .. 2026-11-04
 refs:
-  commit: pending (branch feature/usage-loading-strip)
+  commit: 2e7e11b1d254777eea6abe39530b0b4e1ccd8d0c (branch feature/usage-loading-strip, merged into development)
 summary: While /api/usage is pending the usage pages show a strip with an honest files-read count over placeholder cards, and a failed answer shows a retry notice with the right cause.
 decisions:
 - Reader.files_read counts a file after it is parsed (old skipped files at once), reset before each scan, never touched by read_folder; /api/projects reader block carries it.

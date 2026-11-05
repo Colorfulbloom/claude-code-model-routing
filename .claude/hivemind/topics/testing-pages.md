@@ -1,15 +1,15 @@
 # testing-pages
 
 ### P-db96 Static and node check traps
-fact: A new app.css block headed ' * Title' fails test_one_section_per_page_with_shared_first, so Settings CSS uses one-line comments inside "Settings and trail", and test_settings_page_layout_stays_inside_its_scope needs each selector to start with .s4-, .s5-, .s6- or .s7-, so button.s4-x fails. setAttribute with a name worked out at run time fails outside h.js, so set data-* with literal names. Object.assign( on anything but an object literal in dashboard/static/js fails test_no_file_gets_around_the_link_helpers. fakedom createPage() swaps globalThis.document, so patch document after the page exists. edit_session_checks.mjs shows how to reach app.js's ctx from a copy. To prove a node check bites, mutate a scratch tar copy of the whole repo, not the tree.
+fact: A new app.css block headed ' * Title' fails test_one_section_per_page_with_shared_first, so Settings CSS uses one-line comments inside "Settings and trail"; test_settings_page_layout_stays_inside_its_scope needs each selector to start with .s4-, .s5-, .s6- or .s7-, so button.s4-x fails. setAttribute with a computed name fails outside h.js (a setAttr helper too), so use literal names. Object.assign( on anything but an object literal in dashboard/static/js fails test_no_file_gets_around_the_link_helpers. fakedom createPage() swaps globalThis.document, so patch document after the page exists. To prove a node check bites, mutate a scratch copy of the repo.
 check: grep -n "Object.s.*assign\|shared_first" tests/test_static_shell.py
 evidence: tests/test_static_shell.py, tests/js/fakedom.mjs, tests/js/edit_session_checks.mjs
 fp: 0965cbf4fa42
 as_of: a452d5d 2026-11-03
 author: fast-worker
 created: 2026-11-01
-last_used: 2026-11-02
-uses: 4
+last_used: 2026-11-04
+uses: 5
 
 ### P-153a Card source lists: nine in Python, seven in node
 fact: CARD_FILES in test_edit_card_js.py holds edit_card, edit_flow, edit_pick, edit_review, edit_foot, edit_backup, edit_ui, edit_setting and edit_words. The text-nodes source list in edit_card_checks.mjs still holds the first seven, so the node no-markup scan skips edit_setting and edit_words. A new card module joins both lists.
@@ -34,11 +34,11 @@ last_used: 2026-11-02
 uses: 4
 
 ### P-d516 fakedom: disabled focus, topbar outside the root
-fact: fakedom focus() ignores a disabled element. page.doc.documentElement is not the parent of the app tree, so find shell options with page.topbar.find.
+fact: fakedom focus() ignores a disabled element. page.doc.documentElement is not the parent of the app tree, so find shell options with page.topbar.find. querySelector takes only the checked-radio selector, so page code walks childNodes by tagName.
 check: grep -n "app.topbar.find" tests/js/edit_session_checks.mjs
 evidence: tests/js/fakedom.mjs, tests/js/edit_session_checks.mjs
-fp: 7f8f43adb0ec
-as_of: 6206393 2026-11-02
+fp: 9d9700b220cc
+as_of: abaaff3 2026-11-04
 author: fast-worker
 created: 2026-11-01
 last_used: 2026-11-02

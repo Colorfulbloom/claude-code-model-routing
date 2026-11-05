@@ -1,15 +1,15 @@
 # testing
 
-### T-7629 Full suite: 3319 tests, about 329 seconds
-fact: discover -s tests runs 3319 tests in about 329 s, 77 skipped: 75 need MR_E2E=1, owner only, 1 needs MR_DOCS_LIVE=1 and 1 needs MR_SUBAGENT_DOCS (a runtime skipTest). Run it alone. A broken pty test can leave a hung process. A branch that adds tests counts higher.
+### T-7629 Full suite: 3510 tests, about 366 seconds
+fact: discover -s tests runs 3510 tests in about 366 s, 88 skipped: MR_E2E=1 (owner only) gates all but the MR_DOCS_LIVE=1 and MR_SUBAGENT_DOCS (runtime skipTest) ones. Run it alone, and name its log per branch: background leads of one session share a scratchpad. A broken pty test can leave a hung process. A branch that adds tests counts higher.
 check: HOME=$(mktemp -d) /usr/bin/python3 -c "import unittest,sys; sys.path.insert(0,'tests'); print(unittest.TestLoader().discover('tests').countTestCases())"
 evidence: tests
-fp: 455cc128ed1a
-as_of: a452d5d 2026-11-03
+fp: 66d3cf174e24
+as_of: abaaff3 2026-11-04
 author: deep-reasoner
 created: 2026-10-20
-last_used: 2026-11-03
-uses: 37
+last_used: 2026-11-04
+uses: 39
 promote: approved
 
 ### T-5589 Subsets: discover -k; dotted names fail
@@ -17,11 +17,11 @@ fact: Dotted names (tests.test_x) fail with "No module named 'helpers'"; use dis
 check: /usr/bin/python3 -m unittest tests.test_parity 2>&1 | grep "No module named"
 evidence: tests/helpers.py
 fp: 1122432f340e
-as_of: a452d5d 2026-11-03
+as_of: abaaff3 2026-11-04
 author: deep-reasoner
 created: 2026-10-20
-last_used: 2026-11-03
-uses: 122
+last_used: 2026-11-04
+uses: 129
 promote: approved
 
 ### T-07ef Settings harness: no real API call
@@ -51,12 +51,12 @@ uses: 6
 fact: NoHomePathsInTestsTest bans home path prefixes in tests/*.py, so sample paths start at /work/. tests/fixtures/ is not scanned. Import a test module whole (import test_x as x): from test_x import TestClass makes discover run that class twice.
 check: grep -n "NoHomePathsInTestsTest" tests/test_hivemind.py
 evidence: tests/test_hivemind.py
-fp: c7d3788a2788
-as_of: a452d5d 2026-11-03
+fp: 2123e97a5b43
+as_of: abaaff3 2026-11-04
 author: deep-reasoner
 created: 2026-10-30
-last_used: 2026-11-03
-uses: 13
+last_used: 2026-11-04
+uses: 20
 promote: approved
 
 ### T-d32f Copied server tree needs install.py
@@ -68,7 +68,7 @@ as_of: a452d5d 2026-11-03
 author: fast-worker
 created: 2026-10-31
 last_used: 2026-11-03
-uses: 4
+uses: 5
 
 ### T-a651 test_server pins the server's options and constructor
 fact: tests/test_server.py pins build_parser's option dest set (options = {a.dest ...}) and Server.__init__'s parameters (self, ctx, port, write_routes), so a new server flag or parameter fails it until those asserts change.

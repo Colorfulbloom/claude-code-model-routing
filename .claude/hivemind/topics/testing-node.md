@@ -57,12 +57,12 @@ last_used: 2026-11-02
 uses: 0
 
 ### N-289e Live checks keep node refs and inject fake timers
-fact: createLive(env) in pages/live.js holds all its state, so live_checks.mjs injects fake timers through env, keeps node refs before an unchanged answer and asserts the same nodes after.
+fact: createLive(env) in pages/live.js holds all its state, so live_checks.mjs injects fake timers through env, keeps node refs before an unchanged answer and asserts the same nodes after. The 1 s ticker (startTick/stopTick) is separate: fire it with app.tick(). clock.advance(n) fires due poll timers and leaves their fetch pending; clock.now has no setter. fakedom createPage() defaults to narrow, so pass env.matchNarrow for a wide check.
 check: /usr/bin/python3 -m unittest discover -s tests -p test_live_js.py
-evidence: tests/js/live_checks.mjs, dashboard/static/js/pages/live.js
-fp: 2debbe485d14
-as_of: a452d5d 2026-11-03
+evidence: tests/js/live_checks.mjs, dashboard/static/js/pages/live.js, tests/js/fakedom.mjs
+fp: d986fe0fd22e
+as_of: abaaff3 2026-11-04
 author: fast-worker
 created: 2026-11-03
-last_used: 2026-11-03
-uses: 0
+last_used: 2026-11-04
+uses: 5
