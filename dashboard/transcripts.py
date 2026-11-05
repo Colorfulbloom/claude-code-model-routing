@@ -5,6 +5,14 @@ assistant row into a Record from a fixed list of fields, and drops the row.
 No message text, tool data or agent description is kept. A line is parsed in
 memory for a moment, because its fields cannot be picked out before that.
 
+Two things are also kept from the rows around the assistant rows, per file, as
+Links: the agent ids a file launched (from a user row's toolUseResult.agentId,
+with the row's time), the times the agent was resumed (the kind of a user row's
+origin, and for a peer the sender's agent id), and the times the agent stopped
+or woke. Ids and resume kinds from user rows are kept, never text, tool input
+or output, or the message body: origin.body is only tested for the hand-back
+prefix, and an id is kept only when it is letters, digits, dash and underscore.
+
 The module only reads. Files open with open(path, "rb") and nothing is written
 anywhere. The per-file cache lives on the Reader instance, in process memory.
 """
@@ -34,11 +42,25 @@ ReadResult = collections.namedtuple(
 
 # What Reader.read_folder returns: the records of one project folder, a hash over the
 # files it used (as ReadResult.signature) and whether the folder could not be used.
-FolderResult = collections.namedtuple("FolderResult", "records signature unreadable")
+# links is {(session_id, run_id or None): Links} for the files it read, or None when the read
+# did not look (a linked folder). Files skipped as old give no links, and an orphaned or
+# superseded main file merges into the (session_id, None) key, in file order.
+FolderResult = collections.namedtuple("FolderResult", "records signature unreadable links", defaults=(None,))
 
-# One entry per file. offset is the end of the last complete line that was parsed.
+# What one file says about who it launched and when it stopped or woke. All three are tuples.
+# launched: (child agent id, ts_utc), the first link row per child, in file order.
+# rounds: (ts_utc, by_kind, by_id) for each brief that came after the agent stopped, agent
+#   files only. by_kind is coordinator, human or peer; by_id is the peer's agent id, else None.
+# stops: (ts_utc, finished) each time finished changed. finished is True from an assistant row
+#   that called SubagentHandback, or ended its turn with no tool call, until the agent is
+#   woken: a later assistant row that does not finish, a brief, or the first user row after
+#   the stop that is not only tool results.
+Links = collections.namedtuple("Links", "launched rounds stops")
+
+# One entry per file. offset is the end of the last complete line that was parsed. links is the
+# file's Links and lstate the parse state behind it, so a file that grew goes on from the offset.
 _Entry = collections.namedtuple(
-    "_Entry", "dev ino size mtime_ns offset records stats meta_sig agent_type"
+    "_Entry", "dev ino size mtime_ns offset records stats meta_sig agent_type links lstate"
 )
 # One transcript file found by the scan. kind is main, agent, orphaned or superseded.
 _Found = collections.namedtuple("_Found", "path folder session_id run_id kind meta_path st")
@@ -60,6 +82,11 @@ _TS_RE = re.compile(
 
 _UTC = datetime.timezone.utc
 _PREFILTER = b'"assistant"'
+_ORIGIN = b'"origin"'
+_TOOL_RESULT_KEY = b'"toolUseResult":'  # the key with its colon, so a string value "toolUseResult" does not match
+_AGENT_ID_KEY = b'"agentId"'
+_ID_RE = re.compile(r"[A-Za-z0-9_-]{1,64}")
+_HANDBACK_PREFIX = "[Subagent hand-back]"
 _MAX_UNITS = 200
 
 
@@ -328,6 +355,91 @@ def _make_record(row, found, agent_type, stats):
     )
 
 
+class _LinkState(object):
+    """The parse state behind one file's Links. The idea is the hivemind round rule (hooks/
+    hivemind_lib.py brief_starts), copied, because the dashboard does not import hooks/.
+
+    stopped: the last assistant row made no tool call or called SubagentHandback. finished:
+    the stop was final (see Links). Only ids, kinds and times are kept.
+    """
+
+    __slots__ = ("launched", "seen", "rounds", "stops", "stopped", "finished")
+
+    def __init__(self):
+        self.launched = []
+        self.seen = set()
+        self.rounds = []
+        self.stops = []
+        self.stopped = False
+        self.finished = False
+
+    def copy(self):
+        out = _LinkState()
+        out.launched = list(self.launched)
+        out.seen = set(self.seen)
+        out.rounds = list(self.rounds)
+        out.stops = list(self.stops)
+        out.stopped = self.stopped
+        out.finished = self.finished
+        return out
+
+    def links(self):
+        return Links(tuple(self.launched), tuple(self.rounds), tuple(self.stops))
+
+    def _finish(self, ts, finished):
+        if finished != self.finished:
+            self.finished = finished
+            self.stops.append((ts, finished))
+
+    def assistant(self, row, ts):
+        message = row.get("message")
+        if not isinstance(message, dict):
+            return
+        content = message.get("content")
+        names = []
+        if isinstance(content, list):
+            names = [b.get("name") for b in content if isinstance(b, dict) and b.get("type") == "tool_use"]
+        handback = "SubagentHandback" in names
+        self.stopped = handback or not names
+        self._finish(ts, handback or (not names and message.get("stop_reason") == "end_turn"))
+
+    def user(self, row, ts, is_agent):
+        message = row.get("message")
+        content = message.get("content") if isinstance(message, dict) else None
+        if isinstance(content, str):
+            real = True
+        elif isinstance(content, list):
+            real = any(isinstance(b, dict) and b.get("type") != "tool_result" for b in content)
+        else:
+            real = False
+        result = row.get("toolUseResult")
+        if isinstance(result, dict):
+            child = result.get("agentId")
+            if isinstance(child, str) and _ID_RE.fullmatch(child) and child not in self.seen:
+                self.seen.add(child)
+                self.launched.append((child, ts))
+        if not real:
+            return
+        origin = row.get("origin")
+        if is_agent and isinstance(origin, dict):
+            kind = origin.get("kind")
+            by = None
+            brief = kind in ("coordinator", "human")
+            if kind == "peer":
+                sender = origin.get("from")
+                if isinstance(sender, str) and _ID_RE.fullmatch(sender):
+                    by = sender
+                body = origin.get("body")
+                brief = by not in self.seen and not (isinstance(body, str) and body.startswith(_HANDBACK_PREFIX))
+                if not brief:
+                    by = None
+            if brief and self.stopped:
+                self.rounds.append((ts, kind, by))
+                self.stopped = False
+        if self.finished:
+            self._finish(ts, False)
+
+
 class Reader:
     def __init__(self, config_dir, horizon_days=61):
         self.config_dir = config_dir
@@ -373,6 +485,7 @@ class Reader:
         if listed:
             self._scan_folder(found, inside, folder)
         records = []
+        links = {}
         seen = set()
         signature = []
         opened = failed = 0
@@ -389,6 +502,13 @@ class Reader:
             seen.add(item.path)
             signature.append((item.path, entry.size, entry.mtime_ns, entry.meta_sig))
             records.extend(entry.records)
+            key = (item.session_id, item.run_id)
+            kept = links.get(key)
+            if kept is None:
+                links[key] = entry.links
+            else:  # an orphaned or superseded file of the same session: file order
+                links[key] = Links(kept.launched + entry.links.launched, kept.rounds + entry.links.rounds,
+                                   kept.stops + entry.links.stops)
         prefix = path + os.sep
         for cached in [p for p in self._cache if p.startswith(prefix) and p not in seen]:
             del self._cache[cached]
@@ -396,7 +516,7 @@ class Reader:
             unreadable = failed > 0 and opened == 0
         else:
             unreadable = os.path.isdir(path)
-        return FolderResult(records, hash(tuple(signature)), unreadable)
+        return FolderResult(records, hash(tuple(signature)), unreadable, links)
 
     def _read(self, now):
         if now.tzinfo is None:
@@ -558,48 +678,83 @@ class Reader:
 
         same_file = old is not None and old.dev == st.st_dev and old.ino == st.st_ino
         if same_file and old.size == st.st_size and old.mtime_ns == st.st_mtime_ns:
-            records, stats, offset = old.records, old.stats, old.offset
+            records, stats, offset, links, lstate = old.records, old.stats, old.offset, old.links, old.lstate
         else:
             if same_file and st.st_size > old.size:
                 # The file grew: keep what was parsed and read on from the stored offset.
                 records, stats, offset = list(old.records), dict(old.stats), old.offset
+                lstate = old.lstate.copy()
             else:
                 records, stats, offset = [], _empty_stats(), 0
-            offset = self._parse(item, offset, records, stats, agent_type)
+                lstate = _LinkState()
+            offset = self._parse(item, offset, records, stats, agent_type, lstate)
             if offset is None:
                 self._cache.pop(item.path, None)
                 return None
+            links = lstate.links()
         if old is not None and records and old.agent_type != agent_type:
             records = [r._replace(agent_type=agent_type) for r in records]
-        entry = _Entry(st.st_dev, st.st_ino, st.st_size, st.st_mtime_ns, offset, records, stats, meta_sig, agent_type)
+        entry = _Entry(st.st_dev, st.st_ino, st.st_size, st.st_mtime_ns, offset, records, stats, meta_sig,
+                       agent_type, links, lstate)
         self._cache[item.path] = entry
         return entry
 
     @staticmethod
-    def _parse(item, offset, records, stats, agent_type):
-        """Append the records found from offset on. Returns the new offset, or None."""
+    def _parse(item, offset, records, stats, agent_type, lstate):
+        """Append the records found from offset on and update lstate. Returns the new offset, or None.
+
+        Each line is parsed at most once, and only when it can matter: an assistant row (records and
+        stop tracking), a user row whose toolUseResult holds an agentId (a launch), a user row in an
+        agent file with an origin (a brief), or the user rows after a finishing stop until one that is
+        not only tool results wakes the agent. A line with a toolUseResult key counts as a user row.
+        """
         try:
             with open(item.path, "rb") as fh:
                 fh.seek(offset)
                 data = fh.read()
         except OSError:
             return None
+        is_agent = item.kind == AGENT
+        find = data.find  # searches the buffer in place, so a line is copied only when it is parsed
         pos = 0
         while True:
-            end = data.find(b"\n", pos)
+            end = find(b"\n", pos)
             if end == -1:
                 break  # no newline yet: the line is still being written
-            line = data[pos:end]
+            start = pos
             pos = end + 1
-            if _PREFILTER not in line:
-                continue
+            at = find(_TOOL_RESULT_KEY, start, end)
+            if at >= 0:
+                # A row with a toolUseResult is a user row, so it needs no assistant or origin check, and
+                # only a launch (an agentId after the key) matters. Scanning a big tool result row once
+                # instead of three times keeps a cold read within a few percent of what it was. The needle
+                # carries the colon, so a string value such as a Grep pattern does not count. One case is
+                # left: an object key "toolUseResult" inside a tool input with no "agentId" after it.
+                assistant = False
+                if find(_AGENT_ID_KEY, at, end) < 0:
+                    continue
+            else:
+                assistant = find(_PREFILTER, start, end) >= 0
+                if not assistant and not (lstate.finished or (is_agent and find(_ORIGIN, start, end) >= 0)):
+                    continue
+            line = data[start:end]
             try:
                 row = json.loads(line)
             except (ValueError, RecursionError):
-                stats["malformed"] += 1
+                if assistant:
+                    stats["malformed"] += 1
                 continue
-            record = _make_record(row, item, agent_type, stats)
+            kind = row.get("type") if isinstance(row, dict) else None
+            if kind == "assistant":
+                record = _make_record(row, item, agent_type, stats)
+                ts = record.ts_utc if record is not None else _parse_ts(row.get("timestamp"))
+                if ts is not None:
+                    lstate.assistant(row, ts)
+                if record is not None:
+                    records.append(record)
+            elif kind == "user":
+                ts = _parse_ts(row.get("timestamp"))
+                if ts is not None:
+                    lstate.user(row, ts, is_agent)
             del row
-            if record is not None:
-                records.append(record)
         return offset + pos

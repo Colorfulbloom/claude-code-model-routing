@@ -655,6 +655,40 @@ class LiveCss(unittest.TestCase):
             self.assertIsNotNone(final_value(self.rules, ".lv-act[data-a=\"%s\"]::before" % state, "content"), state)
         self.assertIsNotNone(final_value(self.rules, ".lv-pill[data-s=\"paused\"] .lv-mk::before", "content"))
 
+    def test_the_dispatch_card_moves_only_on_its_three_motion_classes_and_never_loops(self):
+        # Ticket: Live dispatch canvas. A card enters, a connector draws and a new round flashes once, on a changed answer
+        # only. The page adds the classes, and nothing here loops, pulses or plays on its own.
+        self.assertNotRegex(self.clean, r"\binfinite\b")
+        flow = [(m, sel, d) for m, sel, d in self.rules if "lv-fl-" in sel and ({"animation", "transition"} & set(d))]
+        self.assertTrue(flow)
+        for media, selector, decls in flow:
+            self.assertEqual(media, "(prefers-reduced-motion: no-preference)", selector)
+            self.assertRegex(selector, r"lv-fl-(?:enter|draw|renew)", selector)
+            self.assertRegex(decls.get("animation", ""), r" 1$", selector + " plays once")
+
+    def test_the_dispatch_card_states_are_a_shape_plus_a_word_on_the_page_colors(self):
+        r = self.rules
+        self.assertEqual(final_value(r, '.lv-fl-st[data-s="working"]::before', "content"), '"\\25CF"')
+        self.assertEqual(final_value(r, '.lv-fl-st[data-s="idle"]::before', "content"), '"\\25CB"')
+        self.assertEqual(final_value(r, '.lv-fl-st[data-s="done"]::before', "content"), '"\\2713"')
+        self.assertEqual(final_value(r, '.lv-fl-st[data-s="done"]', "background"), "var(--status-in-effect-bg)")
+        self.assertEqual(final_value(r, '.lv-fl-st[data-s="done"]', "color"), "var(--status-in-effect-fg)")
+        for prop in ("background", "color"):
+            self.assertEqual(final_value(r, ".lv-fl-st", prop), final_value(r, ".lv-act", prop), prop)
+        self.assertEqual(final_value(r, '.lv-fl-st[data-s="working"]::before', "color"), final_value(r, '.lv-act[data-a="working"]::before', "color"))
+        self.assertEqual(final_value(r, '.lv-fl-st[data-s="idle"]', "color"), final_value(r, '.lv-act[data-a="idle"]', "color"))
+
+    def test_the_dispatch_card_goes_to_a_list_at_the_projects_phone_width(self):
+        # live.js asks the browser with the same query that the CSS uses, and the CSS has no other width for the card.
+        script = (JS_DIR / "pages" / "live.js").read_text(encoding="utf-8")
+        self.assertIn('const NARROW_QUERY = "(max-width: 720px)"', script)
+        self.assertEqual(final_value(self.rules, ".lv-fl-narrow .lv-fl-node", "position"), "relative")
+        self.assertEqual(final_value(self.rules, ".lv-fl-narrow .lv-fl-cards", "display"), "contents")
+        self.assertEqual(final_value(self.rules, ".lv-fl-narrow .lv-fl-edges", "display"), "none")
+        self.assertEqual(final_value(self.rules, ".lv-fl-canvas", "max-height"), "660px")
+        medias = {m for m, sel, d in self.rules if "lv-fl-" in sel and m}
+        self.assertEqual(medias, {"(max-width: 720px)", "(prefers-reduced-motion: no-preference)"})
+
 
 # ---------------------------------------------------------------- served by the server
 

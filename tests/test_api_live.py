@@ -43,7 +43,7 @@ OPUS, SONNET, MYSTERY = "claude-opus-5-5", "claude-sonnet-5-5", "mystery-model"
 TOP_KEYS = {"project", "server_time", "etag", "unchanged", "unreadable", "running",
             "session_gone", "session"}
 SESSION_KEYS = {"session_id", "started", "branch", "last_request", "active", "totals",
-                "last_minute", "minutes", "axis", "by_model", "agents", "requests"}
+                "last_minute", "minutes", "axis", "by_model", "agents", "runs", "requests"}
 
 
 def iso(moment):
@@ -105,8 +105,12 @@ class World(object):
 
     def add(self, session, ago, mid, input_tokens=0, output=0, cache_read=0, cache_write=0,
             model=OPUS, effort="high", run=None, agent_type=None, branch="main", name="app",
-            cwd=SECRET_CWD, request_id=True):
-        """Append one assistant row, `ago` seconds before the fixed now (negative: after it)."""
+            cwd=SECRET_CWD, request_id=True, stop=None):
+        """Append one assistant row, `ago` seconds before the fixed now (negative: after it).
+
+        stop is None for a row that calls Bash (the agent works on), "end_turn" for a row that ends
+        its turn with no tool call, and "handback" for a row that calls SubagentHandback.
+        """
         path = self.file(session, run, agent_type, name)
         os.makedirs(os.path.dirname(path), exist_ok=True)
         row = {
@@ -124,11 +128,41 @@ class World(object):
                         "content": [{"type": "text", "text": SECRET_TEXT},
                                     {"type": "tool_use", "name": "Bash", "input": {"command": SECRET_TOOL}}]},
         }
+        if stop == "end_turn":
+            row["message"]["content"] = [{"type": "text", "text": SECRET_TEXT}]
+            row["message"]["stop_reason"] = "end_turn"
+        elif stop == "handback":
+            row["message"]["content"][1]["name"] = "SubagentHandback"
         if request_id:
             row["requestId"] = "req_" + mid
         with open(path, "ab") as fh:
             fh.write((json.dumps(row) + "\n").encode("utf-8"))
         return path
+
+    def user_row(self, session, ago, run, row, agent_type=None, name="app"):
+        """Append one user row (a link or a brief) to the main transcript, or to an agent's when run is set."""
+        path = self.file(session, run, agent_type, name)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        row = dict(row, type="user", timestamp=iso(self.now - datetime.timedelta(seconds=ago)),
+                   sessionId=session, isSidechain=run is not None)
+        with open(path, "ab") as fh:
+            fh.write((json.dumps(row) + "\n").encode("utf-8"))
+        return path
+
+    def link(self, session, ago, child, run=None, name="app"):
+        """The row of a transcript that names the agent it launched (toolUseResult.agentId)."""
+        return self.user_row(session, ago, run, {
+            "message": {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "t1",
+                                                      "content": SECRET_TEXT}]},
+            "toolUseResult": {"status": "async_launched", "agentId": child, "prompt": SECRET_TEXT}}, name=name)
+
+    def brief(self, session, ago, run, kind, sender=None, name="app"):
+        """A user row that briefs (resumes) an agent: kind is coordinator, human or peer."""
+        origin = {"kind": kind}
+        if sender is not None:
+            origin.update({"from": sender, "body": SECRET_TEXT})
+        return self.user_row(session, ago, run, {
+            "message": {"role": "user", "content": SECRET_TEXT}, "origin": origin}, name=name)
 
     def ask(self, ctx=None, **query):
         return api_live.live(ctx or self.ctx, {k: [v] if isinstance(v, str) else v for k, v in query.items()})
@@ -662,9 +696,9 @@ class ReadFolder(unittest.TestCase):
         original = transcripts.Reader._parse
         calls = []
 
-        def spy(item, offset, records, stats, agent_type):
+        def spy(item, offset, records, stats, agent_type, *rest):
             calls.append((item.path, offset))
-            return original(item, offset, records, stats, agent_type)
+            return original(item, offset, records, stats, agent_type, *rest)
 
         return mock.patch.object(transcripts.Reader, "_parse", staticmethod(spy)), calls
 
@@ -910,6 +944,343 @@ class Locks(unittest.TestCase):
         w.live()
         self.assertIsNot(w.ctx.usage_cache.live[os.path.basename(w.folder())][1],
                          kept[os.path.basename(w.folder())][1])
+
+
+def rid(agent_id):
+    return hashlib.sha256(agent_id.encode("utf-8")).hexdigest()[:12]
+
+
+RAW_IDS = ("lead1", "wkr_a", "wkr_b", "res1", "unn1", "mys1", "fg1", "fut1", "cyc_a", "cyc_b")
+AGENT_RUNS = ("lead1", "wkr_a", "wkr_b", "res1", "unn1", "mys1", "fg1", "cyc_a", "cyc_b")
+RUN_KEYS = {"run_id", "route_key", "agent", "label_n", "model", "model_display", "effort", "parent",
+            "parent_known", "dispatch_order", "together", "started", "last_request", "active_at", "state",
+            "rounds", "tokens", "cost"}
+
+
+def build_dispatch(w):
+    """A session with a lead, two parallel workers, resumes, an unlinked run and a cycle.
+
+    The comments give seconds before the fixed now (22:00:30 UTC, 18:00:30 in New York).
+    """
+    for ago, mid in ((900, "m1"), (600, "m2"), (5, "m3")):
+        w.add(S1, ago, mid, 100, 10)
+    w.link(S1, 880, "lead1")
+    w.link(S1, 700, "res1")
+    w.link(S1, 300, "unn1")
+    w.link(S1, 296, "mys1")
+    w.link(S1, -20, "fut1")  # after now: ignored, and fut1 has no request up to now either
+    w.add(S1, -30, "f0", 1, 1, run="fut1", agent_type="future")
+    # lead1 launches two workers one second apart, and ends its turn at 100
+    w.add(S1, 870, "l1", 50, 5, run="lead1", agent_type="lead")
+    w.link(S1, 860, "wkr_a", run="lead1")
+    w.link(S1, 859, "wkr_b", run="lead1")
+    w.add(S1, 400, "l2", 50, 5, run="lead1", agent_type="lead")
+    w.add(S1, 100, "l3", 50, 5, run="lead1", agent_type="lead", stop="end_turn")
+    # wkr_a hands back at 650
+    worker = dict(run=None, agent_type="worker", model=SONNET, effort="medium")
+    for ago, mid, stop in ((858, "a1", None), (700, "a2", None), (650, "a3", "handback")):
+        w.add(S1, ago, mid, 20, 2, stop=stop, **dict(worker, run="wkr_a"))
+    # wkr_b hands back at 600, the lead briefs it again at 500 (a peer), and it hands back at 300
+    for ago, mid, stop in ((857, "b1", None), (690, "b2", None), (600, "b3", "handback")):
+        w.add(S1, ago, mid, 20, 2, stop=stop, **dict(worker, run="wkr_b"))
+    w.brief(S1, 500, "wkr_b", "peer", sender="lead1")
+    for ago, mid, stop in ((490, "b4", None), (300, "b5", "handback")):
+        w.add(S1, ago, mid, 20, 2, stop=stop, **dict(worker, run="wkr_b"))
+    # res1 ends its turn at 680, the coordinator resumes it at 120, and it is still at work
+    for ago, mid, stop in ((695, "r1", None), (690, "r2", None), (680, "r3", "end_turn")):
+        w.add(S1, ago, mid, 30, 3, run="res1", agent_type="reviewer", stop=stop)
+    w.brief(S1, 120, "res1", "coordinator")
+    w.add(S1, 110, "r4", 30, 3, run="res1", agent_type="reviewer")
+    w.add(S1, 30, "r5", 30, 3, run="res1", agent_type="reviewer")
+    # an unnamed run and an unpriced model, launched four seconds apart
+    w.add(S1, 298, "u1", 10, 1, run="unn1")
+    w.add(S1, 297, "u2", 10, 1, run="unn1")
+    w.add(S1, 295, "y1", 10, 1, run="mys1", agent_type="scout", model=MYSTERY)
+    w.add(S1, 294, "y2", 10, 1, run="mys1", agent_type="scout", model=MYSTERY)
+    # a foreground run that nothing links yet
+    w.add(S1, 250, "g1", 10, 1, run="fg1", agent_type="scout")
+    w.add(S1, 240, "g2", 10, 1, run="fg1", agent_type="scout")
+    # a cycle (cyc_a names cyc_b at 195, cyc_b names cyc_a at 185) and a run that names itself at 196
+    w.add(S1, 200, "c1", 10, 1, run="cyc_a", agent_type="loop")
+    w.add(S1, 190, "c2", 10, 1, run="cyc_a", agent_type="loop")
+    w.add(S1, 199, "c3", 10, 1, run="cyc_b", agent_type="loop")
+    w.add(S1, 189, "c4", 10, 1, run="cyc_b", agent_type="loop")
+    w.link(S1, 196, "cyc_a", run="cyc_a")
+    w.link(S1, 195, "cyc_b", run="cyc_a")
+    w.link(S1, 185, "cyc_a", run="cyc_b")
+
+
+def one_kid(case, stop=None):
+    """A main session that launched one scout at 90, with the scout's first request at 80."""
+    w = World(case)
+    w.add(S1, 100, "m", 1, 1)
+    w.link(S1, 90, "kid")
+    w.add(S1, 80, "k1", 1, 1, run="kid", agent_type="scout", stop=stop)
+    return w
+
+
+class Dispatch(unittest.TestCase):
+    def setUp(self):
+        self.w = World(self)
+        build_dispatch(self.w)
+        self.payload = self.w.live()
+        self.runs = self.payload["session"]["runs"]
+        self.by = {r["run_id"]: r for r in self.runs}
+
+    def run_of(self, raw):
+        return self.by[rid(raw)]
+
+    def test_runs_come_in_dispatch_order_main_first(self):
+        self.assertEqual(["@main"] + [rid(x) for x in AGENT_RUNS], [r["run_id"] for r in self.runs])
+        self.assertEqual(list(range(10)), [r["dispatch_order"] for r in self.runs])
+
+    def test_every_run_has_the_contract_fields(self):
+        for run in self.runs:
+            with self.subTest(run=run["run_id"]):
+                self.assertEqual(RUN_KEYS, set(run))
+                self.assertEqual({"n", "started", "last_request", "by"}, set(run["rounds"][0]))
+
+    def test_run_ids_are_the_first_twelve_hex_of_a_sha256(self):
+        for run in self.runs[1:]:
+            self.assertRegex(run["run_id"], r"^[0-9a-f]{12}$")
+        self.assertEqual(rid("lead1"), self.runs[1]["run_id"])
+
+    def test_no_raw_agent_id_or_text_is_in_the_answer(self):
+        body = json.dumps(self.payload)
+        for raw in RAW_IDS:
+            self.assertNotIn(raw, body)
+        for planted in (SECRET_TEXT, SECRET_TOOL, SECRET_CWD, "cwd", "origin", "toolUseResult", "agentId"):
+            self.assertNotIn(planted, body)
+        self.assertNotIn(self.w.root, body)
+
+    def test_main_is_the_root(self):
+        main = self.by["@main"]
+        self.assertEqual((main["route_key"], main["agent"], main["label_n"]), ("@main", None, None))
+        self.assertEqual((main["parent"], main["parent_known"], main["together"]), (None, True, None))
+        self.assertEqual(main["state"], "working")
+        self.assertEqual([r["n"] for r in main["rounds"]], [1])
+        self.assertIsNone(main["rounds"][0]["by"])
+        self.assertEqual(main["started"], "2026-10-30T17:45:30-04:00")
+        self.assertEqual(main["last_request"], "2026-10-30T18:00:25-04:00")
+
+    def test_a_linked_run_hangs_under_the_run_that_launched_it(self):
+        lead = self.run_of("lead1")
+        self.assertEqual((lead["parent"], lead["parent_known"]), ("@main", True))
+        for raw in ("wkr_a", "wkr_b"):
+            run = self.run_of(raw)
+            self.assertEqual((run["parent"], run["parent_known"]), (lead["run_id"], True), raw)
+        res = self.run_of("res1")
+        self.assertEqual((res["parent"], res["parent_known"]), ("@main", True))
+
+    def test_a_run_nothing_links_is_listed_under_main_with_parent_known_false(self):
+        fg = self.run_of("fg1")
+        self.assertEqual((fg["parent"], fg["parent_known"]), ("@main", False))
+        self.assertEqual(fg["rounds"][0]["by"], "@main")
+
+    def test_parallel_launches_within_five_seconds_run_together(self):
+        a, b = self.run_of("wkr_a"), self.run_of("wkr_b")
+        self.assertEqual(a["together"], {"key": a["run_id"], "n": 2})
+        self.assertEqual(b["together"], {"key": a["run_id"], "n": 2})
+        unnamed, mystery = self.run_of("unn1"), self.run_of("mys1")
+        self.assertEqual(unnamed["together"], {"key": unnamed["run_id"], "n": 2})
+        self.assertEqual(mystery["together"], {"key": unnamed["run_id"], "n": 2})
+
+    def test_a_single_launch_is_not_together(self):
+        # fg1 starts 46 s after the pair under main, and cyc_a 50 s after fg1
+        for raw in ("lead1", "res1", "fg1", "cyc_a", "cyc_b"):
+            self.assertIsNone(self.run_of(raw)["together"], raw)
+
+    def test_the_label_number_ranks_runs_of_one_agent_in_dispatch_order(self):
+        labels = {raw: self.run_of(raw)["label_n"] for raw in AGENT_RUNS}
+        self.assertEqual(labels, {"lead1": None, "wkr_a": 1, "wkr_b": 2, "res1": None, "unn1": None,
+                                  "mys1": 1, "fg1": 2, "cyc_a": 1, "cyc_b": 2})
+
+    def test_an_unnamed_run_has_no_agent_and_the_unnamed_route_key(self):
+        run = self.run_of("unn1")
+        self.assertEqual((run["agent"], run["route_key"]), (None, "@unnamed"))
+        self.assertEqual(self.run_of("lead1")["agent"], "lead")
+
+    def test_an_unpriced_model_has_cost_none_and_still_counts_tokens(self):
+        run = self.run_of("mys1")
+        self.assertIsNone(run["cost"])
+        self.assertEqual(run["tokens"], 22)
+        self.assertEqual(run["model"], MYSTERY)
+        self.assertIsNotNone(self.run_of("lead1")["cost"])
+
+    def test_model_and_effort_are_the_most_used_pair(self):
+        run = self.run_of("wkr_a")
+        self.assertEqual((run["model"], run["model_display"], run["effort"]), (SONNET, "Sonnet 5.5", "medium"))
+
+    def test_tokens_and_cost_are_the_run_totals(self):
+        lead = self.run_of("lead1")
+        self.assertEqual(lead["tokens"], 3 * 55)
+        self.assertAlmostEqual(lead["cost"], 3 * cost_of(OPUS, 50, 5, 0, 0), places=9)
+
+    def test_a_future_request_and_link_make_no_run(self):
+        self.assertEqual(len(self.runs), 10)
+        self.assertNotIn(rid("fut1"), self.by)
+
+    def test_a_cycle_link_and_a_link_to_itself_are_dropped(self):
+        a, b = self.run_of("cyc_a"), self.run_of("cyc_b")
+        self.assertEqual((a["parent"], a["parent_known"]), ("@main", False))
+        self.assertEqual((b["parent"], b["parent_known"]), (a["run_id"], True))
+
+    def test_rounds_of_a_run_resumed_by_a_peer(self):
+        lead = self.run_of("lead1")
+        self.assertEqual(self.run_of("wkr_b")["rounds"], [
+            {"n": 1, "started": "2026-10-30T17:46:13-04:00", "last_request": "2026-10-30T17:50:30-04:00",
+             "by": lead["run_id"]},
+            {"n": 2, "started": "2026-10-30T17:52:10-04:00", "last_request": "2026-10-30T17:55:30-04:00",
+             "by": lead["run_id"]}])
+
+    def test_rounds_of_a_run_resumed_by_the_coordinator_mid_round_two(self):
+        run = self.run_of("res1")
+        self.assertEqual(run["rounds"], [
+            {"n": 1, "started": "2026-10-30T17:48:55-04:00", "last_request": "2026-10-30T17:49:10-04:00",
+             "by": "@main"},
+            {"n": 2, "started": "2026-10-30T17:58:30-04:00", "last_request": "2026-10-30T18:00:00-04:00",
+             "by": "@main"}])
+        self.assertEqual(run["last_request"], "2026-10-30T18:00:00-04:00")
+
+    def test_a_run_with_one_round_has_one(self):
+        self.assertEqual([r["n"] for r in self.run_of("wkr_a")["rounds"]], [1])
+
+    def test_active_at_is_the_later_of_the_last_request_and_the_round_start(self):
+        for raw in ("res1", "fg1"):
+            run = self.run_of(raw)
+            self.assertEqual(run["active_at"], run["last_request"], raw)
+
+    def test_a_round_that_started_after_the_last_request_sets_active_at(self):
+        w = one_kid(self, stop="end_turn")
+        w.brief(S1, 20, "kid", "coordinator")  # the resumed agent has not made a request yet
+        run = w.live()["session"]["runs"][1]
+        self.assertEqual(run["rounds"][1], {"n": 2, "started": "2026-10-30T18:00:10-04:00",
+                                            "last_request": "2026-10-30T18:00:10-04:00", "by": "@main"})
+        self.assertEqual(run["last_request"], "2026-10-30T17:59:10-04:00")
+        self.assertEqual((run["active_at"], run["state"]), ("2026-10-30T18:00:10-04:00", "working"))
+
+    def test_states(self):
+        states = {raw: self.run_of(raw)["state"] for raw in AGENT_RUNS}
+        self.assertEqual(states, {"lead1": "done", "wkr_a": "done", "wkr_b": "done", "res1": "working",
+                                  "unn1": "idle", "mys1": "idle", "fg1": "idle", "cyc_a": "idle",
+                                  "cyc_b": "idle"})
+
+    def test_a_lead_is_not_done_while_a_child_is_not(self):
+        w = World(self)
+        build_dispatch(w)
+        w.brief(S1, 50, "wkr_a", "coordinator")  # wkr_a wakes, so lead1 is no longer done
+        w.add(S1, 40, "a4", 20, 2, run="wkr_a", agent_type="worker", model=SONNET, effort="medium")
+        by = {r["run_id"]: r for r in w.live()["session"]["runs"]}
+        self.assertEqual(by[rid("wkr_a")]["state"], "working")
+        self.assertEqual(by[rid("lead1")]["state"], "idle")
+        self.assertEqual(by[rid("wkr_b")]["state"], "done")
+
+    def test_a_nudge_after_a_hand_back_reads_working_then_done(self):
+        w = one_kid(self, stop="handback")
+        w.user_row(S1, 70, "kid", {"message": {"role": "user", "content": SECRET_TEXT}})
+        w.add(S1, 55, "k2", 1, 1, run="kid", agent_type="scout")
+        kid = w.live()["session"]["runs"][1]
+        self.assertEqual(kid["state"], "working")
+        w.add(S1, 50, "k3", 1, 1, run="kid", agent_type="scout", stop="handback")
+        kid = w.live()["session"]["runs"][1]
+        self.assertEqual(kid["state"], "done")
+        self.assertEqual([r["n"] for r in kid["rounds"]], [1])
+
+    def test_a_stop_after_now_does_not_count(self):
+        w = one_kid(self)
+        w.add(S1, -10, "k2", 1, 1, run="kid", agent_type="scout", stop="handback")
+        self.assertEqual(w.live()["session"]["runs"][1]["state"], "idle")
+
+    def test_a_brief_after_now_is_not_a_round(self):
+        w = one_kid(self, stop="end_turn")
+        w.brief(S1, -10, "kid", "coordinator")
+        run = w.live()["session"]["runs"][1]
+        self.assertEqual(len(run["rounds"]), 1)
+        self.assertEqual(run["state"], "done")
+
+    def test_a_peer_that_is_not_a_run_of_the_session_has_by_none(self):
+        w = one_kid(self, stop="end_turn")
+        w.brief(S1, 70, "kid", "peer", sender="stranger")
+        w.add(S1, 60, "k2", 1, 1, run="kid", agent_type="scout")
+        payload = w.live()
+        self.assertIsNone(payload["session"]["runs"][1]["rounds"][1]["by"])
+        self.assertNotIn("stranger", json.dumps(payload))
+
+    def test_a_human_brief_has_by_none(self):
+        w = one_kid(self, stop="end_turn")
+        w.brief(S1, 70, "kid", "human")
+        w.add(S1, 60, "k2", 1, 1, run="kid", agent_type="scout")
+        self.assertIsNone(w.live()["session"]["runs"][1]["rounds"][1]["by"])
+
+    def test_the_earliest_link_names_the_parent(self):
+        w = World(self)
+        w.add(S1, 100, "m", 1, 1)
+        w.add(S1, 90, "l", 1, 1, run="lead1", agent_type="lead")
+        w.add(S1, 70, "k1", 1, 1, run="kid", agent_type="scout")
+        w.link(S1, 75, "kid", run="lead1")
+        w.link(S1, 80, "kid")  # the main session names it first
+        kid = [r for r in w.live()["session"]["runs"] if r["route_key"] == "scout"][0]
+        self.assertEqual((kid["parent"], kid["parent_known"]), ("@main", True))
+
+    def test_a_link_from_a_run_with_no_request_leaves_the_run_unknown(self):
+        w = World(self)
+        w.add(S1, 100, "m", 1, 1)
+        w.add(S1, 70, "k1", 1, 1, run="kid", agent_type="scout")
+        w.link(S1, 80, "kid", run="ghost")
+        kid = w.live()["session"]["runs"][1]
+        self.assertEqual((kid["parent"], kid["parent_known"]), ("@main", False))
+
+    def test_a_session_with_only_agent_requests_has_no_main_run(self):
+        w = World(self)
+        w.add(S1, 70, "k1", 1, 1, run="kid", agent_type="scout")
+        runs = w.live()["session"]["runs"]
+        self.assertEqual([r["dispatch_order"] for r in runs], [1])
+        self.assertEqual((runs[0]["parent"], runs[0]["parent_known"]), ("@main", False))
+
+    def test_a_new_link_row_updates_the_parent(self):
+        w = World(self)
+        w.add(S1, 100, "m", 1, 1)
+        w.add(S1, 70, "k1", 1, 1, run="kid", agent_type="scout")
+        self.assertFalse(w.live()["session"]["runs"][1]["parent_known"])
+        w.link(S1, 60, "kid")
+        self.assertTrue(w.live()["session"]["runs"][1]["parent_known"])
+
+    def test_the_etag_is_stable_across_two_calls(self):
+        again = self.w.live()
+        self.assertEqual(self.payload["etag"], again["etag"])
+        self.assertEqual(self.payload["session"]["runs"], again["session"]["runs"])
+        self.assertIs(self.w.live(etag=again["etag"])["unchanged"], True)
+
+    def test_the_etag_changes_when_a_run_changes_state_with_the_clock(self):
+        first = World(self)
+        later = World(self, now=NOW + datetime.timedelta(seconds=2))
+        for w, ago in ((first, 59), (later, 61)):
+            w.add(S1, ago, "a", 1, 1)
+            w.add(S1, ago, "k", 1, 1, run="kid", agent_type="scout")
+            w.link(S1, ago, "kid")
+        a, b = first.live(), later.live()
+        self.assertEqual(a["session"]["runs"][1]["state"], "working")
+        self.assertEqual(b["session"]["runs"][1]["state"], "idle")
+        self.assertNotEqual(a["etag"], b["etag"])
+
+    def test_the_session_index_keeps_the_links_until_a_file_changes(self):
+        folder = os.path.basename(self.w.folder())
+        kept = self.w.ctx.usage_cache.live[folder][1]
+        self.w.live()
+        self.assertIs(kept, self.w.ctx.usage_cache.live[folder][1])
+        self.assertTrue(kept[S1].links)
+
+    def test_times_are_in_the_page_zone(self):
+        for run in self.runs:
+            for field in ("started", "last_request", "active_at"):
+                self.assertTrue(run[field].endswith("-04:00"), (run["run_id"], field))
+            for rnd in run["rounds"]:
+                self.assertTrue(rnd["started"].endswith("-04:00") and rnd["last_request"].endswith("-04:00"))
+
+    def test_the_agents_card_is_unchanged(self):
+        self.assertEqual(set(self.payload["session"]["agents"][0]),
+                         {"route_key", "agent", "model", "model_display", "effort", "tokens", "cost",
+                          "requests", "last_request", "active"})
 
 
 if __name__ == "__main__":

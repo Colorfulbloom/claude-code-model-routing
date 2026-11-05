@@ -20,6 +20,11 @@
 // written to the transcript") shows while the state is live or idle and the newest request is 15 seconds old or more.
 // The payload holds usage fields, never message text, and nothing here reads any.
 //
+// The "Dispatches in this session" card (pages/live_flow.js) sits between the charts and the requests. It follows
+// the same rules: it is built once, updated in place on a changed answer, and repainted by the one clock. Its motion
+// classes are added only when fillDash says the answer is fresh. The polite line adds a sentence when agents started
+// or finished since the last announcement; the first answer after a load or a switch only sets that baseline.
+//
 // createLive(env) holds all the state, so a check can run it with fake timers and a fake ticker. render and setActive
 // at the bottom are the page module's two exports, bound to one instance that uses the real timers and the tab's
 // visibility.
@@ -32,6 +37,7 @@ import { card, emptyState } from "../components.js";
 import { modelClass, patternId, hatchDefs, stackedTokens, kindsLegend } from "../charts.js";
 import { ALL_KEY, MAIN_KEY } from "../router.js";
 import { createLivePoller, RETRY_MS } from "../live_poll.js";
+import { createFlow } from "./live_flow.js";
 
 const UNNAMED_KEY = "@unnamed";
 const ACTIVE_MS = 60000; // a session with a request in the last minute is working
@@ -44,6 +50,7 @@ const W = 600;
 const LH = 48; // the cache lane's height in its own units
 const STEP_BACK_MS = 2000; // the most a poll's latency can pull the clock back
 const WAIT_MS = 15000; // a request not yet in the transcript: the wait line shows from this age
+const NARROW_QUERY = "(max-width: 720px)"; // the project's phone layout
 const NBSP = " ";
 
 let secondsFormat = null;
@@ -79,6 +86,10 @@ function agentName(row) {
 const modelName = (row) => row.model_display || row.model || "";
 const effortText = (row) => (row.effort === null || row.effort === undefined || row.effort === "" ? t("effort_not_recorded_inline") : row.effort);
 
+// A request's or a run's cost: "Not priced" with no cost, "<$0.01" under half a cent, else dollars and cents.
+const costWords = (cost) => (cost === null || cost === undefined ? t("not_priced")
+  : cost > 0 && cost < 0.005 ? t("live_cost_lt_cent") : fmtCost(cost));
+
 // "~/.claude/projects" is the transcripts folder, and the footer sentence adds "/projects" itself.
 const configDirOf = (dir) => String(dir).replace(/\/projects\/?$/, "");
 
@@ -113,11 +124,18 @@ export function createLive(env) {
     gone: false, // the viewer's session ended and the page moved to another
     picks: new Map(), // project key to the session its viewer picked
     announcedAt: null,
+    runBaseSession: null, // the session id the base belongs to; another shown session makes the next answer a first one
+    runBase: null, // run_id to done, as of the last announcement. null until the first answer after a load or a switch
     quiet: false, // the next changed answer is for another project or session, so nothing flashes
   };
   let view = null;
   let unlisten = null;
   let tickId = null;
+
+  function narrowMedia() {
+    if (typeof env.matchNarrow === "function") return env.matchNarrow(NARROW_QUERY);
+    return typeof window !== "undefined" && typeof window.matchMedia === "function" ? window.matchMedia(NARROW_QUERY) : null;
+  }
 
   const poller = createLivePoller({
     fetchLive: (session, etag) => S.ctx.live(S.key, session, etag),
@@ -221,6 +239,9 @@ export function createLive(env) {
     const note = h("p", { class: "lv-note" }, t("live_chart_note"));
     const wait = h("p", { class: "lv-wait", hidden: true }, t("live_wait"));
     const agents = h("div", { class: "lv-ags" });
+    const flow = createFlow({
+      now: nowMs, activeMs: ACTIVE_MS, agentName, modelName, effortText, costText: costWords, narrow: narrowMedia,
+    });
     const cols = [t("live_col_time"), t("h_agent"), t("f_model"), t("f_effort"), t("kpi_tokens"), t("k_cache_read"), t("k_output"), t("kpi_cost")];
     const hide = [false, false, true, true, false, true, true, false];
     const tbody = h("tbody", null);
@@ -235,8 +256,8 @@ export function createLive(env) {
       card({ title: t("live_agents_h"), sub: t("live_agents_sub"), icon: "agents", body: agents }));
     const requests = card({ title: t("live_req_h"), sub: t("live_req_sub"), icon: "list", body: [table, h("p", { class: "est" }, t("est_short"))] });
     return {
-      nodes: [h("div", { class: "kpis" }, tiles.map((x) => x.el)), grid, requests, foot],
-      tiles, chart, meter, legend, wait, agents, agentRows: new Map(), tbody, rows: new Map(), foot, hide, cols,
+      nodes: [h("div", { class: "kpis" }, tiles.map((x) => x.el)), grid, flow.el, requests, foot],
+      tiles, chart, meter, legend, wait, agents, agentRows: new Map(), flow, tbody, rows: new Map(), foot, hide, cols,
     };
   }
 
@@ -621,9 +642,7 @@ export function createLive(env) {
       r.data = rec;
       const at = dateOf(rec.ts);
       r.stamp.textContent = at ? clockSeconds(at) : "";
-      const cost = rec.cost === null || rec.cost === undefined ? t("not_priced")
-        : rec.cost > 0 && rec.cost < 0.005 ? t("live_cost_lt_cent") : fmtCost(rec.cost);
-      const texts = [null, agentName(rec), modelName(rec), effortText(rec), fmtTokens(num(rec.tokens)), fmtTokens(num(rec.cache_read)), fmtTokens(num(rec.output)), cost];
+      const texts = [null, agentName(rec), modelName(rec), effortText(rec), fmtTokens(num(rec.tokens)), fmtTokens(num(rec.cache_read)), fmtTokens(num(rec.output)), costWords(rec.cost)];
       texts.forEach((text, i) => { if (i > 0 && r.cells[i].textContent !== text) r.cells[i].textContent = text; });
       d.tbody.appendChild(r.el);
     }
@@ -632,9 +651,11 @@ export function createLive(env) {
     }
   }
 
-  // The words that depend on the clock: the agents' last request, the New markers and the foot.
+  // The words that depend on the clock: the agents' last request, the New markers, the dispatch cards' Working and
+  // Idle, and the foot.
   function drawTimes(d) {
     const now = nowMs();
+    d.flow.repaint();
     for (const r of d.agentRows.values()) {
       const last = ms(r.data.last_request);
       const isWorking = now !== null && last !== null && now - last <= ACTIVE_MS;
@@ -674,6 +695,7 @@ export function createLive(env) {
       fillLegend(d, shown);
       fillAgents(d, shown);
       fillRequests(d, shown, fresh);
+      d.flow.update(shown, fresh);
       view.filled = S.payload;
     }
     drawTimes(d);
@@ -756,16 +778,48 @@ export function createLive(env) {
 
   // ---------------------------------------------------------------- answers
 
+  // The runs of the dispatch card: run_id to whether it is done.
+  function runStates(shown) {
+    const out = new Map();
+    for (const run of list(shown.runs)) if (run && typeof run.run_id === "string") out.set(run.run_id, run.state === "done");
+    return out;
+  }
+
+  // The sentences about agents that started or finished since the last announcement. An agent that is new and
+  // already done counts as both.
+  function flowSentences(now) {
+    let started = 0;
+    let finished = 0;
+    for (const [id, done] of now) {
+      if (!S.runBase.has(id)) started += 1;
+      if (done && S.runBase.get(id) !== true) finished += 1;
+    }
+    const words = [];
+    if (started === 1) words.push(t("live_flow_sr_started_1"));
+    else if (started > 1) words.push(t("live_flow_sr_started", { n: started }));
+    if (finished === 1) words.push(t("live_flow_sr_finished_1"));
+    else if (finished > 1) words.push(t("live_flow_sr_finished", { n: finished }));
+    return words;
+  }
+
   function announce() {
     const shown = session();
     if (!view || !shown || !S.serverTime) return;
+    const states = runStates(shown);
+    const first = S.runBase === null || S.runBaseSession !== shown.session_id;
+    if (first) { S.runBase = states; S.runBaseSession = shown.session_id; } // the first answer after a load or a switch is the baseline, and says nothing about agents
     const at = env.now();
     if (S.announcedAt !== null && at - S.announcedAt < ANNOUNCE_MS) return;
     S.announcedAt = at;
     const totals = shown.totals || {};
-    view.sr.textContent = t("live_sr_update", {
+    let line = t("live_sr_update", {
       time: fmtClock(S.serverTime), tokens: fmtTokens(num(totals.tokens)), cost: fmtCost(totals.cost, totals.unpriced_requests),
     });
+    if (!first) {
+      line = [line].concat(flowSentences(states)).join(" ");
+      S.runBase = states;
+    }
+    view.sr.textContent = line;
   }
 
   function onAnswer({ data, unchanged }) {
@@ -803,6 +857,8 @@ export function createLive(env) {
     S.receivedAt = null;
     S.lastNow = null;
     S.prevIds = new Set();
+    S.runBase = null;
+    S.runBaseSession = null;
     S.paused = false;
     S.gone = false;
     S.mode = "ok";
