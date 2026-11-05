@@ -25,6 +25,18 @@
         }
       ]
     },
+    "api-route-change|fast-worker|claude-sonnet-5-5|medium": {
+      "last_date": "2026-11-03",
+      "samples": [
+        {
+          "agent_id": "aebd57be1cc788918",
+          "date": "2026-11-03",
+          "duration_ms": 87080,
+          "effort": "medium",
+          "v": 75752
+        }
+      ]
+    },
     "architecture-plan|deep-reasoner|claude-opus-5-5|high": {
       "last_date": "2026-11-02",
       "samples": [
@@ -291,6 +303,18 @@
           "duration_ms": 91582,
           "effort": "medium",
           "v": 39892
+        }
+      ]
+    },
+    "bug-fix|fast-worker|claude-sonnet-5-5|medium": {
+      "last_date": "2026-11-04",
+      "samples": [
+        {
+          "agent_id": "a08cc1b51b7071e84",
+          "date": "2026-11-04",
+          "duration_ms": 114556,
+          "effort": "medium",
+          "v": 73440
         }
       ]
     },
@@ -603,6 +627,18 @@
         }
       ]
     },
+    "code-diagnosis|scout|claude-haiku-5-5|medium": {
+      "last_date": "2026-11-03",
+      "samples": [
+        {
+          "agent_id": "a3159c138b3004cf9",
+          "date": "2026-11-03",
+          "duration_ms": 93356,
+          "effort": "medium",
+          "v": 69018
+        }
+      ]
+    },
     "code-inventory|scout|claude-haiku-5-5|medium": {
       "last_date": "2026-11-03",
       "samples": [
@@ -710,6 +746,13 @@
           "duration_ms": 39631,
           "effort": "medium",
           "v": 35765
+        },
+        {
+          "agent_id": "ad00aededcbab7ebb",
+          "date": "2026-11-03",
+          "duration_ms": 43452,
+          "effort": "medium",
+          "v": 26670
         }
       ]
     },
@@ -831,36 +874,8 @@
       ]
     },
     "commit-message|tech-writer|claude-opus-5-5|medium": {
-      "last_date": "2026-10-31",
+      "last_date": "2026-11-04",
       "samples": [
-        {
-          "agent_id": "a888da80278d40e82",
-          "date": "2026-10-30",
-          "duration_ms": 57128,
-          "effort": "medium",
-          "v": 32800
-        },
-        {
-          "agent_id": "aaa9eb69506b5a02a",
-          "date": "2026-10-30",
-          "duration_ms": 68633,
-          "effort": "medium",
-          "v": 33091
-        },
-        {
-          "agent_id": "a7372fce9934f99a4",
-          "date": "2026-10-30",
-          "duration_ms": 16697,
-          "effort": "medium",
-          "v": 20010
-        },
-        {
-          "agent_id": "a931643613e083fe4",
-          "date": "2026-10-30",
-          "duration_ms": 16528,
-          "effort": "medium",
-          "v": 20217
-        },
         {
           "agent_id": "ab94ef17ddff3d6bd",
           "date": "2026-10-30",
@@ -972,6 +987,34 @@
           "duration_ms": 1535,
           "effort": "medium",
           "v": 17094
+        },
+        {
+          "agent_id": "a553c13855368b795",
+          "date": "2026-11-03",
+          "duration_ms": 8617,
+          "effort": "medium",
+          "v": 21989
+        },
+        {
+          "agent_id": "ae17be9ee927ae594",
+          "date": "2026-11-04",
+          "duration_ms": 23244,
+          "effort": "medium",
+          "v": 25113
+        },
+        {
+          "agent_id": "ab7961836b0d39b16",
+          "date": "2026-11-04",
+          "duration_ms": 4407,
+          "effort": "medium",
+          "v": 19470
+        },
+        {
+          "agent_id": "a60a77fddae9f77c1",
+          "date": "2026-11-04",
+          "duration_ms": 34683,
+          "effort": "medium",
+          "v": 25229
         }
       ]
     },
@@ -1029,29 +1072,8 @@
       ]
     },
     "commit-pr-text|tech-writer|claude-opus-5-5|medium": {
-      "last_date": "2026-11-02",
+      "last_date": "2026-11-04",
       "samples": [
-        {
-          "agent_id": "a507043a7afaa0479",
-          "date": "2026-10-30",
-          "duration_ms": 78144,
-          "effort": "medium",
-          "v": 40202
-        },
-        {
-          "agent_id": "a2393c6ee876a7896",
-          "date": "2026-10-30",
-          "duration_ms": 79644,
-          "effort": "medium",
-          "v": 49060
-        },
-        {
-          "agent_id": "a6116859753ccbaca",
-          "date": "2026-10-30",
-          "duration_ms": 38081,
-          "effort": "medium",
-          "v": 28059
-        },
         {
           "agent_id": "a86ecfef518310888",
           "date": "2026-10-30",
@@ -1170,6 +1192,27 @@
           "duration_ms": 62667,
           "effort": "medium",
           "v": 35438
+        },
+        {
+          "agent_id": "ac72575872735f84e",
+          "date": "2026-11-03",
+          "duration_ms": 17410,
+          "effort": "medium",
+          "v": 23092
+        },
+        {
+          "agent_id": "a5335073cccd27c71",
+          "date": "2026-11-03",
+          "duration_ms": 13690,
+          "effort": "medium",
+          "v": 25724
+        },
+        {
+          "agent_id": "aecc9d5292a13970b",
+          "date": "2026-11-04",
+          "duration_ms": 11468,
+          "effort": "medium",
+          "v": 20761
         }
       ]
     },
@@ -1364,6 +1407,18 @@
         }
       ]
     },
+    "design-compare|judge|claude-sonnet-5-5|high": {
+      "last_date": "2026-11-03",
+      "samples": [
+        {
+          "agent_id": "a32b9d0024d54870a",
+          "date": "2026-11-03",
+          "duration_ms": 155816,
+          "effort": "high",
+          "v": 116936
+        }
+      ]
+    },
     "design-directions+resumed|designer|claude-fable-5-1|high": {
       "last_date": "2026-10-30",
       "samples": [
@@ -1390,7 +1445,7 @@
       ]
     },
     "design-directions|designer|claude-opus-5-5|high": {
-      "last_date": "2026-11-02",
+      "last_date": "2026-11-04",
       "samples": [
         {
           "agent_id": "af6d053c73d45c4c6",
@@ -1405,6 +1460,27 @@
           "duration_ms": 1022229,
           "effort": "high",
           "v": 227705
+        },
+        {
+          "agent_id": "a5baf8f93a231d983",
+          "date": "2026-11-03",
+          "duration_ms": 990527,
+          "effort": "high",
+          "v": 220370
+        },
+        {
+          "agent_id": "a779dcd88cb4b5e85",
+          "date": "2026-11-04",
+          "duration_ms": 639899,
+          "effort": "high",
+          "v": 190803
+        },
+        {
+          "agent_id": "ab897e32dfe999641",
+          "date": "2026-11-04",
+          "duration_ms": 925937,
+          "effort": "high",
+          "v": 222415
         }
       ]
     },
@@ -1445,7 +1521,7 @@
       ]
     },
     "design-plan-review|designer|claude-opus-5-5|medium": {
-      "last_date": "2026-11-02",
+      "last_date": "2026-11-04",
       "samples": [
         {
           "agent_id": "a486407ae03c36786",
@@ -1460,6 +1536,27 @@
           "duration_ms": 133089,
           "effort": "medium",
           "v": 104961
+        },
+        {
+          "agent_id": "a6f3b72c4486fc826",
+          "date": "2026-11-03",
+          "duration_ms": 62747,
+          "effort": "medium",
+          "v": 89234
+        },
+        {
+          "agent_id": "a576b3826ae1ba992",
+          "date": "2026-11-04",
+          "duration_ms": 45492,
+          "effort": "medium",
+          "v": 92459
+        },
+        {
+          "agent_id": "a4c42fd7f289d5368",
+          "date": "2026-11-04",
+          "duration_ms": 71118,
+          "effort": "medium",
+          "v": 93423
         }
       ]
     },
@@ -1600,6 +1697,25 @@
           "duration_ms": 340145,
           "effort": "high",
           "v": 129888
+        }
+      ]
+    },
+    "design-screenshot-compare|judge|claude-sonnet-5-5|high": {
+      "last_date": "2026-11-04",
+      "samples": [
+        {
+          "agent_id": "a9ff28b49531de832",
+          "date": "2026-11-04",
+          "duration_ms": 91539,
+          "effort": "high",
+          "v": 83261
+        },
+        {
+          "agent_id": "a78c2e8cc4e56f8c8",
+          "date": "2026-11-04",
+          "duration_ms": 117931,
+          "effort": "high",
+          "v": 88913
         }
       ]
     },
@@ -1796,6 +1912,13 @@
           "duration_ms": 146294,
           "effort": "medium",
           "v": 161650
+        },
+        {
+          "agent_id": "a612427d454119939",
+          "date": "2026-11-03",
+          "duration_ms": 98610,
+          "effort": "medium",
+          "v": 84178
         }
       ]
     },
@@ -1886,8 +2009,29 @@
         }
       ]
     },
+    "docs-and-ui-copy+resumed|tech-writer|claude-opus-5-5|medium": {
+      "last_date": "2026-11-04",
+      "samples": [
+        {
+          "agent_id": "a863955756dfb9d4f",
+          "date": "2026-11-04",
+          "duration_ms": 57901,
+          "effort": "medium",
+          "round": 2,
+          "v": 2105
+        },
+        {
+          "agent_id": "a37ec5cc62a634e3d",
+          "date": "2026-11-04",
+          "duration_ms": 8336,
+          "effort": "medium",
+          "round": 2,
+          "v": 3019
+        }
+      ]
+    },
     "docs-and-ui-copy|tech-writer|claude-opus-5-5|medium": {
-      "last_date": "2026-11-03",
+      "last_date": "2026-11-04",
       "samples": [
         {
           "agent_id": "ac70391131adfbe71",
@@ -1895,6 +2039,27 @@
           "duration_ms": 59933,
           "effort": "medium",
           "v": 30042
+        },
+        {
+          "agent_id": "a967949d362b37b80",
+          "date": "2026-11-04",
+          "duration_ms": 22923,
+          "effort": "medium",
+          "v": 22750
+        },
+        {
+          "agent_id": "a863955756dfb9d4f",
+          "date": "2026-11-04",
+          "duration_ms": 154316,
+          "effort": "medium",
+          "v": 58822
+        },
+        {
+          "agent_id": "a37ec5cc62a634e3d",
+          "date": "2026-11-04",
+          "duration_ms": 18225,
+          "effort": "medium",
+          "v": 22993
         }
       ]
     },
@@ -1994,7 +2159,7 @@
       ]
     },
     "docs-lookup|scout|claude-haiku-5-5|medium": {
-      "last_date": "2026-10-31",
+      "last_date": "2026-11-04",
       "samples": [
         {
           "agent_id": "ab1cbba1de2e25672",
@@ -2002,6 +2167,37 @@
           "duration_ms": 39334,
           "effort": "medium",
           "v": 37129
+        },
+        {
+          "agent_id": "ac283c73c8655a079",
+          "date": "2026-11-04",
+          "duration_ms": 83147,
+          "effort": "medium",
+          "v": 57264
+        }
+      ]
+    },
+    "docs-lookup|scout|claude-sonnet-5-5|medium": {
+      "last_date": "2026-11-04",
+      "samples": [
+        {
+          "agent_id": "a57afc65776074dd1",
+          "date": "2026-11-04",
+          "duration_ms": 35299,
+          "effort": "medium",
+          "v": 30057
+        }
+      ]
+    },
+    "docs-prose|tech-writer|claude-opus-5-5|medium": {
+      "last_date": "2026-11-04",
+      "samples": [
+        {
+          "agent_id": "a6d0b7c1e3880f24e",
+          "date": "2026-11-04",
+          "duration_ms": 22688,
+          "effort": "medium",
+          "v": 27758
         }
       ]
     },
@@ -2026,6 +2222,18 @@
           "duration_ms": 238258,
           "effort": "high",
           "v": 57650
+        }
+      ]
+    },
+    "docs-review|tech-writer|claude-opus-5-5|medium": {
+      "last_date": "2026-11-04",
+      "samples": [
+        {
+          "agent_id": "a4dadee17a48bbea8",
+          "date": "2026-11-04",
+          "duration_ms": 78782,
+          "effort": "medium",
+          "v": 39443
         }
       ]
     },
@@ -2162,6 +2370,31 @@
         }
       ]
     },
+    "e2e-fixture-build+resumed|fast-worker|claude-sonnet-5-5|medium": {
+      "last_date": "2026-11-04",
+      "samples": [
+        {
+          "agent_id": "a65072bc96eb32429",
+          "date": "2026-11-04",
+          "duration_ms": 216728,
+          "effort": "medium",
+          "round": 2,
+          "v": 19296
+        }
+      ]
+    },
+    "e2e-fixture-build|fast-worker|claude-sonnet-5-5|medium": {
+      "last_date": "2026-11-04",
+      "samples": [
+        {
+          "agent_id": "a65072bc96eb32429",
+          "date": "2026-11-04",
+          "duration_ms": 281873,
+          "effort": "medium",
+          "v": 124553
+        }
+      ]
+    },
     "e2e-test-build|fast-worker|claude-sonnet-5-5|high": {
       "last_date": "2026-11-02",
       "samples": [
@@ -2183,6 +2416,18 @@
           "duration_ms": 124628,
           "effort": "medium",
           "v": 90301
+        }
+      ]
+    },
+    "e2e-tests-and-captures|fast-worker|claude-sonnet-5-5|medium": {
+      "last_date": "2026-11-04",
+      "samples": [
+        {
+          "agent_id": "ac8141dcc2cf958f9",
+          "date": "2026-11-04",
+          "duration_ms": 242310,
+          "effort": "medium",
+          "v": 117232
         }
       ]
     },
@@ -2258,7 +2503,7 @@
       ]
     },
     "feature-build-backend|fast-worker|claude-sonnet-5-5|medium": {
-      "last_date": "2026-11-02",
+      "last_date": "2026-11-04",
       "samples": [
         {
           "agent_id": "add1b2aad8563489c",
@@ -2280,6 +2525,13 @@
           "duration_ms": 435343,
           "effort": "medium",
           "v": 152423
+        },
+        {
+          "agent_id": "aa4e1c86138550d8d",
+          "date": "2026-11-04",
+          "duration_ms": 244144,
+          "effort": "medium",
+          "v": 102222
         }
       ]
     },
@@ -2856,7 +3108,7 @@
       ]
     },
     "feature-verification|verifier|claude-opus-5-5|high": {
-      "last_date": "2026-11-03",
+      "last_date": "2026-11-04",
       "samples": [
         {
           "agent_id": "a4931e60c0cc56afc",
@@ -2871,6 +3123,13 @@
           "duration_ms": 469288,
           "effort": "high",
           "v": 189609
+        },
+        {
+          "agent_id": "a42eb6f097c6a0bc3",
+          "date": "2026-11-04",
+          "duration_ms": 361608,
+          "effort": "high",
+          "v": 133721
         }
       ]
     },
@@ -2896,7 +3155,7 @@
       ]
     },
     "feature-verify|verifier|claude-opus-5-5|high": {
-      "last_date": "2026-11-02",
+      "last_date": "2026-11-04",
       "samples": [
         {
           "agent_id": "acb92af8073a40434",
@@ -3016,6 +3275,27 @@
           "duration_ms": 308590,
           "effort": "high",
           "v": 141318
+        },
+        {
+          "agent_id": "aa0de27883570161c",
+          "date": "2026-11-03",
+          "duration_ms": 258853,
+          "effort": "high",
+          "v": 151380
+        },
+        {
+          "agent_id": "aff4c62a2fa7be0c6",
+          "date": "2026-11-04",
+          "duration_ms": 415999,
+          "effort": "high",
+          "v": 165458
+        },
+        {
+          "agent_id": "a9fd4a43a9d24b9ee",
+          "date": "2026-11-04",
+          "duration_ms": 402321,
+          "effort": "high",
+          "v": 157820
         }
       ]
     },
@@ -3083,7 +3363,7 @@
       ]
     },
     "full-suite-run|scout|claude-haiku-5-5|medium": {
-      "last_date": "2026-11-03",
+      "last_date": "2026-11-04",
       "samples": [
         {
           "agent_id": "a906aaf5151b145d3",
@@ -3112,6 +3392,20 @@
           "duration_ms": 344465,
           "effort": "medium",
           "v": 20785
+        },
+        {
+          "agent_id": "a1a0ac82db592747e",
+          "date": "2026-11-04",
+          "duration_ms": 386713,
+          "effort": "medium",
+          "v": 20379
+        },
+        {
+          "agent_id": "a75aac7ba15d4f4b3",
+          "date": "2026-11-04",
+          "duration_ms": 394533,
+          "effort": "medium",
+          "v": 20462
         }
       ]
     },
@@ -3154,7 +3448,7 @@
       ]
     },
     "harness-extension|fast-worker|claude-sonnet-5-5|high": {
-      "last_date": "2026-10-29",
+      "last_date": "2026-11-04",
       "samples": [
         {
           "agent_id": "a7f659b51adf0f549",
@@ -3162,6 +3456,13 @@
           "duration_ms": 308413,
           "effort": "high",
           "v": 79534
+        },
+        {
+          "agent_id": "a07de46dc9b44c469",
+          "date": "2026-11-04",
+          "duration_ms": 776614,
+          "effort": "high",
+          "v": 147115
         }
       ]
     },
@@ -3267,7 +3568,7 @@
       ]
     },
     "hivemind-consolidation+resumed|deep-reasoner|claude-opus-5-5|high": {
-      "last_date": "2026-11-02",
+      "last_date": "2026-11-03",
       "samples": [
         {
           "agent_id": "a2b1388f4cf4db703",
@@ -3316,11 +3617,19 @@
           "effort": "high",
           "round": 2,
           "v": 12695
+        },
+        {
+          "agent_id": "a505efb62dff04a45",
+          "date": "2026-11-03",
+          "duration_ms": 145364,
+          "effort": "high",
+          "round": 2,
+          "v": 22608
         }
       ]
     },
     "hivemind-consolidation|deep-reasoner|claude-opus-5-5|high": {
-      "last_date": "2026-11-02",
+      "last_date": "2026-11-03",
       "samples": [
         {
           "agent_id": "a2b1388f4cf4db703",
@@ -3412,6 +3721,13 @@
           "duration_ms": 223407,
           "effort": "high",
           "v": 104621
+        },
+        {
+          "agent_id": "a505efb62dff04a45",
+          "date": "2026-11-03",
+          "duration_ms": 685701,
+          "effort": "high",
+          "v": 193274
         }
       ]
     },
@@ -3625,6 +3941,13 @@
           "duration_ms": 54377,
           "effort": "medium",
           "v": 39211
+        },
+        {
+          "agent_id": "a2435e44ffd35fcdc",
+          "date": "2026-11-03",
+          "duration_ms": 40994,
+          "effort": "medium",
+          "v": 30732
         }
       ]
     },
@@ -3769,6 +4092,18 @@
         }
       ]
     },
+    "perf-measurement|scout|claude-haiku-5-5|medium": {
+      "last_date": "2026-11-03",
+      "samples": [
+        {
+          "agent_id": "accfab0e0e921f638",
+          "date": "2026-11-03",
+          "duration_ms": 259196,
+          "effort": "medium",
+          "v": 77037
+        }
+      ]
+    },
     "phase-2-directions|designer|claude-opus-5-5|high": {
       "last_date": "2026-10-31",
       "samples": [
@@ -3853,7 +4188,7 @@
       ]
     },
     "plan-verification|verifier|claude-fable-5-1|high": {
-      "last_date": "2026-11-02",
+      "last_date": "2026-11-04",
       "samples": [
         {
           "agent_id": "aa45200aa6c082f74",
@@ -3868,11 +4203,18 @@
           "duration_ms": 439623,
           "effort": "high",
           "v": 128696
+        },
+        {
+          "agent_id": "a844f9c73870136cd",
+          "date": "2026-11-04",
+          "duration_ms": 351189,
+          "effort": "high",
+          "v": 133534
         }
       ]
     },
     "plan-verification|verifier|claude-opus-5-5|high": {
-      "last_date": "2026-11-03",
+      "last_date": "2026-11-04",
       "samples": [
         {
           "agent_id": "a6b06519f4a6aacda",
@@ -3887,6 +4229,20 @@
           "duration_ms": 525717,
           "effort": "high",
           "v": 172547
+        },
+        {
+          "agent_id": "a5407d3b385f13a86",
+          "date": "2026-11-04",
+          "duration_ms": 263952,
+          "effort": "high",
+          "v": 147387
+        },
+        {
+          "agent_id": "a296136af63023684",
+          "date": "2026-11-04",
+          "duration_ms": 456617,
+          "effort": "high",
+          "v": 181267
         }
       ]
     },
@@ -4009,6 +4365,19 @@
         }
       ]
     },
+    "plugin-build+resumed|deep-reasoner|claude-opus-5-5|high": {
+      "last_date": "2026-11-04",
+      "samples": [
+        {
+          "agent_id": "aba4bd7cea90811a1",
+          "date": "2026-11-04",
+          "duration_ms": 2331723,
+          "effort": "high",
+          "round": 2,
+          "v": 105979
+        }
+      ]
+    },
     "plugin-build|deep-reasoner|claude-opus-5-5|high": {
       "last_date": "2026-11-03",
       "samples": [
@@ -4018,6 +4387,25 @@
           "duration_ms": 3760853,
           "effort": "high",
           "v": 348318
+        },
+        {
+          "agent_id": "aba4bd7cea90811a1",
+          "date": "2026-11-03",
+          "duration_ms": 250015,
+          "effort": "high",
+          "v": 151043
+        }
+      ]
+    },
+    "plugin-debug|deep-reasoner|claude-opus-5-5|high": {
+      "last_date": "2026-11-04",
+      "samples": [
+        {
+          "agent_id": "a6e9d71332a238260",
+          "date": "2026-11-04",
+          "duration_ms": 2227342,
+          "effort": "high",
+          "v": 221211
         }
       ]
     },
@@ -4033,8 +4421,20 @@
         }
       ]
     },
-    "plugin-packaging-build|fast-worker|claude-sonnet-5-5|high": {
+    "plugin-install-check|scout|claude-haiku-5-5|medium": {
       "last_date": "2026-11-03",
+      "samples": [
+        {
+          "agent_id": "a991a819d01945599",
+          "date": "2026-11-03",
+          "duration_ms": 41664,
+          "effort": "medium",
+          "v": 24488
+        }
+      ]
+    },
+    "plugin-packaging-build|fast-worker|claude-sonnet-5-5|high": {
+      "last_date": "2026-11-04",
       "samples": [
         {
           "agent_id": "a429784ba9ce1dbce",
@@ -4042,6 +4442,13 @@
           "duration_ms": 323219,
           "effort": "high",
           "v": 117184
+        },
+        {
+          "agent_id": "a180893ccdd2f2e9e",
+          "date": "2026-11-04",
+          "duration_ms": 578871,
+          "effort": "high",
+          "v": 198822
         }
       ]
     },
@@ -4059,7 +4466,7 @@
       ]
     },
     "pr-description|tech-writer|claude-opus-5-5|medium": {
-      "last_date": "2026-10-31",
+      "last_date": "2026-11-04",
       "samples": [
         {
           "agent_id": "a3c4bf80db43120d8",
@@ -4081,6 +4488,27 @@
           "duration_ms": 2877,
           "effort": "medium",
           "v": 17351
+        },
+        {
+          "agent_id": "aa4b1536d0d5cd52a",
+          "date": "2026-11-04",
+          "duration_ms": 41772,
+          "effort": "medium",
+          "v": 35009
+        },
+        {
+          "agent_id": "a276c7c1afad68fca",
+          "date": "2026-11-04",
+          "duration_ms": 24179,
+          "effort": "medium",
+          "v": 29024
+        },
+        {
+          "agent_id": "a10a99ac206624c8f",
+          "date": "2026-11-04",
+          "duration_ms": 18957,
+          "effort": "medium",
+          "v": 24268
         }
       ]
     },
@@ -4129,6 +4557,42 @@
           "duration_ms": 57484,
           "effort": "high",
           "v": 58109
+        }
+      ]
+    },
+    "reader-route-change|fast-worker|claude-sonnet-5-5|high": {
+      "last_date": "2026-11-04",
+      "samples": [
+        {
+          "agent_id": "a8310d9f2f128f03f",
+          "date": "2026-11-04",
+          "duration_ms": 859981,
+          "effort": "high",
+          "v": 216008
+        }
+      ]
+    },
+    "readme-docs|fast-worker|claude-sonnet-5-5|medium": {
+      "last_date": "2026-11-03",
+      "samples": [
+        {
+          "agent_id": "a5b002f2c6379e662",
+          "date": "2026-11-03",
+          "duration_ms": 173124,
+          "effort": "medium",
+          "v": 61295
+        }
+      ]
+    },
+    "readme-docs|tech-writer|claude-opus-5-5|medium": {
+      "last_date": "2026-11-03",
+      "samples": [
+        {
+          "agent_id": "a6ae9ab9f0e6de391",
+          "date": "2026-11-03",
+          "duration_ms": 43256,
+          "effort": "medium",
+          "v": 35906
         }
       ]
     },
@@ -4407,11 +4871,18 @@
           "duration_ms": 36278,
           "effort": "medium",
           "v": 26005
+        },
+        {
+          "agent_id": "af43a2ae3f173246c",
+          "date": "2026-11-03",
+          "duration_ms": 26973,
+          "effort": "medium",
+          "v": 20510
         }
       ]
     },
     "run-full-suite|scout|claude-haiku-5-5|medium": {
-      "last_date": "2026-11-03",
+      "last_date": "2026-11-04",
       "samples": [
         {
           "agent_id": "a250c31706184ef91",
@@ -4419,6 +4890,20 @@
           "duration_ms": 333451,
           "effort": "medium",
           "v": 20858
+        },
+        {
+          "agent_id": "a009991a6b99b667b",
+          "date": "2026-11-04",
+          "duration_ms": 390455,
+          "effort": "medium",
+          "v": 23164
+        },
+        {
+          "agent_id": "a54e089962a6df970",
+          "date": "2026-11-04",
+          "duration_ms": 355991,
+          "effort": "medium",
+          "v": 20165
         }
       ]
     },
@@ -4489,6 +4974,18 @@
         }
       ]
     },
+    "server-counter|fast-worker|claude-sonnet-5-5|high": {
+      "last_date": "2026-11-04",
+      "samples": [
+        {
+          "agent_id": "a8389a25f34c0a7e3",
+          "date": "2026-11-04",
+          "duration_ms": 125855,
+          "effort": "high",
+          "v": 81578
+        }
+      ]
+    },
     "settings-discovery|deep-reasoner|claude-opus-5-5|high": {
       "last_date": "2026-10-31",
       "samples": [
@@ -4522,6 +5019,18 @@
           "duration_ms": 276817,
           "effort": "high",
           "v": 72599
+        }
+      ]
+    },
+    "tally-analysis|scout|claude-haiku-5-5|medium": {
+      "last_date": "2026-11-04",
+      "samples": [
+        {
+          "agent_id": "a506fe5eb2cad6738",
+          "date": "2026-11-04",
+          "duration_ms": 61429,
+          "effort": "medium",
+          "v": 40644
         }
       ]
     },
@@ -4908,6 +5417,18 @@
         }
       ]
     },
+    "ticket-note|tech-writer|claude-opus-5-5|medium": {
+      "last_date": "2026-11-04",
+      "samples": [
+        {
+          "agent_id": "a922156eeeaa25e48",
+          "date": "2026-11-04",
+          "duration_ms": 14037,
+          "effort": "medium",
+          "v": 19179
+        }
+      ]
+    },
     "ticket-posting|scrummaster|claude-opus-5-5|high": {
       "last_date": "2026-10-31",
       "samples": [
@@ -4975,6 +5496,18 @@
         }
       ]
     },
+    "ticket|tech-writer|claude-opus-5-5|medium": {
+      "last_date": "2026-11-03",
+      "samples": [
+        {
+          "agent_id": "ac9e930f9d05c0bfc",
+          "date": "2026-11-03",
+          "duration_ms": 111481,
+          "effort": "medium",
+          "v": 43455
+        }
+      ]
+    },
     "tooling-script|fast-worker|claude-sonnet-5-5|medium": {
       "last_date": "2026-10-29",
       "samples": [
@@ -5012,7 +5545,7 @@
       ]
     },
     "ui-copy+resumed|tech-writer|claude-opus-5-5|medium": {
-      "last_date": "2026-11-02",
+      "last_date": "2026-11-03",
       "samples": [
         {
           "agent_id": "a3ed9bdf8c77ec31b",
@@ -5069,6 +5602,14 @@
           "effort": "medium",
           "round": 3,
           "v": 1565
+        },
+        {
+          "agent_id": "ae8692cb7ee3733b2",
+          "date": "2026-11-03",
+          "duration_ms": 4517,
+          "effort": "medium",
+          "round": 2,
+          "v": 2601
         }
       ]
     },
@@ -5184,22 +5725,8 @@
       ]
     },
     "ui-copy|tech-writer|claude-opus-5-5|medium": {
-      "last_date": "2026-11-02",
+      "last_date": "2026-11-03",
       "samples": [
-        {
-          "agent_id": "af7962ec97ea37a57",
-          "date": "2026-10-31",
-          "duration_ms": 48165,
-          "effort": "medium",
-          "v": 29496
-        },
-        {
-          "agent_id": "ae045e388c9bda407",
-          "date": "2026-10-31",
-          "duration_ms": 162283,
-          "effort": "medium",
-          "v": 65126
-        },
         {
           "agent_id": "a2ceca1b959faa7f3",
           "date": "2026-10-31",
@@ -5325,6 +5852,20 @@
           "duration_ms": 19043,
           "effort": "medium",
           "v": 36929
+        },
+        {
+          "agent_id": "ae8692cb7ee3733b2",
+          "date": "2026-11-03",
+          "duration_ms": 40696,
+          "effort": "medium",
+          "v": 28551
+        },
+        {
+          "agent_id": "abaaebed7ff2a2ffc",
+          "date": "2026-11-03",
+          "duration_ms": 18667,
+          "effort": "medium",
+          "v": 22281
         }
       ]
     },
@@ -5396,8 +5937,94 @@
         }
       ]
     },
+    "ui-feature-build+resumed|deep-reasoner|claude-opus-5-5|high": {
+      "last_date": "2026-11-04",
+      "samples": [
+        {
+          "agent_id": "ad5f0f37ac46ba03e",
+          "date": "2026-11-04",
+          "duration_ms": 124929,
+          "effort": "high",
+          "round": 2,
+          "v": 10582
+        },
+        {
+          "agent_id": "ad5f0f37ac46ba03e",
+          "date": "2026-11-04",
+          "duration_ms": 191894,
+          "effort": "high",
+          "round": 3,
+          "v": 15026
+        }
+      ]
+    },
+    "ui-feature-build|deep-reasoner|claude-opus-5-5|high": {
+      "last_date": "2026-11-04",
+      "samples": [
+        {
+          "agent_id": "acba01ad9ca6285ec",
+          "date": "2026-11-03",
+          "duration_ms": 1638736,
+          "effort": "high",
+          "v": 203966
+        },
+        {
+          "agent_id": "ad5f0f37ac46ba03e",
+          "date": "2026-11-04",
+          "duration_ms": 2840595,
+          "effort": "high",
+          "v": 260152
+        },
+        {
+          "agent_id": "aa21c547539f78604",
+          "date": "2026-11-04",
+          "duration_ms": 4269631,
+          "effort": "high",
+          "v": 266760
+        }
+      ]
+    },
+    "ui-feature-build|fast-worker|claude-sonnet-5-5|high": {
+      "last_date": "2026-11-04",
+      "samples": [
+        {
+          "agent_id": "ab6968c45d392425c",
+          "date": "2026-11-03",
+          "duration_ms": 582705,
+          "effort": "high",
+          "v": 231590
+        },
+        {
+          "agent_id": "a5d05fe20f4474e24",
+          "date": "2026-11-04",
+          "duration_ms": 986589,
+          "effort": "high",
+          "v": 261178
+        },
+        {
+          "agent_id": "a037f8deae399b3d2",
+          "date": "2026-11-04",
+          "duration_ms": 1249486,
+          "effort": "high",
+          "v": 376588
+        }
+      ]
+    },
+    "ui-fix+resumed|fast-worker|claude-sonnet-5-5|high": {
+      "last_date": "2026-11-04",
+      "samples": [
+        {
+          "agent_id": "a037f8deae399b3d2",
+          "date": "2026-11-04",
+          "duration_ms": 195751,
+          "effort": "high",
+          "round": 2,
+          "v": 38911
+        }
+      ]
+    },
     "ui-strings+resumed|tech-writer|claude-opus-5-5|medium": {
-      "last_date": "2026-11-02",
+      "last_date": "2026-11-04",
       "samples": [
         {
           "agent_id": "a7e3ae9d4fe62c698",
@@ -5422,11 +6049,19 @@
           "effort": "medium",
           "round": 2,
           "v": 4614
+        },
+        {
+          "agent_id": "a15b6a429b226f861",
+          "date": "2026-11-04",
+          "duration_ms": 4772,
+          "effort": "medium",
+          "round": 2,
+          "v": 1510
         }
       ]
     },
     "ui-strings|tech-writer|claude-opus-5-5|medium": {
-      "last_date": "2026-11-02",
+      "last_date": "2026-11-04",
       "samples": [
         {
           "agent_id": "a114bffd62c2da3db",
@@ -5469,6 +6104,27 @@
           "duration_ms": 84884,
           "effort": "medium",
           "v": 38529
+        },
+        {
+          "agent_id": "a15b6a429b226f861",
+          "date": "2026-11-04",
+          "duration_ms": 12630,
+          "effort": "medium",
+          "v": 23580
+        },
+        {
+          "agent_id": "aa2fd5fbd6e7a21ef",
+          "date": "2026-11-04",
+          "duration_ms": 42425,
+          "effort": "medium",
+          "v": 28698
+        },
+        {
+          "agent_id": "a5ba1c1dca0e76e11",
+          "date": "2026-11-04",
+          "duration_ms": 6002,
+          "effort": "medium",
+          "v": 19336
         }
       ]
     },
@@ -5598,6 +6254,18 @@
           "duration_ms": 364433,
           "effort": "high",
           "v": 128067
+        }
+      ]
+    },
+    "verify-feature|verifier|claude-opus-5-5|high": {
+      "last_date": "2026-11-04",
+      "samples": [
+        {
+          "agent_id": "a199cb5751e0531aa",
+          "date": "2026-11-04",
+          "duration_ms": 178379,
+          "effort": "high",
+          "v": 114244
         }
       ]
     },

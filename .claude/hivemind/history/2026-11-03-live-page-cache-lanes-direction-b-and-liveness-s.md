@@ -1,9 +1,9 @@
 ### F-8e67 Live page cache lanes (direction B) and liveness states
-status: in-progress
+status: shipped
 kind: code
 dates: 2026-11-03 .. 2026-11-03
 refs:
-  commit: pending (branch feature/live-cache-lanes)
+  commit: e2cf4eebdef10ee07389ba419e0085e9744750c2 (branch feature/live-cache-lanes, merged into development)
 summary: Live chart card shows a session bar by kind, new tokens per minute, a cache-read lane, a Now band, a ticking request age and a wait line; poll drops to 1 s
 decisions:
 - /api/live minutes[].tokens and by_model count new tokens only (input + cache writes + output); cache_read is a separate field per minute and per request; requests[].tokens stays the all-kinds total, so the table keeps its meaning

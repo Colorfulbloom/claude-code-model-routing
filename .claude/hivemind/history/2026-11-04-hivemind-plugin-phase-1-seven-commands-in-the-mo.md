@@ -1,9 +1,9 @@
 ### F-e323 hivemind plugin, phase 1: seven commands in the model-routing marketplace
-status: in-progress
+status: shipped
 kind: code
 dates: 2026-11-03 .. 2026-11-04
 refs:
-  commit: pending (branch feature/hivemind-plugin)
+  commit: 61b3faf43a08a05ad4da2eecad47857bec0e67b7 (branch feature/hivemind-plugin, merged into development)
 summary: New hivemind plugin 0.1.0 with /hivemind:status, check, link, related, inbox, init and consolidate, a wrapper over its own payload copy of hivemind_lib.py, and read-only summary and preview library actions
 decisions:
 - The plugin imports its own payload copy of hooks/hivemind_lib.py (owner answer), so no LIB_API or version action; BUILD.json and the drift test keep it in step; status notes when the installed hook library is missing or differs

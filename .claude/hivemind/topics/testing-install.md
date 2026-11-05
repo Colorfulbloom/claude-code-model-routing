@@ -52,8 +52,8 @@ fp: a42f186dc8e2
 as_of: a452d5d 2026-11-03
 author: verifier
 created: 2026-11-03
-last_used: 2026-11-03
-uses: 0
+last_used: 2026-11-04
+uses: 2
 
 ### I-9984 APFS name checks are case-sensitive, open() is not
 fact: On macOS APFS a name check against a tuple such as INBOX_SKIP is case-sensitive but open() and unlink() are not, so "INJECTED.json" reaches injected.json. Compare a name read from a file against exact os.listdir results (run_file_names) before acting on it.

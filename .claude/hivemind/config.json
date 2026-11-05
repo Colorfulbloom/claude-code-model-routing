@@ -45,7 +45,10 @@
     "dashboard-browser",
     "dashboard-git",
     "dashboard-plugin",
-    "dashboard-band"
+    "dashboard-band",
+    "dashboard-live",
+    "testing-live",
+    "testing-hivemind"
   ],
   "id_prefix": {
     "testing": "T",
@@ -64,7 +67,10 @@
     "dashboard-browser": "X",
     "dashboard-git": "G",
     "dashboard-plugin": "L",
-    "dashboard-band": "A"
+    "dashboard-band": "A",
+    "dashboard-live": "V",
+    "testing-live": "Q",
+    "testing-hivemind": "H"
   },
   "slices": {
     "deep-reasoner": [

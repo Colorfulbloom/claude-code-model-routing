@@ -12,15 +12,15 @@ last_used: 2026-11-02
 uses: 7
 
 ### X-1bf6 Usage pages draw through fillUsage; checks wait on data-usage
-fact: Only the section sectionFor names draws. Usage pages draw through fillUsage in usage-page.js, which owns the empty, wait, error and unreadable states. data-rendered doesn't wait on /api/usage. app.js sets data-usage="1" once the first answer for the current project is drawn, so a check of usage numbers waits for both. Chrome's innerText applies text-transform, so e2e text compares casefold.
-check: grep -n "data-usage" dashboard/static/js/app.js
+fact: Only the section sectionFor names draws. Usage pages draw through fillUsage in usage-page.js, which owns the empty, wait, error and unreadable states. data-rendered doesn't wait on /api/usage. app.js sets data-usage="1" once the first answer for the current project is drawn, so a check of usage numbers waits for both. The loading strip waits for rec.graced, a flag its GRACE_MS (300) timer sets, not a clock compare, since setTimeout(300) can fire before Date.now() shows 300 ms. Chrome's innerText applies text-transform, so e2e text compares casefold.
+check: grep -n "data-usage\|const graceOver" dashboard/static/js/app.js
 evidence: dashboard/static/js/app.js, dashboard/static/js/usage-page.js, tests/test_pages_e2e.py
-fp: 97d01afbfa3c
-as_of: 6206393 2026-11-02
+fp: ba1a9e49d275
+as_of: abaaff3 2026-11-04
 author: fast-worker
 created: 2026-10-30
-last_used: 2026-10-30
-uses: 0
+last_used: 2026-11-04
+uses: 2
 
 ### X-b269 e2e_checks JSON also feeds the node pages test
 fact: pages.mjs reads every tests/e2e_checks/*.json through test_pages_js.py as well as the browser sweep, so a text change updates that file. In the E2E rail .s4-note also matches the shared-file and still-holds notes, so waits match Pick a file by text (PICK_NOTE). The E2E fixture (project line, no local file) preselects a local create, so no Pick a file shows there: waits use positive signs (picked row, diff, New file tag, Save on).
@@ -30,8 +30,8 @@ fp: 65295df8b882
 as_of: a452d5d 2026-11-03
 author: fast-worker
 created: 2026-11-01
-last_used: 2026-11-02
-uses: 4
+last_used: 2026-11-04
+uses: 6
 
 ### X-b9fc Width emulation leaves clientWidth real; reload per width
 fact: Setting html style width leaves documentElement.clientWidth at the real viewport, and band_drag.js clamps drags by clientWidth, so drag results under emulation are not exact. A hash-only navigate keeps the page and its Arrange state, so reload before each width.

@@ -8,8 +8,8 @@ fp: 33b0db260eba
 as_of: a452d5d 2026-11-03
 author: fast-worker
 created: 2026-10-30
-last_used: 2026-11-02
-uses: 13
+last_used: 2026-11-04
+uses: 18
 promote: approved
 
 ### W-f6ed macOS traps in server tests: bytecode prefix, second bind
@@ -49,12 +49,12 @@ uses: 4
 fact: transcripts.Reader.read_folder(folder, now) shares the per-file cache and _lock with read. A full read drops every cache path it did not see, so only read_folder leaves other folders' entries alone.
 check: /usr/bin/python3 -m unittest discover -s tests -p test_api_live.py -k another_folders_cache
 evidence: dashboard/transcripts.py, tests/test_api_live.py
-fp: 856f37bf2b97
-as_of: a452d5d 2026-11-03
+fp: cc60548ed0bd
+as_of: abaaff3 2026-11-04
 author: fast-worker
 created: 2026-11-03
-last_used: 2026-11-03
-uses: 0
+last_used: 2026-11-04
+uses: 8
 
 ### W-734f A live-route test world without the demo set
 fact: A /api/live test world needs only session.json (now, tz), config/routing-dashboard.json with absolute project paths, and transcripts under config/projects/<transcripts.sanitize(realpath(project))>/; server.fixture_context(root, None, None, RULES, FIELDS) then works.
@@ -64,5 +64,5 @@ fp: 07c87256d217
 as_of: a452d5d 2026-11-03
 author: fast-worker
 created: 2026-11-03
-last_used: 2026-11-03
-uses: 0
+last_used: 2026-11-04
+uses: 7

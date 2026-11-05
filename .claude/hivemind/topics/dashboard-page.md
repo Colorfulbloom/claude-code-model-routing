@@ -1,15 +1,15 @@
 # dashboard-page
 
 ### K-486e Browser trials: adoptedStyleSheets, narrow widths, drags
-fact: The CSP has style-src 'self', so an injected style tag does nothing and live CSS trials use document.adoptedStyleSheets; style attributes in injected markup are blocked too, so set custom properties with style.setProperty. When resize_window leaves innerWidth alone, set document.documentElement.style.width, dispatch resize, adopt the inner rules of the @media (max-width) blocks, and read body.scrollWidth. The computer tool has no mouse-down, so mid-drag reads need scripted PointerEvents (pointerType mouse, buttons 1) on document.
+fact: The CSP has style-src 'self', so injected style tags and style attributes do nothing: trial CSS through document.adoptedStyleSheets and set custom properties with style.setProperty. When resize_window leaves innerWidth alone, set documentElement.style.width, dispatch resize, adopt the @media (max-width) blocks' inner rules and read body.scrollWidth. The computer tool has no mouse-down, so mid-drag reads need scripted PointerEvents (pointerType mouse, buttons 1).
 check: grep -n "Content-Security-Policy\|style-src" dashboard/server.py
 evidence: dashboard/server.py, dashboard/static/js/pages/band_drag.js
 fp: 4d34f21fe3b4
 as_of: a452d5d 2026-11-03
 author: designer
 created: 2026-11-01
-last_used: 2026-11-02
-uses: 7
+last_used: 2026-11-04
+uses: 13
 
 ### K-6860 Nested :has() drops the whole rule
 fact: Nested :has() is invalid CSS, so the browser drops the whole rule with no error. The Settings rail padding was dead this way while pages/settings.js set --s4-foot correctly. Check rail padding by computed value, not by the variable. test_the_rail_foot_docks_by_itself_at_1240_and_the_page_holds_no_second_dock pins the fixed selector.
@@ -19,8 +19,8 @@ fp: 2c45db1e3ac5
 as_of: a452d5d 2026-11-03
 author: designer
 created: 2026-11-01
-last_used: 2026-11-02
-uses: 4
+last_used: 2026-11-03
+uses: 5
 promote: approved
 
 ### K-9709 Settings rail needs grid-auto-rows max-content
@@ -61,9 +61,9 @@ fact: tests/test_static_strings.py counts a string as used only in a literal t("
 check: /usr/bin/python3 -m unittest discover -s tests -k strings
 evidence: tests/test_static_strings.py, dashboard/static/js/edit_foot.js
 fp: 1c20ccb57cd5
-as_of: a452d5d 2026-11-03
+as_of: abaaff3 2026-11-04
 author: fast-worker
 created: 2026-11-01
-last_used: 2026-11-02
-uses: 10
+last_used: 2026-11-04
+uses: 19
 promote: approved
