@@ -633,6 +633,7 @@ class HiveMindSkillTest(unittest.TestCase):
         "link": ["", "F-0001 abcdef1", "F-0001 abcdef1..1234567"],
         "related": ["src/a.py", "src/a.py docs/b.md", '"docs/my notes.md"'],
     }
+    WRITERS = ("link", "init", "consolidate")
     KEY_ORDER = ["name", "description", "argument-hint", "disable-model-invocation", "model", "disallowed-tools",
                  "allowed-tools"]
 
@@ -672,7 +673,12 @@ class HiveMindSkillTest(unittest.TestCase):
                 self.assertEqual(fields["name"], name)
                 self.assertTrue(fields["description"])
                 self.assertEqual(fields["disable-model-invocation"], "true")
-                self.assertEqual(fields["disallowed-tools"], HM_DENY_RULE)
+                if name in self.WRITERS:
+                    self.assertEqual(fields["disallowed-tools"], HM_DENY_RULE)
+                else:
+                    # The deny outlives the command until the next user message, and a slash
+                    # command counts as that message, so a read-only skill must not carry one.
+                    self.assertNotIn("disallowed-tools", fields)
                 self.assertEqual(fields["allowed-tools"], "Bash(%s *)" % HM_WRAPPER_TEXT)
                 if name == "consolidate":
                     self.assertNotIn("model", fields)
@@ -685,8 +691,10 @@ class HiveMindSkillTest(unittest.TestCase):
         self.assertEqual(self.skills["related"]["fields"]["argument-hint"], '"<path>..."')
 
     def test_deny_rule_is_never_a_bare_tool_name_or_holds_a_dollar(self):
-        for name, skill in self.skills.items():
-            self.assertIsNone(deny_rule_problem(skill["fields"]["disallowed-tools"]), name)
+        for name in self.WRITERS:
+            rule = self.skills[name]["fields"]["disallowed-tools"]
+            self.assertEqual(rule, HM_DENY_RULE, name)
+            self.assertIsNone(deny_rule_problem(rule), name)
         for bad in ("Bash", "Bash()", "Read", 'Bash(python3 "${CLAUDE_PLUGIN_ROOT}/bin/hivemind"*)', "Bash(python3 $X*)"):
             self.assertIsNotNone(deny_rule_problem(bad), bad)
 

@@ -4,7 +4,6 @@ description: List the facts and history entries that cite the paths you give
 argument-hint: "<path>..."
 disable-model-invocation: true
 model: haiku
-disallowed-tools: Bash(python3 *bin/hivemind*)
 allowed-tools: Bash(python3 "${CLAUDE_PLUGIN_ROOT}/bin/hivemind" *)
 ---
 !`python3 "${CLAUDE_PLUGIN_ROOT}/bin/hivemind" --project "${CLAUDE_PROJECT_DIR}" related $ARGUMENTS`

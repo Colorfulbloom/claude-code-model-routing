@@ -3,7 +3,6 @@ name: inbox
 description: Preview what the next consolidation would fold in, without writing anything
 disable-model-invocation: true
 model: haiku
-disallowed-tools: Bash(python3 *bin/hivemind*)
 allowed-tools: Bash(python3 "${CLAUDE_PLUGIN_ROOT}/bin/hivemind" *)
 ---
 !`python3 "${CLAUDE_PLUGIN_ROOT}/bin/hivemind" --project "${CLAUDE_PROJECT_DIR}" inbox $ARGUMENTS`
