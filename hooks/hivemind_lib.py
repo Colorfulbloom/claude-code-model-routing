@@ -33,6 +33,7 @@ except ImportError:  # pragma: no cover (not on POSIX)
 STORE_REL = os.path.join(".claude", "hivemind")
 FACTS_REL = os.path.join(".claude", "rules", "project-facts.md")
 TALLY_TOPIC = "token-tallies"
+TALLY_ARCHIVE_JSON = "tallies.json"          # archive/: raw samples of expired tally rows, keyed by row key
 INBOX_GITIGNORE = "*\n!.gitignore\n"
 STORE_IGNORE_LINES = ("active-days.txt",)   # local to each clone, never committed
 GIT_LOG_MAX = 400                           # commits read for the commit-day half of the active days
@@ -339,7 +340,18 @@ def load_config(store):
             problem = True
     cfg["inject_budget_tokens"].setdefault("default", 800)
     cfg["slices"].setdefault("*", [])
+    # Not in DEFAULT_CONFIG: when absent it follows expiry_active_days (see tally_expiry_days).
+    if "tally_expiry_active_days" in data:
+        if _config_value_ok("tally_expiry_active_days", cfg["expiry_active_days"], data["tally_expiry_active_days"]):
+            cfg["tally_expiry_active_days"] = data["tally_expiry_active_days"]
+        else:
+            problem = True
     return cfg, problem
+
+
+def tally_expiry_days(cfg):
+    """Active-day expiry of tally rows: tally_expiry_active_days, else expiry_active_days."""
+    return cfg.get("tally_expiry_active_days", cfg["expiry_active_days"])
 
 
 # ---------------------------------------------------------------- topic files
@@ -1459,7 +1471,7 @@ def collect_items(store, cfg, agent_type, uses, days, today_s, log):
             for key, row in sorted(load_tallies(store)["rows"].items()):
                 if not isinstance(row, dict) or not valid_date(row.get("last_date")):
                     continue
-                if is_expired(row["last_date"], days, today_s, cfg["expiry_active_days"]):
+                if is_expired(row["last_date"], days, today_s, tally_expiry_days(cfg)):
                     expired += 1
                     continue
                 st = tally_stats(row.get("samples", []))
@@ -2924,10 +2936,11 @@ def live_records(st):
 def expired_items(st, uses, today_s):
     """([(topic, record)], [tally key]) of live facts and tally rows past the active-day expiry."""
     limit = st.cfg["expiry_active_days"]
+    tally_limit = tally_expiry_days(st.cfg)
     facts = [(t, r) for t, r in live_records(st) if is_expired(last_use(r, uses), st.days, today_s, limit)]
     rows = load_tallies(st.path)["rows"]
     keys = sorted(k for k, row in rows.items() if isinstance(row, dict) and valid_date(row.get("last_date"))
-                  and is_expired(row["last_date"], st.days, today_s, limit))
+                  and is_expired(row["last_date"], st.days, today_s, tally_limit))
     return facts, keys
 
 
@@ -3269,6 +3282,8 @@ def check_store(store):
         if len(places) > 1:
             problems.append("duplicate id %s in %s" % (rid, ", ".join(places)))
     committed = ["INDEX.md", "config.json", "tallies.json"]
+    if os.path.exists(os.path.join(store, "archive", TALLY_ARCHIVE_JSON)):
+        committed.append("archive/" + TALLY_ARCHIVE_JSON)
     for sub in ("topics", "archive"):
         d = os.path.join(store, sub)
         committed += [sub + "/" + n for n in sorted(os.listdir(d)) if n.endswith(".md")] if os.path.isdir(d) else []
@@ -3657,6 +3672,26 @@ def add_tally_samples(tallies, runs, cfg):
     return added, replaced, skipped
 
 
+def archive_tally_samples(store, rows):
+    """Add the raw rows of expired tally keys to archive/tallies.json; a key already there keeps its
+    samples and gets the new ones appended (a row that expired, came back and expired again)."""
+    path = os.path.join(store, "archive", TALLY_ARCHIVE_JSON)
+    data = read_json(path, None)
+    if not isinstance(data, dict) or not isinstance(data.get("rows"), dict):
+        data = {"version": 1, "rows": {}}
+    for key, row in rows.items():
+        old = data["rows"].get(key)
+        if isinstance(old, dict):
+            merged = copy.deepcopy(old)
+            merged["samples"] = list(old.get("samples", [])) + copy.deepcopy(row.get("samples", []))
+            if row.get("last_date", "") > old.get("last_date", ""):
+                merged["last_date"] = row["last_date"]
+            data["rows"][key] = merged
+        else:
+            data["rows"][key] = copy.deepcopy(row)
+    atomic_write(path, json.dumps(data, indent=2, sort_keys=True) + "\n")
+
+
 def drop_old_round_states(store):
     """Delete inbox/rounds/*.json files older than ROUND_STATE_MAX_DAYS days; nothing else."""
     d = os.path.join(store, "inbox", ROUNDS_DIR)
@@ -3806,12 +3841,14 @@ def _apply(store):
     tallies = load_tallies(store)
     added, replaced, tally_skipped = add_tally_samples(tallies, runs, cfg)
     dead = sorted(k for k, row in tallies["rows"].items() if isinstance(row, dict)
-                  and valid_date(row.get("last_date")) and is_expired(row["last_date"], days, today_s, limit))
+                  and valid_date(row.get("last_date")) and is_expired(
+                      row["last_date"], days, today_s, tally_expiry_days(cfg)))
     tally_arch = os.path.join(store, "archive", TALLY_TOPIC + ".md")
     if dead:
         text = read_text(tally_arch) if os.path.exists(tally_arch) else tally_table_header(cfg)
         text += ("" if text.endswith("\n") else "\n") + "".join(tally_row_line(k, tallies["rows"][k]) for k in dead)
         atomic_write(tally_arch, text)
+        archive_tally_samples(store, {k: tallies["rows"][k] for k in dead})
         for k in dead:
             del tallies["rows"][k]
     # writes: topics, archives, tallies, generated files, then the snapshot's run files

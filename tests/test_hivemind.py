@@ -2240,6 +2240,71 @@ class ApplyTest(CliBase):
         self.assertTrue(arch.endswith("| old | scout | m | unknown | 1 | 7 | 7 | - | 7 | 2026-01-01 |\n"))
         self.assertNotIn("| old |", self.slurp("topics", "token-tallies.md"))
 
+    def old_tally_world(self, tally_days=None, extra_days=20):
+        """A tally row and a fact, both last used 2026-01-01, with extra_days active days after it."""
+        row = {"last_date": "2026-01-01", "samples": [
+            {"v": 7, "date": "2026-01-01", "agent_id": "z1"}, {"v": 9, "date": "2026-01-01", "agent_id": "z2"}]}
+        self.write("tallies.json", json.dumps({"version": 1, "rows": {"old|scout|m|unknown": row}}), self.store)
+        self.put("testing", [self.record("T-0001", "aging", created="2026-01-01", last_used="2026-01-01")])
+        self.write("active-days.txt", "".join(d + "\n" for d in days_after("2026-01-01", extra_days)), self.store)
+        if tally_days is not None:
+            self.write("config.json", json.dumps({"version": 1, "tally_expiry_active_days": tally_days}), self.store)
+        return row
+
+    def archived_tallies(self):
+        return json.loads(self.slurp("archive", "tallies.json"))
+
+    def test_tally_expiry_defaults_to_the_fact_expiry(self):
+        self.assertEqual(lib.tally_expiry_days(lib.load_config(self.store)[0]), 28)
+        self.write("config.json", json.dumps({"version": 1, "expiry_active_days": 9}), self.store)
+        self.assertEqual(lib.tally_expiry_days(lib.load_config(self.store)[0]), 9)
+        self.old_tally_world(extra_days=20)
+        self.write("config.json", json.dumps({"version": 1}), self.store)
+        self.apply()
+        self.assertIn("old|scout|m|unknown", json.loads(self.slurp("tallies.json"))["rows"])
+        self.assertFalse(os.path.exists(os.path.join(self.store, "archive", "tallies.json")))
+        self.assertEqual([r["id"] for r in self.topic()], ["T-0001"])
+
+    def test_tally_expiry_key_is_validated_like_other_numeric_keys(self):
+        for bad in (0, -3, "14", True, None):
+            self.write("config.json", json.dumps({"version": 1, "tally_expiry_active_days": bad}), self.store)
+            cfg, problem = lib.load_config(self.store)
+            self.assertTrue(problem, bad)
+            self.assertEqual(lib.tally_expiry_days(cfg), 28)
+        self.write("config.json", json.dumps({"version": 1, "tally_expiry_active_days": 14}), self.store)
+        cfg, problem = lib.load_config(self.store)
+        self.assertEqual((problem, lib.tally_expiry_days(cfg), cfg["expiry_active_days"]), (False, 14, 28))
+
+    def test_shorter_tally_window_expires_the_row_but_not_a_fact_of_the_same_age(self):
+        row = self.old_tally_world(tally_days=10)
+        rc, out, err = self.apply()
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(json.loads(self.slurp("tallies.json"))["rows"], {})
+        self.assertEqual([r["id"] for r in self.topic()], ["T-0001"])
+        self.assertNotIn("| old |", self.slurp("topics", "token-tallies.md"))
+        self.assertIn("| old | scout | m | unknown | 2 | 8 | 9 | - | 9 | 2026-01-01 |\n",
+                      self.slurp("archive", "token-tallies.md"))
+        self.assertEqual(self.archived_tallies(), {"version": 1, "rows": {"old|scout|m|unknown": row}})
+        self.assertEqual(self.run_cmd(lib.cmd_check, self.store), (0, "check passed\n", ""))
+
+    def test_tally_window_in_expired_items_follows_the_tally_key(self):
+        self.old_tally_world(tally_days=10)
+        st = lib.Store(self.store)
+        facts, keys = lib.expired_items(st, {}, TODAY)
+        self.assertEqual(([r["id"] for _, r in facts], keys), ([], ["old|scout|m|unknown"]))
+
+    def test_second_expiry_of_a_key_keeps_both_sample_sets(self):
+        self.old_tally_world(tally_days=10)
+        self.apply()
+        later = {"last_date": "2026-01-02", "samples": [{"v": 11, "date": "2026-01-02", "agent_id": "z3"}]}
+        self.write("tallies.json", json.dumps({"version": 1, "rows": {"old|scout|m|unknown": later}}), self.store)
+        rc, out, err = self.apply()
+        self.assertEqual(rc, 0, err)
+        got = self.archived_tallies()["rows"]["old|scout|m|unknown"]
+        self.assertEqual([s["agent_id"] for s in got["samples"]], ["z1", "z2", "z3"])
+        self.assertEqual(got["last_date"], "2026-01-02")
+        self.assertEqual(json.loads(self.slurp("tallies.json"))["rows"], {})
+
     def tally_run(self, agent_id, kind, v, rnd=None, prev=None, anchor="capture", **over):
         """A run file; a tally with a round carries an anchor (new format) unless anchor=None (9c7985a format)."""
         t = {"turns": 3, "context_final_plus_out": v, "model": "m", "skipped": None}
