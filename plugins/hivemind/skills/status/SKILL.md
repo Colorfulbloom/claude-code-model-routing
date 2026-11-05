@@ -3,7 +3,6 @@ name: status
 description: Show this project's HiveMind store and whether a consolidation has work waiting
 disable-model-invocation: true
 model: haiku
-disallowed-tools: Bash(python3 *bin/hivemind*)
 allowed-tools: Bash(python3 "${CLAUDE_PLUGIN_ROOT}/bin/hivemind" *)
 ---
 !`python3 "${CLAUDE_PLUGIN_ROOT}/bin/hivemind" --project "${CLAUDE_PROJECT_DIR}" status $ARGUMENTS`
