@@ -3,8 +3,9 @@
 
 The routing-dashboard plugin's skill runs this as
 python3 "<plugin root>/bin/routing-dashboard" [global options] [action] [args],
-and its SessionEnd hook runs the hidden action session-end. Python 3.9 standard
-library only, and no imports from the repo.
+and its SessionEnd hook runs the hidden action session-end. Its PreToolUse hook runs the
+hidden action guard, which denies a model's own Bash call to this launcher. Python 3.9
+standard library only, and no imports from the repo.
 
 Global options come before the action: --data DIR (else env CLAUDE_PLUGIN_DATA),
 --default-project DIR (else the working folder), --session ID, and --fixture DIR
@@ -73,9 +74,18 @@ ACTIONS = {
     "edits": ({"--port": True, "--no-open": False, "--key-file": False}, 0),
     "log": ({}, 0),
     "session-end": ({}, 0),
+    "guard": ({}, 0),
     "_end": ({"--session": True, "--claude-pid": True, "--claude-started": True}, 0),
 }
-QUIET_ACTIONS = ("session-end", "_end")
+QUIET_ACTIONS = ("session-end", "guard", "_end")
+GUARD_RULE = "Bash(python3 *bin/routing-dashboard*)"
+GUARD_REASON = ("The routing-dashboard launcher runs only from the user's /routing-dashboard:dashboard "
+                "command. Ask the user to run that command instead.")
+GUARD_STDIN_LIMIT = 1024 * 1024
+GUARD_HARD_SPLIT = re.compile(r"\n|;|&&|\|\||\||&")
+GUARD_SOFT_SPLIT = re.compile(r"\$\(|`|\(|\)|\{|\}")
+GUARD_PREFIX_WORDS = ("exec", "command", "env", "nohup", "time", "nice", "sudo")
+GUARD_ASSIGN = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=")
 
 
 class Usage(Exception):
@@ -1111,8 +1121,78 @@ def report(state, message, code):
     return code
 
 
+def segment_runs(segment):
+    """True when the command segment is a python3 call that names bin/routing-dashboard.
+
+    Leading NAME=value words and wrapper words (GUARD_PREFIX_WORDS) are skipped. The first word left
+    must be python3, python3.12, /usr/bin/python3 and so on."""
+    words = segment.split()
+    i = 0
+    while i < len(words) and (GUARD_ASSIGN.match(words[i]) or words[i] in GUARD_PREFIX_WORDS):
+        i += 1
+    if i == len(words) or "bin/routing-dashboard" not in segment:
+        return False
+    return os.path.basename(words[i].lstrip("'\"")).startswith("python3")
+
+
+def command_runs(command):
+    """True when a Bash command line runs this launcher the way the hook's `if` rule (GUARD_RULE) matches it.
+
+    The line is split into command segments on newlines, ; && || | and &. Each segment is checked
+    whole, and again after a split on $( ` ( ) { }, so a call inside a substitution or subshell is
+    its own segment while a path built with $(...) or ${...} still counts for the segment around it."""
+    for hard in GUARD_HARD_SPLIT.split(command):
+        for segment in [hard] + GUARD_SOFT_SPLIT.split(hard):
+            if segment_runs(segment):
+                return True
+    return False
+
+
+def guard_denies(stream):
+    """True when the PreToolUse input on stream is a Bash call that runs this launcher.
+
+    Anything that is not a JSON object, or a Bash call without a text command, counts as a
+    launcher call, so the guard fails closed. The check mirrors the hook's `if` rule (GUARD_RULE) per
+    command segment. Claude Code still runs the hook for a command with $(), backticks or $VAR
+    that it cannot match, so unrelated Bash passes only when no segment is a python3 call to this launcher."""
+    try:
+        data = json.loads(stream.read(GUARD_STDIN_LIMIT))
+    except ValueError:
+        return True
+    if not isinstance(data, dict):
+        return True
+    if data.get("tool_name") != "Bash":
+        return False
+    tool_input = data.get("tool_input")
+    command = tool_input.get("command") if isinstance(tool_input, dict) else None
+    if not isinstance(command, str):
+        return True
+    return command_runs(command)
+
+
+def guard(stream=None):
+    """The hidden PreToolUse action: print one deny line for a launcher call, else nothing.
+
+    Exit 0, except 1 when the deny line cannot be written, so the hook's onFailure block still blocks."""
+    try:
+        deny = guard_denies(sys.stdin if stream is None else stream)
+    except Exception:
+        deny = True
+    if deny:
+        try:
+            say(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse",
+                                                   "permissionDecision": "deny",
+                                                   "permissionDecisionReason": GUARD_REASON}}))
+            sys.stdout.flush()
+        except (OSError, ValueError):
+            return 1
+    return 0
+
+
 def run(argv, state):
     glob, action, opts, pos = parse_args(argv, state)
+    if action == "guard":
+        return guard()
     if action == "session-end":
         session_end(glob)
         return 0

@@ -38,15 +38,23 @@ HM_PLUGIN_JSON = os.path.join(HM_PLUGIN, ".claude-plugin", "plugin.json")
 HM_WRAPPER = os.path.join(HM_PLUGIN, "bin", "hivemind")
 HM_SKILLS = os.path.join(HM_PLUGIN, "skills")
 HM_WRAPPER_TEXT = 'python3 "${CLAUDE_PLUGIN_ROOT}/bin/hivemind"'
-HM_DENY_RULE = "Bash(python3 *bin/hivemind*)"
+HM_HOOKS_JSON = os.path.join(HM_PLUGIN, "hooks", "hooks.json")
+HM_GUARD_RULE = "Bash(python3 *bin/hivemind*)"
 HM_ACTIONS = ["status", "check", "link", "related", "inbox", "init", "consolidate"]
 NAME_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 RESERVED_PREFIXES = ("claude-", "anthropic-", "anthropics-", "cc-plugin-")
 ONE_MB = 1024 * 1024
 LAUNCHER_PATH_TEXT = 'python3 "${CLAUDE_PLUGIN_ROOT}/bin/routing-dashboard"'
-# Denies the launcher to the model, its subagents and background agents while the skill's turn
-# runs, and nothing else. The skill's own ! line still runs (probed on Claude Code 2.1.302).
-DENY_RULE = "Bash(python3 *bin/routing-dashboard*)"
+# The `if` rule of the PreToolUse guard hook. The hook denies the launcher to the model, its
+# subagents and background agents, and a skill's own ! line never reaches it (probed on Claude
+# Code 2.1.302). A disallowed-tools deny on the skill outlived the command, so the skill has none.
+GUARD_RULE = "Bash(python3 *bin/routing-dashboard*)"
+GUARD_ENTRY = {"type": "command", "command": "python3",
+               "args": ["${CLAUDE_PLUGIN_ROOT}/bin/routing-dashboard", "guard"],
+               "if": GUARD_RULE, "onFailure": "block"}
+HM_GUARD_ENTRY = {"type": "command", "command": "python3",
+                  "args": ["${CLAUDE_PLUGIN_ROOT}/bin/hivemind", "guard"],
+                  "if": HM_GUARD_RULE, "onFailure": "block"}
 
 
 def bash_rule_regex(rule):
@@ -59,6 +67,15 @@ def load_module(name, path):
     spec = importlib.util.spec_from_file_location(name, path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
+    return mod
+
+
+def load_script(name, path):
+    """Import a script that has no .py suffix."""
+    loader = importlib.machinery.SourceFileLoader(name, path)
+    spec = importlib.util.spec_from_loader(loader.name, loader)
+    mod = importlib.util.module_from_spec(spec)
+    loader.exec_module(mod)
     return mod
 
 
@@ -420,10 +437,10 @@ class ShapeTest(unittest.TestCase):
         for key in ("hooks", "agents", "skills", "commands", "mcpServers"):
             self.assertNotIn(key, manifest)
 
-    def test_hooks_json_runs_the_launcher_at_session_end_only(self):
+    def test_hooks_json_runs_the_launcher_at_session_end_and_guards_it_before_bash(self):
         hooks = read_json(HOOKS_JSON)
         self.assertEqual(list(hooks), ["hooks"])
-        self.assertEqual(list(hooks["hooks"]), ["SessionEnd"])
+        self.assertEqual(sorted(hooks["hooks"]), ["PreToolUse", "SessionEnd"])
         groups = hooks["hooks"]["SessionEnd"]
         self.assertEqual(len(groups), 1)
         self.assertNotIn("matcher", groups[0])
@@ -432,6 +449,17 @@ class ShapeTest(unittest.TestCase):
         self.assertEqual(entry["type"], "command")
         self.assertEqual(entry["command"], "python3")
         self.assertEqual(entry["args"], ["${CLAUDE_PLUGIN_ROOT}/bin/routing-dashboard", "session-end"])
+        self.assertEqual(sorted(entry), ["args", "command", "type"])
+        groups = hooks["hooks"]["PreToolUse"]
+        self.assertEqual(len(groups), 1)
+        self.assertEqual(sorted(groups[0]), ["hooks", "matcher"])
+        self.assertEqual(groups[0]["matcher"], "Bash")
+        self.assertEqual(groups[0]["hooks"], [GUARD_ENTRY])
+
+    def test_the_guard_if_rule_is_the_launchers_guard_rule(self):
+        launcher = load_script("launcher_for_build_test", LAUNCHER)
+        self.assertEqual(read_json(HOOKS_JSON)["hooks"]["PreToolUse"][0]["hooks"][0]["if"], launcher.GUARD_RULE)
+        self.assertEqual(launcher.GUARD_RULE, GUARD_RULE)
 
     def test_payload_has_no_clutter_and_stays_small(self):
         total = 0
@@ -494,16 +522,20 @@ class SkillTest(unittest.TestCase):
         self.assertEqual(self.fields["name"], "dashboard")
         self.assertEqual(self.fields["disable-model-invocation"], "true")
         self.assertEqual(self.fields["model"], "haiku")
-        self.assertEqual(self.fields["disallowed-tools"], DENY_RULE)
+        # A disallowed-tools deny outlives the command into the next slash command and denies that
+        # command's own ! line, so the PreToolUse guard hook does the denying instead.
+        self.assertNotIn("disallowed-tools", self.fields)
 
-    def test_disallowed_tools_is_never_a_bare_tool_name(self):
-        # A bare name such as "Bash" takes the tool from the whole session for the rest of the
-        # turn, subagents included, and from background agents until the next user message
-        # (probed on Claude Code 2.1.302). A Bash(...) pattern denies only matching commands.
-        rule = self.fields["disallowed-tools"]
-        self.assertRegex(rule, r"^Bash\(.+\)$")
-        # ${CLAUDE_PLUGIN_ROOT} is not expanded in disallowed-tools, so the pattern must not need it.
-        self.assertNotIn("$", rule)
+    def test_the_guard_if_rule_is_a_bash_pattern_without_a_dollar(self):
+        rule = self.guard_rule()
+        self.assertEqual(rule, GUARD_RULE)
+        self.assertIsNone(deny_rule_problem(rule))
+        for bad in ("Bash", "Bash()", "Read", "Bash(python3 ${CLAUDE_PLUGIN_ROOT}/bin/routing-dashboard*)"):
+            self.assertIsNotNone(deny_rule_problem(bad), bad)
+
+    @staticmethod
+    def guard_rule():
+        return read_json(HOOKS_JSON)["hooks"]["PreToolUse"][0]["hooks"][0]["if"]
 
     def rendered_line(self, arguments):
         command = self.bang_lines()[0][2:-1]
@@ -514,10 +546,10 @@ class SkillTest(unittest.TestCase):
             command = command.replace(name, value)
         return command.strip()
 
-    def test_deny_rule_covers_every_launcher_command_the_grant_allows(self):
+    def test_guard_rule_covers_every_launcher_command_the_grant_allows(self):
         allow = bash_rule_regex(self.fields["allowed-tools"].replace(
             "${CLAUDE_PLUGIN_ROOT}", "/work/cache/routing-dashboard/0.1.2"))
-        deny = bash_rule_regex(self.fields["disallowed-tools"])
+        deny = bash_rule_regex(self.guard_rule())
         hint = self.fields["argument-hint"].strip('"')
         actions = [part.split()[0] for part in re.match(r"\[([^\]]+)\]", hint).group(1).split("|")]
         for arguments in [""] + actions + ["edits --key-file", "stop --all", 'project "/work/other dir"']:
@@ -525,10 +557,12 @@ class SkillTest(unittest.TestCase):
             self.assertTrue(allow.fullmatch(command), command)
             self.assertTrue(deny.fullmatch(command), command)
 
-    def test_deny_rule_leaves_other_commands_alone(self):
-        deny = bash_rule_regex(self.fields["disallowed-tools"])
+    def test_guard_rule_leaves_other_commands_alone(self):
+        deny = bash_rule_regex(self.guard_rule())
         for command in ("ls", "git status", "python3 -m unittest discover -s tests",
-                        "python3 tools/build_plugins.py", "/usr/bin/python3 -B tests/test_plugin_launcher.py"):
+                        "python3 tools/build_plugins.py", "/usr/bin/python3 -B tests/test_plugin_launcher.py",
+                        "cat /work/repo/plugins/routing-dashboard/bin/routing-dashboard",
+                        "sed -n 1,80p plugins/routing-dashboard/bin/routing-dashboard"):
             self.assertIsNone(deny.fullmatch(command), command)
 
     def bang_lines(self):
@@ -569,10 +603,28 @@ class SkillTest(unittest.TestCase):
 class HiveMindShapeTest(unittest.TestCase):
     def test_plugin_root_holds_exactly_what_the_design_lists(self):
         self.assertEqual(sorted(os.listdir(HM_PLUGIN)),
-                         sorted([".claude-plugin", "bin", "skills", "payload", "LICENSE", "README.md"]))
+                         sorted([".claude-plugin", "bin", "hooks", "skills", "payload", "LICENSE", "README.md"]))
+
+    def test_hooks_folder_holds_only_hooks_json(self):
+        self.assertEqual(os.listdir(os.path.join(HM_PLUGIN, "hooks")), ["hooks.json"])
+
+    def test_hooks_json_guards_the_wrapper_before_bash_and_nothing_else(self):
+        hooks = read_json(HM_HOOKS_JSON)
+        self.assertEqual(list(hooks), ["hooks"])
+        self.assertEqual(list(hooks["hooks"]), ["PreToolUse"])
+        groups = hooks["hooks"]["PreToolUse"]
+        self.assertEqual(len(groups), 1)
+        self.assertEqual(sorted(groups[0]), ["hooks", "matcher"])
+        self.assertEqual(groups[0]["matcher"], "Bash")
+        self.assertEqual(groups[0]["hooks"], [HM_GUARD_ENTRY])
+
+    def test_the_guard_if_rule_is_the_wrappers_guard_rule(self):
+        wrapper = load_script("hivemind_wrapper_for_build_test", HM_WRAPPER)
+        self.assertEqual(read_json(HM_HOOKS_JSON)["hooks"]["PreToolUse"][0]["hooks"][0]["if"], wrapper.GUARD_RULE)
+        self.assertEqual(wrapper.GUARD_RULE, HM_GUARD_RULE)
 
     def test_no_component_folders_or_files_at_the_plugin_root(self):
-        for name in ("hooks", "agents", "commands", ".mcp.json", "monitors", "settings.json", "output-styles"):
+        for name in ("agents", "commands", ".mcp.json", "monitors", "settings.json", "output-styles"):
             self.assertFalse(os.path.lexists(os.path.join(HM_PLUGIN, name)), name)
 
     def test_plugin_json_declares_no_components(self):
@@ -618,8 +670,9 @@ class HiveMindShapeTest(unittest.TestCase):
 
 
 def deny_rule_problem(rule):
-    """Why a disallowed-tools value is unsafe, or None. A bare tool name takes the tool from the whole session
-    (probed on Claude Code 2.1.302), and ${CLAUDE_PLUGIN_ROOT} is not expanded in disallowed-tools."""
+    """Why a guard hook's `if` rule is unsafe, or None. It must be a Bash(...) pattern, never a bare tool name.
+    ${CLAUDE_PLUGIN_ROOT} is not expanded in a disallowed-tools rule, and whether `if` expands it is unverified,
+    so the rule keeps a wildcard and holds no $."""
     if not re.fullmatch(r"Bash\(.+\)", rule):
         return "not a Bash(...) pattern"
     if "$" in rule:
@@ -633,9 +686,7 @@ class HiveMindSkillTest(unittest.TestCase):
         "link": ["", "F-0001 abcdef1", "F-0001 abcdef1..1234567"],
         "related": ["src/a.py", "src/a.py docs/b.md", '"docs/my notes.md"'],
     }
-    WRITERS = ("link", "init", "consolidate")
-    KEY_ORDER = ["name", "description", "argument-hint", "disable-model-invocation", "model", "disallowed-tools",
-                 "allowed-tools"]
+    KEY_ORDER = ["name", "description", "argument-hint", "disable-model-invocation", "model", "allowed-tools"]
 
     @classmethod
     def setUpClass(cls):
@@ -673,12 +724,9 @@ class HiveMindSkillTest(unittest.TestCase):
                 self.assertEqual(fields["name"], name)
                 self.assertTrue(fields["description"])
                 self.assertEqual(fields["disable-model-invocation"], "true")
-                if name in self.WRITERS:
-                    self.assertEqual(fields["disallowed-tools"], HM_DENY_RULE)
-                else:
-                    # The deny outlives the command until the next user message, and a slash
-                    # command counts as that message, so a read-only skill must not carry one.
-                    self.assertNotIn("disallowed-tools", fields)
+                # A disallowed-tools deny outlives the command into the next slash command, so no
+                # skill carries one. The PreToolUse guard hook denies the wrapper instead.
+                self.assertNotIn("disallowed-tools", fields)
                 self.assertEqual(fields["allowed-tools"], "Bash(%s *)" % HM_WRAPPER_TEXT)
                 if name == "consolidate":
                     self.assertNotIn("model", fields)
@@ -690,11 +738,14 @@ class HiveMindSkillTest(unittest.TestCase):
         self.assertEqual(self.skills["link"]["fields"]["argument-hint"], '"[<id> <sha or base..head>]"')
         self.assertEqual(self.skills["related"]["fields"]["argument-hint"], '"<path>..."')
 
-    def test_deny_rule_is_never_a_bare_tool_name_or_holds_a_dollar(self):
-        for name in self.WRITERS:
-            rule = self.skills[name]["fields"]["disallowed-tools"]
-            self.assertEqual(rule, HM_DENY_RULE, name)
-            self.assertIsNone(deny_rule_problem(rule), name)
+    @staticmethod
+    def guard_rule():
+        return read_json(HM_HOOKS_JSON)["hooks"]["PreToolUse"][0]["hooks"][0]["if"]
+
+    def test_guard_rule_is_never_a_bare_tool_name_or_holds_a_dollar(self):
+        rule = self.guard_rule()
+        self.assertEqual(rule, HM_GUARD_RULE)
+        self.assertIsNone(deny_rule_problem(rule))
         for bad in ("Bash", "Bash()", "Read", 'Bash(python3 "${CLAUDE_PLUGIN_ROOT}/bin/hivemind"*)', "Bash(python3 $X*)"):
             self.assertIsNotNone(deny_rule_problem(bad), bad)
 
@@ -716,8 +767,8 @@ class HiveMindSkillTest(unittest.TestCase):
             command = command.replace(placeholder, value)
         return command.strip()
 
-    def test_deny_rule_covers_every_wrapper_line_the_grant_allows(self):
-        deny = bash_rule_regex(HM_DENY_RULE)
+    def test_guard_rule_covers_every_wrapper_line_the_grant_allows(self):
+        deny = bash_rule_regex(self.guard_rule())
         for name, skill in self.skills.items():
             allow = bash_rule_regex(skill["fields"]["allowed-tools"].replace(
                 "${CLAUDE_PLUGIN_ROOT}", "/work/cache/hivemind/0.1.0"))
@@ -726,18 +777,18 @@ class HiveMindSkillTest(unittest.TestCase):
                 self.assertTrue(allow.fullmatch(command), command)
                 self.assertTrue(deny.fullmatch(command), command)
 
-    def test_deny_rule_leaves_other_commands_alone(self):
-        deny = bash_rule_regex(HM_DENY_RULE)
+    def test_guard_rule_leaves_other_commands_alone(self):
+        deny = bash_rule_regex(self.guard_rule())
         for command in ("ls", "git status", "python3 -m unittest discover -s tests",
                         "python3 tools/build_plugins.py",
                         'python3 "/work/cfg/hooks/hivemind_lib.py" prep /work/proj/.claude/hivemind',
                         "python3 /work/cfg/hooks/hivemind_lib.py check /work/proj/.claude/hivemind"):
             self.assertIsNone(deny.fullmatch(command), command)
 
-    def test_the_deny_rule_does_not_touch_the_dashboard_launcher(self):
-        self.assertIsNone(bash_rule_regex(HM_DENY_RULE).fullmatch(
+    def test_the_guard_rule_does_not_touch_the_dashboard_launcher(self):
+        self.assertIsNone(bash_rule_regex(self.guard_rule()).fullmatch(
             'python3 "/work/cache/routing-dashboard/0.1.3/bin/routing-dashboard" --data /work/d status'))
-        self.assertIsNone(bash_rule_regex(DENY_RULE).fullmatch(
+        self.assertIsNone(bash_rule_regex(read_json(HOOKS_JSON)["hooks"]["PreToolUse"][0]["hooks"][0]["if"]).fullmatch(
             'python3 "/work/cache/hivemind/0.1.0/bin/hivemind" --project /work/proj status'))
 
     def test_consolidate_hands_the_work_to_deep_reasoner_and_never_runs_apply(self):

@@ -71,7 +71,7 @@ When work waits, it states the dispatch plan with its expected cost. It waits fo
 
 `deep-reasoner` turns down secrets and owner decisions. It lists any facts worth promoting to `.claude/rules/project-facts.md` and leaves that call to you. A manual consolidation writes no history entry, so its CONSOLIDATION line reports `history none`. The changes stay uncommitted, so you review the diff before anything lands.
 
-The command tells Claude never to run a consolidation step itself. That's an instruction, not a block. The command's deny rule covers only the plugin's wrapper, so the installed library stays reachable. If you have no `deep-reasoner` agent, the command says so and stops. The installer adds it.
+The command tells Claude never to run a consolidation step itself. That's an instruction, not a block. The plugin's hook blocks only the wrapper, so `deep-reasoner` can still reach the installed library. If you have no `deep-reasoner` agent, the command says so and stops. The installer adds it.
 
 ## Sandbox
 
@@ -91,7 +91,9 @@ A command on that list runs outside the sandbox, so the sandbox no longer limits
 
 Each command approves only its own wrapper line. If one of your `ask` or `deny` rules matches `Bash(python3 ...)`, that rule wins and the command fails. The [skills docs](https://code.claude.com/docs/en/skills#permission-checks-on-injected-commands) cover how these checks work.
 
-While a command runs, Claude can't run the wrapper again without asking you. During a consolidation, `deep-reasoner` still runs its own HiveMind steps, because those call the installed library, not the wrapper.
+The wrapper runs only from your own commands. The plugin's PreToolUse hook refuses every call that matches `python3 *bin/hivemind*`, whether Claude, a subagent or a background agent makes it. That holds in every turn and in every permission mode, `bypassPermissions` included. So Claude can't run the wrapper even when you would approve it. The refusal tells Claude to ask you to run the HiveMind command instead.
+
+The hook starts for Bash commands that match that pattern. It also starts for any command with `$()`, backticks or `$VAR`, and for one Claude Code can't parse. In those cases the guard splits the command into its parts and lets it through unless one part runs `python3` on `bin/hivemind`. So the guard leaves your other Bash calls alone. During a consolidation, `deep-reasoner` still runs its own HiveMind steps, because those call the installed library, not the wrapper. The hook uses the fields `if` and `onFailure`, and `onFailure` needs Claude Code 2.1.295 or later. The [hooks docs](https://code.claude.com/docs/en/hooks) explain both.
 
 ## Keeping the copy in step
 

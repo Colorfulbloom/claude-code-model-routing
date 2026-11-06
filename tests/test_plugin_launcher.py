@@ -41,6 +41,7 @@ import helpers
 import test_server as ts
 
 LAUNCHER_SRC = os.path.join(helpers.REPO, "plugins", "routing-dashboard", "bin", "routing-dashboard")
+HIVEMIND_SRC = os.path.join(helpers.REPO, "plugins", "hivemind", "bin", "hivemind")
 SESSION_SCRIPT = r'''
 import json, os, subprocess, sys, time
 os.environ["CLAUDE_PID"] = str(os.getpid())
@@ -980,7 +981,7 @@ class SessionEndTests(LauncherCase):
         self.assertEqual([o["claude_pid"] for o in self.record()["owners"]], [self.sess("b").pid])
 
     def test_the_hidden_actions_are_refused_in_skill_mode(self):
-        for argv in (["session-end"], ["_end", "--session", "sess-a"]):
+        for argv in (["session-end"], ["guard"], ["_end", "--session", "sess-a"]):
             res = self.skill(argv)
             self.assertEqual(res.code, 0, res)
             self.assertTrue(res.out.startswith("error: "), res)
@@ -1044,6 +1045,180 @@ class SessionEndTests(LauncherCase):
         time.sleep(1.0)
         self.assertLessEqual(set(os.listdir(os.path.join(self.data, "servers"))), {".lock"})
         self.assertFalse(os.path.exists(os.path.join(self.data, "logs")), "the hook creates no folders")
+
+
+# (command with NAME for the launcher's file name, denied?). The same list sits in test_plugin_hivemind.py.
+GUARD_CASES = [
+    ('python3 "/work/cache/NAME/0.1.7/bin/NAME" --data "/work/d" --session abc status', True),
+    ('python3 "${CLAUDE_PLUGIN_ROOT}/bin/NAME" status', True),
+    ("cd /work && python3 /work/bin/NAME status", True),
+    ("FOO=1 python3 /work/bin/NAME stop", True),
+    ("env python3 /work/bin/NAME stop", True),
+    ("env FOO=1 nohup python3 /work/bin/NAME stop", True),
+    ("exec python3 /work/bin/NAME stop", True),
+    ("/usr/bin/python3 /work/bin/NAME status", True),
+    ('"/usr/bin/python3" /work/bin/NAME status', True),
+    ("python3.12 /work/bin/NAME status", True),
+    ("echo $(python3 /work/bin/NAME edits)", True),
+    ("echo `python3 /work/bin/NAME edits`", True),
+    ("true; python3 /work/bin/NAME log", True),
+    ("true || python3 /work/bin/NAME log", True),
+    ("echo hi | python3 /work/bin/NAME log", True),
+    ("python3 /work/bin/NAME log &", True),
+    ("echo hi\npython3 /work/bin/NAME log", True),
+    ("(python3 /work/bin/NAME status)", True),
+    ("{ python3 /work/bin/NAME status; }", True),
+    ('python3 "$(dirname "$0")/bin/NAME" status', True),
+    ("grep -n python3 plugins/NAME/bin/NAME | head -$N", False),
+    ("cat /work/repo/plugins/NAME/bin/NAME", False),
+    ("sed -n 1,80p plugins/NAME/bin/NAME", False),
+    ("git log -- plugins/NAME/bin/NAME", False),
+    ("echo python3; ls bin/NAME", False),
+    ("echo hi", False),
+    ("git status", False),
+    ("python3 tools/build_plugins.py", False),
+    ("python3 -m unittest discover -s tests", False),
+]
+
+
+class DeadOut:
+    """A stdout whose every write and flush fails."""
+
+    def write(self, _text):
+        raise OSError("closed")
+
+    def flush(self):
+        raise OSError("closed")
+
+
+class GuardTests(unittest.TestCase):
+    """The hidden guard action, run as the PreToolUse hook runs it: JSON on stdin, one line out, exit 0.
+
+    It checks each command segment against the hook's `if` rule, which Claude Code skips for a command it
+    cannot parse. It reads no state and no settings, so these runs need no plugin tree, data folder or
+    fake session."""
+
+    @classmethod
+    def setUpClass(cls):
+        loader = importlib.machinery.SourceFileLoader("launcher_for_guard_test", LAUNCHER_SRC)
+        spec = importlib.util.spec_from_loader(loader.name, loader)
+        cls.module = importlib.util.module_from_spec(spec)
+        loader.exec_module(cls.module)
+        cls.deny = {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny",
+                                           "permissionDecisionReason": cls.module.GUARD_REASON}}
+        cls.env = {"PATH": os.environ.get("PATH", "/usr/bin:/bin")}
+
+    def run_guard(self, stdin, argv=("guard",)):
+        proc = subprocess.run([sys.executable, LAUNCHER_SRC] + list(argv), input=stdin, env=self.env,
+                              capture_output=True, universal_newlines=True, timeout=30)
+        return proc.returncode, proc.stdout, proc.stderr
+
+    def bash(self, command):
+        return json.dumps({"tool_name": "Bash", "tool_input": {"command": command}})
+
+    def assert_denied(self, stdin):
+        code, out, err = self.run_guard(stdin)
+        self.assertEqual((code, err), (0, ""), stdin)
+        self.assertEqual(out.count("\n"), 1, out)
+        self.assertEqual(json.loads(out), self.deny, stdin)
+
+    def assert_silent(self, stdin):
+        self.assertEqual(self.run_guard(stdin), (0, "", ""), stdin)
+
+    def test_every_rendered_skill_line_is_denied(self):
+        launcher = '"/work/cache/routing-dashboard/0.1.7/bin/routing-dashboard"'
+        for tail in ("edits", "status", "stop", "start --port 0", "stop --all", 'project "/work/other dir"', ""):
+            command = ('python3 %s --data "/work/data/routing-dashboard" --default-project "/work/proj" '
+                       '--session abc %s' % (launcher, tail)).strip()
+            with self.subTest(command=command):
+                self.assert_denied(self.bash(command))
+
+    def test_a_model_call_to_the_launcher_is_denied_however_it_is_spelled(self):
+        for template, denied in GUARD_CASES:
+            if not denied:
+                continue
+            command = template.replace("NAME", "routing-dashboard")
+            with self.subTest(command=command):
+                self.assert_denied(self.bash(command))
+
+    def test_other_bash_commands_pass_in_silence(self):
+        for template, denied in GUARD_CASES:
+            if denied:
+                continue
+            command = template.replace("NAME", "routing-dashboard")
+            with self.subTest(command=command):
+                self.assert_silent(self.bash(command))
+
+    def test_a_python3_call_that_never_names_the_launcher_passes(self):
+        for command in ("python3 /work/bin/other-tool status", "FOO=1 python3 -c 'print(1)'",
+                        "python2 /work/bin/routing-dashboard status", "ls -l /work/bin/routing-dashboard"):
+            with self.subTest(command=command):
+                self.assert_silent(self.bash(command))
+
+    def test_unreadable_input_is_denied(self):
+        for stdin in ("not json", "", "[]", "null", '"Bash"', "5",
+                      json.dumps({"tool_name": "Bash", "tool_input": {"command": 5}}),
+                      json.dumps({"tool_name": "Bash", "tool_input": {}}),
+                      json.dumps({"tool_name": "Bash", "tool_input": "echo hi"}),
+                      json.dumps({"tool_name": "Bash"})):
+            with self.subTest(stdin=stdin):
+                self.assert_denied(stdin)
+
+    def test_a_tool_other_than_bash_passes_in_silence(self):
+        self.assert_silent(json.dumps({"tool_name": "Read", "tool_input": {"file_path": "/work/a.py"}}))
+        self.assert_silent(json.dumps({"tool_name": "Read", "tool_input": {
+            "command": "python3 /work/bin/routing-dashboard"}}))
+        self.assert_silent(json.dumps({"tool_name": "Read"}))
+
+    def test_an_input_over_the_cap_is_denied(self):
+        padding = "x" * (self.module.GUARD_STDIN_LIMIT + 10)
+        self.assert_denied(json.dumps({"tool_name": "Bash", "tool_input": {"command": "echo " + padding}}))
+
+    def test_the_guard_exits_0_even_when_the_stream_breaks(self):
+        class Broken:
+            def read(self, _limit):
+                raise OSError("closed")
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            self.assertEqual(self.module.guard(Broken()), 0)
+        self.assertEqual(json.loads(buf.getvalue()), self.deny)
+
+    def test_the_guard_exits_1_when_the_deny_line_cannot_be_written(self):
+        stdin = io.StringIO(self.bash("python3 /work/bin/routing-dashboard stop"))
+        with contextlib.redirect_stdout(DeadOut()):
+            self.assertEqual(self.module.guard(stdin), 1)
+
+    def test_main_returns_1_for_a_guard_whose_deny_line_cannot_be_written(self):
+        real_stdin = sys.stdin
+        sys.stdin = io.StringIO(self.bash("python3 /work/bin/routing-dashboard stop"))
+        try:
+            with contextlib.redirect_stdout(DeadOut()), contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(self.module.main(["guard"]), 1)
+        finally:
+            sys.stdin = real_stdin
+
+    def test_a_guard_with_nothing_to_write_exits_0_on_a_dead_stdout(self):
+        with contextlib.redirect_stdout(DeadOut()):
+            self.assertEqual(self.module.guard(io.StringIO(self.bash("echo hi"))), 0)
+
+    def test_the_hook_rule_and_the_segment_check_agree(self):
+        self.assertEqual(self.module.GUARD_RULE, "Bash(python3 *bin/routing-dashboard*)")
+        self.assertTrue(self.module.GUARD_REASON)
+        self.assertIn("guard", self.module.QUIET_ACTIONS)
+        self.assertEqual(self.module.ACTIONS["guard"], ({}, 0))
+
+    def test_the_hivemind_wrapper_reaches_the_same_verdicts(self):
+        loader = importlib.machinery.SourceFileLoader("hivemind_for_guard_compare", HIVEMIND_SRC)
+        spec = importlib.util.spec_from_loader(loader.name, loader)
+        other = importlib.util.module_from_spec(spec)
+        loader.exec_module(other)
+        for template, denied in GUARD_CASES:
+            with self.subTest(template=template):
+                self.assertEqual(self.module.command_runs(template.replace("NAME", "routing-dashboard")), denied)
+                self.assertEqual(other.command_runs(template.replace("NAME", "hivemind")), denied)
+        for name in ("GUARD_HARD_SPLIT", "GUARD_SOFT_SPLIT", "GUARD_PREFIX_WORDS", "GUARD_ASSIGN"):
+            mine, theirs = getattr(self.module, name), getattr(other, name)
+            self.assertEqual(getattr(mine, "pattern", mine), getattr(theirs, "pattern", theirs), name)
 
 
 class PruningTests(LauncherCase):
