@@ -4,7 +4,6 @@ description: Start, stop or open the Routing Dashboard for this project, or turn
 argument-hint: "[start|stop|reload|status|open|project <dir>|edits|log] [--port N] [--all] [--no-open] [--key-file]"
 disable-model-invocation: true
 model: haiku
-disallowed-tools: Bash(python3 *bin/routing-dashboard*)
 allowed-tools: Bash(python3 "${CLAUDE_PLUGIN_ROOT}/bin/routing-dashboard" *)
 ---
 !`python3 "${CLAUDE_PLUGIN_ROOT}/bin/routing-dashboard" --data "${CLAUDE_PLUGIN_DATA}" --default-project "${CLAUDE_PROJECT_DIR}" --session "${CLAUDE_SESSION_ID}" $ARGUMENTS`

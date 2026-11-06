@@ -3,7 +3,6 @@ name: init
 description: Turn HiveMind on in this project by creating its store
 disable-model-invocation: true
 model: haiku
-disallowed-tools: Bash(python3 *bin/hivemind*)
 allowed-tools: Bash(python3 "${CLAUDE_PLUGIN_ROOT}/bin/hivemind" *)
 ---
 !`python3 "${CLAUDE_PLUGIN_ROOT}/bin/hivemind" --project "${CLAUDE_PROJECT_DIR}" init $ARGUMENTS`

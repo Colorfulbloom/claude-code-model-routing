@@ -6,11 +6,14 @@ python3 "<plugin root>/bin/hivemind" --project "<project dir>" <action> [args]
 and relays what it prints. Python 3.9 standard library only, and no imports from the repo.
 
 Actions: status, consolidate, check, inbox, related <path>..., link [<id> <rev>], init.
+The plugin's PreToolUse hook also runs the hidden call "guard" (no --project), which denies a
+model's own Bash call to this wrapper.
 status and consolidate print the same text, because consolidate decides from the same summary.
 
 The wrapper always exits 0 and prints every message on stdout, because a non-zero exit
-from a skill's ! line aborts the skill. A failure is one line that starts "error:", and a
-warning or note starts "warning:" or "note:". It loads the plugin's own copy of the HiveMind
+from a skill's ! line aborts the skill. The one exception is the hidden guard call, which exits 1
+when it cannot write its deny line, so the hook's onFailure block still blocks. A failure is one
+line that starts "error:", and a warning or note starts "warning:" or "note:". It loads the plugin's own copy of the HiveMind
 library from <plugin root>/payload/hooks/hivemind_lib.py and calls its main() in process, with
 the store path always passed explicitly. It reads no transcripts and no settings files.
 """
@@ -20,6 +23,7 @@ sys.dont_write_bytecode = True
 import contextlib
 import importlib.util
 import io
+import json
 import os
 import re
 import subprocess
@@ -27,6 +31,14 @@ import subprocess
 PLUGIN_ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 LIB_REL = os.path.join("payload", "hooks", "hivemind_lib.py")
 MAX_RELATED = 20
+GUARD_RULE = "Bash(python3 *bin/hivemind*)"
+GUARD_REASON = ("The HiveMind wrapper runs only from the user's /hivemind commands, such as "
+                "/hivemind:status. Ask the user to run the one needed.")
+GUARD_STDIN_LIMIT = 1024 * 1024
+GUARD_HARD_SPLIT = re.compile(r"\n|;|&&|\|\||\||&")
+GUARD_SOFT_SPLIT = re.compile(r"\$\(|`|\(|\)|\{|\}")
+GUARD_PREFIX_WORDS = ("exec", "command", "env", "nohup", "time", "nice", "sudo")
+GUARD_ASSIGN = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=")
 GIT_TIMEOUT = 20
 REV_RE = re.compile(r"[0-9a-f]{7,40}(\.\.[0-9a-f]{7,40})?")
 DEV_REFS = ("refs/heads/development", "refs/remotes/origin/development")
@@ -215,7 +227,78 @@ def run_link(lib, root, store, rest):
     call_lib(lib, ["history", "link", eid, rev, "--store", store])
 
 
+def segment_runs(segment):
+    """True when the command segment is a python3 call that names bin/hivemind.
+
+    Leading NAME=value words and wrapper words (GUARD_PREFIX_WORDS) are skipped. The first word left
+    must be python3, python3.12, /usr/bin/python3 and so on."""
+    words = segment.split()
+    i = 0
+    while i < len(words) and (GUARD_ASSIGN.match(words[i]) or words[i] in GUARD_PREFIX_WORDS):
+        i += 1
+    if i == len(words) or "bin/hivemind" not in segment:
+        return False
+    return os.path.basename(words[i].lstrip("'\"")).startswith("python3")
+
+
+def command_runs(command):
+    """True when a Bash command line runs this wrapper the way the hook's `if` rule (GUARD_RULE) matches it.
+
+    The line is split into command segments on newlines, ; && || | and &. Each segment is checked
+    whole, and again after a split on $( ` ( ) { }, so a call inside a substitution or subshell is
+    its own segment while a path built with $(...) or ${...} still counts for the segment around it."""
+    for hard in GUARD_HARD_SPLIT.split(command):
+        for segment in [hard] + GUARD_SOFT_SPLIT.split(hard):
+            if segment_runs(segment):
+                return True
+    return False
+
+
+def guard_denies(stream):
+    """True when the PreToolUse input on stream is a Bash call that runs this wrapper.
+
+    Anything that is not a JSON object, or a Bash call without a text command, counts as a
+    wrapper call, so the guard fails closed. The check mirrors the hook's `if` rule (GUARD_RULE) per
+    command segment. Claude Code still runs the hook for a command with $(), backticks or $VAR
+    that it cannot match, so unrelated Bash passes only when no segment is a python3 call to this wrapper.
+    The library's own path (hooks/hivemind_lib.py) holds no "bin/hivemind", so deep-reasoner's calls to it pass."""
+    try:
+        data = json.loads(stream.read(GUARD_STDIN_LIMIT))
+    except ValueError:
+        return True
+    if not isinstance(data, dict):
+        return True
+    if data.get("tool_name") != "Bash":
+        return False
+    tool_input = data.get("tool_input")
+    command = tool_input.get("command") if isinstance(tool_input, dict) else None
+    if not isinstance(command, str):
+        return True
+    return command_runs(command)
+
+
+def guard(stream=None):
+    """The hidden PreToolUse call: print one deny line for a wrapper call, else nothing.
+
+    Returns 0, or 1 when the deny line cannot be written, so the hook's onFailure block still blocks."""
+    try:
+        deny = guard_denies(sys.stdin if stream is None else stream)
+    except Exception:
+        deny = True
+    if deny:
+        try:
+            say(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse",
+                                                   "permissionDecision": "deny",
+                                                   "permissionDecisionReason": GUARD_REASON}}))
+            sys.stdout.flush()
+        except (OSError, ValueError):
+            return 1
+    return 0
+
+
 def run(argv):
+    if argv == ["guard"]:
+        return guard()
     if len(argv) < 3 or argv[0] != "--project" or argv[2] not in USAGE:
         say(usage_line())
         return
@@ -268,15 +351,16 @@ def main(argv):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     except (AttributeError, ValueError):
         pass
+    code = 0
     try:
-        run(argv)
+        code = run(argv) or 0
     except Exception as exc:
         say(MSG_FAILED.format(name=type(exc).__name__, text=first_line(exc)))
     try:
         sys.stdout.flush()
     except (OSError, ValueError):
         pass
-    return 0
+    return code
 
 
 if __name__ == "__main__":

@@ -89,6 +89,10 @@ A command on that list runs outside the sandbox, so the sandbox no longer limits
 
 The skill approves only its own launcher line. If one of your `ask` or `deny` rules matches `Bash(python3 ...)`, that rule wins and the command fails. The [skills docs](https://code.claude.com/docs/en/skills#permission-checks-on-injected-commands) cover how these checks work.
 
+The launcher runs only from your own command. The plugin's PreToolUse hook refuses every call that matches `python3 *bin/routing-dashboard*`, whether Claude, a subagent or a background agent makes it. That holds in every turn and in every permission mode, `bypassPermissions` included. So Claude can't run the launcher even when you would approve it. The refusal tells Claude to ask you to run `/routing-dashboard:dashboard` instead.
+
+The hook starts for Bash commands that match that pattern. It also starts for any command with `$()`, backticks or `$VAR`, and for one Claude Code can't parse. In those cases the guard splits the command into its parts and lets it through unless one part runs `python3` on `bin/routing-dashboard`. So the guard leaves your other Bash calls alone. The hook uses the hook fields `if` and `onFailure`, and `onFailure` needs Claude Code 2.1.295 or later. The [hooks docs](https://code.claude.com/docs/en/hooks) explain both.
+
 ## Update
 
 ```bash
@@ -108,7 +112,7 @@ Stop every server first, because uninstalling deletes the plugin's data folder, 
 claude plugin uninstall routing-dashboard@model-routing
 ```
 
-`claude plugin marketplace remove model-routing` also uninstalls the plugin and deletes its data folder, so stop the servers before that too. Disabling the plugin with `/plugin disable` leaves running servers alone but turns the hook off, so stop them first there as well.
+`claude plugin marketplace remove model-routing` also uninstalls the plugin and deletes its data folder, so stop the servers before that too. Disabling the plugin with `/plugin disable` leaves running servers alone, but it turns off both of the plugin's hooks, the cleanup that runs when a session ends and the launcher guard. So stop the servers first there as well.
 
 ## Trust
 
@@ -116,7 +120,7 @@ A plugin runs code with your user privileges. The [plugin security page](https:/
 
 This plugin starts a Python server on 127.0.0.1 only, so it's reachable from your own machine and no other. The server writes a file only in edit mode, and then only the settings file you save and its backups. The plugin keeps its server records and logs in its data folder.
 
-While the command runs, Claude can't run the launcher again without asking you, so it can't quietly follow up with another action such as `edits` or `stop`. The block also covers Claude's subagents and any background agents during that turn. Every other Bash command keeps working.
+Claude can't run the launcher on its own, in this turn or any later one, so it can't quietly follow up with another action such as `edits` or `stop`. The guard covers Claude's subagents and background agents too, and it has no approval prompt for you to answer. [Permission rules](#permission-rules) explains how it works. Bash commands that don't call the launcher keep working.
 
 ## Requirements
 

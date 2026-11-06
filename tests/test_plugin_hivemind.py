@@ -5,9 +5,11 @@ against throwaway git projects with throwaway stores, a throwaway HOME and a thr
 reads the real ~/.claude, runs `claude` or touches the repo's own .claude/hivemind. Every run must exit 0 and print
 nothing on stderr, because a non-zero exit from a skill's ! line aborts the skill.
 """
+import contextlib
 import hashlib
 import importlib.machinery
 import importlib.util
+import io
 import json
 import os
 import shutil
@@ -130,13 +132,16 @@ class WrapperCase(unittest.TestCase):
         self.git("commit", "-q", "-m", "add " + name)
         return self.git("rev-parse", "HEAD")
 
-    def run_wrapper(self, *args, project=None, cwd=None, env=None, wrapper=WRAPPER, bare=False):
-        """Run the wrapper as the skills do. Every run must exit 0 and leave stderr empty."""
+    def run_wrapper(self, *args, project=None, cwd=None, env=None, wrapper=WRAPPER, bare=False, stdin=None):
+        """Run the wrapper as the skills do. Every run must exit 0 and leave stderr empty.
+
+        stdin is text for the child, or None for an empty stdin."""
         argv = [sys.executable, "-B", wrapper]
         argv += list(args) if bare else ["--project", self.proj if project is None else project] + list(args)
         child = self.base_env()
         child.update(env or {})
-        proc = subprocess.run(argv, cwd=cwd or self.proj, env=child, stdin=subprocess.DEVNULL,
+        proc = subprocess.run(argv, cwd=cwd or self.proj, env=child, input=stdin,
+                              stdin=subprocess.DEVNULL if stdin is None else None,
                               capture_output=True, text=True, timeout=120)
         self.assertEqual(proc.returncode, 0, "the wrapper must always exit 0\n" + proc.stdout + proc.stderr)
         self.assertEqual(proc.stderr, "", "the wrapper prints on stdout only")
@@ -524,6 +529,180 @@ class UsageTest(WrapperCase):
 
     def test_usage_needs_no_project_and_no_store(self):
         self.assertEqual(self.run_wrapper("status", "x", project="", cwd=self.plain).lines, [usage("status")])
+
+
+# (command with NAME for the wrapper's file name, denied?). The same list sits in test_plugin_launcher.py.
+GUARD_CASES = [
+    ('python3 "/work/cache/NAME/0.1.7/bin/NAME" --data "/work/d" --session abc status', True),
+    ('python3 "${CLAUDE_PLUGIN_ROOT}/bin/NAME" status', True),
+    ("cd /work && python3 /work/bin/NAME status", True),
+    ("FOO=1 python3 /work/bin/NAME stop", True),
+    ("env python3 /work/bin/NAME stop", True),
+    ("env FOO=1 nohup python3 /work/bin/NAME stop", True),
+    ("exec python3 /work/bin/NAME stop", True),
+    ("/usr/bin/python3 /work/bin/NAME status", True),
+    ('"/usr/bin/python3" /work/bin/NAME status', True),
+    ("python3.12 /work/bin/NAME status", True),
+    ("echo $(python3 /work/bin/NAME edits)", True),
+    ("echo `python3 /work/bin/NAME edits`", True),
+    ("true; python3 /work/bin/NAME log", True),
+    ("true || python3 /work/bin/NAME log", True),
+    ("echo hi | python3 /work/bin/NAME log", True),
+    ("python3 /work/bin/NAME log &", True),
+    ("echo hi\npython3 /work/bin/NAME log", True),
+    ("(python3 /work/bin/NAME status)", True),
+    ("{ python3 /work/bin/NAME status; }", True),
+    ('python3 "$(dirname "$0")/bin/NAME" status', True),
+    ("grep -n python3 plugins/NAME/bin/NAME | head -$N", False),
+    ("cat /work/repo/plugins/NAME/bin/NAME", False),
+    ("sed -n 1,80p plugins/NAME/bin/NAME", False),
+    ("git log -- plugins/NAME/bin/NAME", False),
+    ("echo python3; ls bin/NAME", False),
+    ("echo hi", False),
+    ("git status", False),
+    ("python3 tools/build_plugins.py", False),
+    ("python3 -m unittest discover -s tests", False),
+]
+
+
+class DeadOut:
+    """A stdout whose every write and flush fails."""
+
+    def write(self, _text):
+        raise OSError("closed")
+
+    def flush(self):
+        raise OSError("closed")
+
+
+class GuardTest(WrapperCase):
+    """The hidden guard call, run as the PreToolUse hook runs it: JSON on stdin, one line out, exit 0.
+
+    It checks each command segment against the hook's `if` rule, which Claude Code skips for a command it
+    cannot parse."""
+
+    @classmethod
+    def setUpClass(cls):
+        loader = importlib.machinery.SourceFileLoader("hivemind_wrapper_for_guard_test", WRAPPER)
+        spec = importlib.util.spec_from_loader(loader.name, loader)
+        cls.module = importlib.util.module_from_spec(spec)
+        loader.exec_module(cls.module)
+        cls.deny = {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny",
+                                           "permissionDecisionReason": cls.module.GUARD_REASON}}
+
+    def guard(self, stdin):
+        return self.run_wrapper("guard", bare=True, stdin=stdin)
+
+    @staticmethod
+    def bash(command):
+        return json.dumps({"tool_name": "Bash", "tool_input": {"command": command}})
+
+    def assert_denied(self, stdin):
+        res = self.guard(stdin)
+        self.assertEqual(res.out.count("\n"), 1, res.out)
+        self.assertEqual(json.loads(res.out), self.deny, stdin)
+
+    def assert_silent(self, stdin):
+        self.assertEqual(self.guard(stdin).out, "", stdin)
+
+    def test_every_rendered_skill_line_is_denied(self):
+        wrapper = '"/work/cache/hivemind/0.1.3/bin/hivemind"'
+        for tail in ("status", "check", "inbox", "init", "consolidate", "link", "link F-0001 abcdef1",
+                     "related src/a.py", 'related "docs/my notes.md"'):
+            command = 'python3 %s --project "/work/proj" %s' % (wrapper, tail)
+            with self.subTest(command=command):
+                self.assert_denied(self.bash(command))
+
+    def test_a_model_call_to_the_wrapper_is_denied_however_it_is_spelled(self):
+        for template, denied in GUARD_CASES:
+            if not denied:
+                continue
+            command = template.replace("NAME", "hivemind")
+            with self.subTest(command=command):
+                self.assert_denied(self.bash(command))
+
+    def test_other_bash_commands_pass_in_silence(self):
+        for template, denied in GUARD_CASES:
+            if denied:
+                continue
+            command = template.replace("NAME", "hivemind")
+            with self.subTest(command=command):
+                self.assert_silent(self.bash(command))
+
+    def test_the_library_calls_of_deep_reasoner_pass_in_silence(self):
+        for command in ('python3 "/work/cfg/hooks/hivemind_lib.py" prep /work/proj/.claude/hivemind',
+                        "python3 /work/cfg/hooks/hivemind_lib.py apply /work/proj/.claude/hivemind",
+                        "cd /work/proj && python3 hooks/hivemind_lib.py summary .claude/hivemind"):
+            with self.subTest(command=command):
+                self.assert_silent(self.bash(command))
+
+    def test_a_python3_call_that_never_names_the_wrapper_passes(self):
+        for command in ("python3 /work/bin/other-tool status", "FOO=1 python3 -c 'print(1)'",
+                        "python2 /work/bin/hivemind status", "ls -l /work/bin/hivemind"):
+            with self.subTest(command=command):
+                self.assert_silent(self.bash(command))
+
+    def test_the_library_path_never_holds_the_wrapper_substring(self):
+        self.assertNotIn("bin/hivemind", "/work/cfg/hooks/hivemind_lib.py")
+        self.assertNotIn("bin/hivemind", os.path.join("hooks", "hivemind_lib.py"))
+        self.assertNotIn("bin/hivemind", self.module.LIB_REL)
+
+    def test_unreadable_input_is_denied(self):
+        for stdin in ("not json", "", "[]", "null", '"Bash"', "5",
+                      json.dumps({"tool_name": "Bash", "tool_input": {"command": 5}}),
+                      json.dumps({"tool_name": "Bash", "tool_input": {}}),
+                      json.dumps({"tool_name": "Bash", "tool_input": "echo hi"}),
+                      json.dumps({"tool_name": "Bash"})):
+            with self.subTest(stdin=stdin):
+                self.assert_denied(stdin)
+
+    def test_a_tool_other_than_bash_passes_in_silence(self):
+        self.assert_silent(json.dumps({"tool_name": "Read", "tool_input": {"file_path": "/work/a.py"}}))
+        self.assert_silent(json.dumps({"tool_name": "Read", "tool_input": {
+            "command": "python3 /work/bin/hivemind"}}))
+        self.assert_silent(json.dumps({"tool_name": "Read"}))
+
+    def test_an_input_over_the_cap_is_denied(self):
+        padding = "x" * (self.module.GUARD_STDIN_LIMIT + 10)
+        self.assert_denied(json.dumps({"tool_name": "Bash", "tool_input": {"command": "echo " + padding}}))
+
+    def test_a_broken_stream_is_denied(self):
+        class Broken:
+            def read(self, _limit):
+                raise OSError("closed")
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            self.module.guard(Broken())
+        self.assertEqual(json.loads(out.getvalue()), self.deny)
+
+    def test_a_guard_whose_deny_line_cannot_be_written_exits_1(self):
+        stdin = io.StringIO(self.bash("python3 /work/bin/hivemind status"))
+        with contextlib.redirect_stdout(DeadOut()):
+            self.assertEqual(self.module.guard(stdin), 1)
+        real_stdin = sys.stdin
+        sys.stdin = io.StringIO(self.bash("python3 /work/bin/hivemind status"))
+        try:
+            with contextlib.redirect_stdout(DeadOut()):
+                self.assertEqual(self.module.main(["guard"]), 1)
+        finally:
+            sys.stdin = real_stdin
+
+    def test_the_wrapper_still_exits_0_for_every_other_action(self):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            self.assertEqual(self.module.main(["--project", self.proj, "status", "x"]), 0)
+            self.assertEqual(self.module.main(["frobnicate"]), 0)
+        self.assertEqual(out.getvalue().splitlines(), [usage("status"), usage()])
+        with contextlib.redirect_stdout(DeadOut()):
+            self.assertEqual(self.module.guard(io.StringIO(self.bash("echo hi"))), 0)
+
+    def test_guard_is_not_a_skill_action(self):
+        self.assertEqual(self.run_wrapper("guard").lines, [usage()])
+        self.assertEqual(self.run_wrapper("guard", bare=True, stdin="").lines, [json.dumps(self.deny)])
+        self.assertEqual(self.run_wrapper("guard", "x", bare=True).lines, [usage()])
+        self.assertNotIn("guard", self.module.USAGE)
+        self.assertNotIn("guard", self.module.ORDER)
+        self.assertEqual(self.module.GUARD_RULE, "Bash(python3 *bin/hivemind*)")
 
 
 if __name__ == "__main__":

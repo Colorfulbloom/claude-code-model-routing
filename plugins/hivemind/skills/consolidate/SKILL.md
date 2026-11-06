@@ -2,7 +2,6 @@
 name: consolidate
 description: Have deep-reasoner fold the waiting facts into this project's HiveMind store
 disable-model-invocation: true
-disallowed-tools: Bash(python3 *bin/hivemind*)
 allowed-tools: Bash(python3 "${CLAUDE_PLUGIN_ROOT}/bin/hivemind" *)
 ---
 !`python3 "${CLAUDE_PLUGIN_ROOT}/bin/hivemind" --project "${CLAUDE_PROJECT_DIR}" consolidate $ARGUMENTS`
@@ -20,4 +19,4 @@ The HiveMind summary is above. Follow these rules in order.
 
 6. Relay deep-reasoner's summary and its CONSOLIDATION line.
 
-Never run prep, apply, check or any HiveMind command yourself, and never edit the store. The deny rule covers only this plugin's wrapper, so this rule is the guard.
+Never run prep, apply, check or any HiveMind command yourself, and never edit the store. The plugin's guard hook blocks only this plugin's wrapper, so this rule is the guard.
