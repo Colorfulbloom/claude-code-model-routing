@@ -34,15 +34,16 @@ last_used: 2026-11-04
 uses: 0
 
 ### H-da08 Tally rows expire by their own active-day window
-fact: token-tallies.md is generated from tallies.json, one row per (kind, agent, model, effort) key at about 110 bytes; tally_samples_max caps samples per row, not rows. Only apply removes rows: a row expires when more than tally_expiry_active_days active days follow its last_date (this store sets 14; without the key it follows expiry_active_days, so the key stays out of DEFAULT_CONFIG). Active days are active-days.txt plus git commit dates, not calendar days. An expired row's line goes to archive/token-tallies.md and its raw samples to archive/tallies.json, appended on a repeat expiry.
+fact: token-tallies.md is generated from tallies.json, one row per (kind, agent, model, effort) key at about 110 bytes; tally_samples_max caps samples per row, not rows. Only apply removes rows: a row expires when more than tally_expiry_active_days active days follow its last_date (this store sets 6, owner-approved November 6; without the key it follows expiry_active_days, so the key stays out of DEFAULT_CONFIG). Active days are active-days.txt plus git commit dates, not calendar days. An expired row's line goes to archive/token-tallies.md and its raw samples to archive/tallies.json, appended on a repeat expiry.
 check: grep -n "def tally_expiry_days\|def archive_tally_samples\|def active_days" hooks/hivemind_lib.py; /usr/bin/python3 -m unittest discover -s tests -p test_hivemind.py -k tally_expiry
 evidence: hooks/hivemind_lib.py, .claude/hivemind/config.json, tests/test_hivemind.py
-fp: 74da995a45ec
-as_of: c7af027 2026-11-06
+fp: 820af1fb85e1
+as_of: e7fd573 2026-11-06
 author: fast-worker
 created: 2026-11-06
 last_used: 2026-11-06
 uses: 0
+promote: approved
 
 ### H-f1f0 HiveMind skills: only the writers carry a Bash deny
 fact: Of plugins/hivemind/skills, only link, init and consolidate set disallowed-tools (HiveMindSkillTest.WRITERS in tests/test_plugin_build.py). The test's stated reason: the deny lasts until the next user message and a slash command counts as one, so check, inbox, related and status must not carry it. Every skill but consolidate pins model haiku.
