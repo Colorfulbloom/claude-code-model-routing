@@ -1059,7 +1059,7 @@
       ]
     },
     "commit-pr-text+resumed|tech-writer|claude-opus-5-5|medium": {
-      "last_date": "2026-10-31",
+      "last_date": "2026-11-04",
       "samples": [
         {
           "agent_id": "ac8ee93b527f2656a",
@@ -1068,26 +1068,20 @@
           "effort": "medium",
           "round": 2,
           "v": 3872
+        },
+        {
+          "agent_id": "af6d3c0b083f50bda",
+          "date": "2026-11-04",
+          "duration_ms": 16968,
+          "effort": "medium",
+          "round": 2,
+          "v": 2712
         }
       ]
     },
     "commit-pr-text|tech-writer|claude-opus-5-5|medium": {
       "last_date": "2026-11-04",
       "samples": [
-        {
-          "agent_id": "a86ecfef518310888",
-          "date": "2026-10-30",
-          "duration_ms": 51315,
-          "effort": "medium",
-          "v": 28442
-        },
-        {
-          "agent_id": "a0a514422d8acfe47",
-          "date": "2026-10-30",
-          "duration_ms": 10072,
-          "effort": "medium",
-          "v": 17705
-        },
         {
           "agent_id": "ac27c9183d0a5bb73",
           "date": "2026-10-30",
@@ -1213,6 +1207,20 @@
           "duration_ms": 11468,
           "effort": "medium",
           "v": 20761
+        },
+        {
+          "agent_id": "afcfe207eda1e6b93",
+          "date": "2026-11-04",
+          "duration_ms": 10632,
+          "effort": "medium",
+          "v": 19980
+        },
+        {
+          "agent_id": "abbb78ffa12fb7a78",
+          "date": "2026-11-04",
+          "duration_ms": 32223,
+          "effort": "medium",
+          "v": 27074
         }
       ]
     },
@@ -2450,6 +2458,18 @@
         }
       ]
     },
+    "fact-promotion|deep-reasoner|claude-opus-5-5|high": {
+      "last_date": "2026-11-04",
+      "samples": [
+        {
+          "agent_id": "a897053313d713b3c",
+          "date": "2026-11-04",
+          "duration_ms": 145581,
+          "effort": "high",
+          "v": 81749
+        }
+      ]
+    },
     "feature-bugfix|deep-reasoner|claude-opus-5-5|high": {
       "last_date": "2026-11-02",
       "samples": [
@@ -3629,7 +3649,7 @@
       ]
     },
     "hivemind-consolidation|deep-reasoner|claude-opus-5-5|high": {
-      "last_date": "2026-11-03",
+      "last_date": "2026-11-04",
       "samples": [
         {
           "agent_id": "a2b1388f4cf4db703",
@@ -3728,6 +3748,13 @@
           "duration_ms": 685701,
           "effort": "high",
           "v": 193274
+        },
+        {
+          "agent_id": "aa5e498f60d60fd40",
+          "date": "2026-11-04",
+          "duration_ms": 557685,
+          "effort": "high",
+          "v": 187811
         }
       ]
     },
@@ -3776,6 +3803,19 @@
           "agent_id": "a7841fd252246d371",
           "date": "2026-10-21",
           "v": 221558
+        }
+      ]
+    },
+    "hivemind-library-change+resumed|fast-worker|claude-sonnet-5-5|medium": {
+      "last_date": "2026-11-04",
+      "samples": [
+        {
+          "agent_id": "acd029b4d6fbab457",
+          "date": "2026-11-04",
+          "duration_ms": 607611,
+          "effort": "medium",
+          "round": 2,
+          "v": 31554
         }
       ]
     },
@@ -3841,6 +3881,18 @@
           "agent_id": "a91c706f5046240fe",
           "date": "2026-10-21",
           "v": 61532
+        }
+      ]
+    },
+    "hivemind-tallies-trim|fast-worker|claude-sonnet-5-5|medium": {
+      "last_date": "2026-11-04",
+      "samples": [
+        {
+          "agent_id": "acd029b4d6fbab457",
+          "date": "2026-11-04",
+          "duration_ms": 43464,
+          "effort": "medium",
+          "v": 68587
         }
       ]
     },
@@ -4449,6 +4501,18 @@
           "duration_ms": 578871,
           "effort": "high",
           "v": 198822
+        }
+      ]
+    },
+    "plugin-skill-fix|fast-worker|claude-sonnet-5-5|medium": {
+      "last_date": "2026-11-04",
+      "samples": [
+        {
+          "agent_id": "a854261ca474d1f91",
+          "date": "2026-11-04",
+          "duration_ms": 421932,
+          "effort": "medium",
+          "v": 61448
         }
       ]
     },

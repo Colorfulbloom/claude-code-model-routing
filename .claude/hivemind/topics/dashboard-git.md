@@ -48,10 +48,10 @@ uses: 2
 fact: tools/build_plugins.py builds from git ls-files, so an untracked new source is left out and --check still passes; stage it first. PLUGINS rows take "files" as a callable(repo). hooks/hivemind_lib.py ships in the routing-dashboard and hivemind payloads, so a change needs both plugin.json bumps; the guards run routing-dashboard first. A second payload change under a version BUILD.json already records is refused: restore BUILD.json from the base (development's after a rebase, then bump one patch) and build once.
 check: grep -n 'ls-files\|plugin\["files"\](repo)\|def version_guard' tools/build_plugins.py
 evidence: tools/build_plugins.py, tests/test_plugin_build.py
-fp: 3f4b7b2509d5
-as_of: abaaff3 2026-11-04
+fp: 681bc7fa958b
+as_of: c7af027 2026-11-06
 author: deep-reasoner
 created: 2026-11-04
 last_used: 2026-11-04
-uses: 0
+uses: 2
 promote: approved
