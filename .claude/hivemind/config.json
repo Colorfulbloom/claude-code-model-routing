@@ -16,7 +16,7 @@
   },
   "chars_per_token": 3.5,
   "expiry_active_days": 28,
-  "tally_expiry_active_days": 14,
+  "tally_expiry_active_days": 6,
   "block_max_lines": 12,
   "block_line_max_chars": 400,
   "max_used_per_report": 5,

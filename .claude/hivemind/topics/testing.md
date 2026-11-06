@@ -4,12 +4,12 @@
 fact: discover -s tests runs 3510 tests in about 366 s, 88 skipped: MR_E2E=1 (owner only) gates all but the MR_DOCS_LIVE=1 and MR_SUBAGENT_DOCS (runtime skipTest) ones. Run it alone, and name its log per branch: background leads of one session share a scratchpad. A broken pty test can leave a hung process. A branch that adds tests counts higher.
 check: HOME=$(mktemp -d) /usr/bin/python3 -c "import unittest,sys; sys.path.insert(0,'tests'); print(unittest.TestLoader().discover('tests').countTestCases())"
 evidence: tests
-fp: 66d3cf174e24
-as_of: abaaff3 2026-11-04
+fp: db2b097a56ca
+as_of: c7af027 2026-11-06
 author: deep-reasoner
 created: 2026-10-20
 last_used: 2026-11-04
-uses: 39
+uses: 41
 promote: approved
 
 ### T-5589 Subsets: discover -k; dotted names fail

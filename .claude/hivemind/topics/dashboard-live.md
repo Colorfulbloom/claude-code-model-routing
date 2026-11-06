@@ -27,11 +27,11 @@ fact: A byte prefilter needle for a JSON key includes its colon (b'"toolUseResul
 check: /usr/bin/python3 -m unittest discover -s tests -p test_transcripts_links.py -k word_keeps
 evidence: dashboard/transcripts.py, tests/test_transcripts_links.py, tests/fixtures/rounds/worker-handback-wakes-lead.jsonl
 fp: 08487d310a1d
-as_of: abaaff3 2026-11-04
+as_of: c7af027 2026-11-06
 author: verifier
 created: 2026-11-04
 last_used: 2026-11-04
-uses: 0
+uses: 1
 promote: approved
 
 ### V-2f56 Live page clock, ticker and poll

@@ -34,11 +34,11 @@ last_used: 2026-11-01
 uses: 3
 
 ### C-06bf Repo copies for probes: .claude, throwaway HOME
-fact: A probe copy of the repo excludes /.claude (anchored), or rsync carries the owner's settings.local.json into it; a bare .claude also drops tests/fixtures/demo/projects/*/.claude, and the demo shows those projects as missing_folder. A shell that exports a throwaway HOME also makes git status show that file as untracked, because the global ignore lives under the real HOME. Run git without the export. To probe edit_card_checks.mjs, insert checks before the MR_ONLY runner line in the copy and run test_edit_card_js.py there, because it builds MR_PAYLOADS.
+fact: A probe copy of the repo excludes /.claude (anchored), or rsync carries the owner's settings.local.json into it; a bare .claude also drops tests/fixtures/demo/projects/*/.claude, and the demo shows driftwood, saltmarsh and tidewater-reporting as no_claude_folder instead of ok (lantern is missing_folder in the repo too). A shell that exports a throwaway HOME also makes git status show that file as untracked, because the global ignore lives under the real HOME. Run git without the export. To probe edit_card_checks.mjs, insert checks before the MR_ONLY runner line in the copy and run test_edit_card_js.py there, because it builds MR_PAYLOADS.
 check: git check-ignore -v .claude/settings.local.json
 evidence: .gitignore, tests/test_edit_card_js.py
 fp: 7a42fe8261ef
-as_of: abaaff3 2026-11-04
+as_of: c7af027 2026-11-06
 author: verifier
 created: 2026-11-01
 last_used: 2026-11-02
