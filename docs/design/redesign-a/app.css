@@ -236,7 +236,6 @@ table.t tr.none td a { color: var(--text-muted); }
 table.t.ss td:first-child a { font-size: var(--text-md); }
 .seg-tabs { display: flex; gap: 2px; padding: 3px; background: var(--surface-2); border-radius: var(--radius-md); margin-bottom: var(--space-3); overflow-x: auto; }
 .seg-tabs a { flex: 1; text-align: center; padding: 7px 8px; border-radius: 5px; color: var(--text); text-decoration: none; font-size: var(--text-sm); white-space: nowrap; min-height: 32px; }
-.seg-tabs a[aria-current="page"] { background: var(--card-bg); font-weight: var(--weight-semibold); box-shadow: 0 0 0 1px var(--border-strong); }
 .kl { margin-bottom: var(--space-4); }
 .kk { display: inline-block; width: 12px; height: 12px; border-radius: 2px; vertical-align: -1px; margin-right: 5px; border: 1px solid var(--border-strong); }
 .k1 { background: var(--rk-1); } .k2 { background: var(--rk-2); } .k3 { background: var(--rk-3); } .k4 { background: var(--rk-4); }
@@ -369,7 +368,6 @@ table.t.setup .scol { font-size: var(--text-sm); }
 .items a .it-n { font-weight: var(--weight-medium); }
 .items a .it-v { grid-row: 2; font-size: var(--text-sm); color: var(--text-muted); }
 .items a .st { grid-row: 1 / 3; grid-column: 2; font-size: var(--text-xs); }
-.items a[aria-current="true"] { background: var(--nav-active-bg); box-shadow: inset 3px 0 0 var(--accent); }
 .items a[aria-current="true"] .it-v { color: var(--text); }
 .lock { font-size: 11px; }
 .insp .in-h { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-2); }
@@ -396,7 +394,6 @@ table.t.setup .scol { font-size: var(--text-sm); }
 .sg { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 48px; border-radius: 5px; cursor: pointer; position: relative; }
 .sg input { position: absolute; opacity: 0; }
 .sg small { font-size: var(--text-xs); color: var(--text-muted); }
-.sg.on { background: var(--card-bg); box-shadow: 0 0 0 2px var(--accent); font-weight: var(--weight-semibold); }
 .fld { display: grid; gap: var(--space-1); margin-top: var(--space-4); }
 .fld > span { font-weight: var(--weight-semibold); }
 .effect .ba { display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap; }

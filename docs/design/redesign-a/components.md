@@ -381,3 +381,179 @@ Each of these differs between boards today. The canonical version is drawn on th
 12. Status glyphs in CSS content were read aloud by screen readers. Canonical: the empty-alt `content` syntax.
 13. Card header slot `.q` held both counts and questions. Canonical: two slots, a count (tabular, muted) next to the title and a question after it.
 14. Class collision. `.seg` (a timeline segment) sits next to `.segs` and `.seg-tabs` (the segmented control). Canonical names for the build: `lane-seg` and `segmented`.
+
+## Added in the agent edit round
+
+Styles in `site/agents.css`. Boards are `shots/a-agent-*.png`. Each of these components exists because nothing in 1 to 37 fit.
+
+### 38. Form field
+- Purpose. One front matter field in the edit rail. It's needed because the settings rail edits one value at a time, but an agent file holds many fields.
+- Anatomy. Label (semibold), then the file line on the right ("Line 4", mono, muted) and Reset when the field differs from the file. Then the control, then a hint. A bottom border separates fields.
+- States. Unchanged, changed (Reset appears, and the rail foot counts changed fields beside Preview change), read-only (value in muted mono plus a lock and the reason), error (the hint becomes the error in `--status-invalid-fg` with a ✕, tied by `aria-describedby`, and Preview is disabled with the reason).
+- Tokens. `--border`, `--text-muted`, `--font-mono`, `--status-invalid-fg`.
+- Mapping. RAC TextField, Select, RadioGroup or TagGroup, each with Label and Text slot="description".
+- Phone. Same, full width in the sheet.
+- Copy keys. `agf_*`.
+
+### 39. Text field
+- Purpose. Multi-line plain text that isn't a document (an agent's description). Documents use the editor (30).
+- States. Default, focus-visible ring, error, read-only.
+- Tokens. `--card-bg`, `--border-strong`, `--radius-md`, `--leading-body`.
+- Mapping. RAC TextField + TextArea.
+
+### 40. Tag list
+- Purpose. An editable list of names (tools, disallowed tools).
+- Anatomy. Mono pills, each with a 28 px remove button named "Remove {t}", then a dashed "Add a tool" button that opens a combobox of known tools. People pick from what exists and never type tool names from memory.
+- States. Default, remove hover, focus-visible on each remove, empty (hint only: "Leave empty to allow every tool").
+- Tokens. `--border-strong`, `--radius-pill`, `--nav-hover-bg`, `--font-mono`.
+- Mapping. RAC TagGroup + TagList (APG Grid for tags), with RAC ComboBox to add.
+- Keyboard. Arrows move between tags, and Delete or Backspace removes the focused tag.
+
+### 41. Color choice
+- Purpose. Picks one of Claude Code's eight agent colors.
+- Anatomy. Pills with a 12 px swatch (`--agent-*`) and the color word. The selected pill has a 1 px `--border-strong` ring, semibold text and a ✓. The word is always present, so color never carries the choice alone.
+- Tokens. `--agent-red..cyan` (aliases of status and category tokens, plus a new cyan), `--border`, `--border-strong`.
+- Mapping. RAC RadioGroup. The focus ring sits on the pill through `:has(input:focus-visible)`.
+
+### 42. Listbox popover
+- Purpose. The open state of a Select when options need a second line or groups (model: short names, then full names).
+- Anatomy. A popover with group labels. Each option shows its value in mono and a muted second line. The current file value is marked "set now", and the picked option gets a ✓.
+- Tokens. `--card-bg`, `--border-strong`, `--shadow-card`, `--nav-hover-bg`, `--radius-lg`.
+- Mapping. RAC Select + Popover + ListBox with Section and Header.
+- Phone. A bottom tray.
+
+### 43. Disclosure
+- Purpose. Hides advanced fields (permission mode, skills, max turns and the rest) behind a labeled row with a one-line summary of their current values.
+- Mapping. RAC Disclosure (APG Disclosure). The summary stays visible when closed.
+
+### Agents page layout (list plus inspector, table variant)
+- The Agents table is the list. When an agent is picked, it narrows to Agent, Check and Cost, and the inspector (480 px, 400 px below 1100) opens beside it. The picked row gets `--nav-active-bg` and a 3 px `--accent` start bar, with `aria-current`.
+- Edit replaces the inspector with the rail in the same slot. At 375 the inspector is its own page with an "Agents" back link, and the rail is the full-height sheet (28).
+- A symlinked agent file shows the link target under the path in the inspector and repeats it above Save in review, so the save target is never a surprise.
+
+### Differences resolved in this round
+15. Row selection class. `tr.sel` picked up the Select button's border and chevron from `.sel`. Canonical: `picked` for selected rows. The build should namespace Select as `select-btn`.
+16. Changed-field count. The first draft put "1 field changed" inside the Model field. Canonical: one count in the rail foot beside Preview change, with Reset on each changed field.
+
+## Added in the new-agent round
+
+Boards are `shots/a-agent-new*.png`, and the styles are at the end of `site/agents.css`.
+
+### 44. Role cards
+- Purpose. A preset that fills real fields when you add an agent. Claude Code has no role setting, so the choice is never saved. It's needed because the segmented control (13) can't show a sentence for each option.
+- Anatomy. Three cards (Lead, Worker, Reviewer), each with a name and one line. Under them sit the hint that a role isn't saved, and a well titled "What {role} set" listing the values it filled (can start other agents, model, effort, tools).
+- States. Default, hover, focus-visible (ring on the card through `:has`), selected (1 px `--border-strong` ring and ✓). Custom is a fourth dashed card that shows only after a person changes a value the role set. It's a state, not a choice. Each changed row in the summary gets a "You changed this" badge, and the old value is struck through beside the new one.
+- Tokens. `--border`, `--border-strong`, `--nav-hover-bg`, `--card-bg`, `--inset-*`, `--text-muted`.
+- Mapping. RAC RadioGroup with Radio cards. Custom is static text with `aria-current`, and picking a preset again refills the fields.
+- Phone. One card per row.
+- Copy keys. `an_role*`, `an_lead*`, `an_worker*`, `an_reviewer*`, `an_custom*`, `an_set_h`, `an_you_changed`.
+
+### 45. Model list with price mark
+- Purpose. Picks a model with a relative price beside each option. It's used where cost matters to the choice, as with a new agent. The edit rail keeps the Select (14, 42).
+- Anatomy. Radio rows with the model value in mono, a muted price line and a three-step price mark. Filled steps show a higher price, and dashed steps mean the price isn't known. Below sit the caption "Price compared with Sonnet" and "Use a full model name", which opens the Select of full IDs. The words always carry the price, and the mark only repeats it.
+- States. Default, hover, focus-visible (inset ring), selected (`--nav-active-bg` with a 3 px `--accent` start bar).
+- Tokens. `--border`, `--border-strong`, `--text-muted`, `--nav-active-bg`, `--accent`.
+- Mapping. RAC RadioGroup.
+- Copy keys. `an_cost_*`, `an_inherit_cost`, `an_model_cost`, `an_full_name`.
+
+### Other parts of the new-agent form
+- Can start other agents is a Switch (16) that adds or removes Agent in the tools list.
+- Name is a text field (39) with live checks. A free name gets a ✓ line in `--status-in-effect-fg`. A clash gets a raised warning (7) that names the file that would win, plus one action that moves the save.
+- Save in is a color-choice-style pill radio (41) without swatches. The file path below it updates live.
+- The system prompt uses the editor (30), with the role's starter text.
+- The rail foot says which fields are required beside "Preview new agent".
+- Review shows the whole new file as an all-added diff (29) with a "New file" badge.
+- After saving, the agent appears in the table under "No runs yet", picked, and the inspector shows "Created." with Undo, which deletes the file.
+
+
+## Added in the agent form layout round (November 8)
+
+Three layouts for the same fields: A one page, B a stepped dialog, C a page with tabs. Styles in `site/dirs.css`, screens in `site/dirs.js`, all classes prefixed `ly`. Nothing here replaces an earlier component; these are containers for components 38 to 45. Only the picked one stays.
+
+### 46. Agent file preview (A, C)
+- Purpose. Shows the file as it will be saved, beside the form, updated on every change.
+- Anatomy. Card (2) with "Agent file", one muted line, the path in mono, then a well with line numbers. In edit, a changed line uses `--diff-add-bg/fg` plus a 3 px start bar and a hidden "changed" word, so it doesn't rely on hue. The symlink note sits under the well.
+- Tokens. `--card-bg`, `--inset-bg`, `--diff-add-bg`, `--diff-add-fg`, `--text-muted`, `--font-mono`.
+- Mapping. A plain region with a heading. Read-only, not focusable.
+- Phone. A disclosure (43) "Show agent file" in A, a fifth tab in C.
+
+### 47. Tabs (C)
+- Purpose. Splits the form into four groups; one shows at a time, any order.
+- Anatomy. Text tabs on a `--border-strong` baseline, selected tab with a 2 px `--accent` underline and semibold text. A tab with edits shows a "{n} changed" badge (5).
+- Mapping. APG Tabs with automatic activation, arrow keys between tabs, one tab stop. RAC Tabs.
+- Phone. The tab list scrolls sideways.
+
+### 48. Step list dialog (B)
+- Purpose. A large modal dialog that walks through the groups, then Review.
+- Anatomy. Header with the title and a Close icon button, numbered step list at the start, body that scrolls on its own, footer with Back and "Next: {step}". Done steps show ✓ plus a hidden "Done". In edit the steps are free to jump and the footer always offers "Preview change".
+- Mapping. APG Dialog (modal): focus goes to the first field, Tab stays inside, Esc closes, focus returns to "+ Add an agent" or the row. RAC Modal plus Dialog. The step list is a nav with `aria-current="step"`.
+- Phone. Full screen, no scrim, the step list hides and the header says "Step n of t, name".
+- Known conflict. The prompt editor (30) uses Esc to leave the editor, and the dialog uses Esc to close. Esc inside the editor must only leave the editor, and closing with edits must ask first.
+
+### 49. Phone action bar (A, C)
+- Purpose. Keeps the required note and the primary action in reach on a long form.
+- Anatomy. Sticky bar at the bottom of the viewport with the note or the changed badge and the primary button. Cancel moves to the "← Agents" link. The app tab bar hides on these focused pages.
+- Tokens. `--card-bg`, `--border`.
+
+## Revision of C after the pick (November 8)
+
+The owner picked C and said that in dark mode the background blended into everything, so the eye couldn't find Role or Model. The mockup scopes these rules to `.lyC` in `site/dirs.css`. Once the owner approves, they move into components.css as the canonical states.
+
+### Field groups in a form
+- Each field is a raised block (`--raised-bg`, `--raised-border`, `--radius-lg`) with its label as a semibold 14px heading. The tab panel stays the card. Options inside a group sit on `--card-bg`, so the order runs page, then card, then group, then option.
+- Warnings inside a group keep their own warn edge and ▲ glyph.
+
+### Chosen state (changes 44 role cards, 45 model list, 13 segmented control)
+- Fill `--select-bg`, a 2px `--accent` edge, and "✓ Selected" (`sel_word`) in `--accent`. A segmented option shows ✓ before its label, because "Selected" doesn't fit at 375.
+- Unchosen options are quiet: `--card-bg` with a 1px `--border`. Their labels identify them, not their edges.
+- Only the primary button uses a solid accent fill. A chosen option never does, so the primary action stays the strongest mark on the page.
+- Focus-visible is an outline 3px outside the edge (inset 5px on list rows), so focus and selection never share the same edge.
+- Contrast: the accent edge is 6.10 light and 7.51 dark against `--raised-bg`, and 5.55 and 6.65 against `--select-bg`. Text on `--select-bg` is 14.17 and 11.61, muted text 5.71 and 6.04, and the accent word 5.55 and 6.65.
+
+### What Lead set, short form (44)
+- It keeps only the fields that live on other tabs ("Can start other agents" and "Tools"), headed "Set by {r} on Tools and options" (`an_set_short_h`). Model and effort sit right below it and in the file. The owner hasn't confirmed this yet.
+
+### Tabs (47)
+- The chosen tab's underline is now 3px instead of 2px. Everything else stays the same.
+
+### Should follow once approved
+- Segmented tabs (`.seg-tabs`, the range and view switches), which use the same 1px ring as the old segmented control.
+- Picked table rows (`tr.picked`) and the inspector list rows (`.surf` list): add `--select-bg` behind the existing 3px start bar.
+- Color choice (41) and Save in pills, which use the same ring today.
+
+## Full page, the owner's pick (November 8)
+
+The owner wanted C as a full page, not tabs. Tabs (47) are no longer used for the agent form. Its entry stays only as a record of the tabbed draft. The screens are `dirFull` in `site/dirs.js`, and the styles are the `.lyF` rules in `site/dirs.css`, which build on the C revision rules (`.lyC`).
+
+- Routes are `#/review/agents/new` and `#/review/agents/<name>/edit`. The app tab bar hides on phones.
+- A sticky bar at the top (50) holds "← Agents / {title}" on one line, plus the required note or the changed badge, Cancel and the primary button. It stays at the top of the viewport as the page scrolls. On phones it becomes the plain title line, and the actions move to the phone action bar (49).
+- There are four section cards in order. In new they are "Role and model" (Role, Model, Effort), then "Name and details", "Tools and options" and "System prompt". In edit the first card is "Model and effort", because edit has no role. Each card has an h2 and the field blocks from the C revision. The System prompt card hides its duplicate field label and gives the editor at least 360px.
+- A sticky side column at 1440 holds a one-column "Jump to" list (the section you're in is marked `aria-current` with an accent bar) and the agent file (46) in its well. The well caps its height to the viewport and scrolls on its own.
+- On phones the agent file sits behind "Show agent file" (43) after the last section.
+
+### 50. Sticky page action bar
+- Purpose. Keeps the way back, the title and the actions in view on a long form.
+- Anatomy. `--page-bg` with a 1px `--border` bottom edge, the 16px title with the back link in `--accent`, then actions on the right.
+- Mapping. Part of the page header, not a toolbar role. Tab order is back link, then Cancel, then the primary button.
+
+## Chosen state made canonical (November 8, owner approved)
+
+The owner approved three calls. The short "Set by {r} on Tools and options" stays. Edit uses the full model list with prices. The new chosen state is the standard everywhere. Its rules now live once, at the end of `site/components.css` under "Chosen state, canonical". I took the old ring and nav-fill rules out of app.css, agents.css and components.css, and the C-scoped copies out of dirs.css.
+
+- The recipe: `--select-bg` fill, a 2px `--accent` edge, and a mark that isn't colour. That mark is "✓ Selected" (`sel_word`) where it fits, a ✓ glyph where it doesn't, or the existing 3px start bar on rows. Unchosen options stay quiet. A solid accent fill is for the primary button only.
+- Focus-visible is an outline 3px outside the edge, or 5px inset on model rows. It never reuses the edge.
+- What changed, by component:
+  - Role cards (44): "✓ Selected" sits on the title row, from shared markup in `roleCards`. The Custom card keeps its dashed edge.
+  - Model list (45): "✓ Selected" sits before the price mark (below the description at 375), from `modelRadios`.
+  - Color choice (41) and Save in pills: fill plus a 2px edge, and the existing ✓ is now in accent.
+  - Segmented control (13): fill plus a 2px inset edge, with ✓ added before the label by CSS.
+  - Segmented page tabs (the Review switch on phones and in the components sheet): fill plus a 2px inset edge, semibold, no ✓ because it's navigation.
+  - Picked table rows (Agents) and inspector list rows (Your setup, editing): `--select-bg` behind the existing 3px start bar.
+  - Listbox popover options (42): the chosen option gets the fill, and if it also has keyboard focus it gets the 2px edge.
+- Left alone on purpose: the sidebar nav and the phone tab bar (navigation, which keeps `--nav-active-bg` and accent text), the Switch (16, an on/off control, not a choice), and the dots on chart tiles (data).
+
+## Picked layout
+- The full-page agent form (`dir-full-new`, `dir-full-edit`) is the picked layout for adding and editing agents.
+- These are superseded and kept only as a record: A, one page with the "Jump to" list (`dir-a-*`); B, the stepped dialog (`dir-b-*`); and C with tabs (`dir-c-*`, components 47 and 48). Components 46 (agent file preview), 49 (phone action bar) and 50 (sticky page action bar) stay in use through the full page.
+- The side-panel form boards (`agent-new*`, `agent-edit-fields`) are superseded by the full page too, but they were recaptured so they show the new chosen state. Their Review, Saved and plugin screens still apply.
+- The superseded direction boards (`dir-a`, `dir-b`, `dir-c`) weren't recaptured, so their screenshots show the older chosen state.

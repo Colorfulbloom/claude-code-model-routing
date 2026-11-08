@@ -82,3 +82,31 @@ Owner: rebuild the Routing Dashboard from scratch, full framework stack. Persona
 - Picked redesign direction A "Timeline" (boards in /Volumes/Warehouse/Projects/routing-dashboard-rebuild-archive/design-redesign/). Revisions requested: Summary cost-per-day paging, Models bars in model colors, dark-mode subtle surfaces for Live sub-sections.
 - Owner: Live is the home page. Keep a separate Summary page under Review.
 - Owner: Agents is one page under Review, as drawn in A (usage and setup together). Owner loves the revised Models page (model colors plus kind patterns in 'What the cost is made of').
+
+## Owner, 2026-11-08 plan-a decisions
+- All planner picks in docs/rebuild/planning/plan-a.md accepted (O1, O2, O6 to O15, D1 to D10) and the agent-edit picks A1 to A5, except:
+- O3 Product name: choose a new, less technical name now (in progress).
+- O4 Today preset: add Today to the range presets.
+- O5 Narrator: "the dashboard" for now; may change with the new name.
+
+## Owner, 2026-11-08 pricing source
+- Prices update automatically, not with app releases. Order of use: the user's Claude Code `modelPricing` rates; then LiteLLM's model_prices_and_context_window.json (raw.githubusercontent.com/BerriAI/litellm/main), fetched once a day, Anthropic provider rows only; then the last good copy; then a bundled dated copy for a new offline install.
+- Checks before using a new copy: parses, every current Claude model present, prices in range after per-token to per-MTok conversion, cache read about 10% of input. A failed check keeps the last good copy.
+- OpenRouter's public models list is a daily cross-check; a disagreement on input or output price shows a warning.
+- Every cost is labelled an API-rate estimate with "Prices as of {date}". Subscribers get a help line that the figure is not their bill (Claude Code costs docs).
+- No scraping of Anthropic's pricing page and no repo-side price feed job. simonw/llm-prices is not a source.
+- Evidence: scout research November 8 (LiteLLM matched Anthropic's page on all 10 current models; same-day updates for Opus, Sonnet and Haiku 5.5 launches).
+- Agent add and edit use layout C, a page with tabs and the agent file beside it.
+
+## Owner, 2026-11-08 name
+- Product name: Bar Tab. Tagline: "Watch every agent run in Claude Code, see what it costs, and tune the setup behind it." Plugin id and command: `bartab`, `/bartab`. Listing line: "Bar Tab, a plugin for Claude Code."
+- Anthropic's Claude Code legal page bars "Claude Code" in a product name (code.claude.com/docs/en/legal-and-compliance), so it appears only in descriptive text. No Claude or Anthropic logo, no "official" near Claude, no "claude" in the marketplace or repo name.
+- Narrator in UI copy stays "the dashboard" or writes around it; "Bar Tab" names the product only.
+- Clash check November 8: no Claude Code plugin uses bartab; bar and hospitality apps use BarTab; a live BARTAB mark in Class 39 only; software marks dead. A USPTO search is due before any public launch. "Agent Bar" is a nearby Claude Code menu bar app, so avoid "Agent" in the name.
+- On phone, the app's tab bar hides on the agent form pages; leave through "← Agents".
+
+## Owner, 2026-11-08 agent form
+- Agent add and edit is a full page with no tabs (boards a-dir-full-*): routes #/review/agents/new and #/review/agents/<name>/edit, sticky top bar with Cancel and Preview, stacked sections (Role and model, Name and details, Tools and options, System prompt), sticky side column with the agent file and Jump to. Supersedes the side rail and the tabbed C draft.
+- Role presets fill real fields only; "Set by {role} on Tools and options" shows the two lines not shown elsewhere; Custom after a change; role is never saved.
+- Edit uses the full model list with relative price words, same as new.
+- The selected state (--select-bg, 2px accent edge, "✓ Selected") is the standard for every selectable component.

@@ -23,6 +23,8 @@
    Diff and editor lines reuse the status pairs: added = in-effect (5.67 light, 8.15 dark), removed = invalid (6.06, 7.10),
    each with a + or - glyph in the gutter. A changed editor line uses --code-line (text 13.20 light, 10.58 dark).
    --accent-hover (design-system round) darkens the primary button in light and lightens it in dark: text-on-accent 8.55 / 11.07.
+   --agent-* (agent edit round) name Claude Code's eight agent colors for the Color field swatch; each sits beside its color word.
+   Cyan is the only new value: #0e7c86 light (4.95 on card), #5fc9d1 dark (9.47 on card, 3.49 lowest on a dark well).
    Components, states and layout rules: components.md beside this file.
 
 /* Routing Dashboard tokens. Draft, October 29, 2026. System fonts, light and dark.
@@ -77,7 +79,9 @@
    rk-4 on card-bg              9.91  pass       rk-4 on card-bg             13.96  pass
    Accepted exception, non-text, light only (owner, October 30): --rk-1 1.54 and --rk-2 2.50 on the white card, under the 3:1 floor. Holds only while every stacked bar keeps legend totals or a kinds table, and a visible start edge.
    Light --cat-2 to --cat-4 reach 3:1 on the card only (2.83, 2.84 and 2.85 on page-bg), so series colors stay on cards.
-   * non-text, 3:1 floor. "border" is a decorative hairline, never the only boundary of a control. */
+   * non-text, 3:1 floor. "border" is a decorative hairline, never the only boundary of a control.   --scrim (November 8): the dim layer behind a modal dialog. Not text, so no contrast grade; the dialog itself sits on --card-bg.
+  --select-bg (November 8, canonical): fill of every chosen thing. That covers role cards, model rows, color and Save in pills, segmented choices, segmented page tabs, picked table rows, inspector list rows and listbox options. It always comes with a 2px --accent edge (6.10 light, 7.51 dark against --raised-bg, 5.55 and 6.65 against itself), or with the 3px start bar on rows, plus a ✓ mark or word. Never fill alone. On it, text is 14.17 and 11.61, muted text 5.71 and 6.04, accent 5.55 and 6.65. --nav-active-bg is now only for the sidebar nav.
+*/
 
 :root {
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -109,6 +113,8 @@
   --page-bg: var(--surface); --card-bg: var(--bg); --sidebar-bg: var(--surface);
   --nav-active-bg: #dfe6f2; --nav-hover-bg: #eaebed;
   --shadow-card: 0 1px 2px rgba(27,31,36,.06), 0 4px 14px rgba(27,31,36,.06);
+  --scrim: rgba(27,31,36,.45);
+  --select-bg: #e6eefa;   /* chosen option fill; text 14.17, muted 5.71, accent 5.55 */
   --chart-track: var(--surface-2); --chart-gap: var(--bg);
   --cat-1: #2a78d6; --cat-2: #04a873; --cat-3: #c78600; --cat-4: #dc7099;
   --rk-1: #b7d3f6; --rk-2: #6da7ec; --rk-3: #2a78d6; --rk-4: #104281;
@@ -124,6 +130,8 @@
   --diff-del-bg: var(--status-invalid-bg); --diff-del-fg: var(--status-invalid-fg);
   --code-line: var(--nav-active-bg);
   --accent-hover: #174a96;   /* primary button hover; text-on-accent 8.55 */
+  --agent-red: var(--status-invalid-fg); --agent-blue: var(--cat-1); --agent-green: var(--cat-2); --agent-yellow: var(--cat-3);
+  --agent-purple: var(--status-lowered-fg); --agent-orange: var(--status-overridden-fg); --agent-pink: var(--cat-4); --agent-cyan: #0e7c86;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -142,12 +150,14 @@
     --page-bg: var(--surface); --card-bg: var(--bg); --sidebar-bg: var(--surface);
     --nav-active-bg: #293342; --nav-hover-bg: #262a2f;
     --shadow-card: 0 1px 2px rgba(0,0,0,.5), 0 6px 18px rgba(0,0,0,.35);
+    --scrim: rgba(0,0,0,.62);
+    --select-bg: #1c2c47;   /* chosen option fill; text 11.61, muted 6.04, accent 6.65 */
     --chart-track: var(--surface-2); --chart-gap: var(--bg);
     --cat-1: #3987e5; --cat-2: #199e70; --cat-3: #c98500; --cat-4: #d55181;
     --rk-1: #256abf; --rk-2: #3987e5; --rk-3: #86b6ef; --rk-4: #cde2fb;
     --chart-grid: var(--border); --chart-axis: var(--text-muted);
     --inset-bg: #171b21; --raised-bg: #1e232a; --raised-border: #3a414a;
-    --accent-hover: #a9caff;
+    --accent-hover: #a9caff; --agent-cyan: #5fc9d1;
   }
 }
 
@@ -166,12 +176,14 @@
   --page-bg: var(--surface); --card-bg: var(--bg); --sidebar-bg: var(--surface);
   --nav-active-bg: #293342; --nav-hover-bg: #262a2f;
   --shadow-card: 0 1px 2px rgba(0,0,0,.5), 0 6px 18px rgba(0,0,0,.35);
+  --scrim: rgba(0,0,0,.62);
+  --select-bg: #1c2c47;   /* chosen option fill; text 11.61, muted 6.04, accent 6.65 */
   --chart-track: var(--surface-2); --chart-gap: var(--bg);
   --cat-1: #3987e5; --cat-2: #199e70; --cat-3: #c98500; --cat-4: #d55181;
   --rk-1: #256abf; --rk-2: #3987e5; --rk-3: #86b6ef; --rk-4: #cde2fb;
   --chart-grid: var(--border); --chart-axis: var(--text-muted);
   --inset-bg: #171b21; --raised-bg: #1e232a; --raised-border: #3a414a;
-  --accent-hover: #a9caff;
+  --accent-hover: #a9caff; --agent-cyan: #5fc9d1;
 }
 
 body { background: var(--bg); color: var(--text); font: var(--text-md)/var(--leading-body) var(--font-sans); }
