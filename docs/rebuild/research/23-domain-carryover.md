@@ -1,0 +1,13 @@
+# Scout report: domain pieces and data carry-over (2026-11-08), condensed by main session
+
+A1 Git: keep lstat reader (git_check.py:46-273) plus one hardened `git check-ignore` (-c core.fsmonitor=false, --no-lazy-fetch, minimal env, 2 s timeout; 276-317). Local file location rules: https://code.claude.com/docs/en/settings . fsmonitor runs a hook command (https://git-scm.com/docs/git-config). Skip dulwich/pygit2.
+A2 Prices: prices.json source official pricing page, verified 2026-10-30; all 12 entries match the page (fetched Nov 8). Tiers, fast 2x, US-only 1.1x, cache multipliers per https://platform.claude.com/docs/en/about-claude/pricing . Gaps: no Sonnet 4/4.5, Opus 4/4.1/4.5 (price None); Mythos excluded. LiteLLM JSON matches (https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json). ccusage prices per event timestamp (https://ccusage.com/guide/cost-modes). Rebuild: ship prices.json, dev-only refresh diffing LiteLLM + official page, never fetch at runtime; decide dated price history; label costs as list-price estimates.
+A3 Pin check: front matter model/effort vs resolver winner vs runs; states matches, matches_lowered, overridden, differs, mixed, cannot_check. Phase 1 = front matter vs runs; phase 2 = precedence overlay.
+A4 Env: rules.json's 10 variable names; masking by name (KEY, TOKEN, SECRET, PASSWORD, CREDENTIAL, AUTH; MAX_THINKING_TOKENS exempt) and sk-/Bearer prefix (collect.py:35-78). Gap: URL userinfo (e.g. ANTHROPIC_BASE_URL with user:pass).
+A5 Managed: file + managed-settings.d merge matches docs (https://code.claude.com/docs/en/managed-settings). Not read: macOS profile domain, Windows HKLM, server-managed cache ~/.claude/remote-settings.json (option to read). edit_store refuses managed targets (edit_store.py:280-287).
+A6 Projects: default list = ~/.claude.json project keys (schema undocumented beyond example) filtered by transcript first-row cwd, plus routing-dashboard.json; folder rule non-alphanumerics to - (https://code.claude.com/docs/en/claude-directory).
+A7 Time: TZ, /etc/localtime, fixed offset fallback; add tzdata; ranges today/7d/30d from local midnight; fold not set; add DST tests (https://docs.python.org/3/library/zoneinfo.html).
+B1 Backups/ledger: keep, no migration; reuse target id = sha256(realpath)[:16], names NNNNNN-<id>.bak/.absent, ledger.json version 1, 0600/0700, retention 20.
+B2 Browser: keep band-order:<project path> localStorage key (per origin, so port matters); drop sessionStorage edit token (memory only).
+B3 routing-dashboard.json: keep unchanged; drop dashboard.json fixture fallback.
+B4 Launcher run files: drop; installer choices file stays installer state.
