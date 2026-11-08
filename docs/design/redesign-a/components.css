@@ -1,0 +1,96 @@
+/* Direction A, canonical component states (design-system round). Scoped to .cs so the screens stay as rendered;
+   the build applies these rules app-wide (see components.md, "Differences resolved"). Tokens only. */
+
+/* ---- Interaction states, canonical. .is-* classes force a state on the sheet. ---- */
+.cs .btn:hover, .cs .btn.is-hover { background: var(--nav-hover-bg); }
+.cs .btn.quiet:hover, .cs .btn.quiet.is-hover { background: var(--nav-hover-bg); text-decoration: underline; }
+.cs .btn.primary:hover, .cs .btn.primary.is-hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+.cs .btn.danger:hover, .cs .btn.danger.is-hover { background: var(--status-invalid-bg); }
+.cs .btn:active, .cs .btn.is-active { transform: translateY(1px); }
+.cs .btn[aria-disabled="true"], .cs .btn[aria-disabled="true"]:hover { background: var(--card-bg); border: 1px dashed var(--border-strong); color: var(--text-muted); transform: none; text-decoration: none; }
+.cs .btn.primary[aria-busy="true"] { background: var(--accent); border-style: solid; border-color: var(--accent); color: var(--text-on-accent); }
+.cs .is-focus, .cs .sg:has(input:focus-visible), .cs .chk:has(input:focus-visible) { outline: var(--focus-width) solid var(--focus-ring); outline-offset: var(--focus-offset); }
+.cs .cs-busy { width: 10px; height: 10px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; }
+.cs .switch.is-hover { box-shadow: 0 0 0 4px var(--nav-hover-bg); }
+.cs .switch[aria-disabled="true"] { border-style: dashed; background: var(--card-bg); cursor: not-allowed; }
+.cs .switch[aria-disabled="true"] span { border-style: dashed; }
+/* Segmented control: one selected look for page tabs and choices (was a 2px accent ring on choices, which read as focus). */
+.cs .seg-tabs a:hover, .cs .seg-tabs a.is-hover, .cs .sg:hover, .cs .sg.is-hover { background: var(--nav-hover-bg); }
+.cs .sg.on, .cs .seg-tabs a[aria-current="page"] { background: var(--card-bg); box-shadow: 0 0 0 1px var(--border-strong); font-weight: var(--weight-semibold); }
+.cs .sg:has(input:disabled) { color: var(--text-muted); cursor: not-allowed; }
+.cs .segs:has(input:disabled) { background: transparent; border: 1px dashed var(--border-strong); }
+.cs .seg-tabs { margin-bottom: 0; }
+.cs .sel:hover, .cs .sel.is-hover { background: var(--nav-hover-bg); }
+.cs .search.is-focus { outline: none; }
+.cs .search.is-focus input { outline: var(--focus-width) solid var(--focus-ring); outline-offset: var(--focus-offset); }
+.cs .chk.is-hover input { box-shadow: 0 0 0 4px var(--nav-hover-bg); border-radius: var(--radius-sm); }
+.cs .chk:has(input:disabled) { color: var(--text-muted); }
+.cs .items a:hover, .cs .items a.is-hover { background: var(--nav-hover-bg); }
+.cs .items a.is-focus { outline-offset: -2px; }
+.cs table.t tr.is-hover td { background: var(--nav-hover-bg); }
+.cs .nv.is-hover { background: var(--nav-hover-bg); }
+/* Run-state chips: plain glyph plus word, no pill, so they never read as a setting status. Idle gets a dotted ring, not Ignored's hollow circle. */
+.cs .st.working, .cs .st.done, .cs .st.idle { background: transparent; padding: 0; }
+.cs .st.done { color: var(--status-in-effect-fg); }
+.cs .st.idle { color: var(--text-muted); }
+.cs .st.idle::before { content: "\25CC"; font-size: 12px; }
+/* Raised findings: one border colour (raised-border) for every raised box; a 4px start edge only on a single finding, tinted by its status word. */
+.cs .chk-hit { border: 1px solid var(--raised-border); border-left: 4px solid var(--status-lowered-fg); background: var(--raised-bg); padding: var(--space-3) var(--space-4); }
+.cs .cs-err { border-left: 4px solid var(--status-invalid-fg); display: grid; gap: var(--space-2); justify-items: start; }
+.cs .cs-err p { display: flex; gap: var(--space-2); }
+.cs .cs-x { color: var(--status-invalid-fg); font-size: 12px; padding-top: 3px; }
+/* Pager disabled matches buttons. Bars share one radius. Badge and chip share one geometry. */
+.cs .pg[aria-disabled="true"] { border-color: var(--border-strong); }
+.cs .share .bar, .cs .hb-bar { border-radius: var(--radius-sm); }
+.cs .badge, .cs .chip { padding: 1px 8px; font-size: var(--text-xs); border: 1px solid var(--border-strong); border-radius: var(--radius-pill); }
+
+/* ---- Sheet layout ---- */
+.cs { display: grid; gap: var(--space-4); }
+.cs-sec { min-width: 0; }
+.cs-grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); align-items: start; }
+.cs-row + .cs-row { margin-top: var(--space-4); }
+.cs-rl { margin: 0 0 var(--space-2); font-size: var(--text-sm); color: var(--text-muted); font-weight: var(--weight-medium); }
+.cs-cells { display: flex; flex-wrap: wrap; gap: var(--space-4) var(--space-5); align-items: flex-start; }
+.cs-cell { display: grid; gap: var(--space-2); justify-items: start; min-width: 0; }
+.cs-cell.wide, .cs-grid2 > .cs-cell { width: 100%; justify-items: stretch; }
+.cs-cap { font-size: var(--text-xs); color: var(--text-muted); font-family: var(--font-mono); }
+.cs-demo { min-width: 0; max-width: 100%; }
+.cs-wrap { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.cs-search { display: block; width: 220px; min-width: 0; }
+.cs-inline-empty { font-size: var(--text-sm); margin-top: var(--space-2); display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.cs-tiles { margin: 0; }
+.cs-tl .tl { min-width: 0; }
+.cs-tb-msg { display: grid; justify-items: start; gap: var(--space-2); padding: var(--space-3) 0; color: var(--text-muted); }
+.cs-tb-err { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-3); align-items: center; border-left: 4px solid var(--status-invalid-fg); }
+.cs-tb-err .btn { margin-left: auto; }
+.bone { display: inline-block; height: 10px; border-radius: var(--radius-sm); background: var(--chart-track); vertical-align: middle; }
+.cs-empty-l { display: grid; justify-items: start; gap: var(--space-2); padding: var(--space-4); color: var(--text-muted); }
+.cs-insp { border: 1px solid var(--card-border); border-radius: var(--radius-xl); padding: var(--space-4); }
+.cs-scope .ph { margin: 0; }
+.cs-side { position: static; height: auto; width: 224px; border: 1px solid var(--border); border-radius: var(--radius-lg); }
+.cs-tabbar { display: grid; grid-template-columns: repeat(5, 1fr); background: var(--sidebar-bg); border: 1px solid var(--border); border-radius: var(--radius-lg); max-width: 375px; }
+.cs-tabbar a { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 0; min-height: 52px; font-size: var(--text-xs); color: var(--text-muted); text-decoration: none; }
+.cs-tabbar a[aria-current="page"] { color: var(--accent); }
+.cs-tabbar .ic { position: relative; font-size: 15px; }
+.cs-tabbar .cnt { position: absolute; top: -6px; right: -14px; font-size: 10px; border: 1px solid currentColor; border-radius: var(--radius-pill); padding: 0 4px; background: var(--sidebar-bg); }
+.cs-phone { width: 320px; max-width: 100%; border: 1px solid var(--border-strong); border-radius: var(--radius-xl); overflow: hidden; background: var(--page-bg); }
+.cs-sheet { background: var(--card-bg); padding: var(--space-3) var(--space-4) 0; min-height: 380px; display: flex; flex-direction: column; }
+.cs-sheet-foot { margin: auto calc(-1 * var(--space-4)) 0; padding: var(--space-3) var(--space-4); border-top: 1px solid var(--border); display: grid; gap: var(--space-2); }
+.cs-sheet-foot .btn { justify-content: center; }
+.cs-ph { margin-bottom: var(--space-3); }
+@media (max-width: 720px) {
+  .cs-grid2 { grid-template-columns: 1fr; }
+  .cs-cells { gap: var(--space-3) var(--space-4); }
+  .cs-side { width: 100%; }
+  .cs .seg-tabs { overflow-x: auto; }
+  .cs-cell { max-width: 100%; }
+}
+.cs .btn[aria-busy="true"] { border-style: solid; color: var(--text); cursor: progress; }
+.cs .btn.primary[aria-busy="true"] { color: var(--text-on-accent); }
+.cs .btn.danger[aria-busy="true"] { border-color: var(--status-invalid-fg); color: var(--status-invalid-fg); }
+.cs .btn.quiet[aria-busy="true"] { border-color: transparent; color: var(--accent); }
+.cs .segs { width: 440px; max-width: 100%; }
+.cs .warn { margin-top: 0; }
+.bone.big { width: 72px; height: 28px; display: block; margin: 4px 0; }
+.cs-tb-err .cs-x { padding-top: 0; }
+.cs .st.idle::before { font-size: 13px; }

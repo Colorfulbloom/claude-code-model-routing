@@ -75,3 +75,10 @@ Owner: rebuild the Routing Dashboard from scratch, full framework stack. Persona
 - Node 24 in .nvmrc; standalone uv 0.13 or later (installed at build start, not now).
 - CSP: per-request nonce (covers CodeMirror 6 and React Aria's touch style).
 - Approved: commit this research on docs/dashboard-rebuild-research (README index first), start the plan, start design directions for the new screens.
+
+## Owner, 2026-11-08 redesign
+- The rebuild is a full UI and UX redesign, not the old app on a new stack. The panel plan's parity framing is rejected (docs/rebuild/planning/plan.md needs re-planning around the picked direction).
+- Live is where the owner spends about 90% of their time; Agents, Sessions and Models are the other useful pages; Overview stays as a review view.
+- Picked redesign direction A "Timeline" (boards in /Volumes/Warehouse/Projects/routing-dashboard-rebuild-archive/design-redesign/). Revisions requested: Summary cost-per-day paging, Models bars in model colors, dark-mode subtle surfaces for Live sub-sections.
+- Owner: Live is the home page. Keep a separate Summary page under Review.
+- Owner: Agents is one page under Review, as drawn in A (usage and setup together). Owner loves the revised Models page (model colors plus kind patterns in 'What the cost is made of').

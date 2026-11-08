@@ -1,0 +1,177 @@
+/* Routing Dashboard tokens, direction A (picked November 8, 2026). The single design source for the rebuild.
+   Built on the October 29 sheet (its header follows). app.css references these tokens only.
+
+   Surface system. Four steps, each one level in from the page. Keep every step subtle.
+   Surface   Tokens                           Dark      Light     Use
+   page      --page-bg                        #1a1e23   #f5f6f8   behind cards
+   card      --card-bg, --card-border         #111417   #ffffff   tiles and section cards
+   well      --inset-bg, --inset-border       #171b21   #ffffff   data inside a card: chart plots, tables, row lists, lists of items, diffs, editors
+   raised    --raised-bg, --raised-border     #1e232a   #f7f8fa   findings inside a card: checks, To fix rows, effect, warnings, notices, confirms
+   Rules. A chart that heads a well (Live's tokens per minute) stays on the card as the well's axis. Light wells stay white,
+   because light --cat-2 to --cat-4 reach 3:1 on white only, and every model bar sits in a well or on a card. A raised
+   surface never sits inside a well. A command or diff box inside a raised confirm uses the well tokens.
+   Status words keep their own fg/bg pairs on every surface. Model colour always sits next to the model name (--m-*).
+
+   Additions over the October 29 sheet, contrast computed (WCAG 2.1).
+   Light                                         Dark
+   text on raised-bg           15.58  pass       text on raised-bg           13.11  pass
+   text-muted on raised-bg      6.28  pass       text-muted on raised-bg      6.82  pass
+   text on inset-bg            16.56  pass       text on inset-bg            14.34  pass
+   text-muted on inset-bg       6.67  pass       text-muted on inset-bg       7.46  pass
+   cat-1..4 on inset-bg  4.42 3.06 3.07 3.08     cat-1..4 on inset-bg  4.75 5.07 5.63 4.38   non-text, 3:1 floor
+   inset-border / raised-border are hairlines (1.45 light, 1.79 dark raised): decoration, never a control's only edge.
+   Diff and editor lines reuse the status pairs: added = in-effect (5.67 light, 8.15 dark), removed = invalid (6.06, 7.10),
+   each with a + or - glyph in the gutter. A changed editor line uses --code-line (text 13.20 light, 10.58 dark).
+   --accent-hover (design-system round) darkens the primary button in light and lightens it in dark: text-on-accent 8.55 / 11.07.
+   Components, states and layout rules: components.md beside this file.
+
+/* Routing Dashboard tokens. Draft, October 29, 2026. System fonts, light and dark.
+   Theme: light by default, dark under prefers-color-scheme or [data-theme="dark"];
+   [data-theme="light"] forces light. Status is shape plus word, never hue alone.
+
+   Contrast (WCAG 2.1 relative luminance, computed, not estimated). AA text is 4.5:1, non-text 3:1.
+   Light                                  Dark
+   text on bg              16.56  pass    text on bg              15.33  pass
+   text on surface         15.31  pass    text on surface         13.90  pass
+   text on surface-2       14.25  pass    text on surface-2       12.14  pass
+   text-muted on bg         6.67  pass    text-muted on bg         7.98  pass
+   text-muted on surface    6.17  pass    text-muted on surface    7.23  pass
+   text-muted on surface-2  5.74  pass    text-muted on surface-2  6.32  pass
+   accent on bg             6.48  pass    accent on bg             8.79  pass
+   accent on surface        5.99  pass    accent on surface        7.96  pass
+   text-on-accent on accent 6.48  pass    text-on-accent on accent 8.79  pass
+   border-strong on bg      3.60  pass*   border-strong on bg      3.84  pass*
+   border-strong on surface 3.33  pass*   border-strong on surface 3.48  pass*
+   border on bg             1.45  n/a     border on bg             1.49  n/a
+   in-effect fg on its bg   5.67  pass    in-effect fg on its bg   8.15  pass
+   overridden fg on its bg  5.83  pass    overridden fg on its bg  7.58  pass
+   ignored fg on its bg     5.74  pass    ignored fg on its bg     6.32  pass
+   invalid fg on its bg     6.06  pass    invalid fg on its bg     7.10  pass
+   lowered fg on its bg     6.14  pass    lowered fg on its bg     7.77  pass
+   default fg on its bg    15.31  pass    default fg on its bg    13.90  pass
+   unknown fg on its bg     6.67  pass    unknown fg on its bg     7.98  pass
+   Every status fg also passes 4.5:1 on bg and surface (lowest 6.11 light, 7.23 dark).
+   Shell and chart pairs (same method, computed by tests/test_tokens_contrast.py).
+   Light                                         Dark
+   text on page-bg             15.31  pass       text on page-bg             13.90  pass
+   text on card-bg             16.56  pass       text on card-bg             15.33  pass
+   text on sidebar-bg          15.31  pass       text on sidebar-bg          13.90  pass
+   text-muted on page-bg        6.17  pass       text-muted on page-bg        7.23  pass
+   text-muted on card-bg        6.67  pass       text-muted on card-bg        7.98  pass
+   text-muted on sidebar-bg     6.17  pass       text-muted on sidebar-bg     7.23  pass
+   text on nav-active-bg       13.20  pass       text on nav-active-bg       10.58  pass
+   accent on nav-active-bg      5.16  pass       accent on nav-active-bg      6.07  pass
+   text on nav-hover-bg        13.88  pass       text on nav-hover-bg        11.98  pass
+   text-muted on nav-hover-bg   5.59  pass       text-muted on nav-hover-bg   6.23  pass
+   cat-1 on card-bg             4.42  pass       cat-1 on card-bg             5.08  pass
+   cat-2 on card-bg             3.06  pass       cat-2 on card-bg             5.43  pass
+   cat-3 on card-bg             3.07  pass       cat-3 on card-bg             6.02  pass
+   cat-4 on card-bg             3.08  pass       cat-4 on card-bg             4.68  pass
+   cat-1 on page-bg             4.08  pass       cat-1 on page-bg             4.60  pass
+   cat-2 on page-bg             2.83  below 3    cat-2 on page-bg             4.92  pass
+   cat-3 on page-bg             2.84  below 3    cat-3 on page-bg             5.45  pass
+   cat-4 on page-bg             2.85  below 3    cat-4 on page-bg             4.25  pass
+   rk-1 on card-bg              1.54  below 3    rk-1 on card-bg              3.43  pass
+   rk-2 on card-bg              2.50  below 3    rk-2 on card-bg              5.08  pass
+   rk-3 on card-bg              4.42  pass       rk-3 on card-bg              8.76  pass
+   rk-4 on card-bg              9.91  pass       rk-4 on card-bg             13.96  pass
+   Accepted exception, non-text, light only (owner, October 30): --rk-1 1.54 and --rk-2 2.50 on the white card, under the 3:1 floor. Holds only while every stacked bar keeps legend totals or a kinds table, and a visible start edge.
+   Light --cat-2 to --cat-4 reach 3:1 on the card only (2.83, 2.84 and 2.85 on page-bg), so series colors stay on cards.
+   * non-text, 3:1 floor. "border" is a decorative hairline, never the only boundary of a control. */
+
+:root {
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --text-xs: 12px; --text-sm: 13px; --text-md: 14px; --text-lg: 16px; --text-xl: 20px; --text-2xl: 26px;
+  --leading-tight: 1.25; --leading-body: 1.5;
+  --weight-regular: 400; --weight-medium: 500; --weight-semibold: 600;
+
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 24px; --space-6: 32px; --space-7: 48px;
+  --radius-sm: 4px; --radius-md: 6px; --radius-lg: 10px; --radius-pill: 999px;
+  --border-width: 1px; --focus-width: 2px; --focus-offset: 2px;
+
+  --bg: #ffffff; --surface: #f5f6f8; --surface-2: #eceef1;
+  --text: #1b1f24; --text-muted: #555d67;
+  --border: #d3d7dc; --border-strong: #80888f;
+  --accent: #1d5bb8; --text-on-accent: #ffffff; --focus-ring: var(--accent);
+
+  /* Status: one mark glyph (used as ::before content) plus a quiet fg/bg pair per word. */
+  --status-in-effect-mark: "\25CF"; --status-in-effect-fg: #1f6a3a; --status-in-effect-bg: #e4f1e8;   /* filled circle */
+  --status-overridden-mark: "\25B2"; --status-overridden-fg: #8a4b00; --status-overridden-bg: #f8ecd9; /* triangle up */
+  --status-ignored-mark: "\25CB"; --status-ignored-fg: #555d67; --status-ignored-bg: #eceef1;         /* hollow circle */
+  --status-invalid-mark: "\2715"; --status-invalid-fg: #a3262a; --status-invalid-bg: #f9e5e5;         /* cross */
+  --status-lowered-mark: "\25BC"; --status-lowered-fg: #6b3fa0; --status-lowered-bg: #efe7f8;         /* triangle down */
+  --status-default-mark: "\25C7"; --status-default-fg: #1b1f24; --status-default-bg: #f5f6f8;         /* hollow diamond */
+  --status-unknown-mark: "?"; --status-unknown-fg: #555d67; --status-unknown-bg: #ffffff;             /* question mark, dashed border */
+  --status-unknown-border: dashed;
+
+  /* Shell and chart tokens (round 2 and round 3). */
+  --page-bg: var(--surface); --card-bg: var(--bg); --sidebar-bg: var(--surface);
+  --nav-active-bg: #dfe6f2; --nav-hover-bg: #eaebed;
+  --shadow-card: 0 1px 2px rgba(27,31,36,.06), 0 4px 14px rgba(27,31,36,.06);
+  --chart-track: var(--surface-2); --chart-gap: var(--bg);
+  --cat-1: #2a78d6; --cat-2: #04a873; --cat-3: #c78600; --cat-4: #dc7099;
+  --rk-1: #b7d3f6; --rk-2: #6da7ec; --rk-3: #2a78d6; --rk-4: #104281;
+  --chart-grid: var(--border); --chart-axis: var(--text-muted);
+  /* Direction A additions (November 8). */
+  --text-3xl: 32px; --radius-xl: 14px;
+  --card-border: var(--border);
+  --inset-bg: var(--card-bg); --inset-border: var(--border);
+  --raised-bg: #f7f8fa; --raised-border: var(--border);
+  --m-opus: var(--cat-1); --m-sonnet: var(--cat-2); --m-haiku: var(--cat-3); --m-fable: var(--cat-4);
+  --working: var(--accent); --now-line: var(--text);
+  --diff-add-bg: var(--status-in-effect-bg); --diff-add-fg: var(--status-in-effect-fg);
+  --diff-del-bg: var(--status-invalid-bg); --diff-del-fg: var(--status-invalid-fg);
+  --code-line: var(--nav-active-bg);
+  --accent-hover: #174a96;   /* primary button hover; text-on-accent 8.55 */
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111417; --surface: #1a1e23; --surface-2: #242930;
+    --text: #e8eaed; --text-muted: #a4abb4;
+    --border: #2f353d; --border-strong: #6a737d;
+    --accent: #86b4ff; --text-on-accent: #111417;
+    --status-in-effect-fg: #8fd3a4; --status-in-effect-bg: #15301f;
+    --status-overridden-fg: #f0b56b; --status-overridden-bg: #3a2a12;
+    --status-ignored-fg: #a4abb4; --status-ignored-bg: #242930;
+    --status-invalid-fg: #f09a9c; --status-invalid-bg: #3d1c1d;
+    --status-lowered-fg: #c9b0f0; --status-lowered-bg: #2c2240;
+    --status-default-fg: #e8eaed; --status-default-bg: #1a1e23;
+    --status-unknown-fg: #a4abb4; --status-unknown-bg: #111417;
+    --page-bg: var(--surface); --card-bg: var(--bg); --sidebar-bg: var(--surface);
+    --nav-active-bg: #293342; --nav-hover-bg: #262a2f;
+    --shadow-card: 0 1px 2px rgba(0,0,0,.5), 0 6px 18px rgba(0,0,0,.35);
+    --chart-track: var(--surface-2); --chart-gap: var(--bg);
+    --cat-1: #3987e5; --cat-2: #199e70; --cat-3: #c98500; --cat-4: #d55181;
+    --rk-1: #256abf; --rk-2: #3987e5; --rk-3: #86b6ef; --rk-4: #cde2fb;
+    --chart-grid: var(--border); --chart-axis: var(--text-muted);
+    --inset-bg: #171b21; --raised-bg: #1e232a; --raised-border: #3a414a;
+    --accent-hover: #a9caff;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #111417; --surface: #1a1e23; --surface-2: #242930;
+  --text: #e8eaed; --text-muted: #a4abb4;
+  --border: #2f353d; --border-strong: #6a737d;
+  --accent: #86b4ff; --text-on-accent: #111417;
+  --status-in-effect-fg: #8fd3a4; --status-in-effect-bg: #15301f;
+  --status-overridden-fg: #f0b56b; --status-overridden-bg: #3a2a12;
+  --status-ignored-fg: #a4abb4; --status-ignored-bg: #242930;
+  --status-invalid-fg: #f09a9c; --status-invalid-bg: #3d1c1d;
+  --status-lowered-fg: #c9b0f0; --status-lowered-bg: #2c2240;
+  --status-default-fg: #e8eaed; --status-default-bg: #1a1e23;
+  --status-unknown-fg: #a4abb4; --status-unknown-bg: #111417;
+  --page-bg: var(--surface); --card-bg: var(--bg); --sidebar-bg: var(--surface);
+  --nav-active-bg: #293342; --nav-hover-bg: #262a2f;
+  --shadow-card: 0 1px 2px rgba(0,0,0,.5), 0 6px 18px rgba(0,0,0,.35);
+  --chart-track: var(--surface-2); --chart-gap: var(--bg);
+  --cat-1: #3987e5; --cat-2: #199e70; --cat-3: #c98500; --cat-4: #d55181;
+  --rk-1: #256abf; --rk-2: #3987e5; --rk-3: #86b6ef; --rk-4: #cde2fb;
+  --chart-grid: var(--border); --chart-axis: var(--text-muted);
+  --inset-bg: #171b21; --raised-bg: #1e232a; --raised-border: #3a414a;
+  --accent-hover: #a9caff;
+}
+
+body { background: var(--bg); color: var(--text); font: var(--text-md)/var(--leading-body) var(--font-sans); }

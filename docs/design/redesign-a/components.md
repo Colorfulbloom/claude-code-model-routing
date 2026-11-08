@@ -1,0 +1,383 @@
+# Direction A components
+
+The component spec for the Routing Dashboard rebuild, direction A. It sits beside the design source, `site/tokens.css`, whose header holds the surface system and every contrast grade. This file never repeats a token value. It names tokens, and tokens.css says what they are.
+
+The sheet that shows every component in every state is `shots/a-components-<1440|375>-<light|dark>.png`. It's built from `site/components.js` with the canonical rules in `site/components.css`. Those rules are scoped to `.cs`, so the round 1 to 4 screens still show the pre-canonical look. The build applies the canonical rules app-wide (see "Differences resolved").
+
+Status of this file: designer spec. Words on screen come from `site/strings*.js`, drafted by tech-writer (the sheet words are in `site/strings3.js`). The purpose lines below are designer drafts for the build team, not product copy.
+
+Stack mapping: React 19, React Aria Components (RAC), plain CSS, hand-drawn SVG. Each entry names the RAC component, or the WAI-ARIA Authoring Practices (APG) pattern when RAC has none.
+
+## Shared rules
+
+These rules apply to every component.
+
+- Focus. Every focusable element shows `outline: var(--focus-width) solid var(--focus-ring)` at `var(--focus-offset)` on `:focus-visible` only. A control whose native input is visually hidden (segmented choice, custom checkbox) draws the ring on its visible box through `:has(input:focus-visible)`. Never remove an outline without that replacement.
+- Hover. Neutral surfaces use `--nav-hover-bg`. The primary button uses `--accent-hover`. Hover never moves anything: the lift is 0, and pressed moves 1px down (owner rule, October 23).
+- Disabled. Use `aria-disabled="true"` instead of the `disabled` attribute on buttons, so the control stays focusable and its reason can be read. Show a dashed `--border-strong` border with `--text-muted` text. Never use opacity alone. A disabled control always has a visible reason nearby, tied with `aria-describedby`.
+- Loading. There's no spinner and no lasting motion. A busy control keeps its size, swaps its label to the writer's busy word (`cs_saving`) and sets `aria-busy="true"`. A busy region shows skeleton bones at measured heights, `aria-busy="true"` and one screen-reader line (`cs_tb_loading`).
+- Glyph marks. Status and run-state glyphs come from CSS `::before`. Write them with empty alt text, `content: var(--status-in-effect-mark) / ""`, so screen readers say the word only, not "black circle In effect".
+- Targets. Every pointer target is at least 24 by 24 px with spacing, and at least 32 px tall for buttons. Phone tab bar items are 52 px tall.
+- Type. Body is `--font-sans` at `--text-md`. Code, paths, keys and line numbers use `--font-mono`. Name the family on every new block, because a framework body font can leak in.
+- Never colour alone. Status = glyph + word. Model = shape + name (`.sw`). Kind = pattern + legend text. Diff = +/- glyph + line tint.
+
+## Layout rules
+
+- Shell. Two columns at 721 px and up: a 224 px sidebar (`--sidebar-bg`, sticky, full height) and a fluid main. At 720 px and below the sidebar is hidden. A sticky 52 px top bar shows the page name and project, and a fixed 5-item tab bar sits at the bottom.
+- Main padding. At 1440: `--space-5` top, `--space-6` sides, `--space-7` bottom. At 375: `--space-3` top, `--space-4` sides (the 16 px gutter), and 96 px bottom so the tab bar never covers content.
+- Max width. Main content stops at 1280 px and stays left-aligned. This is new in this round, because the screens were drawn at 1440 where main is 1152 px. It keeps tables and prose readable on wide monitors. Owner decision 1.
+- Page header (`.ph`). `--space-4` below. h1 at `--text-xl` semibold, sub at `--text-md` muted. Right-hand controls wrap under the title at narrow widths.
+- Vertical rhythm. `--space-4` between sibling cards and grids, between the tile row and the next card, and under a card header. Inside a card, `--space-4` between blocks, and `--space-2` between rows of a raised list.
+- Grids. `.grid` is a one-column stack with `--space-4` gap. `.grid.two` is two equal columns and collapses to one at 720. `.tiles` has 4 columns at 1440 and 2 at 375 (gap `--space-2`). List plus inspector is 340 px + fluid, 280 px + fluid below 1100, and one column at 720.
+- Cards at 375. Full width inside the 16 px gutter. Padding drops from `--space-4 --space-5 --space-5` to `--space-3 --space-4 --space-4`, and the radius from `--radius-xl` to `--radius-lg`. Cards never sit side by side on a phone. Wells drop to `--space-2 --space-3` padding.
+- Breakpoints. Two only: 720 (phone) and 1100 (narrow desktop, list plus inspector only). Scan the 720 to 1100 range for overflow when a component changes.
+- Surfaces. Page, card, well and raised, with their placement rules, live in the tokens.css header ("Surface system"). Don't restate them here, and don't invent a fifth surface.
+- Bare pages (locked, first run). No shell. Brand at top left, one card centred at most 560 px wide, `--space-7` from the top (`--space-4` on a phone).
+
+## Components
+
+Each entry lists purpose, anatomy, states, variants, tokens, mapping, keyboard, phone behaviour and copy keys. "Sheet" names its section on the component sheet.
+
+### 1. Sidebar navigation
+- Purpose. The main way between pages at 721 px and up. Use it for top-level pages only. In-page views use the segmented control.
+- Anatomy. Brand, project Select, grouped links (Live; Review: Summary, Sessions, Agents, Models; Setup: Your setup, To fix; Reference: How Claude Code decides, Glossary), and the footer version line. Each link has an icon (aria-hidden), a label and an optional end slot (the Working mark on Live, the count on To fix).
+- States. Default, hover (`--nav-hover-bg`), focus-visible ring, selected (`--nav-active-bg`, `--accent` text, `aria-current="page"`).
+- Tokens. `--sidebar-bg`, `--border`, `--nav-hover-bg`, `--nav-active-bg`, `--accent`, `--text`, `--text-muted`, `--radius-md`, `--space-1..4`.
+- Mapping. `<nav aria-label>` with RAC Link items. Group headings are text, not buttons.
+- Keyboard. Tab through links in order. Enter follows the link.
+- Phone. Hidden. The tab bar and the More page replace it.
+- Copy keys. `nav_*`, `tofix_count`, `nav_working`.
+- Sheet. "Sidebar and tab bar".
+
+### 2. Phone tab bar and top bar
+- Purpose. Navigation at 720 px and below. Five items: Live, Review, Setup, To fix (with count) and More.
+- Anatomy. Fixed bottom bar with icon over label. The count badge is outlined. The top bar is sticky with the page name and project.
+- States. Default (muted), selected (`--accent`, `aria-current="page"`), focus-visible.
+- Tokens. `--sidebar-bg`, `--border`, `--accent`, `--text-muted`, `--radius-pill`.
+- Mapping. `<nav>` with RAC Link. The count is part of the accessible name ("To fix, 4").
+- Keyboard. Tab order follows reading order. The tab bar comes last in the DOM.
+- Copy keys. `nav_live`, `nav_review`, `nav_setup_h`, `nav_tofix`, `nav_more`, `tofix_count`.
+
+### 3. Page header and breadcrumb
+- Purpose. Names the page and its scope. A breadcrumb appears only on level-3 pages (surface pages under Your setup).
+- Anatomy. Optional breadcrumb (link / current), h1, sub line, optional right-hand controls.
+- States. The breadcrumb link has default, hover underline and focus. Its target is at least 26 px tall through padding.
+- Tokens. `--text-xl`, `--weight-semibold`, `--text-muted`, `--accent`, `--space-4`.
+- Mapping. RAC Breadcrumbs in `<nav aria-label="Breadcrumb">`. The current page carries `aria-current="page"`.
+- Phone. Hidden while a sheet is open. The sheet header takes over.
+- Copy keys. Per page (`su_h1`, `sp_h1`, `rv_h1` and so on).
+- Sheet. "Card and page header".
+
+### 4. Scope bar (Review)
+- Purpose. Sets what Review shows: a range (default last 30 days) or one session. It's always the top of a Review page.
+- Anatomy. Title and sub (range dates or "This session is still running"), then on the right a Range Select, or for a session the back link, a Session Select and "Open in Live".
+- States. Range scope, session scope. Select states follow component 14.
+- Tokens. Those of the page header and Select.
+- Mapping. Header region with RAC Select. The back link is RAC Link.
+- Keyboard. Tab to each control. Select opens with Enter, Space or Alt+Down.
+- Phone. Controls wrap under the title. The Review views become a segmented control (component 13) under the bar.
+- Copy keys. `rv_h1`, `rv_range_lab`, `rv_range`, `rv_range_sub`, `rv_session_scope`, `rv_session_value`, `rv_back`, `rv_open_live`, `rv_still`.
+
+### 5. Card
+- Purpose. The unit of a page. One question, one answer. Use one card per question the owner asks of the page.
+- Anatomy. Header (h2 title, then an optional count, an optional question in muted text and an optional right slot), then the body (wells, raised findings, text) and an optional foot note.
+- Variants. Standard, empty (component 30), gate (bare pages).
+- Tokens. `--card-bg`, `--card-border`, `--radius-xl` (phone `--radius-lg`), `--space-4`, `--space-5`, `--text-lg`, `--text-muted`.
+- Mapping. `<section aria-labelledby>` pointing at its h2.
+- Copy keys. `*_h` (title), `*_q` (question).
+- Sheet. "Card and page header".
+
+### 6. Well
+- Purpose. Holds data inside a card: chart plots, tables, row lists, diffs, editors and command boxes. Placement rules are in the tokens.css header.
+- Anatomy. A bordered inset box. The default padding is `--space-3 --space-4`. List wells set horizontal padding only, and diffs and editors set 0.
+- States. None of its own.
+- Tokens. `--inset-bg`, `--inset-border`, `--radius-lg`.
+- Phone. Padding `--space-2 --space-3`.
+
+### 7. Raised finding
+- Purpose. A judged result inside a card: a model check hit, a warning before save, Saved, Overwritten, Preview failed, a To fix row, the effect block, the read-only reason.
+- Anatomy. Raised box, optional 4 px start edge, h3 or bold lead, body, optional actions.
+- Variants. Plain (effect, read-only reason, To fix row in a group), check (edge `--status-lowered-fg`), warning and overwritten (edge `--status-overridden-fg`, ▲ glyph), saved (edge `--status-in-effect-fg`, ✓), error (edge `--status-invalid-fg`, ✕), risky confirm (component 25).
+- Edge rule. A start edge marks a finding that stands alone. Rows inside a group (To fix) get no edge, because the group heading already carries the mark. The edge colour always repeats a glyph and word inside the box.
+- States. Saved and Overwritten are `role="status"`. Preview failed is `role="alert"`, because it blocks Save.
+- Tokens. `--raised-bg`, `--raised-border`, `--radius-lg`, the `--status-*-fg` for the edge.
+- Copy keys. `ed_warn_h`, `ed_warn`, `ed_saved`, `ed_saved_meta`, `ed_undo`, `ed_over`, `ed_review_changes`, `cs_prev_err`, `cs_prev_err_a`, `mc_ex_*`.
+- Sheet. "Raised finding".
+
+### 8. Notice line
+- Purpose. One fact that affects trust in the page but isn't a problem in the setup, such as the version gap. It sits above the cards.
+- Anatomy. A raised strip with a status mark, one sentence and an optional link at the end.
+- Variants. Single notice (strip). Several notices go in a Notices card as a list well (To fix).
+- Tokens. `--raised-bg`, `--raised-border`, `--radius-lg`, `--text-sm`.
+- Mapping. Static text. Use `role="status"` only when it appears after load.
+- Phone. The link wraps under the sentence.
+- Copy keys. `su_version`, `su_version_link`, `rf_banner`, `fx_n1`, `fx_n2`.
+
+### 9. Button
+- Purpose. Starts an action. Use a link for navigation (it may look like a button, for example "Open in MCP servers").
+- Variants.
+  - Primary: one per view, the action the screen exists for (Save to file, Preview change, Check again, Review changes).
+  - Secondary: everything else (Copy path, Undo, Back).
+  - Quiet: low-stakes or dismissive actions in text flow (Cancel, Back to last 30 days, Clear search).
+  - Danger: only the confirm inside a risky confirm.
+  - Icon: Close on the phone sheet, with an aria-label.
+- States. Default; hover (neutral `--nav-hover-bg`, primary `--accent-hover`, danger `--status-invalid-bg`, quiet adds an underline); focus-visible ring; pressed (1 px down); disabled (dashed `--border-strong`, muted text, `aria-disabled`); loading (label swaps to `cs_saving`, `aria-busy`, solid border kept so it doesn't read as disabled).
+- Tokens. `--accent`, `--accent-hover`, `--text-on-accent`, `--border-strong`, `--card-bg`, `--nav-hover-bg`, `--status-invalid-fg`, `--status-invalid-bg`, `--radius-md`, `--space-3`.
+- Mapping. RAC Button (APG Button).
+- Keyboard. Enter and Space activate.
+- Phone. Action rows stack full width, primary first. On a sheet the actions sit in a sticky foot.
+- Placement. Primary sits at the end of an action row, away from Back or Cancel at the start. A button names its target ("Save to settings.local.json").
+- Copy keys. Per action. `cs_saving` while busy.
+- Sheet. "Buttons", all five variants by six states.
+
+### 10. Status chip
+- Purpose. The verdict on a setting value. Exactly seven words: In effect, Overridden, Ignored, Lowered, Invalid, Default, Unknown. Use it only for setting status, never for runs or errors.
+- Anatomy. Pill with a glyph (from `--status-*-mark`) and the word.
+- States. None (not interactive).
+- Tokens. `--status-<word>-fg`, `--status-<word>-bg`, `--status-<word>-mark`, `--status-unknown-border`, `--radius-pill`, `--text-sm`.
+- Mapping. Text. The glyph uses the empty-alt `content` rule.
+- Copy keys. `st_*`, `gl_t1..7`.
+- Sheet. "Status chip".
+
+### 11. Run-state chip
+- Purpose. What an agent run is doing: Working, Finished, Idle, Not started yet. These are a separate family from setting status.
+- Anatomy. Plain glyph + word, with no pill. Working ● `--accent`, Finished ✓ `--status-in-effect-fg`, Idle and Not started yet ◌ `--text-muted`.
+- States. None. A change of state announces through the lane's polite live region on Live, at most once per row per minute.
+- Tokens. `--accent`, `--working`, `--status-in-effect-fg`, `--text-muted`.
+- Copy keys. `st_working`, `st_done`, `st_idle`, `c_not_started`, `fr_done`, `fr_now`, `fr_next`.
+- Sheet. "Run-state chip".
+
+### 12. Badge, scope label and scope chip
+- Purpose.
+  - Badge: a neutral fact about an item (confidence Tested/Documented/Assumed, "1 line changed").
+  - Scope label: a scope name over its plain meaning (table column heads, where-set rows).
+  - Scope chip: scope plus value under a setup-map row at 375.
+- Anatomy. Badge is an outlined pill with muted text. A scope chip is the same pill with the scope in medium weight and then the value. A scope label is two lines.
+- Tokens. `--border-strong`, `--text-muted`, `--text`, `--radius-pill`, `--text-xs`, `--weight-medium`.
+- Copy keys. `rf_tested`, `rf_documented`, `rf_assumed`, `tx_changed`, `sc_*`, `sc_*_2`, `su_nv`.
+
+### 13. Segmented control
+- Purpose. A choice between 2 to 5 short options that all fit in one row.
+- Variants.
+  - Pages: in-page navigation (the Review views at 375). Links with `aria-current="page"`.
+  - Choice: a value (effort level in the rail). RAC RadioGroup. An option may carry a second line ("set now").
+- Anatomy. Track (`--surface-2`, 3 px inset) with equal segments. The selected segment is `--card-bg` with a 1 px `--border-strong` ring and semibold text.
+- States. Default, hover (`--nav-hover-bg`), focus-visible ring on the segment, selected, disabled (dashed track, muted text).
+- Tokens. `--surface-2`, `--card-bg`, `--border-strong`, `--nav-hover-bg`, `--radius-md`, `--weight-semibold`, `--text-sm`.
+- Mapping. Pages is `<nav>` + RAC Link. Choice is RAC RadioGroup + Radio (APG Radio Group).
+- Keyboard. Pages: Tab between links. Choice: Tab into the group, arrows move and select, Tab leaves.
+- Phone. Full width. Pages scrolls sideways if the labels don't fit, and never wraps.
+- Copy keys. `rv_tab_*`, `ed_field`, `ed_now`.
+- Sheet. "Segmented control".
+
+### 14. Select
+- Purpose. Picks one value from a list longer than five, or a value whose label is long (Range, Session, Save to, Confidence, Project).
+- Anatomy. Button with a muted label, the value in medium weight and a chevron, then a popover listbox.
+- States. Default, hover, focus-visible, open, disabled.
+- Tokens. `--card-bg`, `--border-strong`, `--text-muted`, `--nav-hover-bg`, `--radius-md`.
+- Mapping. RAC Select + ListBox (APG select-only Combobox).
+- Keyboard. Enter, Space or Alt+Down opens. Arrows move, Enter picks, Esc closes.
+- Phone. The popover opens as a bottom sheet (RAC Popover with a tray layout).
+- Copy keys. `rv_range_lab`, `rv_range`, `ed_saveto`, `ed_saveto_v`, `rf_conf`, `rf_conf_all`.
+
+### 15. Search field
+- Purpose. Filters a long list in place (rules on How Claude Code decides).
+- States. Default, focus-visible (ring on the input), filled with a clear button, empty result (a line under the field plus "Clear search").
+- Tokens. `--card-bg`, `--border-strong`, `--text`, `--radius-md`.
+- Mapping. RAC SearchField. The result count is announced politely.
+- Keyboard. Esc clears.
+- Copy keys. `rf_search`, `cs_search_empty`, `cs_search_clear`.
+
+### 16. Switch
+- Purpose. Turns a view option on or off with an immediate effect and no Save. It's used once, for "Show where each comes from". Its state lives in the URL query.
+- Anatomy. 40 by 24 track with a thumb, then the label. The whole label is the target.
+- States. Off, on (`--accent` track), hover (soft `--nav-hover-bg` halo), focus-visible, disabled (dashed track).
+- Tokens. `--accent`, `--surface-2`, `--card-bg`, `--border-strong`, `--nav-hover-bg`.
+- Mapping. RAC Switch (APG Switch).
+- Keyboard. Space toggles.
+- Copy keys. `su_switch`.
+
+### 17. Checkbox
+- Purpose. Confirms that the person read something before a risky action. It's never used for settings values.
+- States. Default, hover, focus-visible, checked, disabled. 24 px box with `accent-color: var(--accent)`.
+- Mapping. RAC Checkbox.
+- Keyboard. Space toggles.
+- Copy keys. `rk_check`.
+
+### 18. Tile
+- Purpose. One headline number with its comparison and a small proof graphic. Tiles only open a page, and four at most in a row.
+- Anatomy. Label, value (`--text-3xl`), delta line, optional proof (spark, ring or dots, aria-hidden, because the text carries the value).
+- States. Default, loading (a bone in place of the value, delta replaced by the loading line), link hover when the tile opens a page.
+- Tokens. `--card-bg`, `--card-border`, `--radius-xl`, `--text-3xl`, `--text-muted`, `--accent`, `--chart-track`.
+- Mapping. Static text, or RAC Link when it opens a page.
+- Phone. 2 per row.
+- Copy keys. `rv_t_*`, `st_*` tile words.
+- Sheet. "Tile".
+
+### 19. Share bar
+- Purpose. Shows each row's share of a total (cost by agent, model share in a table).
+- Anatomy. Name with model swatch and model name, track with a fill in the model colour and a 2 px start edge, value, percent.
+- Variants. List (12 px track, in a well) and in-table (8 px track).
+- Tokens. `--chart-track`, `--border-strong`, `--m-*`, `--radius-sm`.
+- Mapping. List items. The bar is aria-hidden because value and percent are text.
+- Phone. Bar under the name, value and percent on the right.
+
+### 20. Stacked bars and legend
+- Purpose. Cost or tokens over time, split by model. Kinds are shown by pattern.
+- Anatomy. Y ticks, bars stacked by model (`--m-*`), with kinds as patterns `kp1` to `kp4` filled with currentColor. Then x labels, a legend with totals, and a kinds breakdown line.
+- Tokens. `--m-*`, `--chart-grid`, `--chart-axis`, `--chart-gap`, `--inset-bg`.
+- Mapping. SVG `role="img"` with an aria-label summary. The legend totals and kinds table are the text alternative. Draw labels in HTML, not in a stretched SVG.
+- Phone. Same chart with fewer x labels.
+
+### 21. Pager
+- Purpose. Moves a chart's window to earlier or later data that can be compared. It's chart-local, so tiles keep their own range.
+- Anatomy. Earlier button, window label, Later button, why-line when an end is reached, scope note.
+- States. Default, hover, focus-visible, disabled at an end (dashed `--border-strong`, same as buttons, with the why-line tied by `aria-describedby`).
+- Mapping. RAC Button pair. The window label sits in a polite live region.
+- Keyboard. Tab to each button.
+- Copy keys. `pg_*`.
+
+### 22. Timeline lane (Live)
+- Purpose. Who is working, when, and who started whom. The centre of Live.
+- Anatomy. The tokens-per-minute chart heads the well on the card (axis rule in tokens.css). Below it, one row per run: name, model swatch with model and effort, a track with segments in the model colour, round marks, a run-state chip, the last-request or ran-for line, tokens and cost. Started-by indents with a vertical guide.
+- States. Working (the segment reaches Now with the `--now-line` edge), finished, not started yet (muted name, no segment), row hover and focus when the row opens the run.
+- Tokens. `--m-*`, `--now-line`, `--inset-bg`, `--inset-border`, `--chart-grid`, `--text-muted`.
+- Mapping. A list nested by Started by (`role="list"` per level). Each row is a RAC Link to the run. Segments are aria-hidden, and the row text says the times.
+- Phone. Name and state on one line, the track full width below, tokens and cost on the right.
+- Copy keys. `tl_*`, `st_working`, `st_done`, `c_not_started`.
+
+### 23. Replay line
+- Purpose. Scrubs a session's timeline minute by minute in Review.
+- Anatomy. A vertical cut line with a handle at the top. Everything after the cut fades to `color-mix` of the card.
+- States. Default, hover, focus-visible ring on the handle, dragging.
+- Mapping. RAC Slider (APG Slider) with `aria-valuetext` such as "6:25 PM".
+- Keyboard. Left and Right move one minute, Page Up and Page Down five, Home and End go to the start and Now.
+- Copy keys. `rv_replay_note`, `rv_tl_h`, `tl_now`.
+
+### 24. Table in a well
+- Purpose. Rows to compare across the same columns (sessions, requests, the setup map).
+- Anatomy. Header row in muted text. Numbers are right-aligned with tabular figures. The first cell is a link when the row opens something.
+- States. Default, row hover (`--nav-hover-bg`), link focus-visible, empty (a sentence that says what will appear plus the action that fills it), error (a raised error row with ✕ above the rows that did load), loading (skeleton bones, `aria-busy`, a screen-reader line).
+- Variants. Plain. Setup map, with explicit APG table roles so rows can stack at 375 and optional scope columns behind the Switch.
+- Tokens. `--inset-bg`, `--inset-border`, `--border`, `--nav-hover-bg`, `--text-muted`, `--chart-track` (bones).
+- Mapping. RAC Table (APG Table). Use APG Grid only if rows become selectable.
+- Keyboard. Tab moves through the links.
+- Phone. Columns marked `hp` hide. The setup map stacks into name and status, then what applies, then scope chips. Headers stay in the DOM with clip-hiding, never `display:none`.
+- Copy keys. `su_col_*`, `rv_t_*`, `cs_tb_empty`, `cs_tb_empty_a`, `cs_tb_error`, `cs_tb_error_a`, `cs_tb_loading`.
+
+### 25. Risky confirm
+- Purpose. Stops a change that runs code on the person's computer (hooks, and later MCP servers that the dashboard writes).
+- Anatomy. A raised box with an `--status-invalid-fg` start edge and ⚠ heading, the full command in a well, when it runs, the checkbox "I read this command", and the danger button with a different verb from Save. It sits inside the rail, away from Back.
+- States. Unchecked (button `aria-disabled` plus a reason line), checked (button live), busy.
+- Mapping. `role="group"` labelled by its heading. The button is `aria-describedby` the reason line.
+- Keyboard. Tab reaches the checkbox before the button.
+- Phone. Inline in the sheet. The sheet foot holds only Back.
+- Copy keys. `rk_*`.
+
+### 26. List and inspector
+- Purpose. Level 3 of the setup. Pick an item on the left and read or edit it on the right.
+- Anatomy. A list card with a well of items (name, value, status chip, optional lock mark). The inspector card holds the h2 with status, the "Runs at" line, "Set to X in file, line N", where it's set (a well of scope rows, top wins), Why (raised, with the confidence line), usage, then Edit and Copy path.
+- States. Item: default, hover, focus-visible (inset ring), selected (`--nav-active-bg` with a 3 px `--accent` start bar and `aria-current`). List empty: a sentence plus an action. The inspector is read-only (lock mark and owner reason) or editing (component 27).
+- Tokens. `--nav-active-bg`, `--nav-hover-bg`, `--accent`, `--inset-*`, `--raised-*`, `--text-2xl`.
+- Mapping. The list is `<nav>` of RAC Link items, one URL per item, so the inspector follows the URL. The inspector is a labelled region.
+- Keyboard. Tab through items. Enter opens and moves focus to the inspector h2.
+- Phone. The list is the page. Picking an item opens the inspector as its own page with a back link.
+- Copy keys. `sp_*`, `in_*`, `ro_*`, `cs_list_empty`, `cs_list_empty_a`.
+
+### 27. Edit rail
+- Purpose. Changes one item, always through a server preview.
+- Anatomy and states, in order.
+  1. Drafting: field (segmented choice, select or editor), hint, "Save to" target, Preview change.
+  2. Review: effect first (Now and After with status, plus when it applies), diff, warnings with field path, then Back to editing and Save to file.
+  3. Saved: "Saved." with Undo (polite).
+  4. Overwritten: a persistent warning with Review changes and Undo.
+  5. Preview failed: an error finding with Open file.
+- Tokens. Those of its parts.
+- Mapping. At 721 px and up, a labelled region that replaces the inspector. At 375, RAC Modal + Dialog (APG modal Dialog) with a focus trap. Esc closes, and asks `cs_closing_q` first when there's an unsaved change.
+- Keyboard. Focus moves to the rail heading on open and back to Edit on close.
+- Phone. The full-height sheet (component 28).
+- Copy keys. `ed_*`, `cs_closing_q`.
+
+### 28. Sheet at phone width
+- Purpose. The edit rail at 720 px and below.
+- Anatomy. Covers the top bar and tab bar. Header with an icon Close button (40 px) and the title, a scrolling body, and a sticky foot with the actions stacked, primary first.
+- Tokens. `--card-bg`, `--border`, `--space-3`, `--space-4`.
+- Mapping. RAC Modal (`isDismissable` false while busy) + Dialog.
+- Sheet. "Sheet at phone width".
+
+### 29. Diff
+- Purpose. The exact change to a file, shown before every save.
+- Anatomy. A well with the real path line (and the symlink target when there is one), then numbered lines. The gutter shows + or -, and added and removed lines are tinted.
+- Tokens. `--diff-add-bg`, `--diff-add-fg`, `--diff-del-bg`, `--diff-del-fg`, `--inset-*`, `--font-mono`.
+- Mapping. Ordered list. Gutter glyphs carry an aria-label ("added", "removed").
+- Phone. Lines wrap (`overflow-wrap: anywhere`) and never scroll sideways.
+- Copy keys. `ed_diff_h`.
+
+### 30. Editor
+- Purpose. Edits a text body (CLAUDE.md, rules files, agent bodies).
+- Anatomy. A well with line numbers, the current line on `--code-line` with a caret, the escape hint and a changed-lines badge.
+- Mapping. CodeMirror 6 with its accessibility defaults. Esc then Tab leaves the editor.
+- Phone. Full width in the sheet, with soft-wrapped lines.
+- Copy keys. `tx_*`.
+
+### 31. Command row and check line
+- Purpose. Hands a command to the terminal when the dashboard can't write the change (MCP at user scope, the locked tab).
+- Anatomy. A well with the command, a Copy button, the remove-later command, and a check line (status mark, sentence, time) with Check again.
+- States. Copy: default, then a "Copied" announcement (`cs_copied`, polite) without changing the label. Check line: not found yet, found (In effect), or checking (busy button).
+- Mapping. RAC Button. The check line is `role="status"`.
+- Phone. Copy goes under the command, full width.
+- Copy keys. `mc2_*`, `lk_cmd`, `lk_copy`, `cs_copied`.
+
+### 32. To fix row and group
+- Purpose. One counted problem, with the one action that fixes it.
+- Anatomy. A group card per kind (Couldn't read, Won't load, Not as set, then Can't tell uncounted). The heading carries the status glyph and count. Each row is raised: an h3 title naming the thing and the problem, the cause with file and line, the consequence in muted text, and one action.
+- Tokens. `--raised-*`, `--status-invalid-fg`, `--status-lowered-fg`, `--text-muted`.
+- Mapping. A list of rows under each group h2. The title is an h3 (the round 4 screen used h4, which skips a level).
+- Copy keys. `fx_*`.
+
+### 33. Empty state
+- Purpose. Says what will appear and offers the action that fills it.
+- Variants. Page-level (a card with a ✓ mark for "Nothing to fix"), in-list and in-table (a sentence plus a secondary button).
+- Tokens. `--status-in-effect-bg`, `--status-in-effect-fg`, `--text-muted`, `--space-6`.
+- Copy keys. `fx_empty_*`, `cs_tb_empty*`, `cs_list_empty*`.
+
+### 34. Progress steps
+- Purpose. A known sequence of setup steps (first run).
+- Anatomy. A well with one row per step: run-state chip (Done, In progress, Next), step name, and for the current step a progress bar and a size line.
+- Mapping. Ordered list. RAC ProgressBar with a label and value text. The current step change is announced politely.
+- Copy keys. `fr_*`.
+
+### 35. Gate page
+- Purpose. The locked tab and first run, before the shell can load.
+- Anatomy. Brand header and one centred card.
+- Copy keys. `lk_*`, `fr_*`.
+
+### 36. Model swatch
+- Purpose. Marks a model wherever its colour is used. It always sits beside the model name.
+- Anatomy. A shape per model (Opus square, Sonnet circle, Haiku diamond, Fable square) in `--m-*`. aria-hidden.
+- Tokens. `--m-opus`, `--m-sonnet`, `--m-haiku`, `--m-fable`.
+- Note. Opus and Fable share the square. The name always disambiguates, but give Fable its own shape (a rounded square or triangle) in the build. Owner decision 3.
+
+### 37. Skeleton bones
+- Purpose. Loading placeholders at the measured height of the loaded content, so nothing jumps.
+- Tokens. `--chart-track`, `--radius-sm`.
+- Mapping. aria-hidden, with `aria-busy` on the region.
+
+## Differences resolved
+
+Each of these differs between boards today. The canonical version is drawn on the component sheet (`.cs` rules in components.css) and should replace the screen version during the build.
+
+1. Segmented selected look. The Review page tabs used a 1 px `--border-strong` ring with semibold text. The edit rail's effort choice used a 2 px `--accent` ring, which reads as a focus ring. Canonical: the page-tab look for both, so focus stays the only accent ring.
+2. Focus on the effort choice. Its radio inputs are hidden with opacity 0, so the focus ring landed on an invisible input. Canonical: the ring on the segment through `:has(input:focus-visible)`.
+3. Run states. They were plain in Live's lanes but pills in the first-run steps. Idle used Ignored's hollow circle with the same colours. Canonical: plain glyph + word everywhere, with Idle and Not started yet as a dotted ring ◌, so a run state never reads as a setting status.
+4. Hover. Only nav links and table links had hover on the screens. Canonical: hover for every interactive component, and one new token, `--accent-hover` (light #174a96, dark #a9caff, text-on-accent 8.55 and 11.07), added to tokens.css.
+5. Disabled. Buttons used dashed `--border-strong`, while the pager used dashed `--border`, which nearly vanishes. Canonical: dashed `--border-strong` for every disabled control.
+6. Loading. There was no busy state. Canonical: label swap plus `aria-busy` with a solid border, and no spinner (owner motion rule).
+7. Raised boxes. The model check (`.chk-hit`, `.chk-list li`) and the round 4 findings (`.raised`) were two rule sets with different padding sources. Canonical: one raised finding with variants, and the start-edge rule in component 7.
+8. Read errors. The draft error row first used the Invalid status chip, but Invalid means a wrong value. Canonical: ✕ glyph + sentence on a raised error finding, so status chips stay with setting status.
+9. Bars. The share bar track had a 4 px radius and the list bar 3 px (a literal). Canonical: `--radius-sm` for both, at 8 px and 12 px heights.
+10. Badge and chip geometry. The padding differed (0 7px and 1px 8px). Canonical: one pill geometry. A badge has muted text, and a chip has the scope in medium weight.
+11. Heading levels. To fix rows used h4 under an h2. Canonical: h3.
+12. Status glyphs in CSS content were read aloud by screen readers. Canonical: the empty-alt `content` syntax.
+13. Card header slot `.q` held both counts and questions. Canonical: two slots, a count (tabular, muted) next to the title and a question after it.
+14. Class collision. `.seg` (a timeline segment) sits next to `.segs` and `.seg-tabs` (the segmented control). Canonical names for the build: `lane-seg` and `segmented`.
