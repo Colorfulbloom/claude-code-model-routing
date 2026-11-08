@@ -1,15 +1,15 @@
 # testing
 
-### T-7629 Full suite: 3510 tests, about 366 seconds
-fact: discover -s tests runs 3510 tests in about 366 s, 88 skipped: MR_E2E=1 (owner only) gates all but the MR_DOCS_LIVE=1 and MR_SUBAGENT_DOCS (runtime skipTest) ones. Run it alone, and name its log per branch: background leads of one session share a scratchpad. A broken pty test can leave a hung process. A branch that adds tests counts higher.
+### T-7629 Full suite: 3575 tests, about 370 seconds
+fact: discover -s tests runs 3575 tests in about 370 s, 88 skipped (development ff41524, November 7): MR_E2E=1 (owner only) gates all but the MR_DOCS_LIVE=1 and MR_SUBAGENT_DOCS (runtime skipTest) ones. Run it alone, and name its log per branch: background leads of one session share a scratchpad. A broken pty test can leave a hung process. A branch that adds tests counts higher.
 check: HOME=$(mktemp -d) /usr/bin/python3 -c "import unittest,sys; sys.path.insert(0,'tests'); print(unittest.TestLoader().discover('tests').countTestCases())"
 evidence: tests
-fp: db2b097a56ca
-as_of: c7af027 2026-11-06
+fp: 8a10448c3210
+as_of: ff41524 2026-11-07
 author: deep-reasoner
 created: 2026-10-20
-last_used: 2026-11-04
-uses: 41
+last_used: 2026-11-06
+uses: 42
 promote: approved
 
 ### T-5589 Subsets: discover -k; dotted names fail
@@ -17,11 +17,11 @@ fact: Dotted names (tests.test_x) fail with "No module named 'helpers'"; use dis
 check: /usr/bin/python3 -m unittest tests.test_parity 2>&1 | grep "No module named"
 evidence: tests/helpers.py
 fp: 1122432f340e
-as_of: abaaff3 2026-11-04
+as_of: ff41524 2026-11-07
 author: deep-reasoner
 created: 2026-10-20
-last_used: 2026-11-04
-uses: 129
+last_used: 2026-11-06
+uses: 133
 promote: approved
 
 ### T-07ef Settings harness: no real API call

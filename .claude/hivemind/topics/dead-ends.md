@@ -31,8 +31,8 @@ fp: 85e8db8cfa8f
 as_of: abaaff3 2026-11-04
 author: verifier
 created: 2026-10-29
-last_used: 2026-11-04
-uses: 30
+last_used: 2026-11-06
+uses: 31
 promote: approved
 
 ### D-6bed Patching os.stat alone misses pathlib on Python 3.9
@@ -74,9 +74,9 @@ fact: The worktree guard refuses git -C <dir>, a command named by a variable or 
 check: in a worktree-isolated agent run: git -C . log -1 --oneline
 evidence: .gitignore
 fp: 2e3aab966fe0
-as_of: abaaff3 2026-11-04
+as_of: ff41524 2026-11-07
 author: deep-reasoner
 created: 2026-10-30
-last_used: 2026-11-04
-uses: 20
+last_used: 2026-11-06
+uses: 24
 promote: approved

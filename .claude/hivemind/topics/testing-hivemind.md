@@ -23,15 +23,15 @@ last_used: 2026-11-04
 uses: 0
 
 ### H-65be hivemind wrapper: exit 0, explicit store, sealed tests
-fact: plugins/hivemind/bin/hivemind always exits 0, prints every message on stdout and calls lib.main in process with an explicit store, so it resolves root and store first. tests/test_plugin_hivemind.py sets GIT_CEILING_DIRECTORIES to its temp base so the no-project case finds no repo above it, and calls install_lib when the summary must be the first line, because the library-differs note prints first.
+fact: plugins/hivemind/bin/hivemind always exits 0 (the hidden guard exits 1 when it can't write its deny line, so onFailure block still blocks), prints every message on stdout and calls lib.main in process with an explicit store, so it resolves root and store first. tests/test_plugin_hivemind.py sets GIT_CEILING_DIRECTORIES to its temp base so the no-project case finds no repo above it, and calls install_lib when the summary must be the first line, because the library-differs note prints first.
 check: /usr/bin/python3 -m unittest discover -s tests -p test_plugin_hivemind.py
 evidence: plugins/hivemind/bin/hivemind, tests/test_plugin_hivemind.py
-fp: ea5994c4d82d
-as_of: abaaff3 2026-11-04
+fp: ba05e5e452c9
+as_of: ff41524 2026-11-07
 author: fast-worker
 created: 2026-11-04
-last_used: 2026-11-04
-uses: 0
+last_used: 2026-11-06
+uses: 1
 
 ### H-da08 Tally rows expire by their own active-day window
 fact: token-tallies.md is generated from tallies.json, one row per (kind, agent, model, effort) key at about 110 bytes; tally_samples_max caps samples per row, not rows. Only apply removes rows: a row expires when more than tally_expiry_active_days active days follow its last_date (this store sets 6, owner-approved November 6; without the key it follows expiry_active_days, so the key stays out of DEFAULT_CONFIG). Active days are active-days.txt plus git commit dates, not calendar days. An expired row's line goes to archive/token-tallies.md and its raw samples to archive/tallies.json, appended on a repeat expiry.
@@ -45,12 +45,12 @@ last_used: 2026-11-06
 uses: 0
 promote: approved
 
-### H-f1f0 HiveMind skills: only the writers carry a Bash deny
-fact: Of plugins/hivemind/skills, only link, init and consolidate set disallowed-tools (HiveMindSkillTest.WRITERS in tests/test_plugin_build.py). The test's stated reason: the deny lasts until the next user message and a slash command counts as one, so check, inbox, related and status must not carry it. Every skill but consolidate pins model haiku.
-check: /usr/bin/python3 -m unittest discover -s tests -p test_plugin_build.py -k HiveMindSkill
-evidence: tests/test_plugin_build.py, plugins/hivemind/skills/link/SKILL.md
-fp: 1a95f2f37ed6
-as_of: c7af027 2026-11-06
+### H-f1f0 HiveMind skills carry no Bash deny; a hook guards the wrapper
+fact: No skill in plugins/hivemind/skills sets disallowed-tools; plugins/hivemind/hooks/hooks.json runs the wrapper's guard on Bash(python3 *bin/hivemind*), the same design as the launcher guard. The path of hooks/hivemind_lib.py must never hold "bin/hivemind", or the guard denies deep-reasoner's library calls (test_plugin_hivemind.py pins this). Every skill but consolidate pins model haiku.
+check: grep -n '"if"' plugins/hivemind/hooks/hooks.json; /usr/bin/python3 -m unittest discover -s tests -p test_plugin_hivemind.py -k Guard
+evidence: plugins/hivemind/hooks/hooks.json, plugins/hivemind/bin/hivemind, tests/test_plugin_hivemind.py
+fp: e12f62c0b3b3
+as_of: ff41524 2026-11-07
 author: fast-worker
 created: 2026-11-06
 last_used: 2026-11-06
