@@ -20,6 +20,7 @@ import builtins
 import contextlib
 import copy
 import dataclasses
+import inspect
 import io
 import json
 import os
@@ -2194,8 +2195,26 @@ class RuleErrorTests(ResolveCase):
         self.assertEqual((entry["status"], entry["rule_id"]), ("unknown", None))
 
 
-def _blocked(label: Any) -> Any:
-    def fail(*_args: Any, **_kwargs: Any) -> None:
+def _from_coverage_tracer() -> bool:
+    """True when a coverage frame is on the stack above the current call.
+
+    On Python 3.11 coverage traces with sys.settrace. The first time a function in a
+    file it has not seen runs, its tracer resolves that file's real path, and that
+    calls os.lstat from inside whatever the test is doing. The call is the tracer's,
+    not resolve's, and any call resolve makes itself has no coverage frame above it.
+    """
+    frame = inspect.currentframe()
+    while frame is not None:
+        if frame.f_globals.get("__name__", "").split(".")[0] == "coverage":
+            return True
+        frame = frame.f_back
+    return False
+
+
+def _blocked(label: Any, real: Any) -> Any:
+    def fail(*args: Any, **kwargs: Any) -> Any:
+        if _from_coverage_tracer():
+            return real(*args, **kwargs)
         raise AssertionError("resolve called " + label)
 
     return fail
@@ -2221,7 +2240,9 @@ def no_file_access() -> Generator[None]:
         ):
             stack.enter_context(
                 mock.patch.object(
-                    owner, name, _blocked("%s.%s" % (owner.__name__, name))
+                    owner,
+                    name,
+                    _blocked("%s.%s" % (owner.__name__, name), getattr(owner, name)),
                 )
             )
         for name in (
@@ -2236,7 +2257,11 @@ def no_file_access() -> Generator[None]:
             "resolve",
         ):
             stack.enter_context(
-                mock.patch.object(pathlib.Path, name, _blocked("Path." + name))
+                mock.patch.object(
+                    pathlib.Path,
+                    name,
+                    _blocked("Path." + name, getattr(pathlib.Path, name)),
+                )
             )
         yield
 

@@ -190,6 +190,8 @@ for (const width of widths) {
 }
 
 test("sheet under forced colors keeps passing axe", async ({ page }) => {
+  // One axe scan per cell, so it needs the longer limit the per-cell tests above get.
+  test.setTimeout(240_000);
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.emulateMedia({ forcedColors: "active" });
   const cells = await openSheet(page, "light");
@@ -202,6 +204,8 @@ test("sheet under forced colors keeps passing axe", async ({ page }) => {
 });
 
 test("sheet under reduced motion keeps passing axe", async ({ page }) => {
+  // One axe scan per cell, so it needs the longer limit the per-cell tests above get.
+  test.setTimeout(240_000);
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.emulateMedia({ reducedMotion: "reduce" });
   const cells = await openSheet(page, "light");
