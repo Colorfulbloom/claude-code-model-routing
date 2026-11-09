@@ -6,6 +6,11 @@ import { Select, states, type SelectOption } from "./Select";
 
 afterEach(cleanup);
 
+function need<T>(value: T | undefined): T {
+  if (value === undefined) throw new Error("missing");
+  return value;
+}
+
 const items: SelectOption[] = [
   { id: "7", label: "Last 7 days" },
   { id: "30", label: "Last 30 days", description: "Default" },
@@ -102,5 +107,40 @@ describe("Select", () => {
     await user.click(screen.getByRole("button"));
     expect(screen.getByText("Projects")).toBeInTheDocument();
     expect(screen.getByText("No projects yet")).toBeInTheDocument();
+  });
+});
+
+describe("Select with groups", () => {
+  it("lists options under their group headings in first-seen order", async () => {
+    const user = userEvent.setup();
+    render(
+      <Select
+        label="Session"
+        items={[
+          { id: "a", label: "One", group: "This project" },
+          { id: "b", label: "Two", group: "Other projects" },
+          { id: "c", label: "Three", group: "This project" },
+        ]}
+        value="a"
+        onChange={() => undefined}
+      />,
+    );
+    await user.click(screen.getByRole("button"));
+    const list = await screen.findByRole("listbox");
+    const groups = within(list).getAllByRole("group");
+    expect(
+      groups.map((group) => group.getAttribute("aria-label") ?? group.textContent),
+    ).toHaveLength(2);
+    expect(
+      within(need(groups[0]))
+        .getAllByRole("option")
+        .map((o) => o.textContent),
+    ).toEqual(["One", "Three"]);
+    expect(
+      within(need(groups[1]))
+        .getAllByRole("option")
+        .map((o) => o.textContent),
+    ).toEqual(["Two"]);
+    expect(within(list).getByText("This project")).toBeInTheDocument();
   });
 });

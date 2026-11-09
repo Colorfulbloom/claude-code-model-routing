@@ -2,7 +2,7 @@
  * A fake server for the app tests. fakeServer() returns a fetch that answers /api/app and
  * /api/projects from the object it holds, so a test changes the answers by changing the object.
  */
-import type { AppInfo, PricesAnswer, Project } from "@/api/types";
+import type { AppInfo, LiveSessions, PricesAnswer, Project, Timeline } from "@/api/types";
 
 export const INSTANCE = "inst-1";
 
@@ -78,12 +78,30 @@ export function appInfo(over: Partial<AppInfo> = {}): AppInfo {
     running: [{ project: "builder", session: "s1" }],
     to_fix_count: 4,
     editable_projects: [],
+    mode: "fixture",
+    clock: { kind: "real", rate_n: null },
+    ...over,
+  };
+}
+
+export function liveSessions(over: Partial<LiveSessions> = {}): LiveSessions {
+  return {
+    server_time: "2026-11-08T15:42:00Z",
+    as_of: "2026-11-08T15:41:00Z",
+    etag: "sessions-1",
+    unchanged: false,
+    sessions: [],
+    latest_ended: null,
     ...over,
   };
 }
 
 export interface FakeServer {
   app: AppInfo;
+  /** The Live session list. It answers `unchanged` when the asked etag matches. */
+  live: LiveSessions;
+  /** Timelines by session id. A session with none answers 404 unknown_session. */
+  timelines: Record<string, Timeline>;
   projects: Project[];
   prices: PricesAnswer;
   /** True makes every call fail like a stopped server. */
@@ -94,12 +112,14 @@ export interface FakeServer {
 }
 
 export function fakeServer(
-  init: Partial<Pick<FakeServer, "app" | "projects" | "prices">> = {},
+  init: Partial<Pick<FakeServer, "app" | "projects" | "prices" | "live" | "timelines">> = {},
 ): FakeServer {
   const server: FakeServer = {
     app: init.app ?? appInfo(),
     projects: init.projects ?? PROJECTS,
     prices: init.prices ?? pricesInfo(),
+    live: init.live ?? liveSessions(),
+    timelines: init.timelines ?? {},
     down: false,
     calls: [],
     fetch: (input) => {
@@ -107,6 +127,29 @@ export function fakeServer(
         typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
       server.calls.push(path);
       if (server.down) return Promise.reject(new TypeError("Failed to fetch"));
+      if (path.startsWith("/api/live/sessions")) {
+        const etag = new URL(path, "http://x").searchParams.get("etag");
+        const body =
+          etag === server.live.etag
+            ? { etag, server_time: server.live.server_time, unchanged: true }
+            : server.live;
+        return Promise.resolve(new Response(JSON.stringify(body)));
+      }
+      const timeline = /^\/api\/sessions\/([^/?]+)\/timeline/.exec(path);
+      if (timeline?.[1] !== undefined) {
+        const found = server.timelines[decodeURIComponent(timeline[1])];
+        if (found === undefined) {
+          return Promise.resolve(
+            new Response(JSON.stringify({ code: "unknown_session", path: null }), { status: 404 }),
+          );
+        }
+        const etag = new URL(path, "http://x").searchParams.get("etag");
+        const body =
+          etag === found.etag
+            ? { etag, project: found.project, server_time: found.server_time, unchanged: true }
+            : found;
+        return Promise.resolve(new Response(JSON.stringify(body)));
+      }
       const body = path.startsWith("/api/projects")
         ? { projects: server.projects }
         : path.startsWith("/api/prices")

@@ -336,7 +336,7 @@ test("the 375 tray swaps the project and keeps the page", async ({ page, shared 
     window.location.hash = `${p}/review/models`;
   }, base);
   await expect(page.locator("main h1")).toHaveText(en.nav_models);
-  await page.getByRole("button", { name: fill(en.project_aria, { name: PROJECT_NAME }) }).click();
+  await page.getByRole("button", { name: PROJECT_NAME, exact: true }).click();
   await page
     .getByRole("dialog")
     .getByRole("option", { name: /Saltmarsh/ })

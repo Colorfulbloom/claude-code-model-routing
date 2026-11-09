@@ -1,0 +1,2597 @@
+{
+  "as_of": "2026-10-30T22:40:00Z",
+  "axis": {
+    "bucket_seconds": 60,
+    "end": "2026-10-30T22:40:00Z",
+    "start": "2026-10-30T22:10:00Z",
+    "ticks": [
+      "2026-10-30T22:10:00Z",
+      "2026-10-30T22:20:00Z",
+      "2026-10-30T22:30:00Z",
+      "2026-10-30T22:40:00Z"
+    ],
+    "token_ticks": [
+      0,
+      20000,
+      40000,
+      60000,
+      80000,
+      100000
+    ]
+  },
+  "buckets": [
+    {
+      "by_model": {
+        "claude-opus-5-5": 20318
+      },
+      "cache_read": 37472,
+      "cost": 0.1345584,
+      "requests": 2,
+      "start": "2026-10-30T22:10:00Z",
+      "unpriced": {
+        "models": [],
+        "requests": 0
+      }
+    },
+    {
+      "by_model": {
+        "claude-opus-5-5": 17244
+      },
+      "cache_read": 70658,
+      "cost": 0.1197086,
+      "requests": 2,
+      "start": "2026-10-30T22:11:00Z",
+      "unpriced": {
+        "models": [],
+        "requests": 0
+      }
+    },
+    {
+      "by_model": {
+        "claude-opus-5-5": 39448
+      },
+      "cache_read": 119739,
+      "cost": 0.2778448,
+      "requests": 4,
+      "start": "2026-10-30T22:12:00Z",
+      "unpriced": {
+        "models": [],
+        "requests": 0
+      }
+    },
+    {
+      "by_model": {
+        "claude-opus-5-5": 26658
+      },
+      "cache_read": 122236,
+      "cost": 0.19134020000000002,
+      "requests": 3,
+      "start": "2026-10-30T22:13:00Z",
+      "unpriced": {
+        "models": [],
+        "requests": 0
+      }
+    },
+    {
+      "by_model": {
+        "claude-haiku-5-5": 10429,
+        "claude-opus-5-5": 38035
+      },
+      "cache_read": 136641,
+      "cost": 0.28088234500000003,
+      "requests": 8,
+      "start": "2026-10-30T22:14:00Z",
+      "unpriced": {
+        "models": [],
+        "requests": 0
+      }
+    },
+    {
+      "by_model": {
+        "claude-haiku-5-5": 5114,
+        "claude-opus-5-5": 21350
+      },
+      "cache_read": 62084,
+      "cost": 0.15272513999999998,
+      "requests": 4,
+      "start": "2026-10-30T22:15:00Z",
+      "unpriced": {
+        "models": [],
+        "requests": 0
+      }
+    },
+    {
+      "by_model": {
+        "claude-haiku-5-5": 10715,
+        "claude-opus-5-5": 39423
+      },
+      "cache_read": 136415,
+      "cost": 0.28307159000000004,
+      "requests": 8,
+      "start": "2026-10-30T22:16:00Z",
+      "unpriced": {
+        "models": [],
+        "requests": 0
+      }
+    },
+    {
+      "by_model": {
+        "claude-haiku-5-5": 2880,
+        "claude-opus-5-5": 19841
+      },
+      "cache_read": 72224,
+      "cost": 0.14025118,
+      "requests": 3,
+      "start": "2026-10-30T22:17:00Z",
+      "unpriced": {
+        "models": [],
+        "requests": 0
+      }
+    },
+    {
+      "by_model": {
+        "claude-opus-5-5": 25744
+      },
+      "cache_read": 79508,
+      "cost": 0.17821160000000003,
+      "requests": 3,
+      "start": "2026-10-30T22:18:00Z",
+      "unpriced": {
+        "models": [],
+        "requests": 0
+      }
+    },
+    {
+      "by_model": {
+        "claude-opus-5-5": 19061
+      },
+      "cache_read": 59446,
+      "cost": 0.1288182,
+      "requests": 2,
+      "start": "2026-10-30T22:19:00Z",
+      "unpriced": {
+        "models": [],
+        "requests": 0
+      }
+    },
+    {
+      "by_model": {
+        "claude-opus-5-5": 49312,
+        "claude-sonnet-5-5": 12611
+      },
+      "cache_read": 151915,
+      "cost": 0.4085095,
+      "requests": 7,
+      "start": "2026-10-30T22:20:00Z",
+      "unpriced": {
+        "models": [],
+        "requests": 0
+      }
+    },
+    {
+      "by_model": {
+        "claude-opus-5-5": 38994,
+        "claude-sonnet-5-5": 12873
+      },
+      "cache_read": 149747,
+      "cost": 0.3003459,
+      "requests": 6,
+      "start": "2026-10-30T22:21:00Z",
+      "unpriced": {
+        "models": [],
+        "requests": 0
+      }
+    },
+    {
+      "by_model": {
+        "claude-opus-5-5": 40594,
+        "claude-sonnet-5-5": 28701
+      },
+      "cache_read": 212051,
+      "cost": 0.40559690000000004,
+      "requests": 9,
+      "start": "2026-10-30T22:22:00Z",
+      "unpriced": {
+        "models": [],
+        "requests": 0
+      }
+    },
+    {
+      "by_model": {
+        "claude-opus-5-5": 46818,
+        "claude-sonnet-5-5": 22638
+      },
+      "cache_read": 171814,
+      "cost": 0.3884424,
+      "requests": 7,
+      "start": "2026-10-30T22:23:00Z",
+      "unpriced": {
+        "models": [],
+        "requests": 0
+      }
+    },
+    {
+      "by_model": {
+        "claude-opus-5-5": 11579,
+        "claude-sonnet-5-5": 44341
+      },
+      "cache_read": 145655,
+      "cost": 0.23989919999999998,
+      "requests": 8,
+      "start": "2026-10-30T22:24:00Z",
+      "unpriced": {
+        "models": [],
+        "requests": 0
+      }
+    },
+    {
+      "by_model": {
+        "claude-opus-5-5": 24136,
+        "claude-sonnet-5-5": 14672
+      },
+      "cache_read": 118279,
+      "cost": 0.22564520000000002,
+      "requests": 5,
+      "start": "2026-10-30T22:25:00Z",
+      "unpriced": {
+        "models": [],
+        "requests": 0
+      }
+    },
+    {
+      "by_model": {
+        "claude-opus-5-5": 29114,
+        "claude-sonnet-5-5": 23445
+      },
+      "cache_read": 123846,
+      "cost": 0.2784135,
+      "requests": 6,
+      "start": "2026-10-30T22:26:00Z",
+      "unpriced": {
+        "models": [],
+        "requests": 0
+      }
+    },
+    {
+      "by_model": {
+        "claude-opus-5-5": 32407,
+        "claude-sonnet-5-5": 19357
+      },
+      "cache_read": 121119,
+      "cost": 0.2936756,
+      "requests": 6,
+      "start": "2026-10-30T22:27:00Z",
+      "unpriced": {
+        "models": [],
+        "requests": 0
+      }
+    },
+    {
+      "by_model": {
+        "claude-opus-5-5": 24188,
+        "claude-sonnet-5-5": 12155
+      },
+      "cache_read": 122000,
+      "cost": 0.2257271,
+      "requests": 5,
+      "start": "2026-10-30T22:28:00Z",
+      "unpriced": {
+        "models": [],
+        "requests": 0
+      }
+    },
+    {
+      "by_model": {
+        "claude-opus-5-5": 38161
+      },
+      "cache_read": 138816,
+      "cost": 0.2813302,
+      "requests": 4,
+      "start": "2026-10-30T22:29:00Z",
+      "unpriced": {
+        "models": [],
+        "requests": 0
+      }
+    },
+    {
+      "by_model": {
+        "claude-opus-5-5": 44018
+      },
+      "cache_read": 153145,
+      "cost": 0.30148600000000003,
+      "requests": 5,
+      "start": "2026-10-30T22:30:00Z",
+      "unpriced": {
+        "models": [],
+        "requests": 0
+      }
+    },
+    {
+      "by_model": {
+        "claude-opus-5-5": 42837
+      },
+      "cache_read": 142601,
+      "cost": 0.3015732,
+      "requests": 4,
+      "start": "2026-10-30T22:31:00Z",
+      "unpriced": {
+        "models": [],
+        "requests": 0
+      }
+    },
+    {
+      "by_model": {
+        "claude-opus-5-5": 41371
+      },
+      "cache_read": 144915,
+      "cost": 0.30450900000000003,
+      "requests": 5,
+      "start": "2026-10-30T22:32:00Z",
+      "unpriced": {
+        "models": [],
+        "requests": 0
+      }
+    },
+    {
+      "by_model": {
+        "claude-opus-5-5": 57875
+      },
+      "cache_read": 135301,
+      "cost": 0.3986612,
+      "requests": 5,
+      "start": "2026-10-30T22:33:00Z",
+      "unpriced": {
+        "models": [],
+        "requests": 0
+      }
+    },
+    {
+      "by_model": {
+        "claude-opus-5-5": 30483
+      },
+      "cache_read": 86134,
+      "cost": 0.2147518,
+      "requests": 3,
+      "start": "2026-10-30T22:34:00Z",
+      "unpriced": {
+        "models": [],
+        "requests": 0
+      }
+    },
+    {
+      "by_model": {
+        "claude-opus-5-5": 57035
+      },
+      "cache_read": 205088,
+      "cost": 0.3973586,
+      "requests": 6,
+      "start": "2026-10-30T22:35:00Z",
+      "unpriced": {
+        "models": [],
+        "requests": 0
+      }
+    },
+    {
+      "by_model": {
+        "claude-opus-5-5": 29713
+      },
+      "cache_read": 83236,
+      "cost": 0.2048802,
+      "requests": 3,
+      "start": "2026-10-30T22:36:00Z",
+      "unpriced": {
+        "models": [],
+        "requests": 0
+      }
+    },
+    {
+      "by_model": {
+        "claude-opus-5-5": 52199
+      },
+      "cache_read": 191235,
+      "cost": 0.3818170000000001,
+      "requests": 6,
+      "start": "2026-10-30T22:37:00Z",
+      "unpriced": {
+        "models": [],
+        "requests": 0
+      }
+    },
+    {
+      "by_model": {
+        "claude-haiku-5-5": 7102,
+        "claude-opus-5-5": 55421
+      },
+      "cache_read": 172374,
+      "cost": 0.43343911,
+      "requests": 8,
+      "start": "2026-10-30T22:38:00Z",
+      "unpriced": {
+        "models": [],
+        "requests": 0
+      }
+    },
+    {
+      "by_model": {
+        "claude-haiku-5-5": 6773,
+        "claude-opus-5-5": 49296,
+        "claude-sonnet-5-5": 24076
+      },
+      "cache_read": 228943,
+      "cost": 0.43684222500000003,
+      "requests": 10,
+      "start": "2026-10-30T22:39:00Z",
+      "unpriced": {
+        "models": [],
+        "requests": 0
+      }
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "cost": 0.0,
+      "requests": 0,
+      "start": "2026-10-30T22:40:00Z",
+      "unpriced": {
+        "models": [],
+        "requests": 0
+      }
+    }
+  ],
+  "etag": "8c813e3593ae8927",
+  "last_minute": {
+    "cache_read": 228943,
+    "cost": 0.43684222500000003,
+    "hit_rate": 0.7631458771529238,
+    "requests": 10,
+    "tokens": 80145,
+    "unpriced": {
+      "models": [],
+      "requests": 0
+    }
+  },
+  "model_check": {
+    "in_effect_count": 0,
+    "rows": [
+      {
+        "agent": null,
+        "mismatched_runs": 0,
+        "params": {
+          "cap_file": ".claude/settings.json",
+          "cap_key": "maxEffortLevel",
+          "cap_line": "3",
+          "cap_model": "claude-opus-5-5",
+          "cap_value": "high",
+          "expected": "high",
+          "setting": "effort",
+          "settings": "effort",
+          "value": "xhigh"
+        },
+        "ran": {
+          "effort": "high",
+          "mixed": false,
+          "model": "claude-opus-5-5"
+        },
+        "reason_code": "lowered_by_cap",
+        "runs": 1,
+        "set": {
+          "effort": {
+            "file": ".claude/settings.local.json",
+            "line": 3,
+            "scope": "env",
+            "value": "xhigh"
+          },
+          "model": {
+            "file": "~/config/settings.json",
+            "line": 2,
+            "scope": "user",
+            "value": "claude-opus-5-5"
+          }
+        },
+        "status": "lowered"
+      },
+      {
+        "agent": "deep-reasoner",
+        "mismatched_runs": 0,
+        "params": {},
+        "ran": {
+          "effort": "high",
+          "mixed": false,
+          "model": "claude-opus-5-5"
+        },
+        "reason_code": "no_agent_file",
+        "runs": 1,
+        "set": {
+          "effort": null,
+          "model": null
+        },
+        "status": null
+      },
+      {
+        "agent": "fast-worker",
+        "mismatched_runs": 0,
+        "params": {},
+        "ran": {
+          "effort": "medium",
+          "mixed": false,
+          "model": "claude-sonnet-5-5"
+        },
+        "reason_code": "no_agent_file",
+        "runs": 2,
+        "set": {
+          "effort": null,
+          "model": null
+        },
+        "status": null
+      },
+      {
+        "agent": "judge",
+        "mismatched_runs": 0,
+        "params": {},
+        "ran": {
+          "effort": "medium",
+          "mixed": false,
+          "model": "claude-opus-5-5"
+        },
+        "reason_code": "no_agent_file",
+        "runs": 1,
+        "set": {
+          "effort": null,
+          "model": null
+        },
+        "status": null
+      },
+      {
+        "agent": "scout",
+        "mismatched_runs": 0,
+        "params": {},
+        "ran": {
+          "effort": "medium",
+          "mixed": false,
+          "model": "claude-haiku-5-5"
+        },
+        "reason_code": "no_agent_file",
+        "runs": 3,
+        "set": {
+          "effort": null,
+          "model": null
+        },
+        "status": null
+      },
+      {
+        "agent": "tech-writer",
+        "mismatched_runs": 0,
+        "params": {},
+        "ran": {
+          "effort": "high",
+          "mixed": false,
+          "model": "claude-sonnet-5-5"
+        },
+        "reason_code": "no_agent_file",
+        "runs": 1,
+        "set": {
+          "effort": null,
+          "model": null
+        },
+        "status": null
+      }
+    ]
+  },
+  "models": [
+    {
+      "model": "claude-opus-5-5",
+      "tokens": 1062673
+    },
+    {
+      "model": "claude-sonnet-5-5",
+      "tokens": 214869
+    },
+    {
+      "model": "claude-haiku-5-5",
+      "tokens": 43013
+    }
+  ],
+  "prices": {
+    "as_of": "2026-11-08",
+    "cross_check_state": "not_checked",
+    "source": "bundled"
+  },
+  "project": "tidewater-reporting",
+  "requests": [
+    {
+      "at": "2026-10-30T22:39:50Z",
+      "cache_read": 16280,
+      "cost": 0.068286,
+      "effort": "high",
+      "id": "13c73b97ec88",
+      "model": "claude-opus-5-5",
+      "new_tokens": 10236,
+      "output": 998,
+      "run_id": "main",
+      "tokens": 26516
+    },
+    {
+      "at": "2026-10-30T22:39:48Z",
+      "cache_read": 27124,
+      "cost": 0.033491400000000004,
+      "effort": "high",
+      "id": "8d32be3951e1",
+      "model": "claude-sonnet-5-5",
+      "new_tokens": 8636,
+      "output": 1072,
+      "run_id": "fe7b31d40669",
+      "tokens": 35760
+    },
+    {
+      "at": "2026-10-30T22:39:45Z",
+      "cache_read": 8374,
+      "cost": 0.00071859,
+      "effort": "medium",
+      "id": "accb276eecbb",
+      "model": "claude-haiku-5-5",
+      "new_tokens": 3452,
+      "output": 487,
+      "run_id": "6272fcc999c0",
+      "tokens": 11826
+    },
+    {
+      "at": "2026-10-30T22:39:43.495000Z",
+      "cache_read": 27138,
+      "cost": 0.0248883,
+      "effort": "high",
+      "id": "8a50d1d509ff",
+      "model": "claude-sonnet-5-5",
+      "new_tokens": 7652,
+      "output": 542,
+      "run_id": "fe7b31d40669",
+      "tokens": 34790
+    },
+    {
+      "at": "2026-10-30T22:39:42Z",
+      "cache_read": 26740,
+      "cost": 0.074076,
+      "effort": "medium",
+      "id": "1b73f76d5563",
+      "model": "claude-opus-5-5",
+      "new_tokens": 10783,
+      "output": 1115,
+      "run_id": "264c9b324b2d",
+      "tokens": 37523
+    },
+    {
+      "at": "2026-10-30T22:39:40.349000Z",
+      "cache_read": 15078,
+      "cost": 0.054514599999999996,
+      "effort": "high",
+      "id": "1fbdd2186005",
+      "model": "claude-opus-5-5",
+      "new_tokens": 7601,
+      "output": 1010,
+      "run_id": "main",
+      "tokens": 22679
+    },
+    {
+      "at": "2026-10-30T22:39:34.532000Z",
+      "cache_read": 5216,
+      "cost": 0.000696035,
+      "effort": "medium",
+      "id": "30b8b46fd58a",
+      "model": "claude-haiku-5-5",
+      "new_tokens": 3321,
+      "output": 528,
+      "run_id": "6272fcc999c0",
+      "tokens": 8537
+    },
+    {
+      "at": "2026-10-30T22:39:29.901000Z",
+      "cache_read": 38646,
+      "cost": 0.0783302,
+      "effort": "medium",
+      "id": "80e174d79461",
+      "model": "claude-opus-5-5",
+      "new_tokens": 10353,
+      "output": 1341,
+      "run_id": "264c9b324b2d",
+      "tokens": 48999
+    }
+  ],
+  "runs": [
+    {
+      "agent": null,
+      "cost": 3.2082532000000006,
+      "cum": [
+        {
+          "cache_read": 37472,
+          "cost": 0.1345584,
+          "tokens": 20318
+        },
+        {
+          "cache_read": 108130,
+          "cost": 0.254267,
+          "tokens": 37562
+        },
+        {
+          "cache_read": 166344,
+          "cost": 0.39705880000000005,
+          "tokens": 57115
+        },
+        {
+          "cache_read": 251834,
+          "cost": 0.5036958,
+          "tokens": 72037
+        },
+        {
+          "cache_read": 274630,
+          "cost": 0.585999,
+          "tokens": 83278
+        },
+        {
+          "cache_read": 294990,
+          "cost": 0.656205,
+          "tokens": 93536
+        },
+        {
+          "cache_read": 352686,
+          "cost": 0.8009482,
+          "tokens": 114012
+        },
+        {
+          "cache_read": 372608,
+          "cost": 0.8691746,
+          "tokens": 124063
+        },
+        {
+          "cache_read": 437562,
+          "cost": 0.9900264000000001,
+          "tokens": 141812
+        },
+        {
+          "cache_read": 456698,
+          "cost": 1.0478916,
+          "tokens": 149668
+        },
+        {
+          "cache_read": 515549,
+          "cost": 1.2549398,
+          "tokens": 176691
+        },
+        {
+          "cache_read": 616936,
+          "cost": 1.4538882,
+          "tokens": 208378
+        },
+        {
+          "cache_read": 636766,
+          "cost": 1.5248422,
+          "tokens": 218289
+        },
+        {
+          "cache_read": 690428,
+          "cost": 1.6874326,
+          "tokens": 241943
+        },
+        {
+          "cache_read": 723727,
+          "cost": 1.7333524,
+          "tokens": 248277
+        },
+        {
+          "cache_read": 766324,
+          "cost": 1.7902628,
+          "tokens": 254541
+        },
+        {
+          "cache_read": 812322,
+          "cost": 1.9161094,
+          "tokens": 273600
+        },
+        {
+          "cache_read": 828515,
+          "cost": 1.9866510000000002,
+          "tokens": 284361
+        },
+        {
+          "cache_read": 892155,
+          "cost": 2.102687,
+          "tokens": 300510
+        },
+        {
+          "cache_read": 955295,
+          "cost": 2.253032,
+          "tokens": 320793
+        },
+        {
+          "cache_read": 970993,
+          "cost": 2.3063836,
+          "tokens": 329711
+        },
+        {
+          "cache_read": 1008841,
+          "cost": 2.3966672,
+          "tokens": 342647
+        },
+        {
+          "cache_read": 1082346,
+          "cost": 2.5429282,
+          "tokens": 362685
+        },
+        {
+          "cache_read": 1105339,
+          "cost": 2.6243888,
+          "tokens": 374109
+        },
+        {
+          "cache_read": 1123811,
+          "cost": 2.6727652,
+          "tokens": 380301
+        },
+        {
+          "cache_read": 1195640,
+          "cost": 2.766925,
+          "tokens": 393266
+        },
+        {
+          "cache_read": 1215335,
+          "cost": 2.8390560000000002,
+          "tokens": 404412
+        },
+        {
+          "cache_read": 1273958,
+          "cost": 2.9516326000000004,
+          "tokens": 419382
+        },
+        {
+          "cache_read": 1336293,
+          "cost": 3.0854526000000004,
+          "tokens": 436073
+        },
+        {
+          "cache_read": 1367651,
+          "cost": 3.2082532000000006,
+          "tokens": 453910
+        },
+        {
+          "cache_read": 1367651,
+          "cost": 3.2082532000000006,
+          "tokens": 453910
+        }
+      ],
+      "depth": 0,
+      "dispatch_order": 0,
+      "effort": "high",
+      "first_request": "2026-10-30T22:10:06Z",
+      "label_n": 1,
+      "last_request": "2026-10-30T22:39:50Z",
+      "model": "claude-opus-5-5",
+      "parent": null,
+      "parent_at": null,
+      "parent_known": true,
+      "parent_state": "known",
+      "rounds": [
+        {
+          "at": "2026-10-30T22:10:06Z",
+          "by": null,
+          "by_kind": null,
+          "last_request": "2026-10-30T22:39:50Z",
+          "n": 1
+        }
+      ],
+      "run_id": "main",
+      "segments": [
+        {
+          "end": "2026-10-30T22:40:00Z",
+          "start": "2026-10-30T22:10:06Z"
+        }
+      ],
+      "state": "working",
+      "states": [
+        {
+          "at": "2026-10-30T22:10:06Z",
+          "state": "working"
+        }
+      ],
+      "together": null,
+      "tokens": 453910,
+      "unpriced": {
+        "models": [],
+        "requests": 0
+      }
+    },
+    {
+      "agent": "deep-reasoner",
+      "cost": 3.1367952,
+      "cum": [
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 61525,
+          "cost": 0.135053,
+          "tokens": 19895
+        },
+        {
+          "cache_read": 98271,
+          "cost": 0.2197562,
+          "tokens": 31631
+        },
+        {
+          "cache_read": 182494,
+          "cost": 0.4161608,
+          "tokens": 58425
+        },
+        {
+          "cache_read": 214259,
+          "cost": 0.4974688,
+          "tokens": 69517
+        },
+        {
+          "cache_read": 268029,
+          "cost": 0.6336068,
+          "tokens": 88464
+        },
+        {
+          "cache_read": 312673,
+          "cost": 0.7050486,
+          "tokens": 98254
+        },
+        {
+          "cache_read": 327227,
+          "cost": 0.7624084,
+          "tokens": 106249
+        },
+        {
+          "cache_read": 367537,
+          "cost": 0.8333614,
+          "tokens": 117454
+        },
+        {
+          "cache_read": 427221,
+          "cost": 0.9902022,
+          "tokens": 139743
+        },
+        {
+          "cache_read": 442071,
+          "cost": 1.0464912,
+          "tokens": 147050
+        },
+        {
+          "cache_read": 537389,
+          "cost": 1.2727868,
+          "tokens": 177733
+        },
+        {
+          "cache_read": 585367,
+          "cost": 1.4247694,
+          "tokens": 200897
+        },
+        {
+          "cache_read": 604865,
+          "cost": 1.466257,
+          "tokens": 206142
+        },
+        {
+          "cache_read": 654321,
+          "cost": 1.5878652,
+          "tokens": 224014
+        },
+        {
+          "cache_read": 677382,
+          "cost": 1.6611584,
+          "tokens": 234069
+        },
+        {
+          "cache_read": 731741,
+          "cost": 1.8154051999999998,
+          "tokens": 255715
+        },
+        {
+          "cache_read": 770537,
+          "cost": 1.8812094,
+          "tokens": 263754
+        },
+        {
+          "cache_read": 846213,
+          "cost": 2.0121946,
+          "tokens": 281632
+        },
+        {
+          "cache_read": 925480,
+          "cost": 2.127461,
+          "tokens": 298287
+        },
+        {
+          "cache_read": 1001773,
+          "cost": 2.2650536,
+          "tokens": 318222
+        },
+        {
+          "cache_read": 1022564,
+          "cost": 2.3064738,
+          "tokens": 324529
+        },
+        {
+          "cache_read": 1065557,
+          "cost": 2.4631194,
+          "tokens": 347693
+        },
+        {
+          "cache_read": 1091321,
+          "cost": 2.5573482,
+          "tokens": 360675
+        },
+        {
+          "cache_read": 1163807,
+          "cost": 2.7082884,
+          "tokens": 381809
+        },
+        {
+          "cache_read": 1206966,
+          "cost": 2.7599242,
+          "tokens": 388623
+        },
+        {
+          "cache_read": 1268909,
+          "cost": 2.8941238,
+          "tokens": 407038
+        },
+        {
+          "cache_read": 1322752,
+          "cost": 3.0626164,
+          "tokens": 428801
+        },
+        {
+          "cache_read": 1367491,
+          "cost": 3.1367952,
+          "tokens": 439124
+        },
+        {
+          "cache_read": 1367491,
+          "cost": 3.1367952,
+          "tokens": 439124
+        }
+      ],
+      "depth": 1,
+      "dispatch_order": 1,
+      "effort": "high",
+      "first_request": "2026-10-30T22:12:07Z",
+      "label_n": 1,
+      "last_request": "2026-10-30T22:39:20Z",
+      "model": "claude-opus-5-5",
+      "parent": "main",
+      "parent_at": "2026-10-30T22:12:00.500000Z",
+      "parent_known": true,
+      "parent_state": "known",
+      "rounds": [
+        {
+          "at": "2026-10-30T22:12:07Z",
+          "by": "main",
+          "by_kind": null,
+          "last_request": "2026-10-30T22:39:20Z",
+          "n": 1
+        }
+      ],
+      "run_id": "0241fbc93ea2",
+      "segments": [
+        {
+          "end": "2026-10-30T22:40:00Z",
+          "start": "2026-10-30T22:12:07Z"
+        }
+      ],
+      "state": "working",
+      "states": [
+        {
+          "at": "2026-10-30T22:12:07Z",
+          "state": "working"
+        }
+      ],
+      "together": null,
+      "tokens": 439124,
+      "unpriced": {
+        "models": [],
+        "requests": 0
+      }
+    },
+    {
+      "agent": "scout",
+      "cost": 0.002703705,
+      "cum": [
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 14284,
+          "cost": 0.000995365,
+          "tokens": 5043
+        },
+        {
+          "cache_read": 17389,
+          "cost": 0.001628515,
+          "tokens": 7898
+        },
+        {
+          "cache_read": 28303,
+          "cost": 0.002703705,
+          "tokens": 13539
+        },
+        {
+          "cache_read": 28303,
+          "cost": 0.002703705,
+          "tokens": 13539
+        },
+        {
+          "cache_read": 28303,
+          "cost": 0.002703705,
+          "tokens": 13539
+        },
+        {
+          "cache_read": 28303,
+          "cost": 0.002703705,
+          "tokens": 13539
+        },
+        {
+          "cache_read": 28303,
+          "cost": 0.002703705,
+          "tokens": 13539
+        },
+        {
+          "cache_read": 28303,
+          "cost": 0.002703705,
+          "tokens": 13539
+        },
+        {
+          "cache_read": 28303,
+          "cost": 0.002703705,
+          "tokens": 13539
+        },
+        {
+          "cache_read": 28303,
+          "cost": 0.002703705,
+          "tokens": 13539
+        },
+        {
+          "cache_read": 28303,
+          "cost": 0.002703705,
+          "tokens": 13539
+        },
+        {
+          "cache_read": 28303,
+          "cost": 0.002703705,
+          "tokens": 13539
+        },
+        {
+          "cache_read": 28303,
+          "cost": 0.002703705,
+          "tokens": 13539
+        },
+        {
+          "cache_read": 28303,
+          "cost": 0.002703705,
+          "tokens": 13539
+        },
+        {
+          "cache_read": 28303,
+          "cost": 0.002703705,
+          "tokens": 13539
+        },
+        {
+          "cache_read": 28303,
+          "cost": 0.002703705,
+          "tokens": 13539
+        },
+        {
+          "cache_read": 28303,
+          "cost": 0.002703705,
+          "tokens": 13539
+        },
+        {
+          "cache_read": 28303,
+          "cost": 0.002703705,
+          "tokens": 13539
+        },
+        {
+          "cache_read": 28303,
+          "cost": 0.002703705,
+          "tokens": 13539
+        },
+        {
+          "cache_read": 28303,
+          "cost": 0.002703705,
+          "tokens": 13539
+        },
+        {
+          "cache_read": 28303,
+          "cost": 0.002703705,
+          "tokens": 13539
+        },
+        {
+          "cache_read": 28303,
+          "cost": 0.002703705,
+          "tokens": 13539
+        },
+        {
+          "cache_read": 28303,
+          "cost": 0.002703705,
+          "tokens": 13539
+        },
+        {
+          "cache_read": 28303,
+          "cost": 0.002703705,
+          "tokens": 13539
+        },
+        {
+          "cache_read": 28303,
+          "cost": 0.002703705,
+          "tokens": 13539
+        },
+        {
+          "cache_read": 28303,
+          "cost": 0.002703705,
+          "tokens": 13539
+        },
+        {
+          "cache_read": 28303,
+          "cost": 0.002703705,
+          "tokens": 13539
+        }
+      ],
+      "depth": 2,
+      "dispatch_order": 2,
+      "effort": "medium",
+      "first_request": "2026-10-30T22:14:07Z",
+      "label_n": 1,
+      "last_request": "2026-10-30T22:16:51Z",
+      "model": "claude-haiku-5-5",
+      "parent": "0241fbc93ea2",
+      "parent_at": "2026-10-30T22:14:00.500000Z",
+      "parent_known": true,
+      "parent_state": "known",
+      "rounds": [
+        {
+          "at": "2026-10-30T22:14:07Z",
+          "by": "0241fbc93ea2",
+          "by_kind": null,
+          "last_request": "2026-10-30T22:16:51Z",
+          "n": 1
+        }
+      ],
+      "run_id": "37d323603468",
+      "segments": [
+        {
+          "end": "2026-10-30T22:16:51Z",
+          "start": "2026-10-30T22:14:07Z"
+        }
+      ],
+      "state": "finished",
+      "states": [
+        {
+          "at": "2026-10-30T22:14:07Z",
+          "state": "working"
+        },
+        {
+          "at": "2026-10-30T22:16:51Z",
+          "state": "finished"
+        }
+      ],
+      "together": {
+        "key": "37d323603468",
+        "n": 2
+      },
+      "tokens": 13539,
+      "unpriced": {
+        "models": [],
+        "requests": 0
+      }
+    },
+    {
+      "agent": "scout",
+      "cost": 0.00345535,
+      "cum": [
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 15338,
+          "cost": 0.00117918,
+          "tokens": 5386
+        },
+        {
+          "cache_read": 22192,
+          "cost": 0.00175717,
+          "tokens": 7645
+        },
+        {
+          "cache_read": 36227,
+          "cost": 0.00287237,
+          "tokens": 12719
+        },
+        {
+          "cache_read": 43885,
+          "cost": 0.00345535,
+          "tokens": 15599
+        },
+        {
+          "cache_read": 43885,
+          "cost": 0.00345535,
+          "tokens": 15599
+        },
+        {
+          "cache_read": 43885,
+          "cost": 0.00345535,
+          "tokens": 15599
+        },
+        {
+          "cache_read": 43885,
+          "cost": 0.00345535,
+          "tokens": 15599
+        },
+        {
+          "cache_read": 43885,
+          "cost": 0.00345535,
+          "tokens": 15599
+        },
+        {
+          "cache_read": 43885,
+          "cost": 0.00345535,
+          "tokens": 15599
+        },
+        {
+          "cache_read": 43885,
+          "cost": 0.00345535,
+          "tokens": 15599
+        },
+        {
+          "cache_read": 43885,
+          "cost": 0.00345535,
+          "tokens": 15599
+        },
+        {
+          "cache_read": 43885,
+          "cost": 0.00345535,
+          "tokens": 15599
+        },
+        {
+          "cache_read": 43885,
+          "cost": 0.00345535,
+          "tokens": 15599
+        },
+        {
+          "cache_read": 43885,
+          "cost": 0.00345535,
+          "tokens": 15599
+        },
+        {
+          "cache_read": 43885,
+          "cost": 0.00345535,
+          "tokens": 15599
+        },
+        {
+          "cache_read": 43885,
+          "cost": 0.00345535,
+          "tokens": 15599
+        },
+        {
+          "cache_read": 43885,
+          "cost": 0.00345535,
+          "tokens": 15599
+        },
+        {
+          "cache_read": 43885,
+          "cost": 0.00345535,
+          "tokens": 15599
+        },
+        {
+          "cache_read": 43885,
+          "cost": 0.00345535,
+          "tokens": 15599
+        },
+        {
+          "cache_read": 43885,
+          "cost": 0.00345535,
+          "tokens": 15599
+        },
+        {
+          "cache_read": 43885,
+          "cost": 0.00345535,
+          "tokens": 15599
+        },
+        {
+          "cache_read": 43885,
+          "cost": 0.00345535,
+          "tokens": 15599
+        },
+        {
+          "cache_read": 43885,
+          "cost": 0.00345535,
+          "tokens": 15599
+        },
+        {
+          "cache_read": 43885,
+          "cost": 0.00345535,
+          "tokens": 15599
+        },
+        {
+          "cache_read": 43885,
+          "cost": 0.00345535,
+          "tokens": 15599
+        },
+        {
+          "cache_read": 43885,
+          "cost": 0.00345535,
+          "tokens": 15599
+        },
+        {
+          "cache_read": 43885,
+          "cost": 0.00345535,
+          "tokens": 15599
+        }
+      ],
+      "depth": 2,
+      "dispatch_order": 3,
+      "effort": "medium",
+      "first_request": "2026-10-30T22:14:07Z",
+      "label_n": 2,
+      "last_request": "2026-10-30T22:17:26Z",
+      "model": "claude-haiku-5-5",
+      "parent": "0241fbc93ea2",
+      "parent_at": "2026-10-30T22:14:00.510000Z",
+      "parent_known": true,
+      "parent_state": "known",
+      "rounds": [
+        {
+          "at": "2026-10-30T22:14:07Z",
+          "by": "0241fbc93ea2",
+          "by_kind": null,
+          "last_request": "2026-10-30T22:17:26Z",
+          "n": 1
+        }
+      ],
+      "run_id": "42884d9420a2",
+      "segments": [
+        {
+          "end": "2026-10-30T22:17:26Z",
+          "start": "2026-10-30T22:14:07Z"
+        }
+      ],
+      "state": "finished",
+      "states": [
+        {
+          "at": "2026-10-30T22:14:07Z",
+          "state": "working"
+        },
+        {
+          "at": "2026-10-30T22:17:26Z",
+          "state": "finished"
+        }
+      ],
+      "together": {
+        "key": "37d323603468",
+        "n": 2
+      },
+      "tokens": 15599,
+      "unpriced": {
+        "models": [],
+        "requests": 0
+      }
+    },
+    {
+      "agent": "tech-writer",
+      "cost": 0.2634162,
+      "cum": [
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 33380,
+          "cost": 0.0446205,
+          "tokens": 12611
+        },
+        {
+          "cache_read": 66890,
+          "cost": 0.089729,
+          "tokens": 25484
+        },
+        {
+          "cache_read": 80837,
+          "cost": 0.1029717,
+          "tokens": 29308
+        },
+        {
+          "cache_read": 109621,
+          "cost": 0.1277126,
+          "tokens": 36757
+        },
+        {
+          "cache_read": 138572,
+          "cost": 0.1773742,
+          "tokens": 51963
+        },
+        {
+          "cache_read": 138572,
+          "cost": 0.1773742,
+          "tokens": 51963
+        },
+        {
+          "cache_read": 138572,
+          "cost": 0.1773742,
+          "tokens": 51963
+        },
+        {
+          "cache_read": 138572,
+          "cost": 0.1773742,
+          "tokens": 51963
+        },
+        {
+          "cache_read": 138572,
+          "cost": 0.1773742,
+          "tokens": 51963
+        },
+        {
+          "cache_read": 138572,
+          "cost": 0.1773742,
+          "tokens": 51963
+        },
+        {
+          "cache_read": 138572,
+          "cost": 0.1773742,
+          "tokens": 51963
+        },
+        {
+          "cache_read": 138572,
+          "cost": 0.1773742,
+          "tokens": 51963
+        },
+        {
+          "cache_read": 138572,
+          "cost": 0.1773742,
+          "tokens": 51963
+        },
+        {
+          "cache_read": 138572,
+          "cost": 0.1773742,
+          "tokens": 51963
+        },
+        {
+          "cache_read": 138572,
+          "cost": 0.1773742,
+          "tokens": 51963
+        },
+        {
+          "cache_read": 138572,
+          "cost": 0.1773742,
+          "tokens": 51963
+        },
+        {
+          "cache_read": 138572,
+          "cost": 0.1773742,
+          "tokens": 51963
+        },
+        {
+          "cache_read": 138572,
+          "cost": 0.1773742,
+          "tokens": 51963
+        },
+        {
+          "cache_read": 138572,
+          "cost": 0.1773742,
+          "tokens": 51963
+        },
+        {
+          "cache_read": 212442,
+          "cost": 0.2634162,
+          "tokens": 76039
+        },
+        {
+          "cache_read": 212442,
+          "cost": 0.2634162,
+          "tokens": 76039
+        }
+      ],
+      "depth": 1,
+      "dispatch_order": 4,
+      "effort": "high",
+      "first_request": "2026-10-30T22:20:07Z",
+      "label_n": 1,
+      "last_request": "2026-10-30T22:39:48Z",
+      "model": "claude-sonnet-5-5",
+      "parent": "main",
+      "parent_at": "2026-10-30T22:20:00.500000Z",
+      "parent_known": true,
+      "parent_state": "known",
+      "rounds": [
+        {
+          "at": "2026-10-30T22:20:07Z",
+          "by": "main",
+          "by_kind": null,
+          "last_request": "2026-10-30T22:24:31Z",
+          "n": 1
+        },
+        {
+          "at": "2026-10-30T22:39:12Z",
+          "by": "main",
+          "by_kind": "coordinator",
+          "last_request": "2026-10-30T22:39:48Z",
+          "n": 2
+        }
+      ],
+      "run_id": "fe7b31d40669",
+      "segments": [
+        {
+          "end": "2026-10-30T22:24:31Z",
+          "start": "2026-10-30T22:20:07Z"
+        },
+        {
+          "end": "2026-10-30T22:40:00Z",
+          "start": "2026-10-30T22:39:12Z"
+        }
+      ],
+      "state": "working",
+      "states": [
+        {
+          "at": "2026-10-30T22:20:07Z",
+          "state": "working"
+        },
+        {
+          "at": "2026-10-30T22:24:31Z",
+          "state": "finished"
+        },
+        {
+          "at": "2026-10-30T22:39:12Z",
+          "state": "working"
+        }
+      ],
+      "together": null,
+      "tokens": 76039,
+      "unpriced": {
+        "models": [],
+        "requests": 0
+      }
+    },
+    {
+      "agent": "fast-worker",
+      "cost": 0.251389,
+      "cum": [
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 45503,
+          "cost": 0.0473203,
+          "tokens": 11141
+        },
+        {
+          "cache_read": 74102,
+          "cost": 0.07053770000000001,
+          "tokens": 17952
+        },
+        {
+          "cache_read": 104555,
+          "cost": 0.1296215,
+          "tokens": 34878
+        },
+        {
+          "cache_read": 116391,
+          "cost": 0.1508026,
+          "tokens": 42173
+        },
+        {
+          "cache_read": 136847,
+          "cost": 0.1789462,
+          "tokens": 50713
+        },
+        {
+          "cache_read": 157821,
+          "cost": 0.2075021,
+          "tokens": 58450
+        },
+        {
+          "cache_read": 177385,
+          "cost": 0.251389,
+          "tokens": 70605
+        },
+        {
+          "cache_read": 177385,
+          "cost": 0.251389,
+          "tokens": 70605
+        },
+        {
+          "cache_read": 177385,
+          "cost": 0.251389,
+          "tokens": 70605
+        },
+        {
+          "cache_read": 177385,
+          "cost": 0.251389,
+          "tokens": 70605
+        },
+        {
+          "cache_read": 177385,
+          "cost": 0.251389,
+          "tokens": 70605
+        },
+        {
+          "cache_read": 177385,
+          "cost": 0.251389,
+          "tokens": 70605
+        },
+        {
+          "cache_read": 177385,
+          "cost": 0.251389,
+          "tokens": 70605
+        },
+        {
+          "cache_read": 177385,
+          "cost": 0.251389,
+          "tokens": 70605
+        },
+        {
+          "cache_read": 177385,
+          "cost": 0.251389,
+          "tokens": 70605
+        },
+        {
+          "cache_read": 177385,
+          "cost": 0.251389,
+          "tokens": 70605
+        },
+        {
+          "cache_read": 177385,
+          "cost": 0.251389,
+          "tokens": 70605
+        },
+        {
+          "cache_read": 177385,
+          "cost": 0.251389,
+          "tokens": 70605
+        },
+        {
+          "cache_read": 177385,
+          "cost": 0.251389,
+          "tokens": 70605
+        }
+      ],
+      "depth": 2,
+      "dispatch_order": 5,
+      "effort": "medium",
+      "first_request": "2026-10-30T22:22:07Z",
+      "label_n": 2,
+      "last_request": "2026-10-30T22:28:06Z",
+      "model": "claude-sonnet-5-5",
+      "parent": "0241fbc93ea2",
+      "parent_at": "2026-10-30T22:22:00.510000Z",
+      "parent_known": true,
+      "parent_state": "known",
+      "rounds": [
+        {
+          "at": "2026-10-30T22:22:07Z",
+          "by": "0241fbc93ea2",
+          "by_kind": null,
+          "last_request": "2026-10-30T22:28:06Z",
+          "n": 1
+        }
+      ],
+      "run_id": "1b4b7f1fcde6",
+      "segments": [
+        {
+          "end": "2026-10-30T22:28:06Z",
+          "start": "2026-10-30T22:22:07Z"
+        }
+      ],
+      "state": "finished",
+      "states": [
+        {
+          "at": "2026-10-30T22:22:07Z",
+          "state": "working"
+        },
+        {
+          "at": "2026-10-30T22:28:06Z",
+          "state": "finished"
+        }
+      ],
+      "together": {
+        "key": "b803559a3a67",
+        "n": 2
+      },
+      "tokens": 70605,
+      "unpriced": {
+        "models": [],
+        "requests": 0
+      }
+    },
+    {
+      "agent": "fast-worker",
+      "cost": 0.23484870000000002,
+      "cum": [
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 37453,
+          "cost": 0.0477843,
+          "tokens": 13736
+        },
+        {
+          "cache_read": 50244,
+          "cost": 0.0736954,
+          "tokens": 22114
+        },
+        {
+          "cache_read": 83698,
+          "cost": 0.1174418,
+          "tokens": 34323
+        },
+        {
+          "cache_read": 98088,
+          "cost": 0.1433873,
+          "tokens": 41700
+        },
+        {
+          "cache_read": 132419,
+          "cost": 0.1945174,
+          "tokens": 56605
+        },
+        {
+          "cache_read": 162012,
+          "cost": 0.23484870000000002,
+          "tokens": 68225
+        },
+        {
+          "cache_read": 162012,
+          "cost": 0.23484870000000002,
+          "tokens": 68225
+        },
+        {
+          "cache_read": 162012,
+          "cost": 0.23484870000000002,
+          "tokens": 68225
+        },
+        {
+          "cache_read": 162012,
+          "cost": 0.23484870000000002,
+          "tokens": 68225
+        },
+        {
+          "cache_read": 162012,
+          "cost": 0.23484870000000002,
+          "tokens": 68225
+        },
+        {
+          "cache_read": 162012,
+          "cost": 0.23484870000000002,
+          "tokens": 68225
+        },
+        {
+          "cache_read": 162012,
+          "cost": 0.23484870000000002,
+          "tokens": 68225
+        },
+        {
+          "cache_read": 162012,
+          "cost": 0.23484870000000002,
+          "tokens": 68225
+        },
+        {
+          "cache_read": 162012,
+          "cost": 0.23484870000000002,
+          "tokens": 68225
+        },
+        {
+          "cache_read": 162012,
+          "cost": 0.23484870000000002,
+          "tokens": 68225
+        },
+        {
+          "cache_read": 162012,
+          "cost": 0.23484870000000002,
+          "tokens": 68225
+        },
+        {
+          "cache_read": 162012,
+          "cost": 0.23484870000000002,
+          "tokens": 68225
+        },
+        {
+          "cache_read": 162012,
+          "cost": 0.23484870000000002,
+          "tokens": 68225
+        },
+        {
+          "cache_read": 162012,
+          "cost": 0.23484870000000002,
+          "tokens": 68225
+        }
+      ],
+      "depth": 2,
+      "dispatch_order": 6,
+      "effort": "medium",
+      "first_request": "2026-10-30T22:22:07Z",
+      "label_n": 1,
+      "last_request": "2026-10-30T22:27:31Z",
+      "model": "claude-sonnet-5-5",
+      "parent": "0241fbc93ea2",
+      "parent_at": "2026-10-30T22:22:00.500000Z",
+      "parent_known": true,
+      "parent_state": "known",
+      "rounds": [
+        {
+          "at": "2026-10-30T22:22:07Z",
+          "by": "0241fbc93ea2",
+          "by_kind": null,
+          "last_request": "2026-10-30T22:27:31Z",
+          "n": 1
+        }
+      ],
+      "run_id": "b803559a3a67",
+      "segments": [
+        {
+          "end": "2026-10-30T22:27:31Z",
+          "start": "2026-10-30T22:22:07Z"
+        }
+      ],
+      "state": "finished",
+      "states": [
+        {
+          "at": "2026-10-30T22:22:07Z",
+          "state": "working"
+        },
+        {
+          "at": "2026-10-30T22:27:31Z",
+          "state": "finished"
+        }
+      ],
+      "together": {
+        "key": "b803559a3a67",
+        "n": 2
+      },
+      "tokens": 68225,
+      "unpriced": {
+        "models": [],
+        "requests": 0
+      }
+    },
+    {
+      "agent": "judge",
+      "cost": 1.2067864,
+      "cum": [
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 58180,
+          "cost": 0.132868,
+          "tokens": 18445
+        },
+        {
+          "cache_read": 86640,
+          "cost": 0.206565,
+          "tokens": 28411
+        },
+        {
+          "cache_read": 137259,
+          "cost": 0.32339280000000004,
+          "tokens": 43437
+        },
+        {
+          "cache_read": 206574,
+          "cost": 0.48394780000000004,
+          "tokens": 66724
+        },
+        {
+          "cache_read": 248472,
+          "cost": 0.5560944000000001,
+          "tokens": 78033
+        },
+        {
+          "cache_read": 309245,
+          "cost": 0.7083530000000001,
+          "tokens": 100969
+        },
+        {
+          "cache_read": 329627,
+          "cost": 0.7894664000000001,
+          "tokens": 112722
+        },
+        {
+          "cache_read": 400296,
+          "cost": 0.9245072000000001,
+          "tokens": 131536
+        },
+        {
+          "cache_read": 446011,
+          "cost": 1.0543802,
+          "tokens": 148503
+        },
+        {
+          "cache_read": 511397,
+          "cost": 1.2067864,
+          "tokens": 169639
+        },
+        {
+          "cache_read": 511397,
+          "cost": 1.2067864,
+          "tokens": 169639
+        }
+      ],
+      "depth": 2,
+      "dispatch_order": 7,
+      "effort": "medium",
+      "first_request": "2026-10-30T22:30:07Z",
+      "label_n": 1,
+      "last_request": "2026-10-30T22:39:42Z",
+      "model": "claude-opus-5-5",
+      "parent": "0241fbc93ea2",
+      "parent_at": "2026-10-30T22:30:00.500000Z",
+      "parent_known": true,
+      "parent_state": "known",
+      "rounds": [
+        {
+          "at": "2026-10-30T22:30:07Z",
+          "by": "0241fbc93ea2",
+          "by_kind": null,
+          "last_request": "2026-10-30T22:39:42Z",
+          "n": 1
+        }
+      ],
+      "run_id": "264c9b324b2d",
+      "segments": [
+        {
+          "end": "2026-10-30T22:40:00Z",
+          "start": "2026-10-30T22:30:07Z"
+        }
+      ],
+      "state": "working",
+      "states": [
+        {
+          "at": "2026-10-30T22:30:07Z",
+          "state": "working"
+        }
+      ],
+      "together": null,
+      "tokens": 169639,
+      "unpriced": {
+        "models": [],
+        "requests": 0
+      }
+    },
+    {
+      "agent": "scout",
+      "cost": 0.0026681350000000003,
+      "cum": [
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cost": 0.0,
+          "tokens": 0
+        },
+        {
+          "cache_read": 10481,
+          "cost": 0.00125351,
+          "tokens": 7102
+        },
+        {
+          "cache_read": 24071,
+          "cost": 0.0026681350000000003,
+          "tokens": 13875
+        },
+        {
+          "cache_read": 24071,
+          "cost": 0.0026681350000000003,
+          "tokens": 13875
+        }
+      ],
+      "depth": 1,
+      "dispatch_order": 8,
+      "effort": "medium",
+      "first_request": "2026-10-30T22:38:07Z",
+      "label_n": 3,
+      "last_request": "2026-10-30T22:39:45Z",
+      "model": "claude-haiku-5-5",
+      "parent": "main",
+      "parent_at": null,
+      "parent_known": false,
+      "parent_state": "waiting",
+      "rounds": [
+        {
+          "at": "2026-10-30T22:38:07Z",
+          "by": "main",
+          "by_kind": null,
+          "last_request": "2026-10-30T22:39:45Z",
+          "n": 1
+        }
+      ],
+      "run_id": "6272fcc999c0",
+      "segments": [
+        {
+          "end": "2026-10-30T22:40:00Z",
+          "start": "2026-10-30T22:38:07Z"
+        }
+      ],
+      "state": "working",
+      "states": [
+        {
+          "at": "2026-10-30T22:38:07Z",
+          "state": "working"
+        }
+      ],
+      "together": null,
+      "tokens": 13875,
+      "unpriced": {
+        "models": [],
+        "requests": 0
+      }
+    }
+  ],
+  "server_time": "2026-10-30T22:40:00Z",
+  "session": {
+    "active": true,
+    "branch": "feature/quarter-close",
+    "ended_at": null,
+    "id": "cc73abe9-9eba-409f-822a-87dc52e17fd9",
+    "last_request": "2026-10-30T22:39:50Z",
+    "project": "tidewater-reporting",
+    "requests": 157,
+    "running": true,
+    "started": "2026-10-30T22:10:06Z",
+    "state": "working",
+    "states": [
+      {
+        "at": "2026-10-30T22:10:06Z",
+        "state": "working"
+      }
+    ],
+    "unpriced": {
+      "models": [],
+      "requests": 0
+    }
+  },
+  "totals": {
+    "cache_read": 3894637,
+    "cache_write": 910534,
+    "cost": 8.31031589,
+    "hit_rate": 0.7668335152640673,
+    "input": 273685,
+    "output": 136336,
+    "requests": 157,
+    "runs": 9,
+    "runs_finished": 4,
+    "runs_working": 5,
+    "tokens": 1320555,
+    "unpriced": {
+      "models": [],
+      "requests": 0
+    }
+  },
+  "unchanged": false
+}

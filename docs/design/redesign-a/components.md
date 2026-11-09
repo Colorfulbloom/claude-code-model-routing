@@ -140,8 +140,8 @@ Each entry lists purpose, anatomy, states, variants, tokens, mapping, keyboard, 
 - Sheet. "Status chip".
 
 ### 11. Run-state chip
-- Purpose. What an agent run is doing: Working, Finished, Idle, Not started yet. These are a separate family from setting status.
-- Anatomy. Plain glyph + word, with no pill. Working ● `--accent`, Finished ✓ `--status-in-effect-fg`, Idle and Not started yet ◌ `--text-muted`.
+- Purpose. What an agent run or a session is doing: Working, Finished, Idle, Not started yet, and Ended for a session (M2). These are a separate family from setting status.
+- Anatomy. Plain glyph + word, with no pill. Working ● `--accent`, Finished ✓ `--status-in-effect-fg`, Idle and Not started yet ◌ `--text-muted`, Ended ■ `--text-muted`.
 - States. None. A change of state announces through the lane's polite live region on Live, at most once per row per minute.
 - Tokens. `--accent`, `--working`, `--status-in-effect-fg`, `--text-muted`.
 - Copy keys. `st_working`, `st_done`, `st_idle`, `c_not_started`, `fr_done`, `fr_now`, `fr_next`.
@@ -650,3 +650,25 @@ Source is in `site/m1.js` and `site/m1.css`, and the words are in `site/strings8
 
 ### Component sheet
 - New sections hold all of the above: the footer (rest, problem, the three price source words), the history card (rest and problem), the notice, first run (counting, running, retrying), store_newer, and the placeholder Select.
+
+## M2 Live round (November 9)
+
+Source is in `m2.js`, `m2.css` and `m2.html` in this folder, and the words are in `strings-m2.js` (tech-writer drafts, owner copy answers in `docs/rebuild/planning/m2-build.md` section 13). Boards are `shots/a-m2-<board>-<1440|375>-<light|dark>.png` in the archive: p1 live, headers, unlinked, unpriced; p2 many, many-open, long; p3 ended-switch, nothing-other, nothing-alone, no-sessions, gone, select-open. The owner approved passes 1 to 3 as drawn.
+
+### 11. Run-state chip (revised)
+- New state Ended ■ in `--text-muted`, for a session that stopped running. Glyph plus word, no pill, like the others.
+
+### 22. Timeline lane (revised)
+- At 375 each lane has four lines: name and cost, model and effort with tokens, the track, then state and age.
+- Unlinked runs show a badge, "Finding starter" while a link may still arrive and "No starter found" once it can't, with a dashed tree line. A row that moves under its starter gets a 2px `--accent` ring for about 2 seconds, and none under reduced motion.
+- Unpriced cells read "at least {cost}" or "No price for {model}". A bucket with no price is a dashed spark stub.
+- Fold rule. Under a parent with more than 4 children, finished subtrees fold into "{n} finished earlier" with a Show or Hide button that sets `aria-expanded`. Working runs and runs that finished in the last 2 minutes never fold. Fold bars use `--text-muted`.
+- Long sessions. The axis label reads "averaged over {n} minutes". The open bucket is drawn at partial width, hatched and outlined, at least 5px. Round marks are at least 4px. Indent depth caps at 3 at 1440 and 2 at 375, then the row says "Started by {name}". Tile dots cap at 8 with "+{n}". The spark has no gaps above 32 bars.
+
+### Live header (3, revised)
+- No time while live. Paused shows "Paused at {time}". Lost shows "Last reached the server at {time}" plus a warning finding (7) with Try now. Ended shows "Ended at {time}" and no Pause.
+
+### Session Select (14 and 51)
+- Reuses component 51's popover at 1440 and tray at 375, with "This project" and "Other projects" groups and a "See all sessions" link at least 26px tall.
+- The M0 `.proj` button (51) and the Select lose their mismatched `aria-label`, so the visible label is the accessible name.
+

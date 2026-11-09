@@ -7,10 +7,20 @@ server that cannot take the lock runs as a follower. It writes nothing, reads th
 holder's progress from ``meta`` through ``history.read_history``, and tries the lock
 again every ten seconds.
 
-Schedule. A full pass runs at start. Then a hot pass every second over the folders of
-running sessions (a request in the last 30 minutes) and a cold pass every ten seconds
-over every folder. A backup runs after the migration when one is due, again about
-once a day, and once more at a clean stop unless a good copy is under an hour old.
+Schedule. A full pass runs at start. Then an active pass every 500 ms over the folders
+of sessions with a request in the last 60 seconds, a hot pass every second over the
+folders of running sessions (a request in the last 30 minutes) and a cold pass every
+ten seconds over every folder. The active passes run only while the last pass found
+such a session, so a quiet store wakes once a second. A hot pass covers the active
+folders too, so it restarts the active timer. A backup runs after the migration when
+one is due, again about once a day, and once more at a clean stop unless a good copy
+is under an hour old.
+
+Health. With ``health_path`` set, a pass rewrites that file (temp file and rename) at
+most once every 30 seconds with numbers only: when, the last hot and cold pass times
+in milliseconds, and the lag. The lag is the end of the newest pass that picked up a
+file change (a hot, active or cold pass, never the first full one) minus that file's
+modification time, or null before any.
 
 Failures. A whole-run failure carries one of six codes (``config_dir_missing``,
 ``config_dir_unreadable``, ``store_unwritable``, ``store_damaged``, ``store_newer``,
@@ -26,10 +36,12 @@ never wait in real time. ``startup`` and ``tick`` are what the thread calls. A t
 call them itself, on one thread, instead of starting the thread.
 """
 
+import json
 import logging
 import queue
 import sqlite3
 import threading
+import time
 from collections.abc import Callable
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
@@ -59,10 +71,12 @@ Job = Callable[[sqlite3.Connection], None]
 
 RETRY_DELAYS = (10.0, 30.0, 60.0)
 RETRY_STEADY = 300.0
+ACTIVE_INTERVAL = 0.5
 HOT_INTERVAL = 1.0
 COLD_INTERVAL = 10.0
 FOLLOWER_INTERVAL = 10.0
 AS_OF_REFRESH = timedelta(seconds=10)
+HEALTH_INTERVAL = timedelta(seconds=30)
 BACKUP_RETRY = timedelta(hours=1)
 
 
@@ -158,6 +172,8 @@ class StoreWriter:
         hot_interval: float = HOT_INTERVAL,
         cold_interval: float = COLD_INTERVAL,
         follower_interval: float = FOLLOWER_INTERVAL,
+        active_interval: float = ACTIVE_INTERVAL,
+        health_path: Path | None = None,
     ) -> None:
         """Set up a writer. Nothing opens until ``startup`` or ``start``.
 
@@ -173,6 +189,10 @@ class StoreWriter:
             hot_interval: Seconds between hot passes.
             cold_interval: Seconds between cold passes.
             follower_interval: Seconds between lock attempts when a follower.
+            active_interval: Seconds between passes over the folders of sessions with
+                a request in the last 60 seconds.
+            health_path: The file the pass times and the lag go to, or None for none.
+                It must sit inside the store root.
         """
         self.layout = layout
         self.claude_dir = claude_dir
@@ -185,6 +205,8 @@ class StoreWriter:
         self._hot = hot_interval
         self._cold = cold_interval
         self._follow = follower_interval
+        self._active = active_interval
+        self._health_path = health_path
 
         self._stop = threading.Event()
         self._jobs: queue.SimpleQueue[Job] = queue.SimpleQueue()
@@ -204,11 +226,17 @@ class StoreWriter:
         self._full_done = False
         self._attempt = 0
         self._retry_at: datetime | None = None
+        self._active_on = False
+        self._next_active = datetime.min.replace(tzinfo=UTC)
         self._next_hot = datetime.min.replace(tzinfo=UTC)
         self._next_cold = datetime.min.replace(tzinfo=UTC)
         self._next_follow = datetime.min.replace(tzinfo=UTC)
         self._next_backup_try = datetime.min.replace(tzinfo=UTC)
         self._last_ok_write = datetime.min.replace(tzinfo=UTC)
+        self._next_health = datetime.min.replace(tzinfo=UTC)
+        self._hot_ms = 0
+        self._cold_ms = 0
+        self._lag_ms: int | None = None
 
     # ------------------------------------------------------------ public
 
@@ -377,6 +405,8 @@ class StoreWriter:
             due = self._retry_at
         elif self._full_done:
             due = min(self._next_hot, self._next_cold)
+            if self._active_on:
+                due = min(due, self._next_active)
         else:
             due = now
         return max((due - now).total_seconds(), 0.0)
@@ -494,12 +524,22 @@ class StoreWriter:
                 after = self._clock()
                 self._next_cold = after + timedelta(seconds=self._cold)
                 self._next_hot = after + timedelta(seconds=self._hot)
+                self._next_active = after + timedelta(seconds=self._active)
                 self._maybe_backup(after)
             elif now >= self._next_hot:
                 folders = runner.running_folders(now)
                 if folders:
                     self._run_pass(ingest.PassScope("hot", folders))
-                self._next_hot = self._clock() + timedelta(seconds=self._hot)
+                after = self._clock()
+                self._next_hot = after + timedelta(seconds=self._hot)
+                self._next_active = after + timedelta(seconds=self._active)
+            elif self._active_on and now >= self._next_active:
+                folders = runner.active_folders(now)
+                if folders:
+                    self._run_pass(ingest.PassScope("hot", folders))
+                else:
+                    self._active_on = False
+                self._next_active = self._clock() + timedelta(seconds=self._active)
         except Exception as exc:  # noqa: BLE001 - classified below
             self._fail(exc, now)
             return
@@ -514,11 +554,15 @@ class StoreWriter:
         runner.progress = _Sink(self, scope)
         if full:
             self.pass_meta("start", full=True)
+        began = time.perf_counter()
         result = runner.run_pass(scope)
+        elapsed_ms = round((time.perf_counter() - began) * 1000)
         if result.cancelled:
             conn.execute("DELETE FROM meta WHERE key = ?", (history.KEY_RUNNING,))
             return
         ended = self._clock()
+        self._active_on = bool(runner.active_folders(ended))
+        self._note_pass(scope, result, elapsed_ms, ended)
         if full or result.changed or ended - self._last_ok_write >= AS_OF_REFRESH:
             self.pass_meta("ok", full=full)
             self._last_ok_write = ended
@@ -529,7 +573,46 @@ class StoreWriter:
             self._first_done = True
             self._next_cold = ended + timedelta(seconds=self._cold)
             self._next_hot = ended + timedelta(seconds=self._hot)
+            self._next_active = ended + timedelta(seconds=self._active)
             self.update(state="done")
+
+    def _note_pass(
+        self,
+        scope: ingest.PassScope,
+        result: ingest.PassResult,
+        elapsed_ms: int,
+        ended: datetime,
+    ) -> None:
+        """Keep the pass time and the lag, and write the health file when it is due."""
+        if scope.kind == "hot":
+            self._hot_ms = elapsed_ms
+        else:
+            self._cold_ms = elapsed_ms
+        if scope.kind != "full" and result.newest_mtime_ns is not None:
+            behind = ended.timestamp() - result.newest_mtime_ns / 1e9
+            self._lag_ms = max(0, round(behind * 1000))
+        self._write_health(ended)
+
+    def _write_health(self, ended: datetime) -> None:
+        """Rewrite the health file, at most once every 30 seconds. Never raises."""
+        path = self._health_path
+        if path is None or ended < self._next_health:
+            return
+        self._next_health = ended + HEALTH_INTERVAL
+        body = {
+            "at": ended.astimezone(UTC).isoformat(),
+            "hot_pass_ms": self._hot_ms,
+            "cold_pass_ms": self._cold_ms,
+            "lag_ms": self._lag_ms,
+        }
+        try:
+            platform_os.atomic_write(
+                store_paths.writable(self.layout, path),
+                (json.dumps(body, separators=(",", ":")) + "\n").encode("utf-8"),
+                tmp_prefix=".health-",
+            )
+        except (OSError, store_paths.StorePathError):
+            logger.warning("could not write the health file")
 
     def pass_meta(self, event: history.PassEvent, *, full: bool) -> None:
         """Write a pass event to ``meta`` on the writer connection."""

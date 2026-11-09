@@ -51,7 +51,7 @@ venvPath = "."
 venv = ".venv"
 executionEnvironments = [
     { root = "bin", pythonVersion = "3.9" },
-    { root = "oracle", pythonVersion = "3.9" },
+    { root = "oracle", pythonVersion = "3.9", extraPaths = ["server"] },
     { root = "server", extraPaths = ["server"] },
 ]
 

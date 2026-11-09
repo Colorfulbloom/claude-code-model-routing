@@ -10,7 +10,15 @@ import type { UseQueryResult } from "@tanstack/react-query";
 import { isLockReason } from "@/app/access";
 import type { Access, LockReason } from "@/app/access";
 import type { Connection } from "@/lib/connection";
-import type { AppInfo, PricesAnswer, ProjectsAnswer } from "@/api/types";
+import type {
+  AppInfo,
+  LiveSessions,
+  LiveSessionsUnchanged,
+  PricesAnswer,
+  ProjectsAnswer,
+  Timeline,
+  Unchanged,
+} from "@/api/types";
 
 export const FAILURES_TO_STOP = 3;
 export const APP_POLL_MS = 10_000;
@@ -44,6 +52,22 @@ export interface ApiClient {
   getApp: (project: string | null, signal?: AbortSignal) => Promise<AppInfo>;
   getProjects: (signal?: AbortSignal) => Promise<ProjectsAnswer>;
   getPrices: (signal?: AbortSignal) => Promise<PricesAnswer>;
+  /**
+   * One session's timeline. `etag` is the last answer's tag, and a matching one gets the short
+   * `unchanged` body. Live polls do not stop the app themselves: the page counts its own failures.
+   */
+  getTimeline: (
+    project: string,
+    session: string,
+    etag: string | null,
+    signal?: AbortSignal,
+  ) => Promise<Timeline | Unchanged>;
+  /** The running sessions of every project, plus the newest ended one in `project`. */
+  getLiveSessions: (
+    project: string,
+    etag: string | null,
+    signal?: AbortSignal,
+  ) => Promise<LiveSessions | LiveSessionsUnchanged>;
 }
 
 export interface ApiClientOptions {
@@ -65,11 +89,16 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
   const fetchFn = options.fetchFn ?? ((...args: Parameters<typeof fetch>) => fetch(...args));
   const now = options.now ?? (() => Date.now());
 
-  function failed(): void {
-    if (connection.recordFailure() >= FAILURES_TO_STOP) access.setStopped();
+  function failed(gate: boolean): void {
+    const failures = connection.recordFailure();
+    if (gate && failures >= FAILURES_TO_STOP) access.setStopped();
   }
 
-  async function request<T>(path: string, signal?: AbortSignal): Promise<T> {
+  /**
+   * `gate` false is for the Live polls. They count into the connection, but a run of failures
+   * moves Live to its own lost state, not the whole tab to the server stopped page.
+   */
+  async function request<T>(path: string, signal?: AbortSignal, gate = true): Promise<T> {
     const headers: Record<string, string> = {};
     const key = access.getReadKey();
     if (key !== null) headers["X-Bartab-Key"] = key;
@@ -78,11 +107,11 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
       response = await fetchFn(path, signal ? { headers, signal } : { headers });
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") throw error;
-      failed();
+      failed(gate);
       throw new NetworkError();
     }
     if (response.status >= 500) {
-      failed();
+      failed(gate);
       throw new NetworkError(`HTTP ${response.status}`);
     }
     connection.recordAnswer(now());
@@ -118,6 +147,22 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     },
     getPrices(signal) {
       return request<PricesAnswer>("/api/prices", signal);
+    },
+    getTimeline(project, session, etag, signal) {
+      const query = `project=${encodeURIComponent(project)}${etag === null ? "" : `&etag=${encodeURIComponent(etag)}`}`;
+      return request<Timeline | Unchanged>(
+        `/api/sessions/${encodeURIComponent(session)}/timeline?${query}`,
+        signal,
+        false,
+      );
+    },
+    getLiveSessions(project, etag, signal) {
+      const query = `project=${encodeURIComponent(project)}${etag === null ? "" : `&etag=${encodeURIComponent(etag)}`}`;
+      return request<LiveSessions | LiveSessionsUnchanged>(
+        `/api/live/sessions?${query}`,
+        signal,
+        false,
+      );
     },
   };
 }

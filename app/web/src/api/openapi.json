@@ -21,6 +21,9 @@
             "title": "Claude Version",
             "type": "string"
           },
+          "clock": {
+            "$ref": "#/components/schemas/ClockInfo"
+          },
           "editable_projects": {
             "items": {
               "type": "string"
@@ -40,6 +43,16 @@
           },
           "instance": {
             "title": "Instance",
+            "type": "string"
+          },
+          "mode": {
+            "enum": [
+              "demo",
+              "fixture",
+              "flow",
+              "real"
+            ],
+            "title": "Mode",
             "type": "string"
           },
           "pass_running_since": {
@@ -89,7 +102,9 @@
           "history",
           "running",
           "to_fix_count",
-          "editable_projects"
+          "editable_projects",
+          "mode",
+          "clock"
         ],
         "title": "AppInfo",
         "type": "object"
@@ -121,6 +136,39 @@
         "title": "BackupFailure",
         "type": "object"
       },
+      "ClockInfo": {
+        "additionalProperties": false,
+        "description": "Which clock the server answers with. ``rate_n`` is set only for ``rate``.",
+        "properties": {
+          "kind": {
+            "enum": [
+              "real",
+              "fixed",
+              "rate",
+              "test"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "rate_n": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rate N"
+          }
+        },
+        "required": [
+          "kind",
+          "rate_n"
+        ],
+        "title": "ClockInfo",
+        "type": "object"
+      },
       "CrossCheck": {
         "additionalProperties": false,
         "description": "Result of comparing the active table with a second public list.",
@@ -147,6 +195,82 @@
           "models"
         ],
         "title": "CrossCheck",
+        "type": "object"
+      },
+      "Cum": {
+        "additionalProperties": false,
+        "description": "Cumulative values at the end of one bucket.",
+        "properties": {
+          "cache_read": {
+            "title": "Cache Read",
+            "type": "integer"
+          },
+          "cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost"
+          },
+          "tokens": {
+            "title": "Tokens",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "tokens",
+          "cache_read",
+          "cost"
+        ],
+        "title": "Cum",
+        "type": "object"
+      },
+      "EndedSession": {
+        "additionalProperties": false,
+        "description": "The newest session in a project that is no longer running.",
+        "properties": {
+          "branch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "last_request": {
+            "format": "date-time",
+            "title": "Last Request",
+            "type": "string"
+          },
+          "requests": {
+            "title": "Requests",
+            "type": "integer"
+          },
+          "started": {
+            "format": "date-time",
+            "title": "Started",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "branch",
+          "started",
+          "last_request",
+          "requests"
+        ],
+        "title": "EndedSession",
         "type": "object"
       },
       "ErrorEnvelope": {
@@ -391,6 +515,247 @@
         "title": "IngestError",
         "type": "object"
       },
+      "LatestRequest": {
+        "additionalProperties": false,
+        "description": "One of the eight newest requests at or before T.",
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "cache_read": {
+            "title": "Cache Read",
+            "type": "integer"
+          },
+          "cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost"
+          },
+          "effort": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effort"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "new_tokens": {
+            "title": "New Tokens",
+            "type": "integer"
+          },
+          "output": {
+            "title": "Output",
+            "type": "integer"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "tokens": {
+            "title": "Tokens",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "at",
+          "run_id",
+          "model",
+          "effort",
+          "tokens",
+          "new_tokens",
+          "cache_read",
+          "output",
+          "cost"
+        ],
+        "title": "LatestRequest",
+        "type": "object"
+      },
+      "LiveSession": {
+        "additionalProperties": false,
+        "description": "A running session in the Session Select.",
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "branch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "last_request": {
+            "format": "date-time",
+            "title": "Last Request",
+            "type": "string"
+          },
+          "project": {
+            "title": "Project",
+            "type": "string"
+          },
+          "project_name": {
+            "title": "Project Name",
+            "type": "string"
+          },
+          "requests": {
+            "title": "Requests",
+            "type": "integer"
+          },
+          "runs_working": {
+            "title": "Runs Working",
+            "type": "integer"
+          },
+          "started": {
+            "format": "date-time",
+            "title": "Started",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "working",
+              "idle"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "project",
+          "project_name",
+          "branch",
+          "started",
+          "last_request",
+          "active",
+          "state",
+          "runs_working",
+          "requests"
+        ],
+        "title": "LiveSession",
+        "type": "object"
+      },
+      "LiveSessions": {
+        "additionalProperties": false,
+        "description": "Answer of ``GET /api/live/sessions``.",
+        "properties": {
+          "as_of": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "etag": {
+            "title": "Etag",
+            "type": "string"
+          },
+          "latest_ended": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EndedSession"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "server_time": {
+            "format": "date-time",
+            "title": "Server Time",
+            "type": "string"
+          },
+          "sessions": {
+            "items": {
+              "$ref": "#/components/schemas/LiveSession"
+            },
+            "title": "Sessions",
+            "type": "array"
+          },
+          "unchanged": {
+            "const": false,
+            "title": "Unchanged",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "server_time",
+          "as_of",
+          "etag",
+          "unchanged",
+          "sessions",
+          "latest_ended"
+        ],
+        "title": "LiveSessions",
+        "type": "object"
+      },
+      "LiveSessionsUnchanged": {
+        "additionalProperties": false,
+        "description": "The short session-list answer when the asked etag still matches.",
+        "properties": {
+          "etag": {
+            "title": "Etag",
+            "type": "string"
+          },
+          "server_time": {
+            "format": "date-time",
+            "title": "Server Time",
+            "type": "string"
+          },
+          "unchanged": {
+            "const": true,
+            "title": "Unchanged",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "server_time",
+          "etag",
+          "unchanged"
+        ],
+        "title": "LiveSessionsUnchanged",
+        "type": "object"
+      },
       "MintRequest": {
         "additionalProperties": false,
         "description": "Body of ``POST /api/access/mint``.",
@@ -424,6 +789,110 @@
           "code"
         ],
         "title": "MintResponse",
+        "type": "object"
+      },
+      "ModelCheck": {
+        "additionalProperties": false,
+        "description": "Every agent's model check, plus how many are in effect.",
+        "properties": {
+          "in_effect_count": {
+            "title": "In Effect Count",
+            "type": "integer"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/ModelCheckRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          }
+        },
+        "required": [
+          "rows",
+          "in_effect_count"
+        ],
+        "title": "ModelCheck",
+        "type": "object"
+      },
+      "ModelCheckRow": {
+        "additionalProperties": false,
+        "description": "The model check for one agent type in the session.",
+        "properties": {
+          "agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent"
+          },
+          "mismatched_runs": {
+            "title": "Mismatched Runs",
+            "type": "integer"
+          },
+          "params": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Params",
+            "type": "object"
+          },
+          "ran": {
+            "$ref": "#/components/schemas/RanPair"
+          },
+          "reason_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Code"
+          },
+          "runs": {
+            "title": "Runs",
+            "type": "integer"
+          },
+          "set": {
+            "$ref": "#/components/schemas/SetPair"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "in_effect",
+                  "overridden",
+                  "ignored",
+                  "lowered",
+                  "invalid",
+                  "default",
+                  "unknown"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          }
+        },
+        "required": [
+          "agent",
+          "set",
+          "ran",
+          "status",
+          "reason_code",
+          "params",
+          "runs",
+          "mismatched_runs"
+        ],
+        "title": "ModelCheckRow",
         "type": "object"
       },
       "ModelPrice": {
@@ -503,6 +972,26 @@
           "relative"
         ],
         "title": "ModelPrice",
+        "type": "object"
+      },
+      "ModelTokens": {
+        "additionalProperties": false,
+        "description": "A legend entry, new tokens over the axis.",
+        "properties": {
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "tokens": {
+            "title": "Tokens",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "model",
+          "tokens"
+        ],
+        "title": "ModelTokens",
         "type": "object"
       },
       "PassError": {
@@ -688,6 +1177,101 @@
         "title": "ProjectList",
         "type": "object"
       },
+      "RanPair": {
+        "additionalProperties": false,
+        "description": "What the runs used, most common first. ``mixed`` when runs differ.",
+        "properties": {
+          "effort": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effort"
+          },
+          "mixed": {
+            "title": "Mixed",
+            "type": "boolean"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          }
+        },
+        "required": [
+          "model",
+          "effort",
+          "mixed"
+        ],
+        "title": "RanPair",
+        "type": "object"
+      },
+      "Round": {
+        "additionalProperties": false,
+        "description": "One round of a run. ``by`` is ``main``, a run id, or None.",
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "By"
+          },
+          "by_kind": {
+            "anyOf": [
+              {
+                "enum": [
+                  "coordinator",
+                  "peer",
+                  "human"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "By Kind"
+          },
+          "last_request": {
+            "format": "date-time",
+            "title": "Last Request",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "n",
+          "at",
+          "last_request",
+          "by",
+          "by_kind"
+        ],
+        "title": "Round",
+        "type": "object"
+      },
       "RunningItem": {
         "additionalProperties": false,
         "description": "One session that is running now.",
@@ -706,6 +1290,132 @@
           "session"
         ],
         "title": "RunningItem",
+        "type": "object"
+      },
+      "Segment": {
+        "additionalProperties": false,
+        "description": "A drawn stretch of a lane, one per round.",
+        "properties": {
+          "end": {
+            "format": "date-time",
+            "title": "End",
+            "type": "string"
+          },
+          "start": {
+            "format": "date-time",
+            "title": "Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start",
+          "end"
+        ],
+        "title": "Segment",
+        "type": "object"
+      },
+      "SetPair": {
+        "additionalProperties": false,
+        "description": "The model and effort an agent's setup asks for.",
+        "properties": {
+          "effort": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SetValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "model": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SetValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "model",
+          "effort"
+        ],
+        "title": "SetPair",
+        "type": "object"
+      },
+      "SetValue": {
+        "additionalProperties": false,
+        "description": "What a file or setting sets, with its display path and line.",
+        "properties": {
+          "file": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File"
+          },
+          "line": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line"
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "value",
+          "file",
+          "line",
+          "scope"
+        ],
+        "title": "SetValue",
+        "type": "object"
+      },
+      "StateAt": {
+        "additionalProperties": false,
+        "description": "A state that starts at ``at`` and holds until the next entry.",
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "at",
+          "state"
+        ],
+        "title": "StateAt",
         "type": "object"
       },
       "SwapRequest": {
@@ -763,6 +1473,742 @@
           "project"
         ],
         "title": "SwapResponse",
+        "type": "object"
+      },
+      "Timeline": {
+        "additionalProperties": false,
+        "description": "Answer of ``GET /api/sessions/{id}/timeline``.",
+        "properties": {
+          "as_of": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "axis": {
+            "$ref": "#/components/schemas/TimelineAxis"
+          },
+          "buckets": {
+            "items": {
+              "$ref": "#/components/schemas/TimelineBucket"
+            },
+            "title": "Buckets",
+            "type": "array"
+          },
+          "etag": {
+            "title": "Etag",
+            "type": "string"
+          },
+          "last_minute": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Window"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "model_check": {
+            "$ref": "#/components/schemas/ModelCheck"
+          },
+          "models": {
+            "items": {
+              "$ref": "#/components/schemas/ModelTokens"
+            },
+            "title": "Models",
+            "type": "array"
+          },
+          "prices": {
+            "$ref": "#/components/schemas/TimelinePrices"
+          },
+          "project": {
+            "title": "Project",
+            "type": "string"
+          },
+          "requests": {
+            "items": {
+              "$ref": "#/components/schemas/LatestRequest"
+            },
+            "title": "Requests",
+            "type": "array"
+          },
+          "runs": {
+            "items": {
+              "$ref": "#/components/schemas/TimelineRun"
+            },
+            "title": "Runs",
+            "type": "array"
+          },
+          "server_time": {
+            "format": "date-time",
+            "title": "Server Time",
+            "type": "string"
+          },
+          "session": {
+            "$ref": "#/components/schemas/TimelineSession"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/TimelineTotals"
+          },
+          "unchanged": {
+            "const": false,
+            "title": "Unchanged",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "project",
+          "server_time",
+          "as_of",
+          "etag",
+          "unchanged",
+          "session",
+          "axis",
+          "buckets",
+          "models",
+          "last_minute",
+          "totals",
+          "runs",
+          "requests",
+          "model_check",
+          "prices"
+        ],
+        "title": "Timeline",
+        "type": "object"
+      },
+      "TimelineAxis": {
+        "additionalProperties": false,
+        "description": "The x axis over the whole session, and the y ticks for new tokens.",
+        "properties": {
+          "bucket_seconds": {
+            "title": "Bucket Seconds",
+            "type": "integer"
+          },
+          "end": {
+            "format": "date-time",
+            "title": "End",
+            "type": "string"
+          },
+          "start": {
+            "format": "date-time",
+            "title": "Start",
+            "type": "string"
+          },
+          "ticks": {
+            "items": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "title": "Ticks",
+            "type": "array"
+          },
+          "token_ticks": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Token Ticks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "start",
+          "end",
+          "bucket_seconds",
+          "ticks",
+          "token_ticks"
+        ],
+        "title": "TimelineAxis",
+        "type": "object"
+      },
+      "TimelineBucket": {
+        "additionalProperties": false,
+        "description": "One bar. ``by_model`` holds new tokens and leaves out models with none.",
+        "properties": {
+          "by_model": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "By Model",
+            "type": "object"
+          },
+          "cache_read": {
+            "title": "Cache Read",
+            "type": "integer"
+          },
+          "cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost"
+          },
+          "requests": {
+            "title": "Requests",
+            "type": "integer"
+          },
+          "start": {
+            "format": "date-time",
+            "title": "Start",
+            "type": "string"
+          },
+          "unpriced": {
+            "$ref": "#/components/schemas/Unpriced"
+          }
+        },
+        "required": [
+          "start",
+          "by_model",
+          "cache_read",
+          "cost",
+          "requests",
+          "unpriced"
+        ],
+        "title": "TimelineBucket",
+        "type": "object"
+      },
+      "TimelinePrices": {
+        "additionalProperties": false,
+        "description": "The price facts a cost label needs.",
+        "properties": {
+          "as_of": {
+            "format": "date",
+            "title": "As Of",
+            "type": "string"
+          },
+          "cross_check_state": {
+            "enum": [
+              "agree",
+              "disagree",
+              "not_checked"
+            ],
+            "title": "Cross Check State",
+            "type": "string"
+          },
+          "source": {
+            "enum": [
+              "model_pricing",
+              "litellm",
+              "last_good",
+              "bundled"
+            ],
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "as_of",
+          "source",
+          "cross_check_state"
+        ],
+        "title": "TimelinePrices",
+        "type": "object"
+      },
+      "TimelineRun": {
+        "additionalProperties": false,
+        "description": "One agent run, or the main session (``agent`` None, ``parent`` None).",
+        "properties": {
+          "agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent"
+          },
+          "cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost"
+          },
+          "cum": {
+            "items": {
+              "$ref": "#/components/schemas/Cum"
+            },
+            "title": "Cum",
+            "type": "array"
+          },
+          "depth": {
+            "title": "Depth",
+            "type": "integer"
+          },
+          "dispatch_order": {
+            "title": "Dispatch Order",
+            "type": "integer"
+          },
+          "effort": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effort"
+          },
+          "first_request": {
+            "format": "date-time",
+            "title": "First Request",
+            "type": "string"
+          },
+          "label_n": {
+            "title": "Label N",
+            "type": "integer"
+          },
+          "last_request": {
+            "format": "date-time",
+            "title": "Last Request",
+            "type": "string"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "parent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent"
+          },
+          "parent_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent At"
+          },
+          "parent_known": {
+            "title": "Parent Known",
+            "type": "boolean"
+          },
+          "parent_state": {
+            "enum": [
+              "known",
+              "waiting",
+              "unknown"
+            ],
+            "title": "Parent State",
+            "type": "string"
+          },
+          "rounds": {
+            "items": {
+              "$ref": "#/components/schemas/Round"
+            },
+            "title": "Rounds",
+            "type": "array"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "segments": {
+            "items": {
+              "$ref": "#/components/schemas/Segment"
+            },
+            "title": "Segments",
+            "type": "array"
+          },
+          "state": {
+            "enum": [
+              "working",
+              "idle",
+              "finished"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "states": {
+            "items": {
+              "$ref": "#/components/schemas/StateAt"
+            },
+            "title": "States",
+            "type": "array"
+          },
+          "together": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Together"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tokens": {
+            "title": "Tokens",
+            "type": "integer"
+          },
+          "unpriced": {
+            "$ref": "#/components/schemas/Unpriced"
+          }
+        },
+        "required": [
+          "run_id",
+          "agent",
+          "label_n",
+          "parent",
+          "parent_known",
+          "parent_state",
+          "parent_at",
+          "depth",
+          "dispatch_order",
+          "together",
+          "model",
+          "effort",
+          "first_request",
+          "last_request",
+          "state",
+          "states",
+          "rounds",
+          "segments",
+          "tokens",
+          "cost",
+          "unpriced",
+          "cum"
+        ],
+        "title": "TimelineRun",
+        "type": "object"
+      },
+      "TimelineSession": {
+        "additionalProperties": false,
+        "description": "The session a timeline describes.",
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "branch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch"
+          },
+          "ended_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ended At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "last_request": {
+            "format": "date-time",
+            "title": "Last Request",
+            "type": "string"
+          },
+          "project": {
+            "title": "Project",
+            "type": "string"
+          },
+          "requests": {
+            "title": "Requests",
+            "type": "integer"
+          },
+          "running": {
+            "title": "Running",
+            "type": "boolean"
+          },
+          "started": {
+            "format": "date-time",
+            "title": "Started",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "working",
+              "idle",
+              "ended"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "states": {
+            "items": {
+              "$ref": "#/components/schemas/StateAt"
+            },
+            "title": "States",
+            "type": "array"
+          },
+          "unpriced": {
+            "$ref": "#/components/schemas/Unpriced"
+          }
+        },
+        "required": [
+          "id",
+          "project",
+          "branch",
+          "started",
+          "last_request",
+          "running",
+          "active",
+          "state",
+          "states",
+          "ended_at",
+          "requests",
+          "unpriced"
+        ],
+        "title": "TimelineSession",
+        "type": "object"
+      },
+      "TimelineTotals": {
+        "additionalProperties": false,
+        "description": "Session totals at T.",
+        "properties": {
+          "cache_read": {
+            "title": "Cache Read",
+            "type": "integer"
+          },
+          "cache_write": {
+            "title": "Cache Write",
+            "type": "integer"
+          },
+          "cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost"
+          },
+          "hit_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hit Rate"
+          },
+          "input": {
+            "title": "Input",
+            "type": "integer"
+          },
+          "output": {
+            "title": "Output",
+            "type": "integer"
+          },
+          "requests": {
+            "title": "Requests",
+            "type": "integer"
+          },
+          "runs": {
+            "title": "Runs",
+            "type": "integer"
+          },
+          "runs_finished": {
+            "title": "Runs Finished",
+            "type": "integer"
+          },
+          "runs_working": {
+            "title": "Runs Working",
+            "type": "integer"
+          },
+          "tokens": {
+            "title": "Tokens",
+            "type": "integer"
+          },
+          "unpriced": {
+            "$ref": "#/components/schemas/Unpriced"
+          }
+        },
+        "required": [
+          "tokens",
+          "input",
+          "output",
+          "cache_read",
+          "cache_write",
+          "cost",
+          "hit_rate",
+          "requests",
+          "runs",
+          "runs_working",
+          "runs_finished",
+          "unpriced"
+        ],
+        "title": "TimelineTotals",
+        "type": "object"
+      },
+      "Together": {
+        "additionalProperties": false,
+        "description": "Siblings launched within 5 s of each other share a key.",
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "key",
+          "n"
+        ],
+        "title": "Together",
+        "type": "object"
+      },
+      "Unchanged": {
+        "additionalProperties": false,
+        "description": "The short answer when the asked etag still matches.",
+        "properties": {
+          "etag": {
+            "title": "Etag",
+            "type": "string"
+          },
+          "project": {
+            "title": "Project",
+            "type": "string"
+          },
+          "server_time": {
+            "format": "date-time",
+            "title": "Server Time",
+            "type": "string"
+          },
+          "unchanged": {
+            "const": true,
+            "title": "Unchanged",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "project",
+          "server_time",
+          "etag",
+          "unchanged"
+        ],
+        "title": "Unchanged",
+        "type": "object"
+      },
+      "Unpriced": {
+        "additionalProperties": false,
+        "description": "Requests with no price, and the models they ran on, in catalog order.",
+        "properties": {
+          "models": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Models",
+            "type": "array"
+          },
+          "requests": {
+            "title": "Requests",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "requests",
+          "models"
+        ],
+        "title": "Unpriced",
+        "type": "object"
+      },
+      "Window": {
+        "additionalProperties": false,
+        "description": "Numbers over a stretch of time, such as the 60 s before T.",
+        "properties": {
+          "cache_read": {
+            "title": "Cache Read",
+            "type": "integer"
+          },
+          "cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost"
+          },
+          "hit_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hit Rate"
+          },
+          "requests": {
+            "title": "Requests",
+            "type": "integer"
+          },
+          "tokens": {
+            "title": "Tokens",
+            "type": "integer"
+          },
+          "unpriced": {
+            "$ref": "#/components/schemas/Unpriced"
+          }
+        },
+        "required": [
+          "tokens",
+          "cost",
+          "cache_read",
+          "hit_rate",
+          "requests",
+          "unpriced"
+        ],
+        "title": "Window",
         "type": "object"
       }
     }
@@ -936,6 +2382,113 @@
         ]
       }
     },
+    "/api/live/sessions": {
+      "get": {
+        "operationId": "get_live_sessions",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "project",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 63,
+                  "pattern": "^[a-z0-9][a-z0-9-]{0,62}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project"
+            }
+          },
+          {
+            "in": "query",
+            "name": "etag",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "pattern": "^[A-Za-z0-9_.-]{0,64}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Etag"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/LiveSessions"
+                    },
+                    {
+                      "$ref": "#/components/schemas/LiveSessionsUnchanged"
+                    }
+                  ],
+                  "title": "Response Get Live Sessions"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "summary": "Get Live Sessions",
+        "tags": [
+          "live"
+        ]
+      }
+    },
     "/api/prices": {
       "get": {
         "operationId": "get_prices",
@@ -1015,6 +2568,124 @@
         "summary": "Get Projects",
         "tags": [
           "app"
+        ]
+      }
+    },
+    "/api/sessions/{session_id}/timeline": {
+      "get": {
+        "operationId": "get_timeline",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$",
+              "title": "Session Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "project",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 63,
+                  "pattern": "^[a-z0-9][a-z0-9-]{0,62}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project"
+            }
+          },
+          {
+            "in": "query",
+            "name": "etag",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "pattern": "^[A-Za-z0-9_.-]{0,64}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Etag"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Timeline"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Unchanged"
+                    }
+                  ],
+                  "title": "Response Get Timeline"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "summary": "Get Timeline",
+        "tags": [
+          "live"
         ]
       }
     }

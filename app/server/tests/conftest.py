@@ -2,6 +2,7 @@
 
 import asyncio
 import ipaddress
+import os
 import socket
 import subprocess
 import sys
@@ -26,6 +27,119 @@ DEMO_BUILDER = REPO_ROOT / "tests" / "fixtures" / "demo" / "build_demo.py"
 # oracle recorder in app/oracle uses the same pair.
 DEMO_NOW = "2026-10-30T18:00"
 DEMO_TZ = "America/New_York"
+FLOW_BUILDER = REPO_ROOT / "tests" / "fixtures" / "live_flow" / "build_flow.py"
+FLOW_SCENARIOS = ("busy", "many", "unlinked", "empty")
+
+
+# Real-data guard. Tests never read the owner's Claude folder. The real folder is
+# worked out once, before any fixture moves HOME, and an audit hook refuses any open
+# under it for the rest of the process. Audit hooks cannot be removed, so the hook is
+# installed once per process and stays cheap: a string check, no file system calls.
+def _real_config_dirs() -> tuple[str, ...]:
+    found: list[str] = []
+    env = os.environ.get("CLAUDE_CONFIG_DIR")
+    home = os.environ.get("HOME")
+    # os.path on purpose: the audit hook below compares plain strings, so the
+    # prefixes are built the way it normalises a path, with no file system calls.
+    claude = os.path.join(home, ".claude") if home else None  # noqa: PTH118
+    for raw in (env, claude):
+        if not raw:
+            continue
+        for candidate in {os.path.abspath(raw), os.path.realpath(raw)}:  # noqa: PTH100
+            found.append(candidate.rstrip(os.sep) + os.sep)
+    real_json = os.path.join(home, ".claude.json") if home else None  # noqa: PTH118
+    if real_json:
+        found.append(os.path.abspath(real_json))  # noqa: PTH100
+    return tuple(sorted(set(found)))
+
+
+# A test that does `from conftest import X` loads this file a second time under the
+# bare name. The guard must be set up once per process: the second copy reuses the
+# first copy's prefixes and installs nothing, or its realpath on the real folder would
+# trip the first copy's stat wrapper.
+_GUARD_KEY = "_bartab_real_data_guard"
+_installed: tuple[str, ...] | None = getattr(sys, _GUARD_KEY, None)
+REAL_CONFIG_PREFIXES: tuple[str, ...] = (
+    _installed if _installed is not None else _real_config_dirs()
+)
+
+
+# Audit events that name a path in args[0]. os.stat and os.lstat raise no audit event
+# (checked on 3.13), so they are wrapped below instead.
+_GUARDED_EVENTS = frozenset(
+    {"open", "os.listdir", "os.scandir", "os.walk", "sqlite3.connect"}
+)
+
+
+def _refuse_real(target: object) -> None:
+    if isinstance(target, os.PathLike):
+        target = cast("str | bytes", os.fspath(cast("os.PathLike[str]", target)))
+    if isinstance(target, bytes):
+        target = target.decode("utf-8", "replace")
+    if not isinstance(target, str) or target.startswith("file:"):
+        if isinstance(target, str):  # a sqlite3 URI: file:/path?mode=ro
+            target = target[5:].split("?", 1)[0]
+        else:
+            return
+    if not target or target == ":memory:":
+        return
+    full = os.path.abspath(target)  # noqa: PTH100 - string only, runs on every call
+    for prefix in REAL_CONFIG_PREFIXES:
+        if full == prefix.rstrip(os.sep) or full.startswith(prefix):
+            msg = (
+                f"real-data guard: tests must not open the real Claude folder ({full})"
+            )
+            raise RuntimeError(msg)
+
+
+def _real_data_audit(event: str, args: tuple[object, ...]) -> None:
+    if event in _GUARDED_EVENTS and args:
+        _refuse_real(args[0])
+
+
+_real_stat = os.stat
+_real_lstat = os.lstat
+
+
+def _guarded_stat(path: Any, *args: Any, **kwargs: Any) -> os.stat_result:
+    _refuse_real(path)
+    return _real_stat(path, *args, **kwargs)
+
+
+def _guarded_lstat(path: Any, *args: Any, **kwargs: Any) -> os.stat_result:
+    _refuse_real(path)
+    return _real_lstat(path, *args, **kwargs)
+
+
+# pathlib, os.path.exists and isdir look os.stat up at call time, so they go through
+# the wrapper too. C code that calls stat directly does not.
+if _installed is None:
+    sys.addaudithook(_real_data_audit)
+    os.stat = _guarded_stat
+    os.lstat = _guarded_lstat
+    setattr(sys, _GUARD_KEY, REAL_CONFIG_PREFIXES)
+
+# Tests import old-app modules (dashboard/, agent_md.py, the demo builder). Without
+# this, Python writes cpython-313 __pycache__ folders beside them, outside app/.
+sys.dont_write_bytecode = True
+os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
+
+
+@pytest.fixture(scope="session")
+def real_config_prefixes() -> tuple[str, ...]:
+    """The real Claude folder paths the audit hook refuses."""
+    return REAL_CONFIG_PREFIXES
+
+
+@pytest.fixture(autouse=True, scope="session")
+def fake_home(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Path]:
+    """Point HOME and CLAUDE_CONFIG_DIR at a temp folder for the whole session."""
+    home = tmp_path_factory.mktemp("home")
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setenv("HOME", str(home))
+        patch.setenv("CLAUDE_CONFIG_DIR", str(home / ".claude"))
+        yield home
+
 
 _real_connect = socket.socket.connect
 _real_connect_ex = socket.socket.connect_ex
@@ -112,6 +226,33 @@ def demo_build(tmp_path_factory: pytest.TempPathFactory) -> Path:
         capture_output=True,
     )
     return out
+
+
+@pytest.fixture(scope="session")
+def flow_build(tmp_path_factory: pytest.TempPathFactory) -> Callable[[str], Path]:
+    """Return a function that builds a ``live_flow`` scenario once and gives its folder.
+
+    The folder holds ``config/``, ``session.json`` (with the scenario clock in
+    ``now``) and ``flow.json`` (clock, session id, runs). Treat it as read only.
+    """
+    built: dict[str, Path] = {}
+
+    def build(scenario: str) -> Path:
+        if scenario not in FLOW_SCENARIOS:
+            msg = f"unknown live_flow scenario {scenario!r}"
+            raise ValueError(msg)
+        if scenario not in built:
+            out = tmp_path_factory.mktemp(f"flow-{scenario}") / scenario
+            subprocess.run(  # noqa: S603
+                [sys.executable, str(FLOW_BUILDER), str(out), scenario],
+                check=True,
+                timeout=180,
+                capture_output=True,
+            )
+            built[scenario] = out
+        return built[scenario]
+
+    return build
 
 
 BASE_URL = f"http://127.0.0.1:{PORT}"

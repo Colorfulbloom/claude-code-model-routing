@@ -9,7 +9,23 @@ from datetime import datetime
 from pathlib import Path
 from typing import Protocol
 
-from models import AppInfo, PricesInfo, ProjectList
+from models import (
+    AppInfo,
+    LiveSessions,
+    LiveSessionsUnchanged,
+    PricesInfo,
+    ProjectList,
+    Timeline,
+    Unchanged,
+)
+
+
+class UnknownProjectError(Exception):
+    """The project key names no project the provider knows."""
+
+
+class UnknownSessionError(Exception):
+    """The session id names no session with a request in the project."""
 
 
 class Provider(Protocol):
@@ -38,4 +54,25 @@ class Provider(Protocol):
 
     def prices(self) -> PricesInfo:
         """Return the answer for ``GET /api/prices``."""
+        ...
+
+    def timeline(
+        self, project: str, session_id: str, etag: str | None
+    ) -> Timeline | Unchanged:
+        """Return one session's timeline, or the short answer when ``etag`` matches.
+
+        Raises:
+            UnknownProjectError: When ``project`` is not a project key.
+            UnknownSessionError: When the session is not in that project.
+        """
+        ...
+
+    def live_sessions(
+        self, project: str, etag: str | None
+    ) -> LiveSessions | LiveSessionsUnchanged:
+        """Return the running sessions, or the short answer when ``etag`` matches.
+
+        Raises:
+            UnknownProjectError: When ``project`` is not a project key.
+        """
         ...

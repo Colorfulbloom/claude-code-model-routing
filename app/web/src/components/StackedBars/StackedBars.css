@@ -1,0 +1,172 @@
+/*
+ * Stacked bars (components.md entry 20). Three columns line up with the lane list below it: the
+ * axis label and legend sit over the name column, the plot over the track column, and the last
+ * column stays empty. The page can set --lane-lab, --lane-state, --lane-tok, --lane-cost and
+ * --lane-pad on a shared ancestor. The fallbacks are the board's numbers.
+ */
+.bars {
+  display: grid;
+  grid-template-columns:
+    var(--lane-lab, 240px) minmax(0, 1fr)
+    calc(
+      var(--lane-state, 150px) + var(--lane-tok, 56px) + var(--lane-cost, 94px) + 2 * var(--space-4)
+    );
+  gap: var(--space-4);
+  align-items: end;
+  padding: 0 calc(var(--lane-pad, 12px) + 1px) var(--space-3);
+}
+
+.bars-side {
+  display: grid;
+  gap: var(--space-2);
+  padding-bottom: 22px;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.bars-axis-label {
+  margin: 0;
+}
+
+.bars-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-xs);
+}
+
+.bars-legend b {
+  color: var(--text);
+  font-weight: var(--weight-medium);
+}
+
+.bars-chart {
+  display: grid;
+  grid-template-rows: 72px 20px;
+  min-width: 0;
+}
+
+.bars-plot {
+  position: relative;
+  border-bottom: 1px solid var(--border-strong);
+}
+
+.bars-svg {
+  position: absolute;
+  inset: 0;
+  display: block;
+  overflow: visible;
+}
+
+.bars-grid {
+  stroke: var(--chart-grid);
+  stroke-width: 1;
+}
+
+.bars-tick {
+  position: absolute;
+  left: 0;
+  padding: 0 4px 0 0;
+  background: var(--card-bg);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  line-height: 1.2;
+}
+
+.bars-seg-opus {
+  fill: var(--m-opus);
+}
+
+.bars-seg-sonnet {
+  fill: var(--m-sonnet);
+}
+
+.bars-seg-haiku {
+  fill: var(--m-haiku);
+}
+
+.bars-seg-fable {
+  fill: var(--m-fable);
+}
+
+.bars-fill-opus {
+  fill: var(--m-opus);
+}
+
+.bars-fill-sonnet {
+  fill: var(--m-sonnet);
+}
+
+.bars-fill-haiku {
+  fill: var(--m-haiku);
+}
+
+.bars-fill-fable {
+  fill: var(--m-fable);
+}
+
+/* The open bucket: hatched fill (set on the rect) and a model-coloured outline. */
+.bars-seg-open {
+  stroke-width: 1.5;
+}
+
+.bars-stroke-opus {
+  stroke: var(--m-opus);
+}
+
+.bars-stroke-sonnet {
+  stroke: var(--m-sonnet);
+}
+
+.bars-stroke-haiku {
+  stroke: var(--m-haiku);
+}
+
+.bars-stroke-fable {
+  stroke: var(--m-fable);
+}
+
+.bars-x {
+  position: relative;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.bars-x span {
+  position: absolute;
+  top: 4px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.bars-x span:first-child {
+  transform: none;
+}
+
+.bars-x span:last-child {
+  transform: translateX(-100%);
+}
+
+@media (width <= 720px) {
+  .bars {
+    display: block;
+    padding: 0 0 var(--space-2);
+  }
+
+  .bars-side {
+    padding-bottom: var(--space-2);
+  }
+
+  .bars-legend {
+    flex-flow: row wrap;
+    gap: 2px var(--space-3);
+  }
+
+  /* Fewer labels on a phone. The first and last stay. */
+  .bars-x .bars-x-minor {
+    display: none;
+  }
+}

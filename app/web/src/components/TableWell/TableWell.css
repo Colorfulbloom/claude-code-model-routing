@@ -1,0 +1,80 @@
+.table-well-error {
+  margin-bottom: var(--space-2);
+}
+
+.table-well-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-md);
+}
+
+.table-well-th {
+  padding: var(--space-2) var(--space-3) var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.table-well-td {
+  padding: 10px var(--space-3) 10px 0;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.table-well-row:last-child > .table-well-td {
+  border-bottom: 0;
+}
+
+.table-well-end {
+  text-align: right;
+}
+
+.table-well-td.num {
+  font-variant-numeric: tabular-nums;
+}
+
+.table-well-th.table-well-end,
+.table-well-td.table-well-end {
+  padding-right: 0;
+}
+
+.table-well-td a {
+  display: inline-block;
+  min-height: 26px;
+  padding: 4px 0;
+  color: var(--text);
+  font-weight: var(--weight-medium);
+  text-decoration: none;
+}
+
+.table-well-td a:hover {
+  text-decoration: underline;
+}
+
+.table-well-row:hover > .table-well-td,
+.table-well-row.is-hover > .table-well-td {
+  background: var(--nav-hover-bg);
+}
+
+.table-well-th[data-focus-visible],
+.table-well-td[data-focus-visible],
+.table-well-row[data-focus-visible] {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: calc(var(--focus-width) * -1);
+}
+
+@media (width <= 720px) {
+  .table-well-hp {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}

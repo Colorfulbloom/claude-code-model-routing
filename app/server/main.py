@@ -7,6 +7,8 @@ OpenAPI export use. Both read ``dist/index.html`` once and rewrite it per reques
 
 import asyncio
 import logging
+import os
+import sys
 import time
 from collections.abc import AsyncGenerator, Callable
 from contextlib import asynccontextmanager
@@ -20,6 +22,8 @@ from starlette.types import ASGIApp
 
 import access
 import api_app
+import api_dev
+import api_live
 import csp
 import errors
 import fixture_provider
@@ -28,6 +32,8 @@ import price_transport
 import store_provider
 import version
 from access import AccessState
+from data_clock import DataClock
+from models import AppMode
 from provider import Provider
 
 logger = logging.getLogger(__name__)
@@ -41,6 +47,15 @@ class Settings:
     ``data_dir/store``) and starts the writer and the price feed in its lifespan.
     Without it the app serves the fixture scenario. ``provider`` hands in a provider
     that is already built, so the caller can ask it things before the app starts.
+
+    ``clock`` is the wall clock. The access keys, the writer's schedule, backups and
+    the price feed read it. ``data_clock`` is what data answers read, and defaults to
+    a real clock on ``clock``. ``flow`` marks a built ``live_flow`` scenario, and
+    ``test_clock`` mounts ``POST /api/dev/clock``, which needs a test ``data_clock``.
+    ``real`` marks the owner's own Claude folder (``serve.py --real``). The provider
+    then reports mode ``real``, hands the model check a copy of the server's
+    environment, the platform's managed folder and the HOME folder, and the writer
+    reports its pass times in ``data_dir/health.json``.
     """
 
     port: int
@@ -50,6 +65,10 @@ class Settings:
     project_dir: Path | None = None
     idle_exit_minutes: float = 0
     clock: Callable[[], float] = time.time
+    data_clock: DataClock | None = None
+    flow: bool = False
+    real: bool = False
+    test_clock: bool = False
     access_state: AccessState | None = None
     fixtures_dir: Path | None = None
     claude_dir: Path | None = None
@@ -61,6 +80,16 @@ class Settings:
     provider: Provider | None = None
 
 
+HEALTH_FILE = "health.json"
+
+
+def _mode_of(settings: Settings) -> AppMode | None:
+    """Return the mode ``/api/app`` reports, or None to let the provider decide."""
+    if settings.real:
+        return "real"
+    return "flow" if settings.flow else None
+
+
 def make_provider(settings: Settings) -> Provider:
     """Build the provider the settings ask for. A store provider is not started."""
     if settings.provider is not None:
@@ -69,13 +98,25 @@ def make_provider(settings: Settings) -> Provider:
         return store_provider.create(
             claude_dir=settings.claude_dir,
             store_dir=settings.store_dir or settings.data_dir / "store",
-            demo=settings.demo,
+            demo=settings.demo or settings.flow,
+            mode=_mode_of(settings),
+            data_clock=settings.data_clock,
             pace_ms=settings.ingest_pace_ms,
             price_fetch=settings.price_fetch,
             transport=settings.transport,
             clock=settings.clock,
             log_path=str(settings.data_dir / "logs" / "server.log"),
             project_dir=settings.project_dir,
+            # Real mode hands the model check a copy of the server's own environment
+            # (the resolver keeps only what a rule or an env block names), the
+            # platform's managed settings folder and the HOME folder that "~" expands
+            # against. The writer reports its pass times beside server.json.
+            managed_dir=store_provider.managed_dir_for(sys.platform)
+            if settings.real
+            else None,
+            home=(os.environ.get("HOME") or None) if settings.real else None,
+            shell_env=dict(os.environ) if settings.real else None,
+            health_path=settings.data_dir / HEALTH_FILE if settings.real else None,
         )
     return fixture_provider.FixtureProvider(
         settings.fixture, settings.clock, settings.fixtures_dir
@@ -160,6 +201,15 @@ def build_app(settings: Settings) -> FastAPI:
         access.build_router(state, on_mint=None if live is None else live.nudge_retry)
     )
     app.include_router(api_app.build_router(provider, state.instance))
+    app.include_router(api_live.build_router(provider))
+    app.add_middleware(api_live.ApiGzipMiddleware)
+    if settings.test_clock:
+        if settings.data_clock is None or settings.data_clock.kind != "test":
+            msg = "test_clock needs a test data clock"
+            raise ValueError(msg)
+        app.include_router(api_dev.build_router(settings.data_clock))
+    else:
+        app.include_router(api_dev.build_absent_router())
     app.include_router(_static_router(settings.dist_dir, index, state.instance))
     return app
 

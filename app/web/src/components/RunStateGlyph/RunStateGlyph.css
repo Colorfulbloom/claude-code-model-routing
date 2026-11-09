@@ -20,19 +20,24 @@
   content: "\25CF" / "";
 }
 
-.run-state-done {
+.run-state-done,
+.run-state-finished {
   color: var(--status-in-effect-fg);
 }
 
-.run-state-done::before {
+.run-state-done::before,
+.run-state-finished::before {
   content: "\2713" / "";
 }
 
-.run-state-idle {
+.run-state-idle,
+.run-state-not-started,
+.run-state-ended {
   color: var(--text-muted);
 }
 
-.run-state-idle::before {
+.run-state-idle::before,
+.run-state-not-started::before {
   content: "\25CC" / "";
   font-size: var(--text-sm);
 }
@@ -43,4 +48,9 @@
 
 .run-state-failed::before {
   content: var(--status-invalid-mark) / "";
+}
+
+.run-state-ended::before {
+  content: "\25A0" / "";
+  font-size: 9px;
 }

@@ -1,0 +1,367 @@
+{
+  "at": "2026-10-30T22:14:00+00:00",
+  "last_minute": {
+    "cost": 0.2164532,
+    "hit_rate": 0.8240086640146099,
+    "requests": 3,
+    "tokens": 144653,
+    "unpriced_requests": 0
+  },
+  "minutes": [
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T17:45:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T17:46:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T17:47:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T17:48:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T17:49:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T17:50:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T17:51:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T17:52:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T17:53:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T17:54:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T17:55:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T17:56:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T17:57:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T17:58:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T17:59:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T18:00:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T18:01:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T18:02:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T18:03:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T18:04:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T18:05:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T18:06:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T18:07:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T18:08:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T18:09:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {
+        "claude-opus-5-5": 11884
+      },
+      "cache_read": 70013,
+      "start": "2026-10-30T18:10:00-04:00",
+      "tokens": 11884
+    },
+    {
+      "by_model": {
+        "claude-opus-5-5": 17305
+      },
+      "cache_read": 62736,
+      "start": "2026-10-30T18:11:00-04:00",
+      "tokens": 17305
+    },
+    {
+      "by_model": {
+        "claude-opus-5-5": 41993
+      },
+      "cache_read": 160001,
+      "start": "2026-10-30T18:12:00-04:00",
+      "tokens": 41993
+    },
+    {
+      "by_model": {
+        "claude-opus-5-5": 15857
+      },
+      "cache_read": 73631,
+      "start": "2026-10-30T18:13:00-04:00",
+      "tokens": 15857
+    },
+    {
+      "by_model": {
+        "claude-opus-5-5": 12385
+      },
+      "cache_read": 42780,
+      "start": "2026-10-30T18:14:00-04:00",
+      "tokens": 12385
+    }
+  ],
+  "requests": [
+    {
+      "cache_read": 42780,
+      "cost": 0.093283,
+      "effort": "high",
+      "id": "ee95f77b6bab",
+      "model": "claude-opus-5-5",
+      "output": 1132,
+      "route_key": "deep-reasoner",
+      "tokens": 55165,
+      "ts": "2026-10-30T18:14:00-04:00"
+    },
+    {
+      "cache_read": 41763,
+      "cost": 0.0507456,
+      "effort": "high",
+      "id": "474d60fda892",
+      "model": "claude-opus-5-5",
+      "output": 808,
+      "route_key": "@main",
+      "tokens": 48349,
+      "ts": "2026-10-30T18:13:30.655000-04:00"
+    },
+    {
+      "cache_read": 31868,
+      "cost": 0.0724246,
+      "effort": "high",
+      "id": "70d48e277dd3",
+      "model": "claude-opus-5-5",
+      "output": 1439,
+      "route_key": "deep-reasoner",
+      "tokens": 41139,
+      "ts": "2026-10-30T18:13:22.881000-04:00"
+    },
+    {
+      "cache_read": 36269,
+      "cost": 0.0477118,
+      "effort": "high",
+      "id": "84a9745f7222",
+      "model": "claude-opus-5-5",
+      "output": 458,
+      "route_key": "@main",
+      "tokens": 42643,
+      "ts": "2026-10-30T18:12:54.804000-04:00"
+    },
+    {
+      "cache_read": 34124,
+      "cost": 0.0756638,
+      "effort": "high",
+      "id": "d4e6dc88c7d1",
+      "model": "claude-opus-5-5",
+      "output": 954,
+      "route_key": "deep-reasoner",
+      "tokens": 43933,
+      "ts": "2026-10-30T18:12:50.490000-04:00"
+    },
+    {
+      "cache_read": 15902,
+      "cost": 0.0524494,
+      "effort": "high",
+      "id": "976ec481f8b4",
+      "model": "claude-opus-5-5",
+      "output": 897,
+      "route_key": "@main",
+      "tokens": 22965,
+      "ts": "2026-10-30T18:12:23.652000-04:00"
+    },
+    {
+      "cache_read": 36779,
+      "cost": 0.0752258,
+      "effort": "high",
+      "id": "0b043c7ebf3d",
+      "model": "claude-opus-5-5",
+      "output": 556,
+      "route_key": "deep-reasoner",
+      "tokens": 47665,
+      "ts": "2026-10-30T18:12:07-04:00"
+    },
+    {
+      "cache_read": 36927,
+      "cost": 0.058322399999999996,
+      "effort": "high",
+      "id": "3b3ef4121c26",
+      "model": "claude-opus-5-5",
+      "output": 926,
+      "route_key": "@main",
+      "tokens": 44788,
+      "ts": "2026-10-30T18:12:00-04:00"
+    }
+  ],
+  "running": [
+    "cc73abe9-9eba-409f-822a-87dc52e17fd9"
+  ],
+  "runs": [
+    {
+      "active_at": "2026-10-30T18:13:30.655000-04:00",
+      "agent": null,
+      "cost": 0.42473599999999995,
+      "dispatch_order": 0,
+      "effort": "high",
+      "label_n": null,
+      "last_request": "2026-10-30T18:13:30.655000-04:00",
+      "model": "claude-opus-5-5",
+      "parent": null,
+      "parent_known": true,
+      "rounds": [
+        {
+          "by": null,
+          "last_request": "2026-10-30T18:13:30.655000-04:00",
+          "n": 1,
+          "started": "2026-10-30T18:10:06-04:00"
+        }
+      ],
+      "route_key": "@main",
+      "run_id": "@main",
+      "started": "2026-10-30T18:10:06-04:00",
+      "state": "working",
+      "together": null,
+      "tokens": 320683
+    },
+    {
+      "active_at": "2026-10-30T18:14:00-04:00",
+      "agent": "deep-reasoner",
+      "cost": 0.3165972,
+      "dispatch_order": 1,
+      "effort": "high",
+      "label_n": null,
+      "last_request": "2026-10-30T18:14:00-04:00",
+      "model": "claude-opus-5-5",
+      "parent": "@main",
+      "parent_known": true,
+      "rounds": [
+        {
+          "by": "@main",
+          "last_request": "2026-10-30T18:14:00-04:00",
+          "n": 1,
+          "started": "2026-10-30T18:12:07-04:00"
+        }
+      ],
+      "route_key": "deep-reasoner",
+      "run_id": "0241fbc93ea2",
+      "started": "2026-10-30T18:12:07-04:00",
+      "state": "working",
+      "together": null,
+      "tokens": 187902
+    }
+  ],
+  "session": {
+    "active": true,
+    "id": "cc73abe9-9eba-409f-822a-87dc52e17fd9",
+    "last_request": "2026-10-30T18:14:00-04:00",
+    "started": "2026-10-30T18:10:06-04:00"
+  },
+  "session_gone": false,
+  "totals": {
+    "cache_read": 409161,
+    "cache_write": 65408,
+    "cost": 0.7413331999999999,
+    "hit_rate": 0.8205868196221572,
+    "input": 24051,
+    "output": 9965,
+    "requests": 12,
+    "tokens": 508585,
+    "unpriced_requests": 0
+  }
+}

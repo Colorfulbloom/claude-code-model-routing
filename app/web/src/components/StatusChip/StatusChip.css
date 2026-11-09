@@ -1,0 +1,39 @@
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 1px 8px;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+
+.status-chip-in-effect {
+  background: var(--status-in-effect-bg);
+}
+
+.status-chip-overridden {
+  background: var(--status-overridden-bg);
+}
+
+.status-chip-ignored {
+  background: var(--status-ignored-bg);
+}
+
+.status-chip-lowered {
+  background: var(--status-lowered-bg);
+}
+
+.status-chip-invalid {
+  background: var(--status-invalid-bg);
+}
+
+.status-chip-default {
+  background: var(--status-default-bg);
+  border: 1px solid var(--border);
+}
+
+.status-chip-unknown {
+  background: var(--status-unknown-bg);
+  border: 1px var(--status-unknown-border) var(--border-strong);
+}

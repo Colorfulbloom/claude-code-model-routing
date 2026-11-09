@@ -717,3 +717,32 @@ def test_a_read_of_a_migrated_store_uses_the_file(tmp_path: Path) -> None:
         ).fetchone() == (1,)
     finally:
         conn.close()
+
+
+def test_one_reader_sees_one_snapshot_even_when_the_writer_commits_between_reads(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    db = tmp_path / "snap.sqlite"
+    writer_conn = sqlite3.connect(db, isolation_level=None)
+    writer_conn.execute("PRAGMA journal_mode=WAL")
+    writer_conn.execute("CREATE TABLE t (x INTEGER)")
+    writer_conn.execute("INSERT INTO t VALUES (1)")
+
+    def open_snapshot_db(_layout: StoreLayout) -> sqlite3.Connection:
+        return sqlite3.connect(db, isolation_level=None)
+
+    monkeypatch.setattr(store_provider, "open_read", open_snapshot_db)
+    layout = StoreLayout(tmp_path / "store")
+    provider = store_provider.StoreProvider(
+        layout=layout,
+        claude_dir=tmp_path / "config",
+        writer=FakeWriter(),  # pyright: ignore[reportArgumentType]
+        price_settings=price_feed.PriceSettings(layout=layout),
+    )
+    with provider._reader() as conn:  # pyright: ignore[reportPrivateUsage]
+        first = conn.execute("SELECT count(*) FROM t").fetchone()[0]
+        writer_conn.execute("INSERT INTO t VALUES (2)")
+        second = conn.execute("SELECT count(*) FROM t").fetchone()[0]
+        assert conn.in_transaction
+    writer_conn.close()
+    assert (first, second) == (1, 1)

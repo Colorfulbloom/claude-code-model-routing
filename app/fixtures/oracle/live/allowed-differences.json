@@ -1,0 +1,108 @@
+{
+  "_doc": "Each entry is {id, fields, reason, plan_ref}. fields names the old /api/live fields (or the new timeline fields) whose values may differ from the recorded answer. reason says why. plan_ref points to the plan section that allows it. Any difference outside these entries fails.",
+  "differences": [
+    {
+      "fields": [
+        "runs[]",
+        "running"
+      ],
+      "id": "runs-not-started",
+      "plan_ref": "m2-build.md section 6, allowed difference 1",
+      "reason": "Runs not started at T appear on the new timeline. The old answer at T never lists one, because Live at T is Live at now."
+    },
+    {
+      "fields": [
+        "runs[].state",
+        "session.active"
+      ],
+      "id": "state-words",
+      "plan_ref": "m2-build.md section 6, allowed difference 2",
+      "reason": "The old \"done\" reads as finished, and the new run states are working, idle and finished."
+    },
+    {
+      "fields": [
+        "runs[].label_n",
+        "runs[].together"
+      ],
+      "id": "label-numbers",
+      "plan_ref": "m2-build.md section 6, allowed difference 3, as amended in section 12",
+      "reason": "label_n follows first-seen order and never renames a shown row, so the old route's \"scout\" with one run and \"scout 1\" with two both read \"scout\" here. together counts the whole session."
+    },
+    {
+      "fields": [
+        "minutes[]",
+        "axis"
+      ],
+      "id": "buckets-whole-session",
+      "plan_ref": "m2-build.md section 6, allowed difference 4",
+      "reason": "Buckets cover the whole session at bucket_seconds. Only the minutes inside the old 30-minute window are compared, and only when bucket_seconds is 60."
+    },
+    {
+      "fields": [
+        "runs[].model_display",
+        "requests[].model_display",
+        "agents[].model_display",
+        "by_model[].display_name"
+      ],
+      "id": "model-ids",
+      "plan_ref": "m2-build.md section 6, allowed difference 5",
+      "reason": "Model names are ids. The old model_display is not compared."
+    },
+    {
+      "fields": [
+        "last_minute"
+      ],
+      "id": "last-minute-bucket",
+      "plan_ref": "m2-build.md section 6, allowed difference 6",
+      "reason": "In the page-at-T oracle, \"last minute\" is the bucket that holds T, not a rolling 60 seconds."
+    },
+    {
+      "fields": [
+        "runs[].tokens",
+        "runs[].cost",
+        "totals.tokens",
+        "totals.cost"
+      ],
+      "id": "requests-at-t",
+      "plan_ref": "m2-build.md section 6, allowed difference 6",
+      "reason": "The old answer counts every request stamped at or before T, and the flow builds put a request on most minute marks. The page-at-T oracle takes the requests the old answer lists at exactly T out of its numbers first."
+    },
+    {
+      "fields": [
+        "runs[].tokens",
+        "runs[].cost",
+        "totals.tokens",
+        "totals.cost"
+      ],
+      "id": "bucket-aligned-t",
+      "plan_ref": "m2-build.md section 6, allowed difference 4",
+      "reason": "Cumulative numbers are bucket-granular. The page-at-T oracle compares per-run and total tokens and cost only at a T that falls on a bucket boundary. States, parents and rounds are compared at every T."
+    },
+    {
+      "fields": [
+        "runs[].tokens",
+        "runs[].cost"
+      ],
+      "id": "shared-route-keys",
+      "plan_ref": "m2-build.md section 6, allowed difference 6",
+      "reason": "Several runs can share one route key, and the old answer does not say which run a request at exactly T belongs to. The page-at-T oracle skips per-run numbers for a shared route key only when a request at exactly T carries that key, and checks every other run."
+    },
+    {
+      "fields": [
+        "axis",
+        "buckets[]"
+      ],
+      "id": "half-open-bucket",
+      "plan_ref": "m2-build.md section 6, allowed difference 4",
+      "reason": "A bucket holds [start, end), so a request stamped exactly on a boundary falls in the bucket that starts there, and the picker leaves it out at that T. The old answer counts ts <= T."
+    },
+    {
+      "fields": [
+        "/api/live/sessions"
+      ],
+      "id": "no-session-list-oracle",
+      "plan_ref": "m2-build.md section 6, allowed difference 7",
+      "reason": "The old route has no session list across projects, so /api/live/sessions has no oracle. Its tests use crafted stores."
+    }
+  ]
+}

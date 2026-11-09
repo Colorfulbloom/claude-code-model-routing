@@ -20,16 +20,11 @@ describe("TopBar", () => {
     expect(screen.queryByRole("button")).toBeNull();
   });
 
-  it("makes the project a button that names itself and opens the tray", async () => {
+  it("makes the project a button named by its visible words and opens the tray", async () => {
     const user = userEvent.setup();
     const onPress = vi.fn();
-    render(
-      <TopBar
-        title="Summary"
-        project={{ name: "Tidewater reporting", label: "Project, Tidewater reporting", onPress }}
-      />,
-    );
-    const button = screen.getByRole("button", { name: "Project, Tidewater reporting" });
+    render(<TopBar title="Summary" project={{ name: "Tidewater reporting", onPress }} />);
+    const button = screen.getByRole("button", { name: "Tidewater reporting" });
     expect(button).toHaveAttribute("aria-haspopup", "listbox");
     expect(button).toHaveAttribute("aria-expanded", "false");
     await user.click(button);
@@ -37,13 +32,8 @@ describe("TopBar", () => {
   });
 
   it("reports the open tray through aria-expanded", () => {
-    render(
-      <TopBar
-        title="Summary"
-        project={{ name: "Builder", label: "Project, Builder", open: true, onPress: vi.fn() }}
-      />,
-    );
-    expect(screen.getByRole("button", { name: "Project, Builder" })).toHaveAttribute(
+    render(<TopBar title="Summary" project={{ name: "Builder", open: true, onPress: vi.fn() }} />);
+    expect(screen.getByRole("button", { name: "Builder" })).toHaveAttribute(
       "aria-expanded",
       "true",
     );

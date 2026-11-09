@@ -81,3 +81,15 @@
 .sidebar-link[aria-current="page"] .sidebar-end {
   color: var(--accent);
 }
+
+/* The demo mark sits on the brand line, after the wordmark, at regular weight. */
+.sidebar .brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.brand-badge {
+  font-weight: var(--weight-regular);
+  letter-spacing: 0;
+}

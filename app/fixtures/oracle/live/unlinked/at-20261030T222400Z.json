@@ -1,0 +1,535 @@
+{
+  "at": "2026-10-30T22:24:00+00:00",
+  "last_minute": {
+    "cost": 0.3884424,
+    "hit_rate": 0.7280624438530773,
+    "requests": 7,
+    "tokens": 241270,
+    "unpriced_requests": 0
+  },
+  "minutes": [
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T17:55:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T17:56:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T17:57:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T17:58:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T17:59:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T18:00:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T18:01:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T18:02:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T18:03:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T18:04:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T18:05:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T18:06:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T18:07:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T18:08:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T18:09:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {
+        "claude-opus-5-5": 20318
+      },
+      "cache_read": 37472,
+      "start": "2026-10-30T18:10:00-04:00",
+      "tokens": 20318
+    },
+    {
+      "by_model": {
+        "claude-opus-5-5": 17244
+      },
+      "cache_read": 70658,
+      "start": "2026-10-30T18:11:00-04:00",
+      "tokens": 17244
+    },
+    {
+      "by_model": {
+        "claude-opus-5-5": 39448
+      },
+      "cache_read": 119739,
+      "start": "2026-10-30T18:12:00-04:00",
+      "tokens": 39448
+    },
+    {
+      "by_model": {
+        "claude-opus-5-5": 26658
+      },
+      "cache_read": 122236,
+      "start": "2026-10-30T18:13:00-04:00",
+      "tokens": 26658
+    },
+    {
+      "by_model": {
+        "claude-haiku-5-5": 10429,
+        "claude-opus-5-5": 38035
+      },
+      "cache_read": 136641,
+      "start": "2026-10-30T18:14:00-04:00",
+      "tokens": 48464
+    },
+    {
+      "by_model": {
+        "claude-haiku-5-5": 5114,
+        "claude-opus-5-5": 21350
+      },
+      "cache_read": 62084,
+      "start": "2026-10-30T18:15:00-04:00",
+      "tokens": 26464
+    },
+    {
+      "by_model": {
+        "claude-haiku-5-5": 10715,
+        "claude-opus-5-5": 39423
+      },
+      "cache_read": 136415,
+      "start": "2026-10-30T18:16:00-04:00",
+      "tokens": 50138
+    },
+    {
+      "by_model": {
+        "claude-haiku-5-5": 2880,
+        "claude-opus-5-5": 19841
+      },
+      "cache_read": 72224,
+      "start": "2026-10-30T18:17:00-04:00",
+      "tokens": 22721
+    },
+    {
+      "by_model": {
+        "claude-opus-5-5": 25744
+      },
+      "cache_read": 79508,
+      "start": "2026-10-30T18:18:00-04:00",
+      "tokens": 25744
+    },
+    {
+      "by_model": {
+        "claude-opus-5-5": 19061
+      },
+      "cache_read": 59446,
+      "start": "2026-10-30T18:19:00-04:00",
+      "tokens": 19061
+    },
+    {
+      "by_model": {
+        "claude-opus-5-5": 49312,
+        "claude-sonnet-5-5": 12611
+      },
+      "cache_read": 151915,
+      "start": "2026-10-30T18:20:00-04:00",
+      "tokens": 61923
+    },
+    {
+      "by_model": {
+        "claude-opus-5-5": 38994,
+        "claude-sonnet-5-5": 12873
+      },
+      "cache_read": 149747,
+      "start": "2026-10-30T18:21:00-04:00",
+      "tokens": 51867
+    },
+    {
+      "by_model": {
+        "claude-opus-5-5": 40594,
+        "claude-sonnet-5-5": 28701
+      },
+      "cache_read": 212051,
+      "start": "2026-10-30T18:22:00-04:00",
+      "tokens": 69295
+    },
+    {
+      "by_model": {
+        "claude-opus-5-5": 46818,
+        "claude-sonnet-5-5": 22638
+      },
+      "cache_read": 171814,
+      "start": "2026-10-30T18:23:00-04:00",
+      "tokens": 69456
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T18:24:00-04:00",
+      "tokens": 0
+    }
+  ],
+  "requests": [
+    {
+      "cache_read": 26483,
+      "cost": 0.0854826,
+      "effort": "high",
+      "id": "25700be38948",
+      "model": "claude-opus-5-5",
+      "output": 1200,
+      "route_key": "@main",
+      "tokens": 39489,
+      "ts": "2026-10-30T18:23:59.386000-04:00"
+    },
+    {
+      "cache_read": 29836,
+      "cost": 0.0737182,
+      "effort": "high",
+      "id": "829c2b3ead97",
+      "model": "claude-opus-5-5",
+      "output": 830,
+      "route_key": "deep-reasoner",
+      "tokens": 41388,
+      "ts": "2026-10-30T18:23:56.514000-04:00"
+    },
+    {
+      "cache_read": 12791,
+      "cost": 0.0259111,
+      "effort": "medium",
+      "id": "89704602a3c6",
+      "model": "claude-sonnet-5-5",
+      "output": 589,
+      "route_key": "fast-worker",
+      "tokens": 21169,
+      "ts": "2026-10-30T18:23:42.289000-04:00"
+    },
+    {
+      "cache_read": 28784,
+      "cost": 0.0247409,
+      "effort": "high",
+      "id": "7da51e92cef1",
+      "model": "claude-sonnet-5-5",
+      "output": 545,
+      "route_key": "tech-writer",
+      "tokens": 36233,
+      "ts": "2026-10-30T18:23:34.977000-04:00"
+    },
+    {
+      "cache_read": 28599,
+      "cost": 0.0232174,
+      "effort": "medium",
+      "id": "744f5762f424",
+      "model": "claude-sonnet-5-5",
+      "output": 572,
+      "route_key": "fast-worker",
+      "tokens": 35410,
+      "ts": "2026-10-30T18:23:28.108000-04:00"
+    },
+    {
+      "cache_read": 18142,
+      "cost": 0.0782644,
+      "effort": "high",
+      "id": "85bb4ad0309f",
+      "model": "claude-opus-5-5",
+      "output": 658,
+      "route_key": "deep-reasoner",
+      "tokens": 29754,
+      "ts": "2026-10-30T18:23:18.834000-04:00"
+    },
+    {
+      "cache_read": 27179,
+      "cost": 0.0771078,
+      "effort": "high",
+      "id": "bf4a59ecc50e",
+      "model": "claude-opus-5-5",
+      "output": 888,
+      "route_key": "@main",
+      "tokens": 37827,
+      "ts": "2026-10-30T18:23:09.807000-04:00"
+    },
+    {
+      "cache_read": 15594,
+      "cost": 0.0265264,
+      "effort": "medium",
+      "id": "6cd51b3097ac",
+      "model": "claude-sonnet-5-5",
+      "output": 570,
+      "route_key": "fast-worker",
+      "tokens": 22998,
+      "ts": "2026-10-30T18:22:53.394000-04:00"
+    }
+  ],
+  "running": [
+    "cc73abe9-9eba-409f-822a-87dc52e17fd9"
+  ],
+  "runs": [
+    {
+      "active_at": "2026-10-30T18:23:59.386000-04:00",
+      "agent": null,
+      "cost": 1.6874326,
+      "dispatch_order": 0,
+      "effort": "high",
+      "label_n": null,
+      "last_request": "2026-10-30T18:23:59.386000-04:00",
+      "model": "claude-opus-5-5",
+      "parent": null,
+      "parent_known": true,
+      "rounds": [
+        {
+          "by": null,
+          "last_request": "2026-10-30T18:23:59.386000-04:00",
+          "n": 1,
+          "started": "2026-10-30T18:10:06-04:00"
+        }
+      ],
+      "route_key": "@main",
+      "run_id": "@main",
+      "started": "2026-10-30T18:10:06-04:00",
+      "state": "working",
+      "together": null,
+      "tokens": 932371
+    },
+    {
+      "active_at": "2026-10-30T18:23:56.514000-04:00",
+      "agent": "deep-reasoner",
+      "cost": 1.4247694,
+      "dispatch_order": 1,
+      "effort": "high",
+      "label_n": null,
+      "last_request": "2026-10-30T18:23:56.514000-04:00",
+      "model": "claude-opus-5-5",
+      "parent": "@main",
+      "parent_known": true,
+      "rounds": [
+        {
+          "by": "@main",
+          "last_request": "2026-10-30T18:23:56.514000-04:00",
+          "n": 1,
+          "started": "2026-10-30T18:12:07-04:00"
+        }
+      ],
+      "route_key": "deep-reasoner",
+      "run_id": "0241fbc93ea2",
+      "started": "2026-10-30T18:12:07-04:00",
+      "state": "working",
+      "together": null,
+      "tokens": 786264
+    },
+    {
+      "active_at": "2026-10-30T18:16:51-04:00",
+      "agent": "scout",
+      "cost": 0.0027037050000000003,
+      "dispatch_order": 2,
+      "effort": "medium",
+      "label_n": 1,
+      "last_request": "2026-10-30T18:16:51-04:00",
+      "model": "claude-haiku-5-5",
+      "parent": "0241fbc93ea2",
+      "parent_known": true,
+      "rounds": [
+        {
+          "by": "0241fbc93ea2",
+          "last_request": "2026-10-30T18:16:51-04:00",
+          "n": 1,
+          "started": "2026-10-30T18:14:07-04:00"
+        }
+      ],
+      "route_key": "scout",
+      "run_id": "37d323603468",
+      "started": "2026-10-30T18:14:07-04:00",
+      "state": "done",
+      "together": {
+        "key": "37d323603468",
+        "n": 2
+      },
+      "tokens": 41842
+    },
+    {
+      "active_at": "2026-10-30T18:17:26-04:00",
+      "agent": "scout",
+      "cost": 0.00345535,
+      "dispatch_order": 3,
+      "effort": "medium",
+      "label_n": 2,
+      "last_request": "2026-10-30T18:17:26-04:00",
+      "model": "claude-haiku-5-5",
+      "parent": "0241fbc93ea2",
+      "parent_known": true,
+      "rounds": [
+        {
+          "by": "0241fbc93ea2",
+          "last_request": "2026-10-30T18:17:26-04:00",
+          "n": 1,
+          "started": "2026-10-30T18:14:07-04:00"
+        }
+      ],
+      "route_key": "scout",
+      "run_id": "42884d9420a2",
+      "started": "2026-10-30T18:14:07-04:00",
+      "state": "done",
+      "together": {
+        "key": "37d323603468",
+        "n": 2
+      },
+      "tokens": 59484
+    },
+    {
+      "active_at": "2026-10-30T18:23:34.977000-04:00",
+      "agent": "tech-writer",
+      "cost": 0.1277126,
+      "dispatch_order": 4,
+      "effort": "high",
+      "label_n": null,
+      "last_request": "2026-10-30T18:23:34.977000-04:00",
+      "model": "claude-sonnet-5-5",
+      "parent": "@main",
+      "parent_known": true,
+      "rounds": [
+        {
+          "by": "@main",
+          "last_request": "2026-10-30T18:23:34.977000-04:00",
+          "n": 1,
+          "started": "2026-10-30T18:20:07-04:00"
+        }
+      ],
+      "route_key": "tech-writer",
+      "run_id": "fe7b31d40669",
+      "started": "2026-10-30T18:20:07-04:00",
+      "state": "working",
+      "together": null,
+      "tokens": 146378
+    },
+    {
+      "active_at": "2026-10-30T18:23:28.108000-04:00",
+      "agent": "fast-worker",
+      "cost": 0.0705377,
+      "dispatch_order": 5,
+      "effort": "medium",
+      "label_n": 1,
+      "last_request": "2026-10-30T18:23:28.108000-04:00",
+      "model": "claude-sonnet-5-5",
+      "parent": "0241fbc93ea2",
+      "parent_known": true,
+      "rounds": [
+        {
+          "by": "0241fbc93ea2",
+          "last_request": "2026-10-30T18:23:28.108000-04:00",
+          "n": 1,
+          "started": "2026-10-30T18:22:07-04:00"
+        }
+      ],
+      "route_key": "fast-worker",
+      "run_id": "1b4b7f1fcde6",
+      "started": "2026-10-30T18:22:07-04:00",
+      "state": "working",
+      "together": {
+        "key": "b803559a3a67",
+        "n": 2
+      },
+      "tokens": 92054
+    },
+    {
+      "active_at": "2026-10-30T18:23:42.289000-04:00",
+      "agent": "fast-worker",
+      "cost": 0.0736954,
+      "dispatch_order": 6,
+      "effort": "medium",
+      "label_n": 2,
+      "last_request": "2026-10-30T18:23:42.289000-04:00",
+      "model": "claude-sonnet-5-5",
+      "parent": "0241fbc93ea2",
+      "parent_known": true,
+      "rounds": [
+        {
+          "by": "0241fbc93ea2",
+          "last_request": "2026-10-30T18:23:42.289000-04:00",
+          "n": 1,
+          "started": "2026-10-30T18:22:07-04:00"
+        }
+      ],
+      "route_key": "fast-worker",
+      "run_id": "b803559a3a67",
+      "started": "2026-10-30T18:22:07-04:00",
+      "state": "working",
+      "together": {
+        "key": "b803559a3a67",
+        "n": 2
+      },
+      "tokens": 72358
+    }
+  ],
+  "session": {
+    "active": true,
+    "id": "cc73abe9-9eba-409f-822a-87dc52e17fd9",
+    "last_request": "2026-10-30T18:23:59.386000-04:00",
+    "started": "2026-10-30T18:10:06-04:00"
+  },
+  "session_gone": false,
+  "totals": {
+    "cache_read": 1581950,
+    "cache_write": 382608,
+    "cost": 3.3903067549999997,
+    "hit_rate": 0.7617834578935203,
+    "input": 112082,
+    "output": 54111,
+    "requests": 68,
+    "tokens": 2130751,
+    "unpriced_requests": 0
+  }
+}

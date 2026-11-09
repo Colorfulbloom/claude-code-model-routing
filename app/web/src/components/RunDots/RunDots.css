@@ -1,0 +1,38 @@
+.run-dots {
+  display: grid;
+  grid-template-columns: repeat(4, 12px);
+  gap: 5px;
+}
+
+.run-dot {
+  position: relative;
+  width: 12px;
+  height: 12px;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 50%;
+}
+
+.run-dot-working {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.run-dot-finished {
+  border-color: var(--status-in-effect-fg);
+}
+
+.run-dot-finished::after {
+  content: "\2713" / "";
+  position: absolute;
+  inset: -3px 0 0 1px;
+  color: var(--status-in-effect-fg);
+  font-size: 9px;
+}
+
+.run-dots-more {
+  grid-column: 1 / -1;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  line-height: 1;
+  text-align: right;
+}

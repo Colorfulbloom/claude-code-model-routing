@@ -15,22 +15,29 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
 
+import timeline
 from models import (
     AppInfo,
     BackupFailure,
     BackupReasonCode,
+    ClockInfo,
     HistoryInfo,
     Ingest,
     IngestError,
     IngestErrorCode,
     IngestState,
+    LiveSessions,
+    LiveSessionsUnchanged,
     PassError,
     PricesInfo,
     Project,
     ProjectList,
     ProjectState,
     RunningItem,
+    Timeline,
+    Unchanged,
 )
+from provider import UnknownProjectError
 
 SCENARIOS = (
     "demo",
@@ -251,6 +258,48 @@ class FixtureProvider:
             running=list(self._data.running),
             to_fix_count=to_fix,
             editable_projects=list(self._data.editable_projects),
+            mode="fixture",
+            clock=ClockInfo(kind="real", rate_n=None),
+        )
+
+    def timeline(
+        self, project: str, session_id: str, etag: str | None
+    ) -> Timeline | Unchanged:
+        """Answer ``unknown_project``, because the fixture scenarios have no sessions.
+
+        Raises:
+            UnknownProjectError: Always. The fixture has no Live scenarios.
+        """
+        del project, session_id, etag
+        raise UnknownProjectError
+
+    def live_sessions(
+        self, project: str, etag: str | None
+    ) -> LiveSessions | LiveSessionsUnchanged:
+        """Return an empty session list for a fixture project.
+
+        Raises:
+            UnknownProjectError: When ``project`` is not in the scenario.
+        """
+        if project not in {row.key for row in self._data.projects}:
+            raise UnknownProjectError
+        now = self.now()
+        body: dict[str, object] = {
+            "as_of": None,
+            "unchanged": False,
+            "sessions": [],
+            "latest_ended": None,
+        }
+        tag = timeline.digest(body)
+        if etag == tag:
+            return LiveSessionsUnchanged(server_time=now, etag=tag, unchanged=True)
+        return LiveSessions(
+            server_time=now,
+            as_of=None,
+            etag=tag,
+            unchanged=False,
+            sessions=[],
+            latest_ended=None,
         )
 
     def resolve_project(

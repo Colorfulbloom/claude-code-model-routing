@@ -66,7 +66,9 @@ def test_every_post_except_swap_needs_a_secret(
 def test_every_api_route_declares_a_response_model(settings: main.Settings) -> None:
     for path, method, operation in _operations(settings):
         content = operation["responses"]["200"]["content"]["application/json"]
-        assert "$ref" in content["schema"], f"{method} {path}"
+        schema = content["schema"]
+        refs = schema.get("anyOf", [schema])
+        assert all("$ref" in item for item in refs), f"{method} {path}"
 
 
 def test_get_app_demo(client: Any, key_headers: dict[str, str]) -> None:
@@ -87,7 +89,11 @@ def test_get_app_demo(client: Any, key_headers: dict[str, str]) -> None:
         "running",
         "to_fix_count",
         "editable_projects",
+        "mode",
+        "clock",
     }
+    assert body["mode"] == "fixture"
+    assert body["clock"] == {"kind": "real", "rate_n": None}
     assert body["claude_version"] == "2.1.310"
     assert body["to_fix_count"] == 4
     assert body["ingest"]["state"] == "done"

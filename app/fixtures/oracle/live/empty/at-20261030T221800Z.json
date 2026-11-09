@@ -1,0 +1,347 @@
+{
+  "at": "2026-10-30T22:18:00+00:00",
+  "last_minute": {
+    "cost": 0.1118992,
+    "hit_rate": 0.8134562361464022,
+    "requests": 2,
+    "tokens": 75563,
+    "unpriced_requests": 0
+  },
+  "minutes": [
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T17:49:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T17:50:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T17:51:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T17:52:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T17:53:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T17:54:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T17:55:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T17:56:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T17:57:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T17:58:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T17:59:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T18:00:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T18:01:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T18:02:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T18:03:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T18:04:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T18:05:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T18:06:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T18:07:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T18:08:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T18:09:00-04:00",
+      "tokens": 0
+    },
+    {
+      "by_model": {
+        "claude-opus-5-5": 14369
+      },
+      "cache_read": 60034,
+      "start": "2026-10-30T18:10:00-04:00",
+      "tokens": 14369
+    },
+    {
+      "by_model": {
+        "claude-opus-5-5": 20356
+      },
+      "cache_read": 42988,
+      "start": "2026-10-30T18:11:00-04:00",
+      "tokens": 20356
+    },
+    {
+      "by_model": {
+        "claude-opus-5-5": 20794
+      },
+      "cache_read": 54060,
+      "start": "2026-10-30T18:12:00-04:00",
+      "tokens": 20794
+    },
+    {
+      "by_model": {
+        "claude-opus-5-5": 21275
+      },
+      "cache_read": 51183,
+      "start": "2026-10-30T18:13:00-04:00",
+      "tokens": 21275
+    },
+    {
+      "by_model": {
+        "claude-opus-5-5": 7051
+      },
+      "cache_read": 29357,
+      "start": "2026-10-30T18:14:00-04:00",
+      "tokens": 7051
+    },
+    {
+      "by_model": {
+        "claude-opus-5-5": 24597
+      },
+      "cache_read": 47735,
+      "start": "2026-10-30T18:15:00-04:00",
+      "tokens": 24597
+    },
+    {
+      "by_model": {
+        "claude-opus-5-5": 18798
+      },
+      "cache_read": 54489,
+      "start": "2026-10-30T18:16:00-04:00",
+      "tokens": 18798
+    },
+    {
+      "by_model": {
+        "claude-opus-5-5": 15377
+      },
+      "cache_read": 60186,
+      "start": "2026-10-30T18:17:00-04:00",
+      "tokens": 15377
+    },
+    {
+      "by_model": {},
+      "cache_read": 0,
+      "start": "2026-10-30T18:18:00-04:00",
+      "tokens": 0
+    }
+  ],
+  "requests": [
+    {
+      "cache_read": 33925,
+      "cost": 0.051102,
+      "effort": "high",
+      "id": "0b989d8a85b7",
+      "model": "claude-opus-5-5",
+      "output": 837,
+      "route_key": "@main",
+      "tokens": 40797,
+      "ts": "2026-10-30T18:17:50-04:00"
+    },
+    {
+      "cache_read": 26261,
+      "cost": 0.0607972,
+      "effort": "high",
+      "id": "769bcf094aa2",
+      "model": "claude-opus-5-5",
+      "output": 738,
+      "route_key": "@main",
+      "tokens": 34766,
+      "ts": "2026-10-30T18:17:37.563000-04:00"
+    },
+    {
+      "cache_read": 21958,
+      "cost": 0.062138599999999995,
+      "effort": "high",
+      "id": "a4ee77bed7b7",
+      "model": "claude-opus-5-5",
+      "output": 730,
+      "route_key": "@main",
+      "tokens": 31579,
+      "ts": "2026-10-30T18:16:52.393000-04:00"
+    },
+    {
+      "cache_read": 32531,
+      "cost": 0.0725032,
+      "effort": "high",
+      "id": "e5e3901d887d",
+      "model": "claude-opus-5-5",
+      "output": 979,
+      "route_key": "@main",
+      "tokens": 41708,
+      "ts": "2026-10-30T18:16:23.036000-04:00"
+    },
+    {
+      "cache_read": 33398,
+      "cost": 0.0974516,
+      "effort": "high",
+      "id": "2e6133b9ae9d",
+      "model": "claude-opus-5-5",
+      "output": 1405,
+      "route_key": "@main",
+      "tokens": 46310,
+      "ts": "2026-10-30T18:15:43.258000-04:00"
+    },
+    {
+      "cache_read": 14337,
+      "cost": 0.0677874,
+      "effort": "high",
+      "id": "1128ef87184a",
+      "model": "claude-opus-5-5",
+      "output": 578,
+      "route_key": "@main",
+      "tokens": 26022,
+      "ts": "2026-10-30T18:15:06.423000-04:00"
+    },
+    {
+      "cache_read": 29357,
+      "cost": 0.0460894,
+      "effort": "high",
+      "id": "d4806344d56c",
+      "model": "claude-opus-5-5",
+      "output": 511,
+      "route_key": "@main",
+      "tokens": 36408,
+      "ts": "2026-10-30T18:14:18.884000-04:00"
+    },
+    {
+      "cache_read": 26578,
+      "cost": 0.08459459999999999,
+      "effort": "high",
+      "id": "fd0cdbce45c4",
+      "model": "claude-opus-5-5",
+      "output": 1422,
+      "route_key": "@main",
+      "tokens": 38526,
+      "ts": "2026-10-30T18:13:53.052000-04:00"
+    }
+  ],
+  "running": [
+    "cc73abe9-9eba-409f-822a-87dc52e17fd9"
+  ],
+  "runs": [
+    {
+      "active_at": "2026-10-30T18:17:50-04:00",
+      "agent": null,
+      "cost": 1.0070254,
+      "dispatch_order": 0,
+      "effort": "high",
+      "label_n": null,
+      "last_request": "2026-10-30T18:17:50-04:00",
+      "model": "claude-opus-5-5",
+      "parent": null,
+      "parent_known": true,
+      "rounds": [
+        {
+          "by": null,
+          "last_request": "2026-10-30T18:17:50-04:00",
+          "n": 1,
+          "started": "2026-10-30T18:10:06-04:00"
+        }
+      ],
+      "route_key": "@main",
+      "run_id": "@main",
+      "started": "2026-10-30T18:10:06-04:00",
+      "state": "working",
+      "together": null,
+      "tokens": 542649
+    }
+  ],
+  "session": {
+    "active": true,
+    "id": "cc73abe9-9eba-409f-822a-87dc52e17fd9",
+    "last_request": "2026-10-30T18:17:50-04:00",
+    "started": "2026-10-30T18:10:06-04:00"
+  },
+  "session_gone": false,
+  "totals": {
+    "cache_read": 400032,
+    "cache_write": 98953,
+    "cost": 1.0070254,
+    "hit_rate": 0.7568537080973085,
+    "input": 29561,
+    "output": 14103,
+    "requests": 15,
+    "tokens": 542649,
+    "unpriced_requests": 0
+  }
+}

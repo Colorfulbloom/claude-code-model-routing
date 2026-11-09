@@ -35,7 +35,7 @@ class StorePathError(ValueError):
 
 
 def config_dir_default() -> Path:
-    """Return CLAUDE_CONFIG_DIR, else $HOME/.claude. Nothing in M1 calls this."""
+    """Return CLAUDE_CONFIG_DIR, else $HOME/.claude. ``serve.py --real`` calls this."""
     env = os.environ.get("CLAUDE_CONFIG_DIR")
     if env:
         return Path(env)

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Badge } from "@/components/Badge/Badge";
 import { Button, type ButtonVariant } from "@/components/Button/Button";
 import { Card } from "@/components/Card/Card";
 import { CommandRow } from "@/components/CommandRow/CommandRow";
@@ -13,19 +14,28 @@ import { ProjectPicker, type ProjectItem } from "@/components/ProjectPicker/Proj
 import { ProgressSteps, type ProgressStep } from "@/components/ProgressSteps/ProgressSteps";
 import { RaisedFinding, type RaisedFindingVariant } from "@/components/RaisedFinding/RaisedFinding";
 import { RetryRow } from "@/components/RetryRow/RetryRow";
+import { Ring } from "@/components/Ring/Ring";
+import { RunDots } from "@/components/RunDots/RunDots";
 import { RunStateGlyph, type RunState } from "@/components/RunStateGlyph/RunStateGlyph";
+import { Spark } from "@/components/Spark/Spark";
+import { StatusChip, type SettingStatus } from "@/components/StatusChip/StatusChip";
 import { HistoryCard } from "@/components/HistoryCard/HistoryCard";
 import { Sidebar, type SidebarGroup } from "@/components/Sidebar/Sidebar";
 import { SidebarFooter } from "@/components/SidebarFooter/SidebarFooter";
 import { StoppedNotice } from "@/components/StoppedNotice/StoppedNotice";
 import { SkeletonBones } from "@/components/SkeletonBones/SkeletonBones";
 import { TabBar, type TabBarItem } from "@/components/TabBar/TabBar";
+import { TableWell, type TableColumn, type TableRowData } from "@/components/TableWell/TableWell";
+import { Tile } from "@/components/Tile/Tile";
 import { TopBar } from "@/components/TopBar/TopBar";
 import { WaitHold } from "@/components/WaitHold/WaitHold";
 import { Well } from "@/components/Well/Well";
 import { FirstRunContent, LockedContent } from "@/pages/GatePages";
+import { formatCost, formatTokens } from "@/lib/format";
 import { projectItem } from "@/lib/projects";
 import { t, tn } from "@/strings/t";
+import { StackedBars } from "@/components/StackedBars/StackedBars";
+import { barsSample, LaneDemo, type BarsState, type LaneState } from "./live-samples";
 import { SelectDemo } from "./SelectDemo";
 import { W } from "./words";
 
@@ -280,7 +290,68 @@ const runWords: Record<RunState, string> = {
   done: W.st_done,
   idle: W.st_idle,
   failed: W.fr_failed,
+  finished: W.st_done,
+  not_started: W.c_not_started,
+  ended: W.st_ended,
 };
+
+const statusWords: Record<SettingStatus, string> = {
+  in_effect: W.st_in_effect,
+  overridden: W.st_overridden,
+  ignored: W.st_ignored,
+  lowered: W.st_lowered,
+  invalid: W.st_invalid,
+  default: W.st_default,
+  unknown: W.st_unknown,
+};
+
+const sparkSample = [3, 5, 4, 8, 6, 9, 7, 12, 10, 14, 11, 16];
+const sparkUnpriced = [3, 5, null, 8, 6, null, 7, 12, 10, 14, 11, 16];
+const sparkDense = Array.from({ length: 40 }, (_, i) => 4 + ((i * 7) % 11));
+
+const tableColumns: TableColumn[] = [
+  { id: "time", name: W.rq_time, rowHeader: true },
+  { id: "agent", name: W.rq_agent },
+  { id: "model", name: W.rq_model, hp: true },
+  { id: "tokens", name: W.rq_tokens, align: "end" },
+  { id: "cost", name: W.rq_cost, align: "end" },
+];
+
+const tableRows = (hover: boolean): TableRowData[] =>
+  [
+    {
+      id: "r1",
+      time: "6:39:50",
+      agent: "Main session",
+      model: W.m_opus,
+      tokens: 48_000,
+      cost: 0.05,
+    },
+    {
+      id: "r2",
+      time: "6:39:48",
+      agent: "tech-writer",
+      model: W.m_sonnet,
+      tokens: 36_000,
+      cost: 0.003,
+    },
+    { id: "r3", time: "6:39:43", agent: "judge", model: W.m_opus, tokens: 35_000, cost: 1234.5 },
+  ].map((row, index) => ({
+    id: row.id,
+    cells: {
+      time: <a href="#request">{row.time}</a>,
+      agent: row.agent,
+      model: (
+        <span className="sheet-model">
+          <ModelSwatch model={row.model === W.m_sonnet ? "sonnet" : "opus"} />
+          {row.model}
+        </span>
+      ),
+      tokens: formatTokens(row.tokens),
+      cost: formatCost(row.cost),
+    },
+    ...(hover && index === 1 ? { className: "is-hover" } : {}),
+  }));
 
 const models: { model: Model; name: string }[] = [
   { model: "opus", name: W.m_opus },
@@ -768,6 +839,160 @@ export const manifest: ManifestEntry[] = [
     component: "RunStateGlyph",
     state,
     render: () => <RunStateGlyph state={state}>{runWords[state]}</RunStateGlyph>,
+  })),
+  // StatusChip
+  ...(Object.keys(statusWords) as SettingStatus[]).map((status) => ({
+    component: "StatusChip",
+    state: status,
+    render: () => <StatusChip status={status}>{statusWords[status]}</StatusChip>,
+  })),
+  // Badge
+  {
+    component: "Badge",
+    state: "default",
+    render: () => (
+      <div className="sheet-wrap">
+        <Badge>{W.tl_unl_may}</Badge>
+        <Badge>{W.tl_unl_never}</Badge>
+      </div>
+    ),
+  },
+  // Spark
+  { component: "Spark", state: "bars", render: () => <Spark values={sparkSample} /> },
+  { component: "Spark", state: "unpriced", render: () => <Spark values={sparkUnpriced} /> },
+  { component: "Spark", state: "dense", render: () => <Spark values={sparkDense} /> },
+  // Ring
+  { component: "Ring", state: "partial", render: () => <Ring percent={78} /> },
+  { component: "Ring", state: "empty", render: () => <Ring percent={0} /> },
+  { component: "Ring", state: "full", render: () => <Ring percent={100} /> },
+  // RunDots
+  { component: "RunDots", state: "mixed", render: () => <RunDots working={4} finished={4} /> },
+  { component: "RunDots", state: "working", render: () => <RunDots working={3} finished={0} /> },
+  { component: "RunDots", state: "capped", render: () => <RunDots working={3} finished={9} /> },
+  // Tile
+  {
+    component: "Tile",
+    state: "default",
+    render: () => <Tile label={W.t_tokens} value="5.3M" delta={W.t_tokens_d} />,
+  },
+  {
+    component: "Tile",
+    state: "proof",
+    render: () => (
+      <Tile label={W.t_cache} value="78%" delta={W.t_cache_d} proof={<Ring percent={78} />} />
+    ),
+  },
+  {
+    component: "Tile",
+    state: "unpriced",
+    render: () => (
+      <Tile
+        label={W.t_cost}
+        qualifier={W.t_cost_kx}
+        value={formatCost(7.05)}
+        delta={W.t_cost_d}
+        note={W.t_unpriced_other}
+        proof={<Spark values={sparkUnpriced} />}
+      />
+    ),
+  },
+  {
+    component: "Tile",
+    state: "loading",
+    render: () => (
+      <Tile
+        label={W.t_agents}
+        value="4"
+        delta={W.t_agents_d}
+        loading={{ label: W.cs_tb_loading }}
+      />
+    ),
+  },
+  {
+    component: "Tile",
+    state: "link",
+    render: () => (
+      <Tile
+        label={W.t_agents}
+        value="4"
+        delta={W.t_agents_d}
+        proof={<RunDots working={4} finished={4} />}
+        href="#agents"
+      />
+    ),
+  },
+  // TableWell
+  {
+    component: "TableWell",
+    state: "default",
+    render: () => <TableWell label={W.rq_h} columns={tableColumns} rows={tableRows(false)} />,
+  },
+  {
+    component: "TableWell",
+    state: "hover",
+    render: () => <TableWell label={W.rq_h} columns={tableColumns} rows={tableRows(true)} />,
+  },
+  {
+    component: "TableWell",
+    state: "empty",
+    render: () => (
+      <TableWell
+        label={W.rq_h}
+        columns={tableColumns}
+        rows={[]}
+        empty={{ text: W.cs_tb_empty, action: { label: W.cs_tb_empty_a, href: "#all" } }}
+      />
+    ),
+  },
+  {
+    component: "TableWell",
+    state: "error",
+    render: () => (
+      <TableWell
+        label={W.rq_h}
+        columns={tableColumns}
+        rows={tableRows(false)}
+        error={{ text: W.rq_error }}
+      />
+    ),
+  },
+  {
+    component: "TableWell",
+    state: "loading",
+    render: () => (
+      <TableWell
+        label={W.rq_h}
+        columns={tableColumns}
+        rows={[]}
+        loading={{ label: W.cs_tb_loading }}
+      />
+    ),
+  },
+  // StackedBars
+  ...(["normal", "open-bucket", "averaged", "empty"] as BarsState[]).map((state) => ({
+    component: "StackedBars",
+    state,
+    render: () => <StackedBars {...barsSample(state)} />,
+  })),
+  // TimelineLane
+  ...(
+    [
+      "busy",
+      "idle",
+      "not-started",
+      "unlinked-may",
+      "unlinked-never",
+      "unpriced-least",
+      "unpriced-none",
+      "folded",
+      "open",
+      "depth-cap",
+      "moved",
+    ] as LaneState[]
+  ).map((state) => ({
+    component: "TimelineLane",
+    state,
+    render: () => <LaneDemo state={state} />,
   })),
   // Chosen state (a shared standard in shared.css, not a component folder)
   {

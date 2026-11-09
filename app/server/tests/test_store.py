@@ -14,7 +14,7 @@ import store_paths
 from store import StoreError
 from store_paths import StoreLayout
 
-LATEST = 5
+LATEST = 6
 MALFORMED = "database disk image is malformed"
 
 # Rows to insert per table, with the migration that creates the table. Files first,
@@ -97,10 +97,10 @@ def _count(conn: sqlite3.Connection, table: str) -> int:
 
 def test_latest_version_matches_files() -> None:
     assert store.latest_version() == LATEST
-    assert [n for n, _ in store.migration_files()] == [1, 2, 3, 4, 5]
+    assert [n for n, _ in store.migration_files()] == [1, 2, 3, 4, 5, 6]
 
 
-@pytest.mark.parametrize("old", [1, 2, 3, 4, 5])
+@pytest.mark.parametrize("old", [1, 2, 3, 4, 5, 6])
 def test_rows_survive_migration_from_each_version(
     layout: StoreLayout, old: int
 ) -> None:

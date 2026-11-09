@@ -58,6 +58,7 @@ class Record(NamedTuple):
     speed: str | None
     service_tier: str | None
     inference_geo: str | None
+    version: str | None = None
 
 
 class ReadResult(NamedTuple):
@@ -364,6 +365,18 @@ def _text(value: object) -> str | None:
     return value if isinstance(value, str) else None
 
 
+_VERSION_RE = re.compile(r"[0-9A-Za-z][0-9A-Za-z._+-]{0,39}")
+
+
+def _version(value: object) -> str | None:
+    """Return a row's top-level ``version`` when it looks like one, else None.
+
+    A version is a short word of letters, digits and ``._+-`` (``2.1.302``). Any
+    other text is dropped, so a row can't carry free text into the store through it.
+    """
+    return value if isinstance(value, str) and _VERSION_RE.fullmatch(value) else None
+
+
 def _label(value: object) -> str | None:
     """Return None when missing, the string itself, else ``str(value)``.
 
@@ -512,6 +525,7 @@ def _make_record(
         speed=_label(usage.get("speed")),
         service_tier=_label(usage.get("service_tier")),
         inference_geo=_label(usage.get("inference_geo")),
+        version=_version(row_obj.get("version")),
     )
 
 

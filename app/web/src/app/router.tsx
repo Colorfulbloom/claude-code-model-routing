@@ -13,6 +13,7 @@ import { useHarness } from "@/app/harness";
 import { pageName } from "@/app/routes";
 import type { PageId } from "@/app/routes";
 import { Shell } from "@/app/Shell";
+import { LivePage } from "@/pages/LivePage";
 import { MorePage } from "@/pages/MorePage";
 import { PickerPage } from "@/pages/PickerPage";
 import type { RouteContext } from "@/pages/PickerPage";
@@ -46,7 +47,13 @@ function RouteLayout() {
   // The picker's h1 is in its dialog, which sits outside the main column.
   const mainRef = useRef<HTMLElement>(null);
   const overlayRef = useRef<HTMLElement>(null);
-  useHarness(page === "picker" ? overlayRef : mainRef, { id: pathname, title, status: name });
+  // Live names its session in the query, so a session switch is a route change for focus too.
+  const session = page === "live" ? new URLSearchParams(search).get("session") : null;
+  useHarness(page === "picker" ? overlayRef : mainRef, {
+    id: session === null ? pathname : `${pathname}?session=${session}`,
+    title,
+    status: name,
+  });
 
   useEffect(() => {
     api.access.saveRoute(`${pathname}${search}`);
@@ -63,7 +70,15 @@ function route(path: string, id: PageId): RouteObject {
   return {
     path,
     element:
-      id === "more" ? <MorePage /> : id === "picker" ? <PickerPage /> : <Placeholder page={id} />,
+      id === "more" ? (
+        <MorePage />
+      ) : id === "picker" ? (
+        <PickerPage />
+      ) : id === "live" ? (
+        <LivePage />
+      ) : (
+        <Placeholder page={id} />
+      ),
     handle: { page: id } satisfies RouteHandle,
   };
 }

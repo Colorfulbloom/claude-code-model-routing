@@ -16,6 +16,7 @@ import { tmpdir } from "node:os";
 import { extname, join, normalize, resolve, sep } from "node:path";
 import { build } from "vite";
 import { addNonce, expectedCsp } from "./policy";
+import { freePort } from "./server";
 
 const webDir = resolve(import.meta.dirname, "..");
 
@@ -67,7 +68,8 @@ async function startSheetServer(root: string): Promise<SheetServer> {
       }
     })();
   });
-  await new Promise<void>((done) => server.listen(0, "127.0.0.1", done));
+  const sheetPort = await freePort();
+  await new Promise<void>((done) => server.listen(sheetPort, "127.0.0.1", done));
   const { port } = server.address() as AddressInfo;
   return {
     url: `http://127.0.0.1:${port}/`,

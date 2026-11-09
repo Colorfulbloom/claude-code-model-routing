@@ -45,3 +45,24 @@ export interface SwapRefusal {
 export interface KeyRefusal {
   code: "no_key" | "bad_key";
 }
+
+/** GET /api/sessions/{id}/timeline?project=KEY, the full answer. */
+export type Timeline = Schemas["Timeline"];
+export type TimelineRun = Schemas["TimelineRun"];
+export type TimelineSession = Schemas["TimelineSession"];
+export type TimelineBucket = Schemas["TimelineBucket"];
+export type TimelineRound = Schemas["Round"];
+export type StateAt = Schemas["StateAt"];
+export type Unpriced = Schemas["Unpriced"];
+export type LatestRequest = Schemas["LatestRequest"];
+export type ModelCheck = Schemas["ModelCheck"];
+export type ModelCheckRow = Schemas["ModelCheckRow"];
+
+/** The short answer when the asked etag still matches. */
+export type Unchanged = Schemas["Unchanged"];
+
+/** GET /api/live/sessions?project=KEY, the full answer and the short one. */
+export type LiveSessions = Schemas["LiveSessions"];
+export type LiveSessionsUnchanged = Schemas["LiveSessionsUnchanged"];
+export type LiveSession = Schemas["LiveSession"];
+export type EndedSession = Schemas["EndedSession"];

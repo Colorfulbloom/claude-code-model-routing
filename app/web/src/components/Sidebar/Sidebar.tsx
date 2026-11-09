@@ -1,4 +1,5 @@
 import { Link } from "react-aria-components";
+import { Badge } from "../Badge/Badge";
 import { cx } from "../cx";
 import type { IconName } from "../icons";
 import "./Sidebar.css";
@@ -29,6 +30,8 @@ export interface SidebarProps {
   /** Accessible name of the nav landmark. */
   label: string;
   brand: string;
+  /** A quiet mark after the brand, such as "Demo data". Left out on real data. */
+  badge?: string;
   /** The project Select goes here. */
   projectSlot?: React.ReactNode;
   groups: SidebarGroup[];
@@ -38,10 +41,21 @@ export interface SidebarProps {
 }
 
 /** Main navigation at 721px and up (components.md entry 1). Group headings are text, not buttons. */
-export function Sidebar({ label, brand, projectSlot, groups, footer, className }: SidebarProps) {
+export function Sidebar({
+  label,
+  brand,
+  badge,
+  projectSlot,
+  groups,
+  footer,
+  className,
+}: SidebarProps) {
   return (
     <nav className={cx("sidebar", className)} aria-label={label}>
-      <div className="brand">{brand}</div>
+      <div className="brand">
+        {brand}
+        {badge !== undefined && <Badge className="brand-badge">{badge}</Badge>}
+      </div>
       {projectSlot !== undefined && <div className="sidebar-slot">{projectSlot}</div>}
       {groups.map((group) => {
         const headingId = `sidebar-group-${group.id}`;

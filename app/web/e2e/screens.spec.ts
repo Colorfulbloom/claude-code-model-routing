@@ -10,14 +10,7 @@ import { mkdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import type { BrowserContext, Page } from "@playwright/test";
 import { en } from "../src/strings/en";
-import {
-  expectLocked,
-  expectOtherTabBack,
-  expectUnlocked,
-  fill,
-  gateHeading,
-  linkFor,
-} from "./gate";
+import { expectLocked, expectOtherTabBack, expectUnlocked, gateHeading, linkFor } from "./gate";
 import { expect, test } from "./server";
 
 const OUT = resolve(import.meta.dirname, "..", "test-results", "screens");
@@ -110,7 +103,7 @@ test.describe("picker", () => {
       await page.setViewportSize(size);
       const opener =
         size.width === 375
-          ? page.getByRole("button", { name: fill(en.project_aria, { name: PROJECT_NAME }) })
+          ? page.getByRole("button", { name: PROJECT_NAME, exact: true })
           : page.getByRole("button", { name: new RegExp(en.project_label) });
       await opener.click();
       await expect(page.getByRole("dialog")).toBeVisible();

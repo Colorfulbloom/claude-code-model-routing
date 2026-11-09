@@ -1,9 +1,12 @@
 import { useId } from "react";
 import {
   Button as AriaButton,
+  Collection,
+  Header,
   Label,
   ListBox,
   ListBoxItem,
+  ListBoxSection,
   Popover,
   Select as AriaSelect,
   SelectValue,
@@ -20,6 +23,8 @@ export interface SelectOption {
   label: string;
   /** A second block in muted text. It stays out of the closed button. */
   description?: React.ReactNode;
+  /** A group heading. Items with the same heading sit together, in the order the groups first appear. */
+  group?: string;
 }
 
 export interface SelectProps {
@@ -42,6 +47,33 @@ export interface SelectProps {
   className?: string;
 }
 
+function OptionItem({ item }: { item: SelectOption }) {
+  return (
+    <ListBoxItem id={item.id} textValue={item.label} className="select-option">
+      <Text slot="label" className="select-option-label">
+        {item.label}
+      </Text>
+      {item.description !== undefined && (
+        <Text slot="description" className="select-option-description" elementType="div">
+          {item.description}
+        </Text>
+      )}
+    </ListBoxItem>
+  );
+}
+
+/** Items grouped by heading, in the order the headings first appear. */
+function groupItems(items: SelectOption[]): { heading: string; items: SelectOption[] }[] {
+  const groups: { heading: string; items: SelectOption[] }[] = [];
+  for (const item of items) {
+    const heading = item.group ?? "";
+    const found = groups.find((group) => group.heading === heading);
+    if (found === undefined) groups.push({ heading, items: [item] });
+    else found.items.push(item);
+  }
+  return groups;
+}
+
 /** The options of a Select. It also renders on its own, which the component sheet and the tray use. */
 export function SelectList({
   items,
@@ -59,35 +91,37 @@ export function SelectList({
   autoFocus?: boolean;
   emptyState?: React.ReactNode;
 }) {
+  const grouped = items.some((item) => item.group !== undefined);
+  const shared = {
+    className: cx("select-list", className),
+    ...(onChange !== undefined
+      ? {
+          selectionMode: "single" as const,
+          disallowEmptySelection: true,
+          onSelectionChange: (keys: "all" | Set<React.Key>) => {
+            const [first] = keys === "all" ? [] : [...keys];
+            if (first !== undefined) onChange(String(first));
+          },
+        }
+      : {}),
+    ...(emptyState !== undefined ? { renderEmptyState: () => emptyState } : {}),
+    ...rest,
+  };
+  if (grouped) {
+    return (
+      <ListBox {...shared}>
+        {groupItems(items).map((group) => (
+          <ListBoxSection key={group.heading} className="select-section">
+            <Header className="select-group-heading">{group.heading}</Header>
+            <Collection items={group.items}>{(item) => <OptionItem item={item} />}</Collection>
+          </ListBoxSection>
+        ))}
+      </ListBox>
+    );
+  }
   return (
-    <ListBox
-      className={cx("select-list", className)}
-      items={items}
-      {...(onChange !== undefined
-        ? {
-            selectionMode: "single" as const,
-            disallowEmptySelection: true,
-            onSelectionChange: (keys: "all" | Set<React.Key>) => {
-              const [first] = keys === "all" ? [] : [...keys];
-              if (first !== undefined) onChange(String(first));
-            },
-          }
-        : {})}
-      {...(emptyState !== undefined ? { renderEmptyState: () => emptyState } : {})}
-      {...rest}
-    >
-      {(item) => (
-        <ListBoxItem id={item.id} textValue={item.label} className="select-option">
-          <Text slot="label" className="select-option-label">
-            {item.label}
-          </Text>
-          {item.description !== undefined && (
-            <Text slot="description" className="select-option-description" elementType="div">
-              {item.description}
-            </Text>
-          )}
-        </ListBoxItem>
-      )}
+    <ListBox items={items} {...shared}>
+      {(item) => <OptionItem item={item} />}
     </ListBox>
   );
 }

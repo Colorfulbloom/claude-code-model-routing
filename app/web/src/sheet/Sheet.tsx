@@ -16,6 +16,7 @@ const stateWords: Record<string, string> = {
   focus: W.cs_s_focus,
   pressed: W.cs_s_pressed,
   disabled: W.cs_s_disabled,
+  loading: W.cs_s_loading,
   selected: W.cs_s_selected,
   empty: W.cs_s_empty,
   error: W.cs_s_error,

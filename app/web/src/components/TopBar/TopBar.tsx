@@ -1,3 +1,4 @@
+import { Badge } from "../Badge/Badge";
 import { cx } from "../cx";
 import "./TopBar.css";
 
@@ -6,11 +7,11 @@ export const states = ["default", "with-project", "project-open"] as const;
 export interface TopBarProps {
   /** The page name. The page h1 stays in the main content. */
   title: string;
-  /** The project button. Its accessible name starts with `projectLabel`, then the name. */
+  /** A quiet mark after the title, such as "Demo data". Left out on real data. */
+  badge?: string;
+  /** The project button. Its visible name is its accessible name, so a screen reader hears what is on screen. */
   project?: {
     name: string;
-    /** The full accessible name, such as "Project, Tidewater reporting". */
-    label: string;
     /** True while the project tray is open. It draws the 2px accent ring. */
     open?: boolean;
     /** The name is the "Pick a project" placeholder, so it shows muted. */
@@ -26,10 +27,13 @@ export interface TopBarProps {
  * Sticky 52px bar with the page name and the project button at 720px and below (components.md
  * entry 2). The button opens the project tray, so it carries aria-haspopup and aria-expanded.
  */
-export function TopBar({ title, project, projectRef, className }: TopBarProps) {
+export function TopBar({ title, badge, project, projectRef, className }: TopBarProps) {
   return (
     <header className={cx("top-bar", className)}>
-      <p className="top-bar-title">{title}</p>
+      <div className="top-bar-name">
+        <p className="top-bar-title">{title}</p>
+        {badge !== undefined && <Badge>{badge}</Badge>}
+      </div>
       {project !== undefined && (
         <button
           type="button"
@@ -37,7 +41,6 @@ export function TopBar({ title, project, projectRef, className }: TopBarProps) {
           ref={projectRef}
           aria-haspopup="listbox"
           aria-expanded={project.open === true}
-          aria-label={project.label}
           onClick={project.onPress}
         >
           <span

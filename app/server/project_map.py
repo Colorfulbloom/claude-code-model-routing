@@ -10,7 +10,9 @@ and for the totals query. It joins two sources.
 * Every store folder that no listed project claims becomes an unlisted project. Its
   name is the last part of the folder's most common session cwd, its key is the
   readable ``projects.slug`` of that name (suffix ``-2``, ``-3`` on a clash), and its
-  state says whether that cwd exists and has a ``.claude`` folder.
+  state says whether that cwd exists and has a ``.claude`` folder. Its display path
+  is the cwd shortened against home, or just the name when that would still be an
+  absolute path. Its ``path`` is never read for settings (the model check skips it).
 
 The old app counted these as part of "All projects" without listing them. The map is
 pure apart from the connection it reads and the ``is_dir`` checks on the unlisted
@@ -42,6 +44,9 @@ class MappedProject:
             project with no transcripts.
         listed: True for a project in the routing-dashboard.json list (or the
             implicit current project), False for one found only in the store.
+        path: The project's real folder (a listed project's resolved path, an unlisted
+            one's most common cwd), or None when none is known. Server side only, for
+            reads that need the folder. It is never sent to the page.
     """
 
     key: str
@@ -50,6 +55,7 @@ class MappedProject:
     state: str
     folders: frozenset[str]
     listed: bool
+    path: str | None = None
 
 
 def _below(path: str, base: str | None) -> str | None:
@@ -101,6 +107,19 @@ def _name_from_cwd(cwd: str | None, folder: str) -> str:
         return folder
     parts = [p for p in _PATH_SPLIT.split(cwd.rstrip("/\\")) if p]
     return parts[-1] if parts else folder
+
+
+def _unlisted_display(cwd: str | None, name: str, ctx: projects.ProjectsContext) -> str:
+    """Return the path text for an unlisted project, never an absolute path.
+
+    A cwd under the home folder (or the fixture root) shows in its shortened form
+    ("~/work/x"). Any other cwd would show in full, so the folder-derived name shows
+    instead. With no cwd the name is the store folder's name.
+    """
+    if cwd is None:
+        return name
+    shown = display_path(cwd, ctx.home, ctx.root)
+    return name if shown == cwd else shown
 
 
 def _state_of(path: str | None) -> str:
@@ -176,6 +195,7 @@ def map_projects(
                 state=project.state,
                 folders=mine,
                 listed=True,
+                path=project.path,
             )
         )
 
@@ -191,10 +211,11 @@ def map_projects(
             MappedProject(
                 key=_unique_key(projects.slug(name), used),
                 name=name,
-                display_path=(display_path(cwd, ctx.home, ctx.root) if cwd else folder),
+                display_path=_unlisted_display(cwd, name, ctx),
                 state=_state_of(cwd),
                 folders=frozenset({folder}),
                 listed=False,
+                path=cwd,
             )
         )
     return out

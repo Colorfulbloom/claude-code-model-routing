@@ -1,5 +1,6 @@
 """Tests for the store writer: schedule, first run, failures, followers and jobs."""
 
+import json
 import os
 import shutil
 import sqlite3
@@ -1015,3 +1016,181 @@ def test_a_nudge_runs_one_attempt_and_keeps_the_schedule_when_it_fails(
     w.tick()
     assert len(runs) == 3
     assert w.snapshot().retry_at == clock.now + timedelta(seconds=60)
+
+
+# ------------------------------------------------------------------ active loop
+
+
+def _keys(layout: StoreLayout) -> set[str]:
+    conn = reader(layout)
+    try:
+        return {str(r[0]) for r in conn.execute("SELECT key FROM requests")}
+    finally:
+        conn.close()
+
+
+def test_active_folders_are_checked_every_half_second_running_ones_every_second(
+    config: Config, layout: StoreLayout, clock: Clock, writers: list[StoreWriter]
+) -> None:
+    live = config.main(h.S1, "-work-live")
+    warm = config.main(h.S2, "-work-warm")
+    config.write(live, [h.assistant(595, "a")])  # 5 s before the clock: active
+    config.write(warm, [h.assistant(300, "w", sid=h.S2)])  # 5 minutes: running only
+    w = make(writers, layout, config, clock)
+    w.tick()
+    assert w.snapshot().state == "done"
+    config.append(live, [h.assistant(598, "a2")])
+    config.append(warm, [h.assistant(301, "w2", sid=h.S2)])
+    assert w.tick() == pytest.approx(0.5)  # an active session shortens the wait
+    clock.advance(0.5)
+    w.tick()  # active
+    assert _keys(layout) == {"a", "a2", "w"}  # the running-only folder waits
+    assert w.tick() == pytest.approx(0.5)
+    clock.advance(0.5)
+    w.tick()  # hot, which covers every running folder
+    assert _keys(layout) == {"a", "a2", "w", "w2"}
+
+
+def test_a_hot_pass_restarts_the_active_timer(
+    config: Config, layout: StoreLayout, clock: Clock, writers: list[StoreWriter]
+) -> None:
+    config.write(config.main(), [h.assistant(595, "a")])
+    w = make(writers, layout, config, clock)
+    w.tick()
+    clock.advance(1.0)
+    w.tick()  # hot
+    assert w.tick() == pytest.approx(0.5)  # the active timer began again
+
+
+def test_the_active_loop_ends_when_the_session_goes_quiet(
+    config: Config, layout: StoreLayout, clock: Clock, writers: list[StoreWriter]
+) -> None:
+    config.write(config.main(), [h.assistant(595, "a")])
+    w = make(writers, layout, config, clock)
+    w.tick()
+    assert w.tick() == pytest.approx(0.5)
+    clock.advance(10)
+    w.tick()  # cold, 15 s after the request
+    assert w.tick() == pytest.approx(0.5)  # still inside 60 s
+    clock.advance(55)  # 70 s after the request
+    w.tick()  # a cold pass finds nobody active
+    assert w.tick() == pytest.approx(1.0)  # back to the hot interval
+
+
+def test_a_quiet_store_wakes_once_a_second(
+    config: Config, layout: StoreLayout, clock: Clock, writers: list[StoreWriter]
+) -> None:
+    config.write(config.main(), [h.assistant(0, "a")])  # ten minutes old
+    w = make(writers, layout, config, clock)
+    w.tick()
+    assert w.tick() == pytest.approx(1.0)
+
+
+# ------------------------------------------------------------------ health
+
+
+def health_of(layout: StoreLayout) -> dict[str, object]:
+    return json.loads((layout.root / "run" / "health.json").read_text())
+
+
+def make_health(
+    writers: list[StoreWriter], layout: StoreLayout, config: Config, clock: Clock
+) -> StoreWriter:
+    (layout.root / "run").mkdir(parents=True, exist_ok=True)
+    path = layout.root / "run" / "health.json"
+    return make(writers, layout, config, clock, health_path=path)
+
+
+def test_the_first_pass_writes_the_health_file_with_numbers_only(
+    config: Config, layout: StoreLayout, clock: Clock, writers: list[StoreWriter]
+) -> None:
+    seed(config)
+    w = make_health(writers, layout, config, clock)
+    w.tick()
+    body = health_of(layout)
+    assert set(body) == {"at", "hot_pass_ms", "cold_pass_ms", "lag_ms"}
+    assert body["at"] == NOW.isoformat()
+    assert isinstance(body["cold_pass_ms"], int)
+    assert body["hot_pass_ms"] == 0  # no hot pass has run
+    assert body["lag_ms"] is None  # the first full pass measures no lag
+    assert str(layout.root) not in json.dumps(body)
+    mode = (layout.root / "run" / "health.json").stat().st_mode & 0o777
+    assert mode == 0o600
+    assert not list((layout.root / "run").glob(".health-*"))  # no temp file is left
+
+
+def test_the_lag_is_the_pass_end_minus_the_changed_files_mtime(
+    config: Config, layout: StoreLayout, clock: Clock, writers: list[StoreWriter]
+) -> None:
+    seed(config)
+    w = make_health(writers, layout, config, clock)
+    w.tick()
+    clock.advance(31)  # past the 30 s health interval
+    path = config.main(h.S1)
+    config.append(path, [h.assistant(640, "c")])
+    stamp = (clock.now - timedelta(seconds=0.4)).timestamp()
+    os.utime(path, (stamp, stamp))
+    w.tick()  # a cold pass reads the file
+    body = health_of(layout)
+    assert body["lag_ms"] == pytest.approx(400, abs=2)
+    assert body["at"] == clock.now.isoformat()
+    assert isinstance(body["cold_pass_ms"], int)
+
+
+def test_a_hot_pass_sets_the_hot_time(
+    config: Config, layout: StoreLayout, clock: Clock, writers: list[StoreWriter]
+) -> None:
+    config.write(config.main(), [h.assistant(595, "a")])
+    w = make_health(writers, layout, config, clock)
+    w.tick()
+    clock.advance(31)
+    w.tick()  # a cold pass, so the file is rewritten
+    clock.advance(1)
+    config.append(config.main(), [h.assistant(640, "b")])
+    w.tick()  # a hot pass: not written yet, under 30 s since the last write
+    assert health_of(layout)["at"] == (NOW + timedelta(seconds=31)).isoformat()
+    clock.advance(30)
+    w.tick()
+    assert health_of(layout)["at"] != (NOW + timedelta(seconds=31)).isoformat()
+
+
+def test_the_health_file_is_written_at_most_every_thirty_seconds(
+    config: Config, layout: StoreLayout, clock: Clock, writers: list[StoreWriter]
+) -> None:
+    seed(config)
+    w = make_health(writers, layout, config, clock)
+    w.tick()
+    first = (layout.root / "run" / "health.json").read_bytes()
+    for _ in range(5):
+        clock.advance(10)
+        w.tick()  # a cold pass every ten seconds, 50 s in all
+    mid = health_of(layout)["at"]
+    assert mid != json.loads(first)["at"]
+    assert mid == (NOW + timedelta(seconds=30)).isoformat()  # the 30 s pass only
+
+
+def test_a_health_path_outside_the_store_is_never_written(
+    config: Config,
+    layout: StoreLayout,
+    clock: Clock,
+    writers: list[StoreWriter],
+    tmp_path: Path,
+) -> None:
+    seed(config)
+    outside = tmp_path / "outside" / "health.json"
+    outside.parent.mkdir()
+    w = make(writers, layout, config, clock, health_path=outside)
+    w.tick()
+    assert w.snapshot().state == "done"
+    assert list(outside.parent.iterdir()) == []
+
+
+def test_a_health_write_that_fails_never_fails_the_pass(
+    config: Config, layout: StoreLayout, clock: Clock, writers: list[StoreWriter]
+) -> None:
+    seed(config)
+    path = layout.root / "no-such-folder" / "h.json"
+    w = make(writers, layout, config, clock, health_path=path)
+    w.tick()  # the run folder is missing, so the write fails and the pass goes on
+    assert w.snapshot().state == "done"
+    assert w.snapshot().pass_error is None

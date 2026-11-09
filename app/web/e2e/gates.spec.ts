@@ -274,9 +274,8 @@ test.describe("project picker with projects", () => {
     await expectUnlocked(page);
     await page.setViewportSize({ width: 375, height: 800 });
     await page.emulateMedia({ colorScheme: "light" });
-    await page
-      .getByRole("button", { name: fill(en.project_aria, { name: "Tidewater Reporting" }) })
-      .click();
+    // The button's name is the words on it, so a screen reader hears what is on screen.
+    await page.getByRole("button", { name: "Tidewater Reporting", exact: true }).click();
     await expect(page.getByRole("dialog")).toBeVisible();
     for (const theme of ["light", "dark"] as const) {
       await page.emulateMedia({ colorScheme: theme });

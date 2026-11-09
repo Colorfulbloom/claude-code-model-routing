@@ -37,6 +37,8 @@ function appInfo(state: AppInfo["ingest"]["state"] = "done"): AppInfo {
     running: [],
     to_fix_count: 2,
     editable_projects: [],
+    mode: "fixture",
+    clock: { kind: "real", rate_n: null },
   };
 }
 

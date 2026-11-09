@@ -87,6 +87,7 @@ RECORD_FIELDS = [
     "speed",
     "service_tier",
     "inference_geo",
+    "version",
 ]
 
 

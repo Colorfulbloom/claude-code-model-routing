@@ -1,0 +1,80 @@
+{
+  "agents": {
+    "@main": {
+      "effort": {
+        "cap": {
+          "file": "projects/tidewater-reporting/.claude/settings.json",
+          "key": "maxEffortLevel",
+          "line": 3,
+          "model": "claude-opus-5-5",
+          "value": "high"
+        },
+        "expected": {
+          "becomes": "high",
+          "file": "projects/tidewater-reporting/.claude/settings.local.json",
+          "key": "effortLevel",
+          "layer": "env",
+          "line": 3,
+          "reason": "xhigh from projects/tidewater-reporting/.claude/settings.local.json runs as high, because maxEffortLevel caps Opus 5.5 at high.",
+          "rule_id": "effort-lowered-by-cap",
+          "status": "lowered",
+          "value": "xhigh",
+          "via": "CLAUDE_CODE_EFFORT_LEVEL"
+        },
+        "pinned": {
+          "file": "projects/tidewater-reporting/.claude/settings.local.json",
+          "id": "xhigh",
+          "line": 3,
+          "status": "lowered",
+          "value": "xhigh"
+        },
+        "ran": [
+          "high"
+        ],
+        "runs_match_pin": false,
+        "state": "matches_lowered"
+      },
+      "mismatched_runs": 0,
+      "model": {
+        "cap": null,
+        "expected": {
+          "becomes": null,
+          "file": "config/settings.json",
+          "key": "model",
+          "layer": "user",
+          "line": 2,
+          "reason": "config/settings.json sets the model. --model beats ANTHROPIC_MODEL, which beats the model key in any file, managed included.",
+          "rule_id": "model-main-session-order",
+          "status": "in_effect",
+          "value": "claude-opus-5-5",
+          "via": null
+        },
+        "pinned": {
+          "file": "config/settings.json",
+          "id": "claude-opus-5-5",
+          "line": 2,
+          "status": "in_effect",
+          "value": "claude-opus-5-5"
+        },
+        "ran": [
+          "claude-opus-5-5"
+        ],
+        "runs_match_pin": false,
+        "state": "matches"
+      },
+      "pinned": "both",
+      "source": "settings",
+      "state": "matches_lowered",
+      "total_runs": 1
+    },
+    "deep-reasoner": null,
+    "designer": null,
+    "fast-worker": null,
+    "judge": null,
+    "scout": null,
+    "tech-writer": null,
+    "verifier": null
+  },
+  "at": "2026-10-30T23:10:00+00:00",
+  "entries_count": 39
+}

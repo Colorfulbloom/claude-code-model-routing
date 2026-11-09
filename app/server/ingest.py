@@ -62,6 +62,7 @@ BATCH_ROWS = 50_000
 BATCH_READ_BYTES = 64 * 1024 * 1024
 KEY_CHUNK = 400
 RUNNING_WINDOW = timedelta(minutes=30)
+ACTIVE_WINDOW = timedelta(seconds=60)
 KEEP_PASSES = 1000
 KEY_TIER_HASH = "tier_hash"
 
@@ -190,7 +191,11 @@ class PassScope:
 
 @dataclass
 class PassResult:
-    """What a pass did. ``changed`` is True when it wrote any store data."""
+    """What a pass did. ``changed`` is True when it wrote any store data.
+
+    ``newest_mtime_ns`` is the newest modification time among the files the pass read,
+    or None when it read none. The writer turns it into the lag of the pass.
+    """
 
     kind: PassKind
     files_seen: int = 0
@@ -200,6 +205,7 @@ class PassResult:
     rescans: int = 0
     changed: bool = False
     cancelled: bool = False
+    newest_mtime_ns: int | None = None
 
 
 class _Row(NamedTuple):
@@ -252,6 +258,7 @@ class _Batch:
 
     touched: set[str] = field(default_factory=set[str])
     cells: set[tuple[str, str]] = field(default_factory=set[tuple[str, str]])
+    labels: set[str] = field(default_factory=set[str])
     rows: int = 0
     read_bytes: int = 0
 
@@ -329,6 +336,13 @@ def _marks(count: int) -> str:
     return ",".join("?" * count)
 
 
+def _ints(pairs: Sequence[tuple[int, str]]) -> Iterable[Sequence[int]]:
+    """Yield the file ids of (file id, agent type) pairs in chunks."""
+    ids = [i for i, _type in pairs]
+    for start in range(0, len(ids), KEY_CHUNK):
+        yield ids[start : start + KEY_CHUNK]
+
+
 class Ingestor:
     """Runs ingest passes over one Claude config folder into one store connection."""
 
@@ -375,6 +389,14 @@ class Ingestor:
     def running_folders(self, now: datetime) -> frozenset[str]:
         """Return the folders of sessions with a request in the last 30 minutes."""
         cutoff = ts_text(now - RUNNING_WINDOW)
+        rows = self.conn.execute(
+            "SELECT DISTINCT folder FROM sessions WHERE last_ts >= ?", (cutoff,)
+        ).fetchall()
+        return frozenset(str(r[0]) for r in rows)
+
+    def active_folders(self, now: datetime) -> frozenset[str]:
+        """Return the folders of sessions with a request in the last 60 seconds."""
+        cutoff = ts_text(now - ACTIVE_WINDOW)
         rows = self.conn.execute(
             "SELECT DISTINCT folder FROM sessions WHERE last_ts >= ?", (cutoff,)
         ).fetchall()
@@ -606,6 +628,15 @@ class Ingestor:
                 "UPDATE runs SET agent_type = ? WHERE file_id = ?",
                 [(t, i) for i, t in plan.agent_types],
             )
+            self._assign_labels(
+                str(r[0])
+                for chunk in _ints(plan.agent_types)
+                for r in self.conn.execute(
+                    "SELECT DISTINCT session_id FROM runs"  # noqa: S608
+                    f" WHERE file_id IN ({_marks(len(chunk))})",
+                    tuple(chunk),
+                )
+            )
         except BaseException:
             self._rollback()
             raise
@@ -652,6 +683,7 @@ class Ingestor:
             for winner in self._winners(chunk):
                 batch.cells.add((winner.session_id, winner.ts[:16]))
         self._rebuild_cells(batch.cells)
+        self._assign_labels(batch.labels)
         self.conn.execute("COMMIT")
 
     def _rollback(self) -> None:
@@ -685,6 +717,9 @@ class Ingestor:
             return
         if work.rescan:
             result.rescans += 1
+        mtime_ns = item.st.st_mtime_ns
+        if result.newest_mtime_ns is None or mtime_ns > result.newest_mtime_ns:
+            result.newest_mtime_ns = mtime_ns
         file_id = self._file_id(work, now)
         keys = [
             request_key(r, o, file_id)
@@ -707,6 +742,7 @@ class Ingestor:
         self._write_session(item, parsed.records)
         if item.kind == transcripts.AGENT and item.run_id is not None:
             self._write_run(file_id, item, agent_type)
+            batch.labels.add(item.session_id)
         self._write_links(file_id, item, parsed.link_state)
         self._write_events(file_id, item, parsed.link_state, rescan=work.rescan)
         self._write_file_row(work, file_id, parsed, now)
@@ -786,9 +822,17 @@ class Ingestor:
             ),
             None,
         )
+        version = next(
+            (
+                r.version
+                for r in sorted(records, key=lambda r: r.ts_utc, reverse=True)
+                if r.version
+            ),
+            None,
+        )
         self.conn.execute(
-            "INSERT INTO sessions (session_id, folder, first_ts, last_ts, cwd, branch)"
-            " VALUES (?, ?, ?, ?, ?, ?)"
+            "INSERT INTO sessions (session_id, folder, first_ts, last_ts, cwd, branch,"
+            " claude_version) VALUES (?, ?, ?, ?, ?, ?, ?)"
             " ON CONFLICT (session_id) DO UPDATE SET"
             " first_ts = CASE WHEN excluded.first_ts IS NOT NULL AND"
             "   (sessions.first_ts IS NULL OR excluded.first_ts < sessions.first_ts)"
@@ -801,8 +845,12 @@ class Ingestor:
             "   THEN excluded.cwd ELSE sessions.cwd END,"
             " branch = CASE WHEN excluded.branch IS NOT NULL AND"
             "   (sessions.branch IS NULL OR excluded.first_ts < sessions.first_ts)"
-            "   THEN excluded.branch ELSE sessions.branch END",
-            (item.session_id, item.folder, first_ts, last_ts, cwd, branch),
+            "   THEN excluded.branch ELSE sessions.branch END,"
+            " claude_version = CASE WHEN excluded.claude_version IS NOT NULL AND"
+            "   (sessions.claude_version IS NULL OR sessions.last_ts IS NULL OR"
+            "    excluded.last_ts >= sessions.last_ts)"
+            "   THEN excluded.claude_version ELSE sessions.claude_version END",
+            (item.session_id, item.folder, first_ts, last_ts, cwd, branch, version),
         )
 
     def _write_run(self, file_id: int, item: FoundFile, agent_type: str | None) -> None:
@@ -917,6 +965,43 @@ class Ingestor:
                 json.dumps(parsed.link_state.export_state(), separators=(",", ":")),
             ),
         )
+
+    # ------------------------------------------------------------ run labels
+
+    def _assign_labels(self, sessions: Iterable[str]) -> None:
+        """Give each typed run with no label the next free number of its type.
+
+        Runs that get a number in the same call are ordered by first request, then
+        run id. A number is never reassigned, so a run that arrives later takes the
+        next one and no shown row is renamed. A run with no agent type waits until
+        its type is known, and the timeline reads its missing label as 1.
+        """
+        for session_id in sorted(set(sessions)):
+            pending = self.conn.execute(
+                "SELECT r.run_id, r.agent_type,"
+                " (SELECT MIN(q.ts) FROM requests AS q WHERE q.file_id = r.file_id)"
+                " FROM runs AS r WHERE r.session_id = ? AND r.label_n IS NULL"
+                " AND r.agent_type IS NOT NULL AND r.agent_type <> ''",
+                (session_id,),
+            ).fetchall()
+            if not pending:
+                continue
+            last = {
+                str(r[0]): int(r[1])
+                for r in self.conn.execute(
+                    "SELECT agent_type, MAX(label_n) FROM runs WHERE session_id = ?"
+                    " AND label_n IS NOT NULL GROUP BY agent_type",
+                    (session_id,),
+                )
+            }
+            pending.sort(key=lambda r: (r[2] is None, r[2] or "", str(r[0])))
+            for run_id, agent_type, _first in pending:
+                number = last.get(str(agent_type), 0) + 1
+                last[str(agent_type)] = number
+                self.conn.execute(
+                    "UPDATE runs SET label_n = ? WHERE session_id = ? AND run_id = ?",
+                    (number, session_id, run_id),
+                )
 
     # ------------------------------------------------------------ minute_usage
 

@@ -93,8 +93,28 @@
 .sheet-cell[data-component="NewTabLine"],
 .sheet-cell[data-component="WaitHold"],
 .sheet-cell[data-component="ProjectPicker"],
-.sheet-cell[data-component="MoreCard"] {
+.sheet-cell[data-component="MoreCard"],
+.sheet-cell[data-component="TableWell"] {
   width: min(100%, 560px);
+}
+
+.sheet-cell[data-component="Tile"] {
+  width: min(100%, 280px);
+}
+
+.sheet-cell[data-component="Tile"] .tile {
+  height: 100%;
+}
+
+.sheet-cell[data-component="StackedBars"],
+.sheet-cell[data-component="TimelineLane"] {
+  width: 100%;
+}
+
+/* A moved row's ring fades after 2 seconds on the page. The sheet holds it for review. */
+.sheet-hold .lane-row-moved {
+  animation: none;
+  box-shadow: inset 0 0 0 2px var(--accent);
 }
 
 .sheet-caption {

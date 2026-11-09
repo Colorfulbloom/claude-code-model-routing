@@ -16,6 +16,11 @@ export interface CommandRowProps {
   /** Forces the copied status, for the component sheet. */
   copied?: boolean;
   className?: string;
+  /**
+   * Says the copied status through the page's one polite region. The visible status stays, but it
+   * is not a second live region. Without it the row carries its own role="status".
+   */
+  onStatus?: (text: string) => void;
 }
 
 /** The command in a code well with a Copy button and a polite "Copied" status (components.md entry 31). */
@@ -26,6 +31,7 @@ export function CommandRow({
   primary = false,
   copied = false,
   className,
+  onStatus,
 }: CommandRowProps) {
   const [done, setDone] = useState(false);
 
@@ -33,6 +39,7 @@ export function CommandRow({
     try {
       await navigator.clipboard.writeText(command);
       setDone(true);
+      onStatus?.(copiedLabel);
     } catch {
       /* the clipboard can be blocked, and the command stays selectable */
     }
@@ -49,7 +56,10 @@ export function CommandRow({
       >
         {copyLabel}
       </Button>
-      <p className="command-row-status muted" role="status">
+      <p
+        className="command-row-status muted"
+        {...(onStatus === undefined ? { role: "status" } : {})}
+      >
         {done || copied ? copiedLabel : ""}
       </p>
     </div>

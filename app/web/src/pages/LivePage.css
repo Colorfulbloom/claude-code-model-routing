@@ -1,0 +1,326 @@
+/*
+ * The Live page (a-m2 boards, m2.css). Tokens only. Lane, bars, tiles and cards bring their own
+ * rules, so this file holds the header, the notice, the states without a session and the spacing
+ * between the cards.
+ */
+.live-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.live-title {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+
+.live-state {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.live-h1 {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight);
+  overflow-wrap: anywhere;
+}
+
+.live-sub {
+  margin-top: 2px;
+  color: var(--text-muted);
+}
+
+.live-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  align-self: center;
+}
+
+.live-when {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+
+/* The notice that a newer session started: a raised strip with an accent start edge. */
+.live-notice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: var(--raised-bg);
+  border: 1px solid var(--raised-border);
+  border-inline-start: 4px solid var(--accent);
+  border-radius: var(--radius-lg);
+  font-size: var(--text-sm);
+}
+
+.live-notice-mark {
+  color: var(--accent);
+  font-size: var(--text-xs);
+}
+
+.live-notice-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.live-lost,
+.live-gone {
+  margin-bottom: var(--space-4);
+}
+
+.live-who,
+.live-lower {
+  margin-top: var(--space-4);
+}
+
+.live-who-body {
+  display: grid;
+  gap: 0;
+}
+
+.tiles + .live-who {
+  margin-top: var(--space-4);
+}
+
+/* Model check */
+.live-mc {
+  display: grid;
+  gap: var(--space-3);
+  align-content: start;
+}
+
+/* The status chip already carries the glyph, so the finding's own mark would double it. */
+.live-mc .raised-finding {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.live-mc .raised-finding-mark {
+  display: none;
+}
+
+.live-mc .raised-finding-marked .raised-finding-title {
+  grid-column: 1;
+}
+
+.live-mc-title {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+}
+
+.live-mc-body {
+  margin-top: var(--space-1);
+}
+
+.live-mc-ok {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+/* Session gone (m2.css .m2-gone): a roomier card with a 16px title and a larger mark. */
+.raised-finding.live-gone {
+  padding: var(--space-4) var(--space-5);
+}
+
+.raised-finding.live-gone .raised-finding-title {
+  font-size: var(--text-lg);
+}
+
+.raised-finding.live-gone .raised-finding-mark {
+  font-size: var(--text-lg);
+}
+
+/* The board keeps the 12px cell padding on numeric columns too, so Tokens and Cost never touch. */
+.live-lower .table-well-th.table-well-end,
+.live-lower .table-well-td.table-well-end {
+  padding-right: var(--space-3);
+}
+
+/* Latest requests footer */
+.live-rq-foot {
+  display: grid;
+  gap: 2px;
+  margin-top: var(--space-3);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.live-rq-warn {
+  color: var(--text);
+}
+
+/* Session Select options */
+.live-opt {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: baseline;
+}
+
+.live-opt-project {
+  font-size: var(--text-xs);
+}
+
+/* States without a session */
+.live-empty {
+  display: grid;
+  gap: var(--space-3);
+  justify-items: start;
+  margin-bottom: var(--space-4);
+  padding: var(--space-6) var(--space-5);
+}
+
+.live-empty-mark {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--text-muted);
+  font-size: var(--text-2xl);
+  line-height: 1;
+}
+
+.live-empty-title {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+}
+
+.live-empty-body {
+  max-width: 60ch;
+}
+
+.live-cmd {
+  width: 100%;
+  max-width: 640px;
+  margin: 0;
+}
+
+.live-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+  align-items: center;
+}
+
+.live-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+}
+
+.live-other {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.live-other li + li {
+  border-top: 1px solid var(--border);
+}
+
+.live-other-link {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    "name state chev"
+    "meta state chev";
+  gap: 0 var(--space-4);
+  align-items: center;
+  min-height: 52px;
+  padding: var(--space-2) 0;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.live-other-link[data-hovered] {
+  background: var(--nav-hover-bg);
+}
+
+.live-other-name {
+  grid-area: name;
+  font-weight: var(--weight-medium);
+  overflow-wrap: anywhere;
+}
+
+.live-other-meta {
+  grid-area: meta;
+  font-size: var(--text-sm);
+}
+
+.live-other-state {
+  grid-area: state;
+}
+
+.live-other-chev {
+  grid-area: chev;
+  color: var(--text-muted);
+  font-size: var(--text-lg);
+}
+
+@media (width <= 720px) {
+  .live-h1 {
+    font-size: var(--text-lg);
+  }
+
+  .live-controls {
+    align-self: stretch;
+    width: 100%;
+  }
+
+  .live-controls > .select {
+    flex: 1 1 100%;
+  }
+
+  .live-controls > .select-btn {
+    flex: 1 1 100%;
+  }
+
+  .live-controls > .button {
+    margin-left: auto;
+  }
+
+  .live-when {
+    flex: 1;
+    white-space: normal;
+  }
+
+  .live-notice {
+    flex-wrap: wrap;
+  }
+
+  .live-empty {
+    padding: var(--space-4);
+  }
+
+  .raised-finding.live-gone {
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .live-other-link {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "name chev"
+      "meta chev"
+      "state chev";
+  }
+
+  .live-other-state {
+    justify-self: start;
+  }
+}

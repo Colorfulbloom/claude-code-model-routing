@@ -1,0 +1,22 @@
+.spark {
+  display: block;
+  width: 96px;
+  height: 36px;
+  border-bottom: 1px solid var(--border-strong);
+}
+
+.spark-bar {
+  fill: var(--accent);
+}
+
+.spark-last {
+  fill: var(--text);
+}
+
+.spark-stub {
+  fill: none;
+  stroke: var(--border-strong);
+  stroke-dasharray: 3 2;
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+}

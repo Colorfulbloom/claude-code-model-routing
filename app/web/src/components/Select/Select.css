@@ -147,6 +147,24 @@
   box-shadow: var(--shadow-card);
 }
 
+.select-section {
+  display: grid;
+  gap: 2px;
+}
+
+.select-section + .select-section {
+  margin-top: var(--space-2);
+}
+
+/* A group heading, as the board draws it: small, muted, uppercase. */
+.select-group-heading {
+  padding: var(--space-2) var(--space-2) var(--space-1);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 .select-option {
   display: grid;
   gap: 2px;

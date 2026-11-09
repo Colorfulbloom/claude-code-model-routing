@@ -14,5 +14,8 @@ export UV_TOOL_BIN_DIR="$root/.tools/bin"
 export UV_PROJECT_ENVIRONMENT="$root/app/.venv"
 export UV_PYTHON_PREFERENCE=only-managed
 export UV_NO_MODIFY_PATH=1
+# No cpython-313 __pycache__ beside the old-app modules that app code imports
+# (dashboard/, agent_md.py, tests/fixtures/), which sit outside app/.
+export PYTHONDONTWRITEBYTECODE=1
 
 exec "$root/.tools/uv/uv" "$@"

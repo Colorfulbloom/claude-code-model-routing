@@ -1,6 +1,6 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { CommandRow, states } from "./CommandRow";
 
 afterEach(cleanup);
@@ -44,5 +44,23 @@ describe("CommandRow", () => {
   it("shows the copied status when forced", () => {
     render(row({ copied: true }));
     expect(screen.getByRole("status")).toHaveTextContent("Copied to clipboard");
+  });
+
+  it("routes the copied status through onStatus and drops its own live region", async () => {
+    const user = userEvent.setup();
+    const said = vi.fn();
+    render(
+      <CommandRow
+        command="/bartab"
+        copyLabel="Copy command"
+        copiedLabel="Copied to clipboard"
+        onStatus={said}
+      />,
+    );
+    expect(screen.queryByRole("status")).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Copy command" }));
+    expect(await screen.findByText("Copied to clipboard")).toBeInTheDocument();
+    expect(said).toHaveBeenCalledWith("Copied to clipboard");
+    expect(screen.queryByRole("status")).toBeNull();
   });
 });

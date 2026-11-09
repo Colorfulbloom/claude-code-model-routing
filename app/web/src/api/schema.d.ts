@@ -55,6 +55,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/live/sessions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get Live Sessions */
+    get: operations["get_live_sessions"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/prices": {
     parameters: {
       query?: never;
@@ -89,6 +106,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/sessions/{session_id}/timeline": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get Timeline */
+    get: operations["get_timeline"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -102,6 +136,7 @@ export interface components {
       as_of: string | null;
       /** Claude Version */
       claude_version: string;
+      clock: components["schemas"]["ClockInfo"];
       /** Editable Projects */
       editable_projects: string[];
       /** Etag */
@@ -110,6 +145,11 @@ export interface components {
       ingest: components["schemas"]["Ingest"];
       /** Instance */
       instance: string;
+      /**
+       * Mode
+       * @enum {string}
+       */
+      mode: "demo" | "fixture" | "flow" | "real";
       /** Pass Running Since */
       pass_running_since: string | null;
       /** Running */
@@ -139,6 +179,19 @@ export interface components {
       reason_code: "no_space" | "unwritable" | "check_failed" | "copy_failed";
     };
     /**
+     * ClockInfo
+     * @description Which clock the server answers with. ``rate_n`` is set only for ``rate``.
+     */
+    ClockInfo: {
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind: "real" | "fixed" | "rate" | "test";
+      /** Rate N */
+      rate_n: number | null;
+    };
+    /**
      * CrossCheck
      * @description Result of comparing the active table with a second public list.
      */
@@ -150,6 +203,40 @@ export interface components {
        * @enum {string}
        */
       state: "agree" | "disagree" | "not_checked";
+    };
+    /**
+     * Cum
+     * @description Cumulative values at the end of one bucket.
+     */
+    Cum: {
+      /** Cache Read */
+      cache_read: number;
+      /** Cost */
+      cost: number | null;
+      /** Tokens */
+      tokens: number;
+    };
+    /**
+     * EndedSession
+     * @description The newest session in a project that is no longer running.
+     */
+    EndedSession: {
+      /** Branch */
+      branch: string | null;
+      /** Id */
+      id: string;
+      /**
+       * Last Request
+       * Format: date-time
+       */
+      last_request: string;
+      /** Requests */
+      requests: number;
+      /**
+       * Started
+       * Format: date-time
+       */
+      started: string;
     };
     /**
      * ErrorEnvelope
@@ -225,6 +312,111 @@ export interface components {
       file: string | null;
     };
     /**
+     * LatestRequest
+     * @description One of the eight newest requests at or before T.
+     */
+    LatestRequest: {
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      /** Cache Read */
+      cache_read: number;
+      /** Cost */
+      cost: number | null;
+      /** Effort */
+      effort: string | null;
+      /** Id */
+      id: string;
+      /** Model */
+      model: string | null;
+      /** New Tokens */
+      new_tokens: number;
+      /** Output */
+      output: number;
+      /** Run Id */
+      run_id: string;
+      /** Tokens */
+      tokens: number;
+    };
+    /**
+     * LiveSession
+     * @description A running session in the Session Select.
+     */
+    LiveSession: {
+      /** Active */
+      active: boolean;
+      /** Branch */
+      branch: string | null;
+      /** Id */
+      id: string;
+      /**
+       * Last Request
+       * Format: date-time
+       */
+      last_request: string;
+      /** Project */
+      project: string;
+      /** Project Name */
+      project_name: string;
+      /** Requests */
+      requests: number;
+      /** Runs Working */
+      runs_working: number;
+      /**
+       * Started
+       * Format: date-time
+       */
+      started: string;
+      /**
+       * State
+       * @enum {string}
+       */
+      state: "working" | "idle";
+    };
+    /**
+     * LiveSessions
+     * @description Answer of ``GET /api/live/sessions``.
+     */
+    LiveSessions: {
+      /** As Of */
+      as_of: string | null;
+      /** Etag */
+      etag: string;
+      latest_ended: components["schemas"]["EndedSession"] | null;
+      /**
+       * Server Time
+       * Format: date-time
+       */
+      server_time: string;
+      /** Sessions */
+      sessions: components["schemas"]["LiveSession"][];
+      /**
+       * Unchanged
+       * @constant
+       */
+      unchanged: false;
+    };
+    /**
+     * LiveSessionsUnchanged
+     * @description The short session-list answer when the asked etag still matches.
+     */
+    LiveSessionsUnchanged: {
+      /** Etag */
+      etag: string;
+      /**
+       * Server Time
+       * Format: date-time
+       */
+      server_time: string;
+      /**
+       * Unchanged
+       * @constant
+       */
+      unchanged: true;
+    };
+    /**
      * MintRequest
      * @description Body of ``POST /api/access/mint``.
      */
@@ -239,6 +431,40 @@ export interface components {
     MintResponse: {
       /** Code */
       code: string;
+    };
+    /**
+     * ModelCheck
+     * @description Every agent's model check, plus how many are in effect.
+     */
+    ModelCheck: {
+      /** In Effect Count */
+      in_effect_count: number;
+      /** Rows */
+      rows: components["schemas"]["ModelCheckRow"][];
+    };
+    /**
+     * ModelCheckRow
+     * @description The model check for one agent type in the session.
+     */
+    ModelCheckRow: {
+      /** Agent */
+      agent: string | null;
+      /** Mismatched Runs */
+      mismatched_runs: number;
+      /** Params */
+      params: {
+        [key: string]: string;
+      };
+      ran: components["schemas"]["RanPair"];
+      /** Reason Code */
+      reason_code: string | null;
+      /** Runs */
+      runs: number;
+      set: components["schemas"]["SetPair"];
+      /** Status */
+      status:
+        | ("in_effect" | "overridden" | "ignored" | "lowered" | "invalid" | "default" | "unknown")
+        | null;
     };
     /**
      * ModelPrice
@@ -270,6 +496,16 @@ export interface components {
       source: "model_pricing" | "litellm" | "last_good" | "bundled";
       /** Tiers */
       tiers: components["schemas"]["PriceTier"][];
+    };
+    /**
+     * ModelTokens
+     * @description A legend entry, new tokens over the axis.
+     */
+    ModelTokens: {
+      /** Model */
+      model: string;
+      /** Tokens */
+      tokens: number;
     };
     /**
      * PassError
@@ -362,6 +598,40 @@ export interface components {
       projects: components["schemas"]["Project"][];
     };
     /**
+     * RanPair
+     * @description What the runs used, most common first. ``mixed`` when runs differ.
+     */
+    RanPair: {
+      /** Effort */
+      effort: string | null;
+      /** Mixed */
+      mixed: boolean;
+      /** Model */
+      model: string | null;
+    };
+    /**
+     * Round
+     * @description One round of a run. ``by`` is ``main``, a run id, or None.
+     */
+    Round: {
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      /** By */
+      by: string | null;
+      /** By Kind */
+      by_kind: ("coordinator" | "peer" | "human") | null;
+      /**
+       * Last Request
+       * Format: date-time
+       */
+      last_request: string;
+      /** N */
+      n: number;
+    };
+    /**
      * RunningItem
      * @description One session that is running now.
      */
@@ -370,6 +640,57 @@ export interface components {
       project: string;
       /** Session */
       session: string;
+    };
+    /**
+     * Segment
+     * @description A drawn stretch of a lane, one per round.
+     */
+    Segment: {
+      /**
+       * End
+       * Format: date-time
+       */
+      end: string;
+      /**
+       * Start
+       * Format: date-time
+       */
+      start: string;
+    };
+    /**
+     * SetPair
+     * @description The model and effort an agent's setup asks for.
+     */
+    SetPair: {
+      effort: components["schemas"]["SetValue"] | null;
+      model: components["schemas"]["SetValue"] | null;
+    };
+    /**
+     * SetValue
+     * @description What a file or setting sets, with its display path and line.
+     */
+    SetValue: {
+      /** File */
+      file: string | null;
+      /** Line */
+      line: number | null;
+      /** Scope */
+      scope: string | null;
+      /** Value */
+      value: string;
+    };
+    /**
+     * StateAt
+     * @description A state that starts at ``at`` and holds until the next entry.
+     */
+    StateAt: {
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      /** State */
+      state: string;
     };
     /**
      * SwapRequest
@@ -394,6 +715,291 @@ export interface components {
       project: string | null;
       /** Read Key */
       read_key: string;
+    };
+    /**
+     * Timeline
+     * @description Answer of ``GET /api/sessions/{id}/timeline``.
+     */
+    Timeline: {
+      /** As Of */
+      as_of: string | null;
+      axis: components["schemas"]["TimelineAxis"];
+      /** Buckets */
+      buckets: components["schemas"]["TimelineBucket"][];
+      /** Etag */
+      etag: string;
+      last_minute: components["schemas"]["Window"] | null;
+      model_check: components["schemas"]["ModelCheck"];
+      /** Models */
+      models: components["schemas"]["ModelTokens"][];
+      prices: components["schemas"]["TimelinePrices"];
+      /** Project */
+      project: string;
+      /** Requests */
+      requests: components["schemas"]["LatestRequest"][];
+      /** Runs */
+      runs: components["schemas"]["TimelineRun"][];
+      /**
+       * Server Time
+       * Format: date-time
+       */
+      server_time: string;
+      session: components["schemas"]["TimelineSession"];
+      totals: components["schemas"]["TimelineTotals"];
+      /**
+       * Unchanged
+       * @constant
+       */
+      unchanged: false;
+    };
+    /**
+     * TimelineAxis
+     * @description The x axis over the whole session, and the y ticks for new tokens.
+     */
+    TimelineAxis: {
+      /** Bucket Seconds */
+      bucket_seconds: number;
+      /**
+       * End
+       * Format: date-time
+       */
+      end: string;
+      /**
+       * Start
+       * Format: date-time
+       */
+      start: string;
+      /** Ticks */
+      ticks: string[];
+      /** Token Ticks */
+      token_ticks: number[];
+    };
+    /**
+     * TimelineBucket
+     * @description One bar. ``by_model`` holds new tokens and leaves out models with none.
+     */
+    TimelineBucket: {
+      /** By Model */
+      by_model: {
+        [key: string]: number;
+      };
+      /** Cache Read */
+      cache_read: number;
+      /** Cost */
+      cost: number | null;
+      /** Requests */
+      requests: number;
+      /**
+       * Start
+       * Format: date-time
+       */
+      start: string;
+      unpriced: components["schemas"]["Unpriced"];
+    };
+    /**
+     * TimelinePrices
+     * @description The price facts a cost label needs.
+     */
+    TimelinePrices: {
+      /**
+       * As Of
+       * Format: date
+       */
+      as_of: string;
+      /**
+       * Cross Check State
+       * @enum {string}
+       */
+      cross_check_state: "agree" | "disagree" | "not_checked";
+      /**
+       * Source
+       * @enum {string}
+       */
+      source: "model_pricing" | "litellm" | "last_good" | "bundled";
+    };
+    /**
+     * TimelineRun
+     * @description One agent run, or the main session (``agent`` None, ``parent`` None).
+     */
+    TimelineRun: {
+      /** Agent */
+      agent: string | null;
+      /** Cost */
+      cost: number | null;
+      /** Cum */
+      cum: components["schemas"]["Cum"][];
+      /** Depth */
+      depth: number;
+      /** Dispatch Order */
+      dispatch_order: number;
+      /** Effort */
+      effort: string | null;
+      /**
+       * First Request
+       * Format: date-time
+       */
+      first_request: string;
+      /** Label N */
+      label_n: number;
+      /**
+       * Last Request
+       * Format: date-time
+       */
+      last_request: string;
+      /** Model */
+      model: string | null;
+      /** Parent */
+      parent: string | null;
+      /** Parent At */
+      parent_at: string | null;
+      /** Parent Known */
+      parent_known: boolean;
+      /**
+       * Parent State
+       * @enum {string}
+       */
+      parent_state: "known" | "waiting" | "unknown";
+      /** Rounds */
+      rounds: components["schemas"]["Round"][];
+      /** Run Id */
+      run_id: string;
+      /** Segments */
+      segments: components["schemas"]["Segment"][];
+      /**
+       * State
+       * @enum {string}
+       */
+      state: "working" | "idle" | "finished";
+      /** States */
+      states: components["schemas"]["StateAt"][];
+      together: components["schemas"]["Together"] | null;
+      /** Tokens */
+      tokens: number;
+      unpriced: components["schemas"]["Unpriced"];
+    };
+    /**
+     * TimelineSession
+     * @description The session a timeline describes.
+     */
+    TimelineSession: {
+      /** Active */
+      active: boolean;
+      /** Branch */
+      branch: string | null;
+      /** Ended At */
+      ended_at: string | null;
+      /** Id */
+      id: string;
+      /**
+       * Last Request
+       * Format: date-time
+       */
+      last_request: string;
+      /** Project */
+      project: string;
+      /** Requests */
+      requests: number;
+      /** Running */
+      running: boolean;
+      /**
+       * Started
+       * Format: date-time
+       */
+      started: string;
+      /**
+       * State
+       * @enum {string}
+       */
+      state: "working" | "idle" | "ended";
+      /** States */
+      states: components["schemas"]["StateAt"][];
+      unpriced: components["schemas"]["Unpriced"];
+    };
+    /**
+     * TimelineTotals
+     * @description Session totals at T.
+     */
+    TimelineTotals: {
+      /** Cache Read */
+      cache_read: number;
+      /** Cache Write */
+      cache_write: number;
+      /** Cost */
+      cost: number | null;
+      /** Hit Rate */
+      hit_rate: number | null;
+      /** Input */
+      input: number;
+      /** Output */
+      output: number;
+      /** Requests */
+      requests: number;
+      /** Runs */
+      runs: number;
+      /** Runs Finished */
+      runs_finished: number;
+      /** Runs Working */
+      runs_working: number;
+      /** Tokens */
+      tokens: number;
+      unpriced: components["schemas"]["Unpriced"];
+    };
+    /**
+     * Together
+     * @description Siblings launched within 5 s of each other share a key.
+     */
+    Together: {
+      /** Key */
+      key: string;
+      /** N */
+      n: number;
+    };
+    /**
+     * Unchanged
+     * @description The short answer when the asked etag still matches.
+     */
+    Unchanged: {
+      /** Etag */
+      etag: string;
+      /** Project */
+      project: string;
+      /**
+       * Server Time
+       * Format: date-time
+       */
+      server_time: string;
+      /**
+       * Unchanged
+       * @constant
+       */
+      unchanged: true;
+    };
+    /**
+     * Unpriced
+     * @description Requests with no price, and the models they ran on, in catalog order.
+     */
+    Unpriced: {
+      /** Models */
+      models: string[];
+      /** Requests */
+      requests: number;
+    };
+    /**
+     * Window
+     * @description Numbers over a stretch of time, such as the 60 s before T.
+     */
+    Window: {
+      /** Cache Read */
+      cache_read: number;
+      /** Cost */
+      cost: number | null;
+      /** Hit Rate */
+      hit_rate: number | null;
+      /** Requests */
+      requests: number;
+      /** Tokens */
+      tokens: number;
+      unpriced: components["schemas"]["Unpriced"];
     };
   };
   responses: never;
@@ -528,6 +1134,66 @@ export interface operations {
       };
     };
   };
+  get_live_sessions: {
+    parameters: {
+      query?: {
+        project?: string | null;
+        etag?: string | null;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json":
+            components["schemas"]["LiveSessions"] | components["schemas"]["LiveSessionsUnchanged"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
   get_prices: {
     parameters: {
       query?: never;
@@ -586,6 +1252,68 @@ export interface operations {
       };
       /** @description Unauthorized */
       401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  get_timeline: {
+    parameters: {
+      query?: {
+        project?: string | null;
+        etag?: string | null;
+      };
+      header?: never;
+      path: {
+        session_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json":
+            components["schemas"]["Timeline"] | components["schemas"]["Unchanged"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Not Found */
+      404: {
         headers: {
           [name: string]: unknown;
         };

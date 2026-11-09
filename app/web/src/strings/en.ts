@@ -176,6 +176,208 @@ export const en = {
   pg_agent_edit: "Edit agent",
   pg_surface: "Setup item",
   pg_surface_edit: "Edit setup item",
+
+  // Live (M2). Board words from strings.js and strings-m2.js (tech-writer, November 8 and 9),
+  // with the owner's copy answers of November 9 (m2-build.md section 13). The demo project's
+  // name and folder became {project} and {path}.
+  lv_h1: "Live",
+  lv_sub_live: "{project}, started {start}, {dur} so far",
+  lv_sub_ended: "{project}, started {start}, {dur} in all",
+  lv_no_branch: "No git branch",
+  lv_paused_at: "Paused at {time}",
+  lv_lost_at: "Last reached the server at {time}",
+  lv_ended_at: "Ended at {time}",
+  lv_pause: "Pause",
+  lv_resume: "Resume",
+  lv_demo: "Demo data",
+  lv_loading: "Loading this session",
+  rs_working: "Working",
+  rs_finished: "Finished",
+  rs_idle: "Idle",
+  rs_not_started: "Not started yet",
+  rs_ended: "Ended",
+  lost_h: "Can't reach the Bar Tab server",
+  lost_b: "These numbers are from {time}. Bar Tab tries again every 10 seconds.",
+  lost_try: "Try now",
+
+  // Live tiles
+  t_cost: "Spent so far",
+  t_cost_ended: "Spent in all",
+  t_cost_d: "{cost} in the last minute",
+  t_cost_kx: "API-rate estimate",
+  t_unpriced_one: "{n} request has no price",
+  t_unpriced_other: "{n} requests have no price",
+  t_tokens: "Tokens",
+  t_tokens_d: "{tokens} in the last minute",
+  t_cache: "Read from cache",
+  t_cache_d: "{pct} in the last minute",
+  t_agents: "Agents working",
+  t_agents_ended: "Agent runs",
+  t_agents_d: "{finished} finished, {runs} runs in all",
+  t_agents_ended_d: "All finished",
+  t_agents_more: "+{n}",
+  t_ended_d: "Whole session",
+
+  // Who is working
+  tl_h: "Who is working",
+  tl_q: "Each row is one agent run, placed by when it ran",
+  tl_axis_lab: "New tokens per minute",
+  tl_axis_avg: "New tokens per minute, averaged over {n} minutes",
+  tl_now: "Now",
+  tl_main: "Main session",
+  tl_last: "Last request {n} s ago",
+  tl_last_min: "Last request {n} min ago",
+  tl_ran: "Ran {n} min",
+  tl_round: "Round {n}",
+  tl_unl_may: "Finding starter",
+  tl_unl_never: "No starter found",
+  tl_by: "Started by {name}",
+  tl_fold: "{n} finished earlier",
+  tl_fold_show: "Show",
+  tl_fold_hide: "Hide",
+  tl_note:
+    "Indented rows were started by the row above them, and a dashed line means the starter isn't known. Bars that reach Now are still working.",
+  c_least: "at least {cost}",
+  c_none: "No price for {model}",
+  c_none_short: "No price",
+
+  // Model check
+  mc_h: "Model check",
+  mc_q: "Did each agent run on the model and effort its file sets?",
+  mc_ok_one: "The other agent ran as its file sets.",
+  mc_ok_other: "The other {n} agents ran as their files set.",
+  mc_all_ok_one: "The agent ran as its file sets.",
+  mc_all_ok_other: "All {n} agents ran as their files set.",
+
+  // Latest requests
+  rq_h: "Latest requests",
+  rq_q: "What did each request cost?",
+  rq_time: "Time",
+  rq_agent: "Agent",
+  rq_model: "Model",
+  rq_tokens: "Tokens",
+  rq_cost: "Cost",
+  rq_f_est: "Costs are estimates at API list prices, not your bill.",
+  rq_f_prices: "Prices as of {date}",
+  rq_f_sub: "On a subscription you pay a flat fee, so this is what the same use costs on the API.",
+  rq_f_disagree: "Two price sources disagree on {model}, so its costs may be off.",
+
+  // Session switching and empty states
+  nt_switch: "A new session started on {branch} at {time}.",
+  nt_switch_btn: "Switch to it",
+  nr_h: "Nothing is running in {project}",
+  nr_b: "A session shows here as soon as Claude Code sends a request in this project. This page checks every 5 seconds.",
+  nr_last: "Open the last session",
+  nr_last_meta: "{branch}, ended {time}",
+  nr_other_h: "Running in other projects",
+  nr_other_q: "Each one opens that project's Live page",
+  ns_h: "No sessions in {project} yet",
+  ns_b: "Start Claude Code in the project folder. Its first request shows here within a few seconds.",
+  gone_h: "This session isn't in {project}",
+  gone_b: "The link names a session Bar Tab can't find in this project.",
+  gone_open: "Open the running session",
+  gone_all: "See all sessions",
+
+  // Session Select
+  sel_label: "Session",
+  sel_none: "None running",
+  sel_pick: "Pick a session",
+  ss_h: "Sessions",
+  ss_this: "This project",
+  ss_other: "Other projects",
+  ss_all: "See all sessions",
+  ss_opt: "{branch}, {time}",
+
+  // Announcements, polite, state changes only
+  an_start: "{name} started",
+  an_start_by: "{name} started by {parent}",
+  an_finish: "{name} finished",
+  an_finish_moved: "{name} finished, started by {parent}",
+  an_round: "{name} started round {n}",
+  an_ended: "Session ended at {time}",
+  an_resumed: "Session is working again",
+  an_batch: "{list} finished",
+  an_paused: "Updates paused",
+  an_resumed_poll: "Updates resumed",
+  // Model check titles and reasons, tech-writer draft of November 9 (owner review pending).
+  // mc_nofile_list groups agents with no file into one line (lead, from mc_r_no_agent_file).
+  mc_t_in_effect: "{agent} ran as its file sets",
+  mc_r_in_effect: "Its file sets {setting} to {value} in {file} line {line}, and its runs used it.",
+  mc_r_in_effect_nofile: "Its file sets {setting} to {value}, and its runs used it.",
+  mc_t_default: "{agent} ran on the default {setting}",
+  mc_r_default:
+    "Its file sets {value} in {file} line {line}, which is Claude Code's built-in default.",
+  mc_r_default_nofile:
+    "Nothing sets its {setting}, so Claude Code's built-in default of {value} applies.",
+  mc_t_lowered_by_cap: "{agent} ran at {ran}",
+  mc_t_lowered_by_cap_model: "{agent} ran on {ran}",
+  mc_r_lowered_by_cap:
+    "Its file sets {value} in {file} line {line}, but the {setting} cap in {cap_file} line {cap_line} lowers it to {expected}.",
+  mc_r_lowered_by_cap_nocapfile:
+    "Its file sets {value} in {file} line {line}, but the {cap_key} cap of {cap_value} lowers it to {expected}.",
+  mc_r_lowered_by_cap_nofile:
+    "Its file sets {value}, but the {setting} cap in {cap_file} line {cap_line} lowers it to {expected}.",
+  mc_r_lowered_by_cap_nofile_nocapfile:
+    "Its file sets {value}, but the {cap_key} cap of {cap_value} lowers it to {expected}.",
+  mc_t_lowered_ran_at_pin: "{agent} ran at {ran} despite the cap",
+  mc_t_lowered_ran_at_pin_model: "{agent} ran on {ran} despite the cap",
+  mc_r_lowered_ran_at_pin:
+    "The {setting} cap in {cap_file} line {cap_line} should lower {value} to {expected}, but its runs still used {ran}.",
+  mc_r_lowered_ran_at_pin_nocapfile:
+    "The {cap_key} cap of {cap_value} should lower {value} to {expected}, but its runs still used {ran}.",
+  mc_t_pin_overridden: "{agent} gets its {setting} from {by_layer}",
+  mc_r_pin_overridden:
+    "Its file sets {value} in {file} line {line}, but {by_key} in {by_file} line {by_line} wins with {expected}.",
+  mc_r_pin_overridden_nobyfile:
+    "Its file sets {value} in {file} line {line}, but {by_key} in {by_layer} wins with {expected}.",
+  mc_r_pin_overridden_nofile:
+    "Its file sets {value}, but {by_key} in {by_file} line {by_line} wins with {expected}.",
+  mc_r_pin_overridden_via: "Its file sets {value}, but {by_via} wins with {expected}.",
+  mc_t_pin_ignored: "Claude Code ignores {agent}'s {setting}",
+  mc_r_pin_ignored:
+    "Its file sets {value} in {file} line {line}, but Claude Code doesn't read that setting here.",
+  mc_r_pin_ignored_exp:
+    "Its file sets {value} in {file} line {line}, but Claude Code doesn't read it here, so {expected} applies.",
+  mc_r_pin_ignored_nofile: "Its file sets {value}, but Claude Code doesn't read that setting here.",
+  mc_t_pin_invalid: "{agent} has an invalid {setting}",
+  mc_r_pin_invalid:
+    "Its file sets {value} in {file} line {line}, but Claude Code doesn't accept it. Its runs used {ran}.",
+  mc_r_pin_invalid_nofile:
+    "Its file sets {value}, but Claude Code doesn't accept it. Its runs used {ran}.",
+  mc_t_expected_unknown: "Bar Tab can't check {agent}'s {setting}",
+  mc_r_expected_unknown:
+    "Its file sets {value} in {file} line {line}, but Bar Tab can't tell which setting wins. Its runs used {ran}.",
+  mc_r_expected_unknown_nofile:
+    "Bar Tab can't tell which {setting} setting wins. Its runs used {ran}.",
+  mc_t_unknown_status: "{agent} has a result Bar Tab doesn't know",
+  mc_r_unknown_status: "Bar Tab can't read this result for its {setting}. Its runs used {ran}.",
+  mc_t_ran_differs: "{agent} ran at {ran}, not {expected}",
+  mc_t_ran_differs_model: "{agent} ran on {ran}, not {expected}",
+  mc_r_ran_differs: "Its file and settings point to {expected}, but its runs used {ran}.",
+  mc_t_ran_mixed: "{agent}'s runs used different {setting} values",
+  mc_r_ran_mixed:
+    "Its file and settings point to {expected}, but its runs used {ran}, most common first.",
+  mc_t_no_agent_file: "{agent} has no agent file",
+  mc_r_no_agent_file: "Bar Tab found no agent file for it, so there's nothing to check.",
+  mc_nofile_list: "{list} have no agent file, so there's nothing to check.",
+  mc_t_unnamed_agent: "Runs with no agent type",
+  mc_r_unnamed_agent: "These runs don't name an agent type, so Bar Tab can't match them to a file.",
+  mc_t_no_pin: "{agent} sets no model or effort",
+  mc_r_no_pin: "Its file sets neither model nor effort, so there's nothing to check.",
+  status_in_effect: "In effect",
+  status_overridden: "Overridden",
+  status_ignored: "Ignored",
+  status_lowered: "Lowered",
+  status_invalid: "Invalid",
+  status_default: "Default",
+  status_unknown: "Unknown",
+  dur_under_min: "less than a minute",
+  dur_min_one: "{n} minute",
+  dur_min_other: "{n} minutes",
+  dur_hr_one: "{n} hour",
+  dur_hr_other: "{n} hours",
+  dur_hr_min: "{hours} {minutes}",
+  list_and: "{list} and {last}",
 } as const;
 
 export type StringKey = keyof typeof en;

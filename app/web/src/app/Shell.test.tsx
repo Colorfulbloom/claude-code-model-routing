@@ -222,10 +222,10 @@ describe("top bar and tab bar at 375", () => {
     expect(document.querySelector(".top-bar")).not.toBeNull();
   });
 
-  it("names the project button, opens the tray, and returns focus on Escape and Close", async () => {
+  it("names the project button by its visible words, opens the tray, and returns focus on Escape and Close", async () => {
     const user = userEvent.setup();
     await mount("#/p/builder/live", { width: 375 });
-    const trigger = await screen.findByRole("button", { name: "Project, Builder" });
+    const trigger = await screen.findByRole("button", { name: "Builder" });
     expect(trigger).toHaveAttribute("aria-haspopup", "listbox");
     expect(trigger).toHaveAttribute("aria-expanded", "false");
     await user.click(trigger);
@@ -250,7 +250,7 @@ describe("top bar and tab bar at 375", () => {
   it("swaps the project from the tray", async () => {
     const user = userEvent.setup();
     const { router } = await mount("#/p/builder/review/agents", { width: 375 });
-    await user.click(await screen.findByRole("button", { name: "Project, Builder" }));
+    await user.click(await screen.findByRole("button", { name: "Builder" }));
     await user.click(await screen.findByRole("option", { name: /Driftwood/ }));
     await waitFor(() => {
       expect(router.state.location.pathname).toBe("/p/driftwood/review/agents");
@@ -261,7 +261,7 @@ describe("top bar and tab bar at 375", () => {
   it("shows the empty state in the tray, with no command row", async () => {
     const user = userEvent.setup();
     await mount("#/p/builder/live", { width: 375, server: fakeServer({ projects: [] }) });
-    await user.click(await screen.findByRole("button", { name: "Project, builder" }));
+    await user.click(await screen.findByRole("button", { name: "builder" }));
     const tray = await screen.findByRole("dialog", { name: "Projects" });
     expect(within(tray).getByText("No projects yet")).toBeInTheDocument();
     expect(within(tray).queryByRole("button", { name: "Copy command" })).toBeNull();
@@ -452,7 +452,7 @@ describe("picker placeholder", () => {
     await screen.findByRole("dialog", { name: "Projects" });
     const bar = document.querySelector(".top-bar");
     expect(bar?.querySelector(".top-bar-title")?.textContent).toBe("Bar Tab");
-    const button = screen.getByRole("button", { name: "Project, Pick a project", hidden: true });
+    const button = screen.getByRole("button", { name: "Pick a project", hidden: true });
     expect(button).toHaveAttribute("aria-expanded", "true");
   });
 

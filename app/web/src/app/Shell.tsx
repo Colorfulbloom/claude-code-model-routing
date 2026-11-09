@@ -97,6 +97,8 @@ export function Shell({ page, routeProject, pathname, mainRef, children }: Shell
 
   const items = (projectList ?? []).map(projectItem);
   const projectName = items.find((item) => item.id === activeProject)?.name ?? activeProject;
+  // Anything but the owner's own data gets the quiet mark, so demo numbers never pass for real ones.
+  const demoMark = app.data !== undefined && app.data.mode !== "real" ? t("lv_demo") : null;
   const toFix = app.data?.to_fix_count ?? 0;
   const toFixName = toFix > 0 ? tn("tofix_aria", toFix) : undefined;
   const working =
@@ -239,6 +241,7 @@ export function Shell({ page, routeProject, pathname, mainRef, children }: Shell
         <Sidebar
           label={t("nav_aria")}
           brand={t("product")}
+          {...(demoMark !== null ? { badge: demoMark } : {})}
           groups={groups}
           {...(app.data !== undefined
             ? {
@@ -271,12 +274,12 @@ export function Shell({ page, routeProject, pathname, mainRef, children }: Shell
       ) : (
         <TopBar
           title={page === "picker" ? t("product") : pageName(page)}
+          {...(demoMark !== null ? { badge: demoMark } : {})}
           {...(page === "picker" || (activeProject !== null && projectName !== null)
             ? {
                 project: {
                   name: projectName ?? t("pk_placeholder"),
                   placeholder: projectName === null,
-                  label: t("project_aria", { name: projectName ?? t("pk_placeholder") }),
                   open: page === "picker" || trayOpen,
                   onPress: () => {
                     if (page !== "picker") setTrayOpen(true);

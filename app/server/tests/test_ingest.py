@@ -886,3 +886,95 @@ def test_the_store_clock_only_writes_utc_text(config: Config, st: Store) -> None
     st.now = datetime(2026, 11, 1, 7, 0, tzinfo=UTC)
     st.run()
     assert st.one("SELECT first_seen FROM files") == "2026-11-01T07:00:00Z"
+
+
+# ------------------------------------------------------------------ claude_version
+
+
+def versioned(sec: float, msg: str, version: object, *, sid: str = h.S1) -> bytes:
+    """An assistant row with a top-level ``version``, the way Claude Code writes it."""
+    row = json.loads(h.assistant(sec, msg, sid=sid))
+    row["version"] = version
+    return json.dumps(row).encode()
+
+
+def _version(st: Store, sid: str = h.S1) -> object:
+    return st.one("SELECT claude_version FROM sessions WHERE session_id = ?", sid)
+
+
+def test_the_newest_version_of_a_session_is_kept(config: Config, st: Store) -> None:
+    path = config.main()
+    config.write(
+        path, [versioned(5, "b", "2.1.310"), versioned(1, "a", "2.1.300")]
+    )  # the file order is not time order
+    st.run()
+    assert _version(st) == "2.1.310"
+    config.append(path, [versioned(9, "c", "2.1.311")])
+    st.run()
+    assert _version(st) == "2.1.311"
+
+
+def test_an_older_row_never_lowers_the_version(config: Config, st: Store) -> None:
+    config.write(config.main(), [versioned(50, "a", "2.1.320")])
+    other = config.agent("a1")  # an agent file read later, with older rows
+    config.write(other, [versioned(3, "w", "2.1.1")])
+    st.run()
+    assert _version(st) == "2.1.320"
+
+
+def test_a_row_with_no_version_leaves_the_session_empty(
+    config: Config, st: Store
+) -> None:
+    path = config.main()
+    config.write(path, [h.assistant(0, "a")])
+    st.run()
+    assert _version(st) is None
+    config.append(path, [versioned(5, "b", "2.1.310")])
+    st.run()
+    config.append(path, [h.assistant(9, "c")])
+    st.run()
+    assert _version(st) == "2.1.310"
+
+
+def test_a_version_that_is_not_a_version_is_dropped(config: Config, st: Store) -> None:
+    config.write(
+        config.main(),
+        [
+            versioned(1, "a", 2),
+            versioned(2, "b", ""),
+            versioned(3, "c", "SECRET-MESSAGE-TEXT with spaces"),
+            versioned(4, "d", "x" * 80),
+        ],
+    )
+    st.run()
+    assert _version(st) is None
+    assert "SECRET" not in repr(st.rows("SELECT * FROM sessions"))
+
+
+def test_each_session_keeps_its_own_version(config: Config, st: Store) -> None:
+    config.write(config.main(h.S1), [versioned(1, "a", "2.1.300")])
+    config.write(config.main(h.S2), [versioned(2, "b", "2.1.301", sid=h.S2)])
+    st.run()
+    assert (_version(st, h.S1), _version(st, h.S2)) == ("2.1.300", "2.1.301")
+
+
+def test_active_folders_are_the_sessions_with_a_request_in_the_last_minute(
+    config: Config, st: Store
+) -> None:
+    config.write(config.main(h.S1, "-work-live"), [h.assistant(100, "a")])
+    config.write(config.main(h.S2, "-work-warm"), [h.assistant(10, "b", sid=h.S2)])
+    st.run()
+    at = h.T0 + timedelta(seconds=130)
+    assert st.ingestor.active_folders(at) == {"-work-live"}
+    assert st.ingestor.running_folders(at) == {"-work-live", "-work-warm"}
+    later = h.T0 + timedelta(seconds=161)
+    assert st.ingestor.active_folders(later) == frozenset()
+
+
+def test_a_pass_reports_the_newest_mtime_it_read(config: Config, st: Store) -> None:
+    first = config.write(config.main(h.S1), [h.assistant(0, "a")])
+    second = config.write(config.main(h.S2), [h.assistant(1, "b", sid=h.S2)])
+    os.utime(first, ns=(1_000_000_000, 1_000_000_000))
+    os.utime(second, ns=(5_000_000_000, 5_000_000_000))
+    assert st.run().newest_mtime_ns == 5_000_000_000
+    assert st.run().newest_mtime_ns is None  # nothing read, so nothing newest

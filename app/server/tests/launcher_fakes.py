@@ -22,16 +22,33 @@ argv = sys.argv[1:]
 args = {}
 _i = 0
 while _i < len(argv):
-    if argv[_i] == "--demo":  # the one flag with no value
-        args["--demo"] = "1"
+    if argv[_i] in ("--demo", "--real"):  # the flags with no value
+        args[argv[_i]] = "1"
         _i += 1
     else:
         args[argv[_i]] = argv[_i + 1]
         _i += 2
-data = args["--data"]
+if "--real" in args:
+    # Like the real server, work out the run folder from the config folder alone.
+    config = os.environ.get("CLAUDE_CONFIG_DIR") or os.path.join(
+        os.path.expanduser(os.environ.get("HOME", "~")), ".claude"
+    )
+    data = os.path.join(config, "routing-dashboard", "bartab", "run")
+else:
+    data = args["--data"]
 mode = os.environ.get("FAKE_SERVE_MODE", "")
 with open(os.path.join(data, "serve-runs.log"), "a") as fh:
-    fh.write(json.dumps({"pid": os.getpid(), "argv": argv, "cwd": os.getcwd()}) + "\n")
+    fh.write(
+        json.dumps(
+            {
+                "pid": os.getpid(),
+                "argv": argv,
+                "cwd": os.getcwd(),
+                "config_dir": os.environ.get("CLAUDE_CONFIG_DIR"),
+            }
+        )
+        + "\n"
+    )
 if mode == "busy":
     port_text = args["--port"]
     sys.stderr.write("ERROR bartab.serve: could not bind 127.0.0.1:%s\n" % port_text)

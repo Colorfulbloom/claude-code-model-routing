@@ -259,6 +259,11 @@ class _Pricer:
         return None if parts is None else sum(parts.values())
 
 
+# Public names for callers that price one request or one cell (the timeline).
+Pricer = _Pricer
+Cell = _Cell
+
+
 def totals(  # noqa: PLR0913 - the query's own inputs, keyword-only after the doc
     conn: sqlite3.Connection,
     price_doc: prices.PricesDoc,

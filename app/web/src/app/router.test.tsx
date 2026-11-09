@@ -14,8 +14,8 @@ beforeEach(() => {
   document.title = "";
 });
 
+/** Routes with no screen yet. Live has its own tests in LivePage.test.tsx. */
 const routes: [string, string][] = [
-  ["#/p/builder/live", "Live"],
   ["#/p/builder/review/summary?range=30d", "Summary"],
   ["#/p/builder/review/sessions", "Sessions"],
   ["#/p/builder/review/sessions/s1", "Session"],

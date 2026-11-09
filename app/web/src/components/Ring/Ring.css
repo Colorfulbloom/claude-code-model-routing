@@ -1,0 +1,19 @@
+.ring {
+  display: block;
+  width: 44px;
+  height: 44px;
+}
+
+.ring-track,
+.ring-fill {
+  fill: none;
+  stroke-width: 7px;
+}
+
+.ring-track {
+  stroke: var(--chart-track);
+}
+
+.ring-fill {
+  stroke: var(--accent);
+}
