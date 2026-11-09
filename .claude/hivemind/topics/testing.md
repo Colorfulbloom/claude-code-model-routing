@@ -5,11 +5,11 @@ fact: discover -s tests runs 3575 tests in about 370 s, 88 skipped (development 
 check: HOME=$(mktemp -d) /usr/bin/python3 -c "import unittest,sys; sys.path.insert(0,'tests'); print(unittest.TestLoader().discover('tests').countTestCases())"
 evidence: tests
 fp: 8a10448c3210
-as_of: ff41524 2026-11-07
+as_of: 7d8af23 2026-11-09
 author: deep-reasoner
 created: 2026-10-20
-last_used: 2026-11-06
-uses: 42
+last_used: 2026-11-08
+uses: 51
 promote: approved
 
 ### T-5589 Subsets: discover -k; dotted names fail
@@ -17,11 +17,11 @@ fact: Dotted names (tests.test_x) fail with "No module named 'helpers'"; use dis
 check: /usr/bin/python3 -m unittest tests.test_parity 2>&1 | grep "No module named"
 evidence: tests/helpers.py
 fp: 1122432f340e
-as_of: ff41524 2026-11-07
+as_of: 7d8af23 2026-11-09
 author: deep-reasoner
 created: 2026-10-20
-last_used: 2026-11-06
-uses: 133
+last_used: 2026-11-09
+uses: 146
 promote: approved
 
 ### T-07ef Settings harness: no real API call
@@ -32,8 +32,8 @@ fp: 49f9f8fce33c
 as_of: a452d5d 2026-11-03
 author: deep-reasoner
 created: 2026-10-29
-last_used: 2026-11-03
-uses: 18
+last_used: 2026-11-08
+uses: 21
 promote: approved
 
 ### T-6b2f Collector where maps have tuple keys
@@ -51,12 +51,12 @@ uses: 6
 fact: NoHomePathsInTestsTest bans home path prefixes in tests/*.py, so sample paths start at /work/. tests/fixtures/ is not scanned. Import a test module whole (import test_x as x): from test_x import TestClass makes discover run that class twice.
 check: grep -n "NoHomePathsInTestsTest" tests/test_hivemind.py
 evidence: tests/test_hivemind.py
-fp: 2123e97a5b43
-as_of: abaaff3 2026-11-04
+fp: 75223c371bf9
+as_of: 7d8af23 2026-11-09
 author: deep-reasoner
 created: 2026-10-30
-last_used: 2026-11-04
-uses: 20
+last_used: 2026-11-09
+uses: 44
 promote: approved
 
 ### T-d32f Copied server tree needs install.py

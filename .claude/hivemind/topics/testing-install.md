@@ -70,10 +70,10 @@ uses: 0
 fact: webbrowser.open() tries each registered browser until one succeeds, so a failing BROWSER stub falls through to macOS open and a test opens real tabs. Use webbrowser.get().open(url), as the launcher does.
 check: /usr/bin/python3 -I -c "import webbrowser,inspect;print(inspect.getsource(webbrowser.open))" | grep -n "for name in _tryorder"
 evidence: plugins/routing-dashboard/bin/routing-dashboard, tests/test_plugin_launcher.py
-fp: 9dbebbf88d66
-as_of: a452d5d 2026-11-03
+fp: 54a6287ac210
+as_of: 7d8af23 2026-11-09
 author: fast-worker
 created: 2026-11-03
-last_used: 2026-11-03
-uses: 0
+last_used: 2026-11-08
+uses: 6
 promote: approved

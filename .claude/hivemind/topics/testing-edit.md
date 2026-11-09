@@ -8,8 +8,8 @@ fp: 241bce98cf1f
 as_of: a452d5d 2026-11-03
 author: verifier
 created: 2026-10-31
-last_used: 2026-11-02
-uses: 13
+last_used: 2026-11-09
+uses: 16
 
 ### E-e2f0 Edit page: token first, a write drops all project data
 fact: api.js caches usage and settings for the whole page load. take() in edit_session.js runs first at boot and in a hashchange listener registered before the router's. After a write, onWrite runs refreshAll in app.js: every project's data goes and generation moves, so an answer in flight drops itself. A new write route must use that path, or pages keep the old value. refreshAll waits on settings and edit data, never on /api/usage.
@@ -30,8 +30,8 @@ fp: 7cab5451bf3b
 as_of: a452d5d 2026-11-03
 author: deep-reasoner
 created: 2026-10-31
-last_used: 2026-11-02
-uses: 7
+last_used: 2026-11-09
+uses: 9
 
 ### E-2fea Edit tests: fixture, real managed folder, half-closed sockets
 fact: build_fixture in test_edit_e2e.py is the minimal --allow-edits fixture; its env drops CLAUDE_CODE_EFFORT_LEVEL. Display paths are relative to the fixture, and backups land in <fixture>/config/routing-dashboard/backups/<id>/. A refused save can leave empty store folders. server.live_context uses the REAL managed folder, so tests dataclasses.replace(ctx, managed_dir=<temp>, root=<temp>). A raw POST that promises unsent bytes needs half_close, or the server waits out its 15 s timeout.
@@ -48,9 +48,9 @@ uses: 3
 fact: json_edit.mask_text raises IndexError on empty or all-space text, so structured_diff takes None for a new file's before text and a gone file's after text, never "". edit_store.py calls os.rmdir with dir_fd, test_edit_store.py lints that, and server.edits_supported lists rmdir.
 check: grep -n "needs_dir_fd =" dashboard/server.py
 evidence: dashboard/json_edit.py, dashboard/server.py, dashboard/edit_store.py, tests/test_edit_store.py
-fp: 13e9bc932307
-as_of: 7da3051 2026-11-01
+fp: 6a0028bed3fb
+as_of: 7d8af23 2026-11-09
 author: deep-reasoner
 created: 2026-11-01
-last_used: 2026-11-01
-uses: 1
+last_used: 2026-11-08
+uses: 2

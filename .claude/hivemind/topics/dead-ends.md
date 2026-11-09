@@ -15,12 +15,12 @@ uses: 9
 fact: /usr/bin/python3 adds CPATH, LIBRARY_PATH, SDKROOT, MANPATH and __CF_USER_TEXT_ENCODING to every child, so env-leak asserts ignore them (SYSTEM_ADDED in tests/test_harness_guard.py). BSD sed has no \b (it changes nothing and exits 0), and there is no timeout command. Rewrite files with Python re.sub.
 check: printf 'FIVE\n' | sed 's/\bFIVE\b/X/'
 evidence: tests/test_harness_guard.py
-fp: 33743e0d54ce
-as_of: 6206393 2026-11-02
+fp: ee06687a2edd
+as_of: 7d8af23 2026-11-09
 author: fast-worker
 created: 2026-10-29
-last_used: 2026-11-04
-uses: 4
+last_used: 2026-11-09
+uses: 14
 promote: approved
 
 ### D-1534 Doc anchors and quotes need the rendered page and curl
@@ -28,11 +28,11 @@ fact: code.claude.com headings carry custom ids, so check anchors against the re
 check: curl -sL https://code.claude.com/docs/en/sub-agents | grep -o 'id="supported-frontmatter-fields"'
 evidence: tests/test_doc_anchors.py, dashboard/rules.json
 fp: 85e8db8cfa8f
-as_of: abaaff3 2026-11-04
+as_of: 7d8af23 2026-11-09
 author: verifier
 created: 2026-10-29
-last_used: 2026-11-06
-uses: 31
+last_used: 2026-11-09
+uses: 37
 promote: approved
 
 ### D-6bed Patching os.stat alone misses pathlib on Python 3.9
@@ -54,8 +54,8 @@ fp: 2e3aab966fe0
 as_of: a452d5d 2026-11-03
 author: verifier
 created: 2026-10-29
-last_used: 2026-11-02
-uses: 7
+last_used: 2026-11-08
+uses: 8
 promote: approved
 
 ### D-2e12 Rows with one message.id can carry growing output_tokens
@@ -77,6 +77,6 @@ fp: 2e3aab966fe0
 as_of: ff41524 2026-11-07
 author: deep-reasoner
 created: 2026-10-30
-last_used: 2026-11-06
-uses: 24
+last_used: 2026-11-09
+uses: 25
 promote: approved

@@ -1,18 +1,18 @@
 # testing-live
 
 ### Q-0ec1 Live E2E: clocks, worlds and nav links by text
-fact: tests/e2e_checks/live.json runs on the demo's default clock, where Live is empty, so chart checks go in test_live_e2e.py (LIVE_NOW, IDLE_NOW). tests/fixtures/live_flow/build_flow.py builds a dispatch world with a later "now" in session.json and transcripts under config/projects/<transcripts.sanitize(cwd)>. Live is the sidebar's first link (shell.js), so E2E tests find nav links by text, not index.
+fact: tests/e2e_checks/live.json runs on the demo's default clock, where Live is empty, so chart checks go in test_live_e2e.py (LIVE_NOW, IDLE_NOW). tests/fixtures/live_flow/build_flow.py <out> <scenario> builds busy, many, empty or unlinked (README table) with real link rows, a later "now" in session.json and transcripts under config/projects/<transcripts.sanitize(cwd)>; build_demo.py writes no link rows. Live is the sidebar's first link (shell.js), so E2E tests find nav links by text, not index.
 check: grep -n "LIVE_NOW\|IDLE_NOW" tests/test_live_e2e.py; grep -n 'session\["now"\]' tests/fixtures/live_flow/build_flow.py
 evidence: tests/test_live_e2e.py, tests/e2e_checks/live.json, tests/fixtures/live_flow/build_flow.py, dashboard/static/js/shell.js
 fp: e86d44846713
-as_of: abaaff3 2026-11-04
+as_of: 7d8af23 2026-11-09
 author: fast-worker
 created: 2026-11-04
-last_used: 2026-11-04
-uses: 0
+last_used: 2026-11-09
+uses: 1
 
 ### Q-f176 Live flow captures: zero-width main, hidden unlinked note
-fact: main [data-page=live] has zero width, so a CDP screenshot clipped to it fails with "Cannot take screenshot with 0 width"; clip to the nearest ancestor with a width, as test_live_flow_e2e.py does. p.lv-fl-unlinked is always in the DOM and hidden when every run is linked, so count it only when visible. At 720 px and under the canvas is a list in dispatch-tree order, not dispatch-number order.
+fact: main [data-page=live] has zero width, so a CDP screenshot clipped to it fails with "Cannot take screenshot with 0 width"; clip to the nearest ancestor with a width. p.lv-fl-unlinked is always in the DOM and hidden when every run is linked, so count it only when visible. At 720 px and under the canvas is a list in dispatch-tree order, not dispatch-number order.
 check: grep -n "getBoundingClientRect().width" tests/test_live_flow_e2e.py; grep -n "dispatch-tree order" dashboard/static/js/pages/live_flow.js
 evidence: tests/test_live_flow_e2e.py, dashboard/static/js/pages/live_flow.js
 fp: fb459b8a4b6f
@@ -23,7 +23,7 @@ last_used: 2026-11-04
 uses: 0
 
 ### Q-f491 Reader._parse spies take *rest
-fact: test_api_usage (spy_on_parse) and test_api_live (ReadFolder.spy) spy Reader._parse with positional args, so a new _parse parameter needs *rest in both spies. test_transcripts asserts the record and cache entry field lists, so a new field changes those asserts too.
+fact: test_api_usage (spy_on_parse) and test_api_live (ReadFolder.spy) spy Reader._parse positionally, so a new _parse parameter needs *rest in both. test_transcripts asserts the record and cache entry field lists too.
 check: grep -n "def spy\|_fields" tests/test_api_usage.py tests/test_api_live.py tests/test_transcripts.py
 evidence: tests/test_api_usage.py, tests/test_api_live.py, tests/test_transcripts.py
 fp: 506f42409a56

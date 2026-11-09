@@ -1,7 +1,7 @@
 # testing-edit-core
 
 ### C-0a1c Edit rows: absent markers, created files deleted by hand
-fact: A row with before_sha256 "absent" must name a .absent marker, and a half pair reads backup_damaged, because that path ends in a delete. edit_store._file_hash returns "absent" for a missing file and None only for a refused one, and _trim relies on that. A created file deleted by hand trims its create row: rows() hides it, restore raises UnknownEdit (not ChangedSinceSave), the undo route answers 404 unknown_edit, and the next save drops the row and prunes its marker. A replace row whose backup equals the file trims the same way, so forced undo and restore of either raise UnknownEdit, never no_change. The store can't tell that from a create that crashed after the ledger write.
+fact: A row with before_sha256 "absent" must name a .absent marker, and a half pair reads backup_damaged, because that path ends in a delete. edit_store._file_hash returns "absent" for a missing file and None only for a refused one. A created file deleted by hand trims its create row: rows() hides it, restore raises UnknownEdit (not ChangedSinceSave), the undo route answers 404 unknown_edit, and the next save drops the row and prunes its marker. A replace row whose backup equals the file trims the same way, so forced undo and restore of either raise UnknownEdit, never no_change.
 check: /usr/bin/python3 -m unittest discover -s tests -p test_edit_store.py -k deleted_by_hand
 evidence: dashboard/edit_store.py, tests/test_edit_store.py
 fp: c91d60092b57
@@ -34,13 +34,25 @@ last_used: 2026-11-01
 uses: 3
 
 ### C-06bf Repo copies for probes: .claude, throwaway HOME
-fact: A probe copy of the repo excludes /.claude (anchored), or rsync carries the owner's settings.local.json into it; a bare .claude also drops tests/fixtures/demo/projects/*/.claude, and the demo shows driftwood, saltmarsh and tidewater-reporting as no_claude_folder instead of ok (lantern is missing_folder in the repo too). A shell that exports a throwaway HOME also makes git status show that file as untracked, because the global ignore lives under the real HOME. Run git without the export. To probe edit_card_checks.mjs, insert checks before the MR_ONLY runner line in the copy and run test_edit_card_js.py there, because it builds MR_PAYLOADS.
+fact: A probe copy of the repo excludes /.claude (anchored), or rsync carries the owner's settings.local.json into it; a bare .claude also drops tests/fixtures/demo/projects/*/.claude, and the demo shows driftwood, saltmarsh and tidewater-reporting as no_claude_folder instead of ok. A shell that exports a throwaway HOME also makes git status show that file as untracked, because the global ignore lives under the real HOME. Run git without the export. To probe edit_card_checks.mjs, insert checks before the MR_ONLY runner line in the copy and run test_edit_card_js.py there, because it builds MR_PAYLOADS.
 check: git check-ignore -v .claude/settings.local.json
 evidence: .gitignore, tests/test_edit_card_js.py
 fp: 7a42fe8261ef
-as_of: c7af027 2026-11-06
+as_of: 7d8af23 2026-11-09
 author: verifier
 created: 2026-11-01
-last_used: 2026-11-02
-uses: 6
+last_used: 2026-11-09
+uses: 9
+promote: approved
+
+### C-1ff9 Edit scope: three files, four keys, object paths
+fact: edit_store writes only the three settings files a project key and layer (user, project, local) name. api_edit SETTINGS edits four keys: effortLevel, maxEffortLevel, model, autoCompactWindow. json_edit edits object paths only (parent_not_object) and has no array append. Agents, skills, CLAUDE.md, MCP files or list values need new targets and operations.
+check: sed -n 1,5p dashboard/edit_store.py; grep -n "^SETTINGS = " -A5 dashboard/api_edit.py; grep -n "^def " dashboard/json_edit.py
+evidence: dashboard/edit_store.py, dashboard/api_edit.py, dashboard/json_edit.py
+fp: 975fd5ac21d4
+as_of: 7d8af23 2026-11-09
+author: judge
+created: 2026-11-09
+last_used: 2026-11-09
+uses: 0
 promote: approved

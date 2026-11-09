@@ -1,9 +1,9 @@
 ### F-477a Plugin launcher guard moves from skill denies to a PreToolUse hook
-status: in-progress
+status: shipped
 kind: code
 dates: 2026-11-06 .. 2026-11-06
 refs:
-  commit: pending (branch design/dashboard-deny-leak)
+  commit: ff415242f82ac68ae22c022af4060b8f4363f617 (branch design/dashboard-deny-leak, merged into development)
 summary: routing-dashboard 0.1.7 and hivemind 0.1.3 drop disallowed-tools from every skill and ship a PreToolUse Bash hook whose hidden guard action denies the model's own launcher or wrapper calls, so back-to-back commands no longer alternate denied and working.
 decisions:
 - Mechanism (probed on 2.1.302): a skill's disallowed-tools deny lasts until the next user message, and the next slash command's own ! line runs before it clears, so it is refused; the refused run installs no deny, so the one after works.

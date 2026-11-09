@@ -52,6 +52,6 @@ fp: fe436690746b
 as_of: ff41524 2026-11-07
 author: deep-reasoner
 created: 2026-11-04
-last_used: 2026-11-06
-uses: 6
+last_used: 2026-11-08
+uses: 7
 promote: approved

@@ -65,7 +65,7 @@ The file holds the key, so delete it when you're done. `stop` and `reload` delet
 
 ## When the server stops
 
-A server belongs to the Claude Code processes that ran the command in its project. When the last of them exits, the plugin's one hook, on SessionEnd, stops the server. `/clear` and switching sessions with `/resume` don't stop it, because Claude Code itself keeps running. So a server two Claude Code processes share keeps running until both have exited.
+A server belongs to the Claude Code processes that ran the command in its project. When the last of them exits, one of the plugin's two hooks, on SessionEnd, stops the server. `/clear` and switching sessions with `/resume` don't stop it, because Claude Code itself keeps running. So a server two Claude Code processes share keeps running until both have exited.
 
 If Claude Code crashes, the hook doesn't run. The next dashboard command you run usually notices the server nobody uses any more, stops it and says so. `stop` always works.
 

@@ -8,8 +8,8 @@ fp: 65d978477e91
 as_of: a452d5d 2026-11-03
 author: fast-worker
 created: 2026-11-03
-last_used: 2026-11-04
-uses: 1
+last_used: 2026-11-08
+uses: 2
 promote: approved
 
 ### A-cb5f band_reorder_checks.mjs runs from test_settings_js.py
