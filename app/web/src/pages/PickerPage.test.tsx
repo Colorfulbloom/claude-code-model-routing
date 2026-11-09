@@ -47,7 +47,12 @@ describe("project picker modal (#/ with no launch project)", () => {
     await waitFor(() => {
       expect(router.state.location.pathname).toBe("/reference/glossary");
     });
-    expect(screen.queryByRole("dialog")).toBeNull();
+    // The router store changes before React commits the route (RouterProvider renders the new
+    // state in a transition), so the dialog leaves the DOM a little after the pathname changes.
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+    expect(screen.getByRole("heading", { level: 1, name: "Glossary" })).toBeInTheDocument();
   });
 
   it.each([1440, 375])("lists every project with its state at %i px", async (width) => {

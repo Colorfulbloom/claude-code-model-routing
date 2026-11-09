@@ -317,9 +317,14 @@ def _parents(events: Sequence[_Event]) -> dict[str, tuple[str, datetime]]:
     return parent_of
 
 
+def _at(change: tuple[datetime, Any]) -> datetime:
+    """Return the time of a ``(time, value)`` change, as the key for ``bisect``."""
+    return change[0]
+
+
 def _value_at(changes: Sequence[tuple[datetime, bool]], moment: datetime) -> bool:
     """Return the value a change list holds at ``moment`` (False before the first)."""
-    index = bisect.bisect_right([c[0] for c in changes], moment) - 1
+    index = bisect.bisect_right(changes, moment, key=_at) - 1
     return changes[index][1] if index >= 0 else False
 
 
@@ -446,7 +451,7 @@ def _idle_marks(
 
 
 def _state_value(marks: Sequence[tuple[datetime, str]], moment: datetime) -> str:
-    index = bisect.bisect_right([m[0] for m in marks], moment) - 1
+    index = bisect.bisect_right(marks, moment, key=_at) - 1
     return marks[index][1] if index >= 0 else "idle"
 
 
@@ -1053,7 +1058,9 @@ def _run_answer(  # noqa: PLR0913, PLR0917 - one run's inputs
     running_total = _Acc()
     cum: list[Cum] = []
     for i in range(grid.count):
-        running_total = running_total.merged(sums.run_bucket.get((run.key, i), _Acc()))
+        in_bucket = sums.run_bucket.get((run.key, i))
+        if in_bucket is not None:
+            running_total = running_total.merged(in_bucket)
         cum.append(
             Cum(
                 tokens=running_total.new_tokens,
