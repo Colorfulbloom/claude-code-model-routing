@@ -67,8 +67,14 @@ function aComponents() {
   const sheet = cell(`<div class="cs-phone"><div class="cs-sheet"><header class="rail-h"><button class="btn icon" aria-label="${S.ed_close}">&#x2715;</button><h2>${S.ed_h}</h2></header>${effectBlock("medium")}<div class="cs-sheet-foot"><button class="btn primary">${S.ed_save}</button><button class="btn">${S.ed_back}</button></div></div></div>`, "default");
   const cards = cell(`<div class="cs-ph ph"><div><h1>${S.su_h1}</h1><p class="sub">${S.su_sub}</p></div></div><section class="card"><header><h2>${S.rv_chk_h}</h2><span class="q">${S.rv_chk_q}</span></header><div class="well"><p>${S.rv_chk_sum}</p></div></section>`, "default", true);
   const empty = cell(`<section class="card empty"><span class="big-ok" aria-hidden="true">&#x2713;</span><h2>${S.fx_empty_h}</h2><p class="muted">${S.fx_empty}</p><a class="btn" href="#">${S.fx_empty_a}</a></section>`, "empty", true);
-  const steps = cell(`<ol class="well steps"><li class="ok"><span class="st done">${S.fr_done}</span>${S.fr_s1}</li><li class="now"><span class="st working">${S.fr_now}</span>${S.fr_s2}<div class="prog" role="progressbar" aria-valuenow="50" aria-valuemin="0" aria-valuemax="100" aria-label="${S.fr_s2}"><i style="width:50%"></i></div><small class="muted num">${S.fr_progress}</small></li><li><span class="st idle">${S.fr_next}</span>${S.fr_s3}</li></ol>`, "loading", true);
+  const steps = cell(`<ol class="well steps">${DONE()}${step("now", `<span class="st working">${S.fr_now}</span>`, S.fr_s3, `<div class="prog" role="progressbar" aria-valuenow="312" aria-valuemin="0" aria-valuemax="1240" aria-valuetext="${S.fr_files.replace("{n}", "312").replace("{m}", "1,240")}" aria-label="${S.fr_s3}"><i style="width:25%"></i></div><small class="muted num">${S.fr_files.replace("{n}", "312").replace("{m}", "1,240")}</small>`)}</ol>`, "loading", true);
 
+  // M0 additions (November 8): picker, gate variants, More, first-run states, new-tab line.
+  const m0picker = `<div class="cs-grid2">${cell(`<div class="pk-pop cs-static">${pkList(false)}</div>`, "open", false)}${cell(`<div class="pk-pop cs-static">${pkList(true)}</div>`, "empty", false)}</div>`;
+  const m0gates = `<div class="cs-grid2">${["no_key", "code_used", "code_expired", "restarted"].map((r) => cell(`<div class="card gate">${lockedBody(r.replace("restarted", "restarted"))}</div>`, r)).join("")}</div>
+    <div class="cs-grid2">${cell(`<div class="retry"><p role="status"><span class="st plain idle">${S.st_retry}</span><span class="muted">${S.st_last.replace("{t}", "3:42 PM")}</span></p><button class="btn">${S.st_try}</button></div>`, "default")}${cell(`<div class="retry"><p role="status"><span class="st plain idle">${S.st_retry}</span><span class="muted">${S.st_last.replace("{t}", "3:42 PM")}</span></p><button class="btn" aria-busy="true">${S.st_trying}</button></div>`, "loading")}</div>
+    <div class="cs-grid2">${cell(`<ol class="well steps">${DONE()}${step("bad", `<span class="st invalid">${S.fr_failed}</span>`, S.fr_s3)}</ol><div class="raised err" role="alert"><h3><span aria-hidden="true" class="errm">&#x2715;</span>${S.fr_fail_h}</h3><p>${S.fr_fail_reason.replace("{f}", '<code class="mono">~/.claude/projects/tidewater-reporting/9f2c.jsonl</code>')}</p><p>${S.fr_fail_fix}</p>${cmdRow()}</div>`, "error")}${cell(`<p class="notice raised-line back-n" role="status"><span aria-hidden="true" class="okm">&#x2713;</span><span>${S.lk_back}</span></p><div class="cs-wait"><p class="wordmark">${S.product}</p><p class="sr">${S.lk_wait}</p></div>`, "default")}</div>`;
+  const m0more = cell(`<ul class="more-l"><li><a href="#"><span class="ic" aria-hidden="true">&#x2318;</span>${S.nav_decides}<span class="chev" aria-hidden="true">&#x203A;</span></a></li><li><a href="#" class="is-focus"><span class="ic" aria-hidden="true">&#x2261;</span>${S.nav_glossary}<span class="chev" aria-hidden="true">&#x203A;</span></a></li></ul>`, "focus");
   return aPage("components", S.cs_h1, `<div class="ph"><div><h1>${S.cs_h1}</h1><p class="sub">${S.cs_sub}</p></div></div>
   <div class="cs">
     ${sec("buttons", buttons)}
@@ -83,5 +89,6 @@ function aComponents() {
     ${sec("scope", scope)}${sec("nav", nav)}
     <div class="cs-grid2">${sec("sheet", sheet)}${sec("steps", steps)}</div>
     ${sec("card", cards)}${sec("empty", empty)}
+    ${sec("picker", m0picker)}${sec("gates", m0gates)}${sec("more", m0more)}
   </div>`);
 }

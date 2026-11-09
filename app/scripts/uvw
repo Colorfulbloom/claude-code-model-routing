@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Run the worktree's own uv with every cache, Python install and environment kept
+# inside the worktree, so the owner's uv cache and Python installs are never used.
+set -euo pipefail
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
+export UV_CACHE_DIR="$root/.uv-cache"
+export UV_PYTHON_INSTALL_DIR="$root/.uv-python"
+export UV_PYTHON_BIN_DIR="$root/.tools/python-bin"
+export UV_PYTHON_INSTALL_BIN=0
+export UV_TOOL_DIR="$root/.tools/uv-tools"
+export UV_TOOL_BIN_DIR="$root/.tools/bin"
+export UV_PROJECT_ENVIRONMENT="$root/app/.venv"
+export UV_PYTHON_PREFERENCE=only-managed
+export UV_NO_MODIFY_PATH=1
+
+exec "$root/.tools/uv/uv" "$@"

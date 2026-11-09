@@ -1,0 +1,46 @@
+.run-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+
+.run-state::before {
+  display: inline-block;
+  font-size: var(--text-xs);
+  line-height: 1;
+}
+
+.run-state-working {
+  color: var(--accent);
+}
+
+.run-state-working::before {
+  content: "\25CF" / "";
+}
+
+.run-state-done {
+  color: var(--status-in-effect-fg);
+}
+
+.run-state-done::before {
+  content: "\2713" / "";
+}
+
+.run-state-idle {
+  color: var(--text-muted);
+}
+
+.run-state-idle::before {
+  content: "\25CC" / "";
+  font-size: var(--text-sm);
+}
+
+.run-state-failed {
+  color: var(--status-invalid-fg);
+}
+
+.run-state-failed::before {
+  content: var(--status-invalid-mark) / "";
+}

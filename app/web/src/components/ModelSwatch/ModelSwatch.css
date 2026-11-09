@@ -1,0 +1,28 @@
+.model-swatch {
+  display: inline-block;
+  flex: none;
+  width: 10px;
+  height: 10px;
+  margin-right: 5px;
+  vertical-align: -1px;
+}
+
+.model-swatch-opus {
+  background: var(--m-opus);
+  border-radius: 2px;
+}
+
+.model-swatch-sonnet {
+  background: var(--m-sonnet);
+  border-radius: 50%;
+}
+
+.model-swatch-haiku {
+  background: var(--m-haiku);
+  transform: rotate(45deg) scale(0.85);
+}
+
+.model-swatch-fable {
+  background: var(--m-fable);
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}

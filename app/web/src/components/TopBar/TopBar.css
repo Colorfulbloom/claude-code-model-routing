@@ -1,0 +1,57 @@
+.top-bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 52px;
+  padding: 0 var(--space-4);
+  background: var(--sidebar-bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.top-bar-title {
+  font-weight: var(--weight-semibold);
+}
+
+.top-bar-project {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  min-height: 36px;
+  padding: 0 var(--space-3);
+  background: var(--card-bg);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  color: var(--text);
+  cursor: pointer;
+  font-size: var(--text-sm);
+}
+
+.top-bar-project:hover {
+  background: var(--nav-hover-bg);
+}
+
+.top-bar-project:active {
+  transform: translateY(1px);
+}
+
+/* Open: the 2px accent ring is the open state, the same as the sidebar Select. */
+.top-bar-project[aria-expanded="true"] {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.top-bar-project-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.top-bar-project-caret {
+  flex: none;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}

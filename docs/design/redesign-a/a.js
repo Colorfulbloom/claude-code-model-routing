@@ -14,7 +14,7 @@ function aNav(cur) {
 function aTabs(cur) {
   const rv = ["summary", "sessions", "agents", "models", "session"].includes(cur);
   return tabbar([{ ic: "&#x25C9;", label: S.nav_live, cur: cur === "live" }, { ic: "&#x25A4;", label: S.nav_review, cur: rv },
-    { ic: "&#x2699;", label: S.nav_setup_h, cur: cur === "setup" }, { ic: "&#x25B3;", label: S.nav_tofix, cnt: S.tofix_count }, { ic: "&#x2261;", label: S.nav_more }]);
+    { ic: "&#x2699;", label: S.nav_setup_h, cur: cur === "setup" }, { ic: "&#x25B3;", label: S.nav_tofix, cnt: S.tofix_count }, { ic: "&#x2261;", label: S.nav_more, cur: cur === "more" }]);
 }
 function aPage(cur, title, body) {
   document.title = `${title}, ${S.project_name}, ${S.product}`;

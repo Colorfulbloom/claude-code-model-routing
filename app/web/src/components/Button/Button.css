@@ -1,0 +1,117 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--card-bg);
+  color: var(--text);
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.button:hover,
+.button.is-hover {
+  background: var(--nav-hover-bg);
+}
+
+.button:active,
+.button.is-pressed {
+  transform: translateY(1px);
+}
+
+.button-primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--text-on-accent);
+  font-weight: var(--weight-medium);
+}
+
+.button-primary:hover,
+.button-primary.is-hover {
+  border-color: var(--accent-hover);
+  background: var(--accent-hover);
+}
+
+.button-quiet {
+  border-color: transparent;
+  background: transparent;
+  color: var(--accent);
+}
+
+.button-quiet:hover,
+.button-quiet.is-hover {
+  text-decoration: underline;
+}
+
+.button-danger {
+  border-color: var(--status-invalid-fg);
+  color: var(--status-invalid-fg);
+  font-weight: var(--weight-medium);
+}
+
+.button-danger:hover,
+.button-danger.is-hover {
+  background: var(--status-invalid-bg);
+}
+
+.button-icon {
+  width: 40px;
+  min-height: 40px;
+  padding: 0;
+}
+
+/* Disabled: dashed strong border and muted text, never opacity alone. */
+.button[aria-disabled="true"],
+.button[aria-disabled="true"]:hover {
+  border: 1px dashed var(--border-strong);
+  background: var(--card-bg);
+  color: var(--text-muted);
+  cursor: not-allowed;
+  transform: none;
+  text-decoration: none;
+}
+
+/* Busy keeps a solid border so it does not read as disabled. No spinner. */
+.button[aria-busy="true"],
+.button[aria-busy="true"]:hover {
+  border-style: solid;
+  color: var(--text);
+  cursor: progress;
+}
+
+.button-primary[aria-busy="true"],
+.button-primary[aria-busy="true"]:hover {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--text-on-accent);
+}
+
+.button-danger[aria-busy="true"],
+.button-danger[aria-busy="true"]:hover {
+  border-color: var(--status-invalid-fg);
+  background: var(--card-bg);
+  color: var(--status-invalid-fg);
+}
+
+.button-quiet[aria-busy="true"],
+.button-quiet[aria-busy="true"]:hover {
+  border-color: transparent;
+  background: transparent;
+  color: var(--accent);
+}
+
+.button-group {
+  display: inline-grid;
+  gap: var(--space-1);
+  justify-items: start;
+}
+
+.button-reason {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}

@@ -1,0 +1,13 @@
+.wait-hold {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  background: var(--page-bg);
+}
+
+.wait-hold-brand {
+  color: var(--text);
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.01em;
+}

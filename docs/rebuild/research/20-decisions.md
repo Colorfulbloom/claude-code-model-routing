@@ -110,3 +110,7 @@ Owner: rebuild the Routing Dashboard from scratch, full framework stack. Persona
 - Role presets fill real fields only; "Set by {role} on Tools and options" shows the two lines not shown elsewhere; Custom after a change; role is never saved.
 - Edit uses the full model list with relative price words, same as new.
 - The selected state (--select-bg, 2px accent edge, "✓ Selected") is the standard for every selectable component.
+
+## Owner, 2026-11-08 N1 and N2
+- N1: keep the data folder `<config>/routing-dashboard/` through release 1, so the old app and Bar Tab share backups and the ledger; move it one release later with a migration.
+- N2: "Can start other agents" off leaves `Agent` out of `tools` when the agent's tools are limited, and adds `Agent` to `disallowedTools` when the agent has every tool (tools omitted). Both are documented in code.claude.com/docs/en/sub-agents. plan-a.md N2 and components.md follow this rule.

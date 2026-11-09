@@ -1,0 +1,120 @@
+name: bartab
+
+on:
+  push:
+    paths:
+      - "app/**"
+      - ".nvmrc"
+      - ".github/workflows/bartab.yml"
+  pull_request:
+    paths:
+      - "app/**"
+      - ".nvmrc"
+      - ".github/workflows/bartab.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bartab-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    name: python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.14"]
+    env:
+      # app/.python-version pins 3.13 for local work. UV_PYTHON overrides it so
+      # every uv command in this job uses the matrix interpreter.
+      UV_PYTHON: ${{ matrix.python }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@18d369b23da25a81e9458561248e1aafff6a70fa # v10.3.1
+        with:
+          version: "0.13.5"
+      - name: Sync the Python environment
+        run: uv sync --frozen --project app --python ${{ matrix.python }}
+      - name: Ruff check
+        working-directory: app
+        run: uv run --frozen ruff check .
+      - name: Ruff format check
+        working-directory: app
+        run: uv run --frozen ruff format --check .
+      - name: Pytest with coverage
+        working-directory: app
+        run: uv run --frozen pytest -n auto --cov --cov-report=term-missing
+
+  web:
+    # Pyright lives in the npm scripts but reads the Python environment at
+    # app/.venv, so this job also installs uv and syncs. One job keeps the
+    # build and the Playwright run on the same checkout without passing artifacts.
+    name: web
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@18d369b23da25a81e9458561248e1aafff6a70fa # v10.3.1
+        with:
+          version: "0.13.5"
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: ".nvmrc"
+          cache: npm
+          cache-dependency-path: app/web/package-lock.json
+      - name: Sync the Python environment
+        run: uv sync --frozen --project app
+      - name: Install npm packages
+        working-directory: app/web
+        run: npm ci --ignore-scripts
+      - name: Typecheck
+        working-directory: app/web
+        run: npm run typecheck
+      - name: ESLint
+        working-directory: app/web
+        run: npm run lint
+      - name: Stylelint
+        working-directory: app/web
+        run: npm run lint:css
+      - name: Prettier check
+        working-directory: app/web
+        run: npm run format:check
+      - name: Vitest
+        working-directory: app/web
+        run: npm run test
+      - name: Pyright
+        working-directory: app/web
+        run: npm run pyright
+      - name: Build
+        working-directory: app/web
+        run: npm run build
+      - name: Check that dist matches the build
+        working-directory: app/web
+        run: git diff --exit-code -- dist
+      - name: Install Chromium for Playwright
+        working-directory: app/web
+        run: npx playwright install --with-deps chromium
+      - name: Playwright
+        working-directory: app/web
+        run: npm run e2e
+
+  shellcheck:
+    # shellcheck 0.9.0 is preinstalled on ubuntu-latest (Ubuntu 24.04 image readme).
+    name: shellcheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Run shellcheck on the wrappers
+        run: shellcheck app/scripts/uvw app/scripts/npmw

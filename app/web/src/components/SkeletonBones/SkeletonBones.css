@@ -1,0 +1,38 @@
+.skeleton {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+}
+
+.bone {
+  display: block;
+  height: 10px;
+  background: var(--chart-track);
+  border-radius: var(--radius-sm);
+}
+
+.bone-value {
+  height: 28px;
+}
+
+.bone-xs {
+  width: 40px;
+}
+
+.bone-s {
+  width: 72px;
+}
+
+.bone-m {
+  width: 160px;
+  max-width: 60%;
+}
+
+.bone-l {
+  width: 280px;
+  max-width: 90%;
+}
+
+.bone-full {
+  width: 100%;
+}

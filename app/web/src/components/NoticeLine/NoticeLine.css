@@ -1,0 +1,29 @@
+.notice-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  background: var(--raised-bg);
+  border: 1px solid var(--raised-border);
+  border-radius: var(--radius-lg);
+  font-size: var(--text-sm);
+}
+
+.notice-line-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.notice-line-link {
+  margin-left: auto;
+}
+
+@media (width <= 720px) {
+  .notice-line-link {
+    margin-left: 0;
+    flex-basis: 100%;
+  }
+}

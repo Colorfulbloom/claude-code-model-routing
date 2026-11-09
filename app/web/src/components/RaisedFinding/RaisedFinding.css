@@ -1,0 +1,77 @@
+.raised-finding {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--raised-bg);
+  border: 1px solid var(--raised-border);
+  border-radius: var(--radius-lg);
+}
+
+.raised-finding-check,
+.raised-finding-warning,
+.raised-finding-overwritten,
+.raised-finding-saved,
+.raised-finding-error {
+  grid-template-columns: auto minmax(0, 1fr);
+  border-inline-start: 4px solid var(--raised-edge);
+}
+
+.raised-finding-check {
+  --raised-edge: var(--status-lowered-fg);
+}
+
+.raised-finding-warning,
+.raised-finding-overwritten {
+  --raised-edge: var(--status-overridden-fg);
+}
+
+.raised-finding-saved {
+  --raised-edge: var(--status-in-effect-fg);
+}
+
+.raised-finding-error {
+  --raised-edge: var(--status-invalid-fg);
+}
+
+.raised-finding-mark {
+  padding-top: 3px;
+  color: var(--raised-edge);
+  font-size: var(--text-xs);
+  line-height: 1;
+}
+
+.raised-finding-check .raised-finding-mark::before {
+  content: var(--status-lowered-mark) / "";
+}
+
+.raised-finding-warning .raised-finding-mark::before,
+.raised-finding-overwritten .raised-finding-mark::before {
+  content: var(--status-overridden-mark) / "";
+}
+
+.raised-finding-saved .raised-finding-mark::before {
+  content: "\2713" / "";
+}
+
+.raised-finding-error .raised-finding-mark::before {
+  content: var(--status-invalid-mark) / "";
+}
+
+.raised-finding-body {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+  min-width: 0;
+}
+
+.raised-finding-title {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+}
+
+.raised-finding-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}

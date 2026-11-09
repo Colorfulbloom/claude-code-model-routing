@@ -1,0 +1,195 @@
+/* Layout of the component sheet only. It is a dev and test entry and never ships in dist. */
+.sheet {
+  display: grid;
+  gap: var(--space-5);
+  max-width: 1280px;
+  padding: var(--space-5) var(--space-6) var(--space-7);
+}
+
+.sheet-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.sheet-title {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+}
+
+.sheet-theme {
+  display: flex;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.sheet-theme legend {
+  margin-bottom: var(--space-1);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.sheet-theme label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 32px;
+  padding: 0 var(--space-3);
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.sheet-theme label:has(input:focus-visible) {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: 3px;
+}
+
+.sheet-theme .sheet-theme-on {
+  border-color: transparent;
+}
+
+.sheet-section {
+  padding: var(--space-4) var(--space-5) var(--space-5);
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-xl);
+}
+
+.sheet-section-title {
+  margin-bottom: var(--space-4);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+}
+
+.sheet-cells {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4) var(--space-5);
+  align-items: flex-start;
+}
+
+.sheet-cell {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.sheet-cell[data-component="Card"],
+.sheet-cell[data-component="PageHeader"],
+.sheet-cell[data-component="NoticeLine"],
+.sheet-cell[data-component="Well"],
+.sheet-cell[data-component="RaisedFinding"],
+.sheet-cell[data-component="EmptyState"],
+.sheet-cell[data-component="ProgressSteps"],
+.sheet-cell[data-component="GatePage"],
+.sheet-cell[data-component="CommandRow"],
+.sheet-cell[data-component="RetryRow"],
+.sheet-cell[data-component="NewTabLine"],
+.sheet-cell[data-component="WaitHold"],
+.sheet-cell[data-component="ProjectPicker"],
+.sheet-cell[data-component="MoreCard"] {
+  width: min(100%, 560px);
+}
+
+.sheet-caption {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+.sheet-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: flex-start;
+}
+
+.sheet-sidebar {
+  width: 224px;
+  max-width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.sheet-phone {
+  width: 375px;
+  max-width: 100%;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.sheet-gate .gate-page {
+  min-height: 420px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.sheet-gate .gate-main {
+  padding: var(--space-5) var(--space-4);
+}
+
+.sheet-wait .wait-hold {
+  min-height: 96px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.sheet-cell[data-component="ProjectPicker"] .pk {
+  padding: var(--space-2);
+  background: var(--card-bg);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+}
+
+.sheet-open-select {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 240px;
+}
+
+.sheet-model {
+  display: inline-flex;
+  align-items: center;
+}
+
+.sheet-row {
+  min-height: 32px;
+  padding: var(--space-1) 0;
+}
+
+.sheet-choice {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 var(--space-3);
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.sheet-choice.chosen {
+  border-color: transparent;
+}
+
+.sheet-choice.chosen-row {
+  border-radius: 0;
+}
+
+@media (width <= 720px) {
+  .sheet {
+    padding: var(--space-3) var(--space-4) var(--space-7);
+  }
+
+  .sheet-section {
+    padding: var(--space-3) var(--space-4) var(--space-4);
+    border-radius: var(--radius-lg);
+  }
+}

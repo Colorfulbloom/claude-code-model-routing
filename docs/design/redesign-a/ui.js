@@ -32,12 +32,12 @@ function sidebar(items, extra = "") {
   const nav = items.map((i) => i.h ? `<div class="navh">${i.h}</div>` :
     `<a class="nv${i.sub ? " sub" : ""}" href="#"${i.cur ? ' aria-current="page"' : ""}><span class="ic" aria-hidden="true">${i.ic || ""}</span>${i.label}${i.end || ""}</a>`).join("");
   return `<nav class="side" aria-label="Main">
-    <div class="brand"><span class="logo" aria-hidden="true">R</span>${S.product}</div>
-    <button class="proj" aria-label="${S.project_label}, ${S.project_name}"><small>${S.project_label}</small><b>${S.project_name}<span aria-hidden="true">&#x25BE;</span></b></button>
+    <div class="brand">${S.product}</div>
+    <button class="proj" aria-haspopup="listbox" aria-expanded="false" aria-label="${S.project_label}, ${S.project_name}"><small>${S.project_label}</small><b>${S.project_name}<span aria-hidden="true">&#x25BE;</span></b></button>
     ${nav}${extra}
     <div class="foot">${S.version}</div></nav>`;
 }
-function topbar(title) { return `<header class="topbar"><span class="pname">${title}</span><span class="proj-s">${S.project_name}</span></header>`; }
+function topbar(title, open) { return `<header class="topbar"><span class="pname">${title}</span><button class="proj-s" aria-haspopup="listbox" aria-expanded="${!!open}" aria-label="${S.project_label}, ${S.project_name}">${S.project_name}<span aria-hidden="true"> &#x25BE;</span></button></header>`; }
 function tabbar(items) {
   return `<nav class="tabbar" aria-label="Main">${items.map((i) => `<a href="#"${i.cur ? ' aria-current="page"' : ""}><span class="ic" aria-hidden="true">${i.ic}</span>${i.label}${i.cnt ? `<span class="cnt">${i.cnt}<span class="sr"> to fix</span></span>` : ""}</a>`).join("")}</nav>`;
 }

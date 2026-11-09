@@ -1,0 +1,46 @@
+.empty-page {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: center;
+  padding: var(--space-6);
+  text-align: center;
+}
+
+.empty-page-mark {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  background: var(--status-in-effect-bg);
+  border-radius: 50%;
+  color: var(--status-in-effect-fg);
+  font-size: var(--text-2xl);
+}
+
+.empty-page-mark::before {
+  content: "\2713" / "";
+}
+
+.empty-page-title {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+}
+
+/* The neutral mark says nothing is wrong and nothing is done, for a page that is not built yet. */
+.empty-page-mark.is-neutral {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.empty-page-mark.is-neutral::before {
+  content: "\2026" / "";
+}
+
+.empty-inline {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+  padding: var(--space-4);
+  color: var(--text-muted);
+}

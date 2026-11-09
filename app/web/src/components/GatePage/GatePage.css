@@ -1,0 +1,79 @@
+.gate-page {
+  min-height: 100vh;
+  background: var(--page-bg);
+}
+
+/* The header is 68px tall at both widths, so the card sits 116px down at 1440 and 84px down at 375. */
+.gate-page .gate-brand {
+  padding: var(--space-4) var(--space-6) calc(var(--space-5) + var(--space-1));
+}
+
+.gate-main {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-7) var(--space-4);
+}
+
+.gate-notice {
+  width: 100%;
+  max-width: 560px;
+}
+
+.gate-card {
+  display: grid;
+  gap: var(--space-3);
+  width: 100%;
+  max-width: 560px;
+}
+
+.gate-card .gate-icon {
+  color: var(--text-muted);
+}
+
+/* A quiet line inside the card, for the route and retry sentences. */
+.gate-line {
+  display: flex;
+  gap: var(--space-2);
+  align-items: baseline;
+  padding: var(--space-2) var(--space-3);
+  background: var(--raised-bg);
+  border: 1px solid var(--raised-border);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+}
+
+.gate-line-mark {
+  flex: none;
+}
+
+/* The command row and the route line sit --space-5 from the text above them. */
+.gate-card .command-row {
+  margin-top: var(--space-3);
+}
+
+.gate-card .command-row + .gate-line {
+  margin-top: calc(var(--space-2) * -1);
+}
+
+@media (width <= 720px) {
+  .gate-main {
+    padding: var(--space-4);
+  }
+}
+
+.gate-title {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight);
+}
+
+.gate-note {
+  font-size: var(--text-sm);
+}
+
+.gate-file {
+  overflow-wrap: anywhere;
+  font-size: var(--text-xs);
+}

@@ -8,3 +8,21 @@ __pycache__/
 docs/design/usage-stack/**/shots/
 # Worktrees for agents and tracks
 .claude/worktrees/
+# Bar Tab build tools and caches stay inside the worktree
+/.tools/
+/.uv-cache/
+/.uv-python/
+/.npm-cache/
+/.pw-browsers/
+/app/.venv/
+/app/.data/
+/app/.coverage
+/app/web/node_modules/
+/app/web/playwright-report/
+/app/web/test-results/
+/app/web/coverage/
+/app/.ruff_cache/
+/app/.pytest_cache/
+/app/.hypothesis/
+/app/web/dist-sheet/
+/app/web/.eslintcache

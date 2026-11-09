@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Run npm or npx under Node 24 from nvm without touching the default alias, with the
+# npm cache and Playwright browsers kept inside the worktree.
+# Usage: npmw [npm args...]   or   npmw --npx [npx args...]   or   npmw --node [node args...]
+set -euo pipefail
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+# nvm.sh reads unset variables, so relax -u while it loads.
+set +u
+# shellcheck disable=SC1091
+. "$NVM_DIR/nvm.sh" --no-use
+node_bin="$(nvm which 24)"
+set -u
+PATH="$(dirname "$node_bin"):$PATH"
+export PATH
+
+export npm_config_cache="$root/.npm-cache"
+export npm_config_ignore_scripts=true
+export npm_config_update_notifier=false
+export npm_config_fund=false
+export npm_config_audit=false
+export PLAYWRIGHT_BROWSERS_PATH="$root/.pw-browsers"
+
+case "${1:-}" in
+  --npx) shift; exec npx "$@" ;;
+  --node) shift; exec node "$@" ;;
+  *) exec npm "$@" ;;
+esac

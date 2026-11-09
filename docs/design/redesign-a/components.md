@@ -337,8 +337,8 @@ Each entry lists purpose, anatomy, states, variants, tokens, mapping, keyboard, 
 
 ### 33. Empty state
 - Purpose. Says what will appear and offers the action that fills it.
-- Variants. Page-level (a card with a ✓ mark for "Nothing to fix"), in-list and in-table (a sentence plus a secondary button).
-- Tokens. `--status-in-effect-bg`, `--status-in-effect-fg`, `--text-muted`, `--space-6`.
+- Variants. Page-level (a card with a ✓ mark for "Nothing to fix"), in-list and in-table (a sentence plus a secondary button). A page that isn't built yet uses the neutral page-level mark instead, a … on `--surface-2` with a `--border` ring and `--text-muted` glyph and no status color, because a ✓ there reads as done.
+- Tokens. `--status-in-effect-bg`, `--status-in-effect-fg`, `--text-muted`, `--space-6`. Neutral mark: `--surface-2`, `--border`, `--text-muted`.
 - Copy keys. `fx_empty_*`, `cs_tb_empty*`, `cs_list_empty*`.
 
 ### 34. Progress steps
@@ -557,3 +557,49 @@ The owner approved three calls. The short "Set by {r} on Tools and options" stay
 - These are superseded and kept only as a record: A, one page with the "Jump to" list (`dir-a-*`); B, the stepped dialog (`dir-b-*`); and C with tabs (`dir-c-*`, components 47 and 48). Components 46 (agent file preview), 49 (phone action bar) and 50 (sticky page action bar) stay in use through the full page.
 - The side-panel form boards (`agent-new*`, `agent-edit-fields`) are superseded by the full page too, but they were recaptured so they show the new chosen state. Their Review, Saved and plugin screens still apply.
 - The superseded direction boards (`dir-a`, `dir-b`, `dir-c`) weren't recaptured, so their screenshots show the older chosen state.
+
+## M0 gate and shell round (November 8)
+
+The product is now Bar Tab, and the command is /bartab. Until the M9 rename, the preview command is /bartab-preview, so the preview build shows /bartab-preview wherever these boards show /bartab. Source is in `site/m0.js` and `site/m0.css`, and the words are in `site/strings7.js` (tech-writer drafts).
+
+### Brand (changes 1 and 35)
+- A plain "Bar Tab" wordmark, 16px semibold, in the sidebar and the gate header. The R mark is gone. No Claude or Anthropic mark.
+- `S.product` drives the page titles ("{page}, {project}, Bar Tab").
+
+### Top bar project button (changes 2)
+- At 375 the project name in the top bar is a button (`aria-haspopup="listbox"`, `aria-expanded`) with a ▾ and a name that starts with "Project, {name}". It opens the project tray. While the tray is open, its 2px accent ring is the open state, and the same applies to the sidebar Select (14) at 1440.
+
+### 51. Project picker
+- Purpose. Picks the project. It opens from the sidebar Select at 1440 as a popover, from the top bar at 375 as a bottom tray, and as a sheet on `#/` when there's no launch project. On `#/` the shell shows behind a scrim. The sheet is a modal Dialog labelled "Projects" with the page h1, centred at 721 px and up and the bottom tray at 720 px and below. Esc and the scrim go back to the previous route, and do nothing when there is none.
+- Anatomy.
+  - Header "Projects", with Close at 375.
+  - One option per project: name, path in mono, and a state line.
+  - The current project uses the chosen state (`--select-bg`, 2px accent, ✓). The keyboard-active option uses `--nav-hover-bg`.
+- States in words, never hue alone. Every state can be picked.
+  - ✓ Ready (`--status-in-effect-fg`).
+  - ● Agent working (`--accent`).
+  - ○ No .claude folder (muted), with a line on what opening it gives.
+  - ✕ Folder not found (`--status-invalid-fg`), with a line on what opening it gives.
+- Empty. "No projects yet", one sentence on how a project appears, and the /bartab command with Copy (12).
+- Mapping. APG Listbox inside a popover at 1440, or a modal tray at 375 (RAC Select with a tray Popover). Esc or Close returns focus to the trigger.
+- Copy keys. `pk_*`.
+
+### 52. More page (phone only)
+- Purpose. Holds what doesn't fit the tab bar. Only Reference links and the version line. The project switch stays in the top bar, and there's no theme row in M0.
+- Anatomy. h1 "More", a card "Reference" with two 48px link rows (glyph, label, ›), then "Version" with the Claude Code version.
+- At 721px and up, `#/more` redirects to Live, so it has no 1440 board.
+
+### Gate page (35), revised
+- Server stopped. The same card shows the h1, one sentence, the /bartab command with Copy and the kept route line. A retry row follows, with ↻ "Checking again every 10 seconds", "Last answer at {time}" and a "Try now" button. Pressing Try now swaps its label to "Checking" with `aria-busy`. The row is a polite status.
+- Locked. A reason sentence for each code (`no_key`, `code_used`, `code_expired`, `restarted`, all drawn on the component sheet), then "Run this command...", the command with Copy as the primary action, and the ↻ route line "This tab reopens on Agents, builder once another tab opens the dashboard."
+- Locked wait. The wordmark only, centred, with a screen-reader status "Checking for another dashboard tab". It holds for under a second while a new tab asks the others for a key, and it has no motion.
+- New-tab line. On the page the new link opens, a polite notice "✓ Your other tab is open again on Agents, builder." sits above the h1.
+
+### Progress steps (34), revised
+- Steps 1 and 2 load as ✓ Done with no sizes. Step 3 is live, with a bar and "{n} of {m} files" (`aria-valuetext`).
+- The footnote now says the step reads local files and needs no internet connection. That holds only if step 3 makes no network call.
+- Failed. Step 3 shows the ✕ Failed chip, then an error finding (7) with a ✕ heading, the file it couldn't read and "Run this command in Claude Code to try again", plus the command with Copy. It's `role="alert"`.
+- Retrying. Running the command again moves step 3 back to In progress, with an empty bar and "Trying again since {time}" as a polite status. The error finding goes away.
+
+### Component sheet
+- New sections show every state above, so axe covers them: Projects (open and empty), the gate (four locked reasons, the retry row default and loading, first run failed, the new-tab line, the wait hold), and More (a focus-visible row).

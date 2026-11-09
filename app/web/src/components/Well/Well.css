@@ -1,0 +1,28 @@
+.well {
+  padding: var(--space-3) var(--space-4);
+  background: var(--inset-bg);
+  border: 1px solid var(--inset-border);
+  border-radius: var(--radius-lg);
+}
+
+.well-list {
+  padding-block: 0;
+}
+
+.well-flush {
+  padding: 0;
+}
+
+@media (width <= 720px) {
+  .well {
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .well-list {
+    padding-block: 0;
+  }
+
+  .well-flush {
+    padding: 0;
+  }
+}

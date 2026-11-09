@@ -1,0 +1,68 @@
+[project]
+name = "bartab"
+version = "0.0.0"
+requires-python = ">=3.11,<3.15"
+dependencies = [
+    "fastapi==0.162.0",
+    "uvicorn==0.54.0",
+    "pydantic==2.14.1",
+    "ruamel.yaml==0.19.1",
+]
+
+[dependency-groups]
+dev = [
+    "pytest==9.1.1",
+    "pytest-xdist==3.8.0",
+    "pytest-cov==7.1.0",
+    "hypothesis==6.170.10",
+    "httpx2==2.16.0",
+    "ruff==0.17.2",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+src = ["server"]
+per-file-target-version = { "bin/*.py" = "py39" }
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "N", "UP", "B", "SIM", "RUF", "PL", "S", "ASYNC", "PT", "D", "ANN", "PTH", "T20", "BLE", "TRY"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"server/tests/**" = ["S101", "PLR2004", "D", "ANN", "PLC0415"]
+"bin/**" = ["T20"]
+
+[tool.pyright]
+typeCheckingMode = "strict"
+pythonVersion = "3.11"
+include = ["server", "bin"]
+venvPath = "."
+venv = ".venv"
+executionEnvironments = [
+    { root = "bin", pythonVersion = "3.9" },
+    { root = "server", extraPaths = ["server"] },
+]
+
+[tool.pytest.ini_options]
+addopts = ["--strict-markers", "--import-mode=importlib", "--dist=loadgroup"]
+testpaths = ["server/tests"]
+pythonpath = ["server"]
+
+[tool.coverage.run]
+source = ["server"]
+omit = ["server/tests/*"]
+
+[tool.coverage.report]
+fail_under = 85
+show_missing = true

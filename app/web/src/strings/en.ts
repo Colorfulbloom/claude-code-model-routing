@@ -1,0 +1,125 @@
+/*
+ * The string deck for the M0 shell and gate pages. Values come from the tech-writer deck
+ * (November 8) with the brand as "Bar Tab" where the brand is named (the narrator stays "the
+ * dashboard"). Placeholders look like {name}. A key pair ending _one and _other is a plural,
+ * read through tn(). The command is never a string. It comes from the bartab-command meta tag.
+ */
+export const en = {
+  // Brand and shell
+  product: "Bar Tab",
+  project_label: "Project",
+  project_aria: "Project, {name}",
+  nav_aria: "Main",
+  nav_live: "Live",
+  nav_review: "Review",
+  nav_summary: "Summary",
+  nav_sessions: "Sessions",
+  nav_agents: "Agents",
+  nav_models: "Models",
+  nav_setup_h: "Setup",
+  nav_setup: "Your setup",
+  nav_tofix: "To fix",
+  nav_ref_h: "Reference",
+  nav_decides: "How Claude Code decides",
+  nav_glossary: "Glossary",
+  nav_more: "More",
+  nav_working: "Working",
+  // To fix count, used in the accessible name of the nav item
+  tofix_count: "{n}",
+  tofix_aria_one: "To fix, {n} item",
+  tofix_aria_other: "To fix, {n} items",
+  updated_at: "Updated {time}",
+  updated_never: "No answer yet",
+
+  // Document titles and route status
+  title_project: "{page}, {project}, Bar Tab",
+  title_bare: "{page}, Bar Tab",
+  title_locked: "Can't reach the dashboard, Bar Tab",
+  title_stopped: "Dashboard stopped answering, Bar Tab",
+  status_locked: "This tab can't reach the dashboard",
+  status_stopped: "The dashboard stopped answering",
+
+  // Locked page
+  lk_h: "This tab can't reach the dashboard",
+  lk_body_no_key:
+    "This tab opened without a code, and no other dashboard tab answered to share one. Run this command in Claude Code to get a new link.",
+  lk_body_code_used:
+    "This link's code was already used. Each link works once. Run this command in Claude Code to get a new link.",
+  lk_body_code_expired:
+    "This link's code expired before the tab used it. Run this command in Claude Code to get a new link.",
+  lk_body_code_unknown:
+    "The dashboard didn't recognize this link's code. Run this command in Claude Code to get a new link.",
+  lk_body_server_restarted:
+    "The dashboard restarted, so this link no longer works. Run this command in Claude Code to get a new link.",
+  lk_body_wrong_project_key:
+    "This tab can't open this project with the link it has. Run this command in Claude Code to get a new link.",
+  lk_route2: "This tab reopens on {page}, {project} once another tab opens the dashboard.",
+  lk_tab_back: "Your other tab is open again on {page}, {project}.",
+  lk_copy: "Copy command",
+  cs_copied: "Copied to clipboard",
+  hold_status: "Checking for another dashboard tab",
+
+  // Server stopped
+  stopped_h: "The dashboard stopped answering",
+  stopped_body: "Run this command in Claude Code to start it again.",
+  st_route: "When it answers, this tab goes back to {page}, {project} on its own.",
+  st_retry: "Checking again every 10 seconds",
+  st_last: "Last answer at {time}",
+  stopped_try_now: "Try now",
+  st_trying: "Checking",
+
+  // First run
+  fr_h: "Getting the dashboard ready",
+  fr_body:
+    "The dashboard sets itself up the first time it runs. The last step saves your past Claude Code sessions, so Review keeps them after Claude Code deletes old ones.",
+  fr_s1: "Download Python",
+  fr_s2: "Install the dashboard's packages",
+  fr_s3: "Read your usage history",
+  fr_done: "Done",
+  fr_now: "In progress",
+  fr_next: "Next",
+  fr_files: "{n} of {m} files",
+  fr_local: "This step reads files on this computer, so it doesn't need an internet connection.",
+  fr_failed: "Failed",
+  fr_fail_h: "The dashboard couldn't finish setting up",
+  fr_fail_config_dir_missing:
+    "The dashboard can't find Claude Code's projects folder, where Claude Code keeps session transcripts.",
+  fr_fail_config_dir_unreadable:
+    "The dashboard isn't allowed to read {file}. Check that folder's permissions.",
+  fr_fail_store_unwritable:
+    "The dashboard can't save to {file}. Check that the disk has space and the folder allows writing.",
+  fr_fail_store_damaged: "The dashboard's database at {file} failed its integrity check.",
+  fr_fail_unexpected: "Something unexpected stopped this step. The details are in {file}.",
+  fr_fail_fix: "Run this command in Claude Code to try again.",
+  fr_retrying: "Trying again since {time}",
+
+  // More page
+  more_h1: "More",
+  more_ver_h: "Version",
+  more_ver_cc: "Claude Code {version}",
+  more_ver_app: "Bar Tab {version}",
+
+  // Project picker
+  pk_h: "Projects",
+  pk_state_ok: "Ready",
+  pk_state_no_claude_folder: "No .claude folder",
+  pk_state_folder_not_found: "Folder not found",
+  pk_running: "Agent working",
+  pk_st_noclaude_d: "Opens with its usage and your user setup, without project settings.",
+  pk_st_notfound_d:
+    "Nothing is at this path now, so it opens with usage history but no project setup.",
+  pk_empty_h: "No projects yet",
+  pk_empty: "A project appears here after you use Claude Code in it.",
+  pk_close: "Close",
+  pk_loading: "Loading projects",
+
+  // Placeholder pages
+  ph_body: "This page comes in a later release.",
+  pg_session: "Session",
+  pg_agent_new: "New agent",
+  pg_agent_edit: "Edit agent",
+  pg_surface: "Setup item",
+  pg_surface_edit: "Edit setup item",
+} as const;
+
+export type StringKey = keyof typeof en;

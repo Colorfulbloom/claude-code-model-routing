@@ -1,0 +1,19 @@
+{
+  "claude_version": "2.1.310",
+  "projects": [],
+  "running": [],
+  "to_fix_counts": {},
+  "editable_projects": [],
+  "ingest_steps": [
+    {
+      "at": 0,
+      "state": "done",
+      "files_done": 0,
+      "files_total": 0,
+      "bytes_done": 0,
+      "bytes_total": 0,
+      "error": null,
+      "retrying": false
+    }
+  ]
+}

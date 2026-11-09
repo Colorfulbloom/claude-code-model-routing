@@ -1,0 +1,181 @@
+/// <reference types="node" />
+/*
+ * Starts the real server (app/server/serve.py) on port 0 against the built app and a fresh data
+ * folder, reads the launch line from fd 3, and stops it with SIGTERM. The `server` fixture gives
+ * each test its own server, so codes and keys never leak between tests.
+ */
+import { spawn } from "node:child_process";
+import type { ChildProcess } from "node:child_process";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+import { test as base } from "@playwright/test";
+
+const appDir = resolve(import.meta.dirname, "..", "..");
+const PYTHON = join(appDir, ".venv", "bin", "python");
+const SERVE = join(appDir, "server", "serve.py");
+
+export interface StartOptions {
+  /** Reuse a data folder, for the restart check. A new one is made when omitted. */
+  dataDir?: string;
+  /** Bind this port, for the restart check. 0 picks a free one. */
+  port?: number;
+  fixture?: string;
+}
+
+export interface Server {
+  baseURL: string;
+  port: number;
+  /** The first link's code, from the launch line. */
+  code: string;
+  instance: string;
+  pid: number;
+  dataDir: string;
+  mintSecret: string;
+  /** Asks the running server for a fresh single-use code. */
+  mint: (project?: string | null) => Promise<string>;
+  /** SIGTERM, then waits for the process to exit. */
+  stop: () => Promise<void>;
+}
+
+interface LaunchLine {
+  port: number;
+  pid: number;
+  instance: string;
+  code: string;
+  project: string | null;
+}
+
+function readLaunchLine(child: ChildProcess, stderr: () => string): Promise<LaunchLine> {
+  return new Promise((done, fail) => {
+    const fd3 = child.stdio[3];
+    if (fd3 === null || fd3 === undefined || !("on" in fd3)) {
+      fail(new Error("no launch pipe"));
+      return;
+    }
+    let text = "";
+    const timer = setTimeout(() => {
+      fail(new Error(`no launch line in 30 s\n${stderr()}`));
+    }, 30_000);
+    fd3.on("data", (chunk: Buffer) => {
+      text += chunk.toString("utf8");
+      const end = text.indexOf("\n");
+      if (end >= 0) {
+        clearTimeout(timer);
+        done(JSON.parse(text.slice(0, end)) as LaunchLine);
+      }
+    });
+    child.once("exit", (code) => {
+      clearTimeout(timer);
+      fail(new Error(`server exited with ${String(code)} before it was ready\n${stderr()}`));
+    });
+  });
+}
+
+export async function startServer(options: StartOptions = {}): Promise<Server> {
+  const dist = process.env.BARTAB_E2E_DIST;
+  if (dist === undefined)
+    throw new Error("BARTAB_E2E_DIST is not set, the global setup did not run");
+  const dataDir = options.dataDir ?? mkdtempSync(join(tmpdir(), "bartab-e2e-data-"));
+  const args = [
+    SERVE,
+    "--port",
+    String(options.port ?? 0),
+    "--dist",
+    dist,
+    "--data",
+    dataDir,
+    "--fixture",
+    options.fixture ?? "demo",
+    "--launch-fd",
+    "3",
+    "--idle-exit-minutes",
+    "0",
+  ];
+  const child = spawn(PYTHON, args, {
+    cwd: join(appDir, "server"),
+    stdio: ["ignore", "ignore", "pipe", "pipe"],
+  });
+  let log = "";
+  child.stderr?.on("data", (chunk: Buffer) => {
+    log += chunk.toString("utf8");
+  });
+  const exited = new Promise<void>((done) => {
+    child.once("exit", () => {
+      done();
+    });
+  });
+  let launch: LaunchLine;
+  try {
+    launch = await readLaunchLine(child, () => log);
+  } catch (err) {
+    child.kill("SIGKILL");
+    throw err;
+  }
+  const info = JSON.parse(readFileSync(join(dataDir, "server.json"), "utf8")) as {
+    mint_secret: string;
+  };
+  const baseURL = `http://127.0.0.1:${String(launch.port)}`;
+  const mint = async (project: string | null = null): Promise<string> => {
+    const res = await fetch(`${baseURL}/api/access/mint`, {
+      method: "POST",
+      headers: {
+        Host: `127.0.0.1:${String(launch.port)}`,
+        "Content-Type": "application/json",
+        "X-Bartab-Mint": info.mint_secret,
+      },
+      body: JSON.stringify({ project }),
+    });
+    if (!res.ok) throw new Error(`mint answered ${String(res.status)}`);
+    return ((await res.json()) as { code: string }).code;
+  };
+  return {
+    baseURL,
+    port: launch.port,
+    code: launch.code,
+    instance: launch.instance,
+    pid: launch.pid,
+    dataDir,
+    mintSecret: info.mint_secret,
+    mint,
+    stop: async () => {
+      if (child.exitCode === null && child.signalCode === null) child.kill("SIGTERM");
+      await exited;
+    },
+  };
+}
+
+export const test = base.extend<{ server: Server; fixture: string }>({
+  fixture: ["demo", { option: true }],
+  server: async ({ fixture }, run) => {
+    const server = await startServer({ fixture });
+    try {
+      await run(server);
+    } finally {
+      await server.stop();
+      rmSync(server.dataDir, { recursive: true, force: true });
+    }
+  },
+});
+
+/**
+ * One server per worker, for specs that only read. Each test mints its own code, so tabs never
+ * share keys, but the server's state (the demo fixture) is shared.
+ */
+export const readOnlyTest = base.extend<object, { shared: Server }>({
+  shared: [
+    // eslint-disable-next-line no-empty-pattern
+    async ({}, run) => {
+      const server = await startServer();
+      try {
+        await run(server);
+      } finally {
+        await server.stop();
+        rmSync(server.dataDir, { recursive: true, force: true });
+      }
+    },
+    { scope: "worker" },
+  ],
+});
+
+export { expect } from "@playwright/test";

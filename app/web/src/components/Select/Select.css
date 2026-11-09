@@ -1,0 +1,209 @@
+.select {
+  display: inline-grid;
+  gap: var(--space-1);
+  max-width: 100%;
+}
+
+.select-label {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.select-value {
+  overflow: hidden;
+  font-weight: var(--weight-medium);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.select-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 36px;
+  max-width: 100%;
+  padding: 0 30px 0 var(--space-3);
+  background: var(--card-bg);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-align: left;
+}
+
+/* Stacked: the box fills its container, the muted label sits above the value and long values
+   truncate. The sidebar project Select uses it. */
+.select-stacked {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+}
+
+.select-stacked .select-btn {
+  display: grid;
+  gap: 0;
+  align-items: start;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  padding: var(--space-2) 30px var(--space-2) var(--space-3);
+  box-sizing: border-box;
+}
+
+.select-stacked .select-label {
+  font-size: var(--text-xs);
+  line-height: var(--leading-body);
+}
+
+.select-stacked .select-value {
+  min-width: 0;
+}
+
+.select-btn:active {
+  transform: translateY(1px);
+}
+
+.select-btn:hover,
+.select.is-hover .select-btn {
+  background: var(--nav-hover-bg);
+}
+
+.select.is-focus {
+  outline: none;
+}
+
+.select-btn[data-focus-visible],
+.select.is-focus > .select-btn {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.select-chevron {
+  position: absolute;
+  top: 50%;
+  right: var(--space-3);
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid var(--text-muted);
+  border-bottom: 1.5px solid var(--text-muted);
+  transform: translateY(-70%) rotate(45deg);
+}
+
+/* Open: the 2px accent ring is the open state, as on the top bar project button. */
+.select-btn[aria-expanded="true"] {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.select-btn[aria-disabled="true"] {
+  background: var(--card-bg);
+  border-style: dashed;
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+.select-heading {
+  padding: var(--space-2) var(--space-3) var(--space-1);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+.select-reason {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.select-popover {
+  min-width: var(--trigger-width);
+  max-width: 100vw;
+  overflow: auto;
+  background: var(--card-bg);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.select-popover-wide {
+  width: 360px;
+}
+
+.select-list {
+  display: grid;
+  gap: 2px;
+  padding: var(--space-1);
+  outline: none;
+}
+
+.select-list-static {
+  background: var(--card-bg);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.select-option {
+  display: grid;
+  gap: 2px;
+  min-height: 32px;
+  padding: var(--space-2) 28px var(--space-2) var(--space-3);
+  position: relative;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  outline: none;
+}
+
+.select-option-description {
+  display: grid;
+  gap: 2px;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.select-option[data-hovered] {
+  background: var(--nav-hover-bg);
+}
+
+/* Chosen state (components.md, "Chosen state made canonical"): the --select-bg fill, the 2px
+   accent edge and a check at the end of the row. Focus-visible draws inside the edge. */
+.select-option[data-selected] {
+  background: var(--select-bg);
+  box-shadow: inset 0 0 0 2px var(--accent);
+  font-weight: var(--weight-semibold);
+}
+
+.select-option[data-selected]::before {
+  content: "\2713" / "";
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-3);
+  color: var(--accent);
+}
+
+.select-option[data-selected][data-focus-visible] {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: -6px;
+}
+
+.select-option[data-focus-visible]:not([data-selected]) {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+/* At 720px and below the popover becomes a bottom tray over the tab bar. React Aria positions the
+   popover with inline styles, so the tray needs !important. The shadow dims the page behind it. */
+@media (width <= 720px) {
+  .select-popover {
+    position: fixed !important;
+    inset: auto 0 0 !important;
+    width: 100vw;
+    max-height: 70vh !important;
+    border-width: 1px 0 0;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    box-shadow: 0 0 0 100vmax var(--scrim);
+  }
+
+  .select-option {
+    min-height: 44px;
+    align-content: center;
+  }
+}

@@ -1,0 +1,51 @@
+.tab-bar {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  padding-bottom: var(--space-1);
+  background: var(--sidebar-bg);
+  border-top: 1px solid var(--border);
+}
+
+.tab-bar-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 52px;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  text-decoration: none;
+}
+
+.tab-bar-link:hover,
+.tab-bar-link.is-hover {
+  background: var(--nav-hover-bg);
+}
+
+.tab-bar-link[aria-current="page"] {
+  color: var(--accent);
+  font-weight: var(--weight-medium);
+}
+
+.tab-bar-icon {
+  position: relative;
+  font-size: var(--text-lg);
+  line-height: 1;
+}
+
+.tab-bar-count {
+  position: absolute;
+  top: -6px;
+  left: calc(100% - var(--space-1));
+  min-width: 16px;
+  padding: 0 3px;
+  text-align: center;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  background: var(--card-bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  line-height: 14px;
+}

@@ -1,0 +1,9 @@
+dist
+dist-sheet
+coverage
+playwright-report
+test-results
+package-lock.json
+src/styles/tokens.css
+src/api/schema.d.ts
+src/api/openapi.json

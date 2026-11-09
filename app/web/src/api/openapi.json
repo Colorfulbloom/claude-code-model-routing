@@ -1,0 +1,573 @@
+{
+  "components": {
+    "schemas": {
+      "AppInfo": {
+        "additionalProperties": false,
+        "description": "Answer of ``GET /api/app``.",
+        "properties": {
+          "claude_version": {
+            "title": "Claude Version",
+            "type": "string"
+          },
+          "editable_projects": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Editable Projects",
+            "type": "array"
+          },
+          "ingest": {
+            "$ref": "#/components/schemas/Ingest"
+          },
+          "instance": {
+            "title": "Instance",
+            "type": "string"
+          },
+          "running": {
+            "items": {
+              "$ref": "#/components/schemas/RunningItem"
+            },
+            "title": "Running",
+            "type": "array"
+          },
+          "server_time": {
+            "format": "date-time",
+            "title": "Server Time",
+            "type": "string"
+          },
+          "to_fix_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "To Fix Count"
+          }
+        },
+        "required": [
+          "server_time",
+          "instance",
+          "claude_version",
+          "ingest",
+          "running",
+          "to_fix_count",
+          "editable_projects"
+        ],
+        "title": "AppInfo",
+        "type": "object"
+      },
+      "ErrorEnvelope": {
+        "additionalProperties": false,
+        "description": "The one error body. It never carries input or file paths.",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "path": {
+            "anyOf": [
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "integer"
+                    }
+                  ]
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Path"
+          }
+        },
+        "required": [
+          "code",
+          "path"
+        ],
+        "title": "ErrorEnvelope",
+        "type": "object"
+      },
+      "Ingest": {
+        "additionalProperties": false,
+        "description": "Progress of the first read of the usage history.",
+        "properties": {
+          "bytes_done": {
+            "title": "Bytes Done",
+            "type": "integer"
+          },
+          "bytes_total": {
+            "title": "Bytes Total",
+            "type": "integer"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IngestError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "files_done": {
+            "title": "Files Done",
+            "type": "integer"
+          },
+          "files_total": {
+            "title": "Files Total",
+            "type": "integer"
+          },
+          "retrying": {
+            "title": "Retrying",
+            "type": "boolean"
+          },
+          "state": {
+            "enum": [
+              "waiting",
+              "running",
+              "done",
+              "failed"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "files_done",
+          "files_total",
+          "bytes_done",
+          "bytes_total",
+          "error",
+          "retrying"
+        ],
+        "title": "Ingest",
+        "type": "object"
+      },
+      "IngestError": {
+        "additionalProperties": false,
+        "description": "Why a first-run ingest failed. ``file`` is None when the contract names none.",
+        "properties": {
+          "code": {
+            "enum": [
+              "config_dir_missing",
+              "config_dir_unreadable",
+              "store_unwritable",
+              "store_damaged",
+              "unexpected"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "file": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File"
+          }
+        },
+        "required": [
+          "code",
+          "file"
+        ],
+        "title": "IngestError",
+        "type": "object"
+      },
+      "MintRequest": {
+        "additionalProperties": false,
+        "description": "Body of ``POST /api/access/mint``.",
+        "properties": {
+          "project": {
+            "anyOf": [
+              {
+                "pattern": "^[a-z0-9][a-z0-9-]{0,62}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project"
+          }
+        },
+        "title": "MintRequest",
+        "type": "object"
+      },
+      "MintResponse": {
+        "additionalProperties": false,
+        "description": "A fresh single-use code.",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "title": "MintResponse",
+        "type": "object"
+      },
+      "Project": {
+        "additionalProperties": false,
+        "description": "One project in the picker.",
+        "properties": {
+          "display_path": {
+            "title": "Display Path",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "running": {
+            "title": "Running",
+            "type": "boolean"
+          },
+          "state": {
+            "enum": [
+              "ok",
+              "no_claude_folder",
+              "folder_not_found"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "display_path",
+          "state",
+          "running"
+        ],
+        "title": "Project",
+        "type": "object"
+      },
+      "ProjectList": {
+        "additionalProperties": false,
+        "description": "Answer of ``GET /api/projects``.",
+        "properties": {
+          "projects": {
+            "items": {
+              "$ref": "#/components/schemas/Project"
+            },
+            "title": "Projects",
+            "type": "array"
+          }
+        },
+        "required": [
+          "projects"
+        ],
+        "title": "ProjectList",
+        "type": "object"
+      },
+      "RunningItem": {
+        "additionalProperties": false,
+        "description": "One session that is running now.",
+        "properties": {
+          "project": {
+            "title": "Project",
+            "type": "string"
+          },
+          "session": {
+            "title": "Session",
+            "type": "string"
+          }
+        },
+        "required": [
+          "project",
+          "session"
+        ],
+        "title": "RunningItem",
+        "type": "object"
+      },
+      "SwapRequest": {
+        "additionalProperties": false,
+        "description": "Body of ``POST /api/access/swap``.",
+        "properties": {
+          "code": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "title": "SwapRequest",
+        "type": "object"
+      },
+      "SwapResponse": {
+        "additionalProperties": false,
+        "description": "Keys handed out after a code swap.",
+        "properties": {
+          "edit_keys": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Edit Keys",
+            "type": "object"
+          },
+          "instance": {
+            "title": "Instance",
+            "type": "string"
+          },
+          "project": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project"
+          },
+          "read_key": {
+            "title": "Read Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "read_key",
+          "edit_keys",
+          "instance",
+          "project"
+        ],
+        "title": "SwapResponse",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "Bar Tab",
+    "version": "0.0.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/access/mint": {
+      "post": {
+        "operationId": "mint_code",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MintRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MintResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "summary": "Mint Code",
+        "tags": [
+          "access"
+        ]
+      }
+    },
+    "/api/access/swap": {
+      "post": {
+        "operationId": "swap_code",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SwapRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SwapResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "summary": "Swap Code",
+        "tags": [
+          "access"
+        ]
+      }
+    },
+    "/api/app": {
+      "get": {
+        "operationId": "get_app",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "project",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 63,
+                  "pattern": "^[a-z0-9][a-z0-9-]{0,62}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "summary": "Get App",
+        "tags": [
+          "app"
+        ]
+      }
+    },
+    "/api/projects": {
+      "get": {
+        "operationId": "get_projects",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "summary": "Get Projects",
+        "tags": [
+          "app"
+        ]
+      }
+    }
+  }
+}

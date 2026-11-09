@@ -1,0 +1,95 @@
+{
+  "claude_version": "2.1.310",
+  "projects": [
+    {
+      "key": "tidewater-reporting",
+      "name": "Tidewater Reporting",
+      "display_path": "/work/tidewater-reporting",
+      "state": "ok"
+    },
+    {
+      "key": "saltmarsh",
+      "name": "Saltmarsh",
+      "display_path": "/work/saltmarsh",
+      "state": "no_claude_folder"
+    },
+    {
+      "key": "driftwood",
+      "name": "Driftwood",
+      "display_path": "/work/driftwood",
+      "state": "folder_not_found"
+    }
+  ],
+  "running": [],
+  "to_fix_counts": {
+    "tidewater-reporting": 0,
+    "saltmarsh": 0,
+    "driftwood": 0
+  },
+  "editable_projects": [],
+  "ingest_steps": [
+    {
+      "at": 0,
+      "state": "waiting",
+      "files_done": 0,
+      "files_total": 82,
+      "bytes_done": 0,
+      "bytes_total": 82000000,
+      "error": null,
+      "retrying": false
+    },
+    {
+      "at": 2,
+      "state": "running",
+      "files_done": 10,
+      "files_total": 82,
+      "bytes_done": 10000000,
+      "bytes_total": 82000000,
+      "error": null,
+      "retrying": false
+    },
+    {
+      "at": 3,
+      "state": "running",
+      "files_done": 24,
+      "files_total": 82,
+      "bytes_done": 23500000,
+      "bytes_total": 82000000,
+      "error": null,
+      "retrying": false
+    },
+    {
+      "at": 4,
+      "state": "running",
+      "files_done": 41,
+      "files_total": 82,
+      "bytes_done": 41000000,
+      "bytes_total": 82000000,
+      "error": null,
+      "retrying": false
+    },
+    {
+      "at": 5,
+      "state": "failed",
+      "files_done": 41,
+      "files_total": 82,
+      "bytes_done": 41000000,
+      "bytes_total": 82000000,
+      "error": {
+        "code": "store_unwritable",
+        "file": "/work/data/bartab/store.sqlite"
+      },
+      "retrying": false
+    },
+    {
+      "at": 8,
+      "state": "running",
+      "files_done": 0,
+      "files_total": 82,
+      "bytes_done": 0,
+      "bytes_total": 82000000,
+      "error": null,
+      "retrying": true
+    }
+  ]
+}

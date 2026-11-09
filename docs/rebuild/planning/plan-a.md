@@ -14,7 +14,7 @@ Sources are cited as path:line, research file and section, or board name. Boards
 - Prices update daily without an app release. The user's own `modelPricing` comes first, then LiteLLM's price file with checks, and every cost is labelled an API-rate estimate with its price date (section 3, Prices).
 - Agents are created and edited on one full page (boards `a-dir-full-*`) in M6, with the system prompt editor in M7.
 - Rough cost is $455 to $805 at list price, up from $425 to $755 for agent creation, the price feed and the rename. It is not taken from the dashboard's cost per run, so treat it as [NEEDS CONFIRMATION: per-run cost data].
-- The owner accepted the plan's picks on November 8. Two small items stay open (section 9).
+- The owner accepted the plan's picks on November 8, and settled N1 and N2 the same day (section 9).
 
 ## 2. Release 1 scope by screen
 
@@ -234,7 +234,7 @@ One lead per working tree, one PR per milestone, on a feature branch. The lead c
 - Lands. `app/` layout, `pyproject.toml` and `uv.lock`, FastAPI app with the ASGI gate (`--http h11`, `--no-proxy-headers`, receive timeout), read key and single-use code swap, per-request CSP nonce, Vite and React 19 with the hash router, typed `t()` and `tn()`, `tokens.css` copied in as the single sheet, shell, gate pages, wave 1 components, the component sheet, the More page and the project picker at 375, the launcher, CI on Linux.
 - Spikes inside M0. Code swap end to end, SessionEnd with one shared server, uv SIGTERM, `json_edit` array insert, ruamel byte equality (plan.md section 12, Open questions).
 - Tests. The gate refuses a bad Host, Origin, Sec-Fetch-Site or Content-Type, an oversized body and a missing token, and the tests assert "refused" rather than exact codes (research 20, spike 1). Every GET needs the read key (research 26-07). The dev server's CSP is looser than prod, and a test checks the built app serves the strict one (research 20, verifier pass). Launcher tests as subprocesses with `["guard"]` (project fact L-979a). Route harness with title, focus on h1, polite route status, scroll padding, reflow at 320 and 375. Component sheet run.
-- Exit. Axe clean on every gate page and the empty shell at both widths and themes. The built `dist` is tracked and the launcher runs `uv run --frozen` offline on a second start (research 20, spike 2). O1 and O6 are decided.
+- Exit. Axe clean on every gate page and the empty shell at both widths and themes. The built `dist` is tracked and the launcher runs `uv sync --frozen --project app --no-dev`, then starts the server with that environment's own Python, offline on a second start (research 20, M0 spike 3). O1 and O6 are decided.
 
 ### M1. Data core
 
@@ -275,7 +275,7 @@ One lead per working tree, one PR per milestone, on a feature branch. The lead c
 ### M6. Edit core
 
 - Goal. The owner changes effort on a project, reviews the effect and diff, saves, sees "Saved." at once and undoes it. Then the owner adds an agent from a role preset and edits an existing agent on the same full page.
-- Lands. Registry of writable fields, server preview, the edit rail and phone sheet, backup and undo with the changed-file refusal, the recheck and the overwritten state, the writable allowlist, agent front matter through ruamel with the byte-equality check, writes through a symlink to its target with the real path shown (research 20, round 3), wave 5 components. The full-page agent form for new and edit, from the Agents page. Role presets Lead, Worker and Reviewer fill real fields only, Custom shows after a change, and the role is never saved. The model list shows relative price words from `/api/prices` in both new and edit. The name check applies the rule that a project agent beats a user agent. Save in is User or This project. Fields follow `dashboard/agent_fields.json`, and "Can start other agents" off writes `Agent` into `disallowedTools` (N2). `hooks`, `mcpServers` and `permissionMode` show read-only with their reason until M8, because they run commands or loosen permissions. Plugin agents are read-only, and the form flags the fields Claude Code ignores for them.
+- Lands. Registry of writable fields, server preview, the edit rail and phone sheet, backup and undo with the changed-file refusal, the recheck and the overwritten state, the writable allowlist, agent front matter through ruamel with the byte-equality check, writes through a symlink to its target with the real path shown (research 20, round 3), wave 5 components. The full-page agent form for new and edit, from the Agents page. Role presets Lead, Worker and Reviewer fill real fields only, Custom shows after a change, and the role is never saved. The model list shows relative price words from `/api/prices` in both new and edit. The name check applies the rule that a project agent beats a user agent. Save in is User or This project. Fields follow `dashboard/agent_fields.json`, and "Can start other agents" off leaves `Agent` out of `tools` when tools are limited, or adds it to `disallowedTools` when `tools` is omitted (N2). `hooks`, `mcpServers` and `permissionMode` show read-only with their reason until M8, because they run commands or loosen permissions. Plugin agents are read-only, and the form flags the fields Claude Code ignores for them.
 - Tests. Ported `edit_store` and `json_edit` tests plus hypothesis, the 26-08 write-race test, old and new apps reading each other's ledgers (`edit_store.py:796-799` per plan.md section 7), a real double-click on every swapped button, and aria snapshots for saved, undo and overwritten. Create then Undo leaves no file. Name clashes in both scopes. A preset then a change shows Custom. Each field round-trips with front matter bytes unchanged outside the edited key.
 - Exit. Verifier pass (Opus). Second VoiceOver pass. The owner decides whether M8 stays in release 1.
 
@@ -343,7 +343,7 @@ VoiceOver at M3, M6 and M9, charts and the replay Slider included. Help and erro
 - The old app stays on development in bug-fix mode. Its fixes keep its own look and its own `dashboard/static/tokens.css` (CLAUDE.md, Design).
 - `app/` is not in `routing_dashboard_files` (`tools/build_plugins.py:96-108`), so changes there need no plugin bump before cutover. Any fix to `dashboard/` still needs the bump and a rebuild (project fact L-13fb).
 - From M2 the owner runs the new app on real data (decision O9). Before M2 the lead runs it with `uv run` from `app/` against the demo set and the `live_flow` scenarios. The port comes from a high range and is never 8377.
-- The owner runs the preview from the checkout (O9). A stdlib script in `app/` starts the same server with `uv run --frozen --project app`. There is no second plugin, no bump and no pinned-test change.
+- The owner runs the preview from the checkout (O9). A stdlib script in `app/` starts the same server with `uv sync --frozen --project app --no-dev` and the environment's own Python (M0 spike 3). There is no second plugin, no bump and no pinned-test change.
 
 ### Cutover in M9
 
@@ -398,12 +398,10 @@ The owner accepted the plan's picks on November 8 (research 20, "plan-a decision
 | D1 to D10 | Design calls on A | As recommended in the first draft of this plan (inline confirm, both statuses worst first, middle dot, sheet covers tab bar, neutral notice mark, live To fix count hidden at zero, 1280 px, no pill on run states, Fable triangle, heavier dark Idle glyph) |
 | A1 to A5 | Agent-edit picks | Full-page form, full model list with price words in edit, short "Set by {role}" summary, chosen-state standard (research 20, "agent form") |
 
-### Still open
+| N1 | Data folder name after the rename | Keep `<config>/routing-dashboard/` through release 1, so the old app, Bar Tab and a rollback share backups and the ledger. Move it one release later with a migration (owner, November 8) |
+| N2 | Where "Can start other agents" writes | Off leaves `Agent` out of `tools` when the agent's tools are limited, and adds `Agent` to `disallowedTools` when the agent has every tool (`tools` omitted). Both are documented in code.claude.com/docs/en/sub-agents, "Let subagents spawn their own subagents" (owner, November 8) |
 
-- N1. Data folder name after the rename. `<config>/routing-dashboard/` holds the backups, the ledger and the database. Recommend keeping it through release 1, so the old app and a rollback read the same folder, and moving it one release later with a migration.
-- N2. Where "Can start other agents" writes. This round says off writes `Agent` into `disallowedTools`, but components.md ("Other parts of the new-agent form") says the Switch adds or removes `Agent` in `tools`. Recommend `disallowedTools`, because it works whether or not `tools` is set, and a designer edit to components.md to match.
-
-Two calls are scheduled, not open. O11 is made at the M6 gate, and O14 follows the M0 spike result.
+Nothing is still open. Two calls are scheduled. O11 is made at the M6 gate, and O14 follows the M0 spike result.
 
 ## 10. Risks and estimate
 

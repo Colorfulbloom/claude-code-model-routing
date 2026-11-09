@@ -1,0 +1,155 @@
+.pk {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.pk-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2) 0;
+}
+
+.pk-heading {
+  margin-right: auto;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+.pk-list {
+  padding: 0;
+}
+
+.pk-note,
+.pk-empty {
+  padding: var(--space-2);
+}
+
+.pk-empty {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.pk-empty-title {
+  font-weight: var(--weight-semibold);
+}
+
+.pk-path {
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+.pk-state {
+  display: inline-flex;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.pk-state-ready {
+  color: var(--status-in-effect-fg);
+}
+
+.pk-state-working {
+  color: var(--accent);
+}
+
+.pk-state-idle {
+  color: var(--text-muted);
+}
+
+.pk-state-bad {
+  color: var(--status-invalid-fg);
+}
+
+.pk-detail {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+/* The tray: a real scrim element that covers the top bar and the tab bar, and a sheet at the bottom. */
+.pk-scrim {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 60;
+  width: 100vw;
+  height: var(--visual-viewport-height, 100vh);
+  display: flex;
+  align-items: flex-end;
+  background: var(--scrim);
+}
+
+.pk-tray {
+  width: 100%;
+  max-height: 80vh;
+  overflow: auto;
+  padding: var(--space-3) var(--space-3) calc(var(--space-4) + env(safe-area-inset-bottom));
+  background: var(--card-bg);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  outline: none;
+}
+
+.pk-dialog {
+  outline: none;
+}
+
+/* The sheet: the same scrim, with a centred card for 721px and up. The list scrolls inside it. */
+.pk-scrim:has(.pk-sheet) {
+  align-items: center;
+  justify-content: center;
+}
+
+.pk-sheet {
+  display: flex;
+  flex-direction: column;
+  width: min(480px, 100% - 2 * var(--space-5));
+  max-height: 80vh;
+  padding: var(--space-3);
+  background: var(--card-bg);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  outline: none;
+}
+
+.pk-sheet .pk-dialog,
+.pk-sheet .pk {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.pk-sheet .pk-list {
+  min-height: 0;
+  overflow: auto;
+}
+
+.pk-tray .pk-heading {
+  color: var(--text);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+}
+
+/* A plain accent x, not a boxed button. The 44px target stays. */
+.pk-head .pk-close {
+  width: 44px;
+  min-height: 44px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--accent);
+  font-size: var(--text-xl);
+}
+
+.pk-head .pk-close:hover {
+  background: var(--nav-hover-bg);
+}
+
+/* On the picker page the heading is the page h1. */
+h1.pk-heading {
+  color: var(--text);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight);
+}

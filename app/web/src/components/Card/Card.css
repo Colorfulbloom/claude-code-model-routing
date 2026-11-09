@@ -1,0 +1,53 @@
+.card {
+  min-width: 0;
+  padding: var(--space-4) var(--space-5) var(--space-5);
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-xl);
+}
+
+.card-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.card-title {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+}
+
+.card-count {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.card-question {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.card-right {
+  margin-left: auto;
+}
+
+/* Inside a card, blocks sit --space-4 apart. */
+.card-body {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.card-foot {
+  margin-top: var(--space-3);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+@media (width <= 720px) {
+  .card {
+    padding: var(--space-3) var(--space-4) var(--space-4);
+    border-radius: var(--radius-lg);
+  }
+}

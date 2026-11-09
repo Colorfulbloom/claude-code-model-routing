@@ -176,7 +176,7 @@ function aGlossary() {
 }
 
 // ---------- Access states ----------
-function bare(title, body) { document.title = `${title}, ${S.product}`; return `<div class="bare"><header class="bare-h"><div class="brand"><span class="logo" aria-hidden="true">R</span>${S.product}</div></header><main class="bare-m" id="main">${body}</main></div>`; }
+function bare(title, body) { document.title = `${title}, ${S.product}`; return `<div class="bare"><header class="bare-h"><div class="brand">${S.product}</div></header><main class="bare-m" id="main">${body}</main></div>`; }
 const aLocked = () => bare(S.lk_h, `<section class="card gate"><svg class="lock gate-i" viewBox="0 0 12 14" width="22" height="26" aria-hidden="true"><rect x="1.5" y="6" width="9" height="7" rx="1.5" fill="currentColor"/><path d="M3.5 6V4.2a2.5 2.5 0 0 1 5 0V6" fill="none" stroke="currentColor" stroke-width="1.5"/></svg><h1>${S.lk_h}</h1><p>${S.lk_body}</p>
   <div class="cmdrow"><code class="well cmd">${S.lk_cmd}</code><button class="btn">${S.lk_copy}</button></div><p class="raised-line">${S.lk_route}</p></section>`);
 const aFirstRun = () => bare(S.fr_h, `<section class="card gate"><h1>${S.fr_h}</h1><p>${S.fr_body}</p>
