@@ -201,7 +201,7 @@ test.describe("first run", () => {
     await expect(steps.nth(2)).toContainText(en.fr_now);
     await expect(steps.nth(2)).toHaveAttribute("aria-current", "step");
     const bar = page.getByRole("progressbar");
-    await expect(bar).toHaveAttribute("aria-valuetext", /^\d[\d,]* of 82 files$/);
+    await expect(bar).toHaveAttribute("aria-valuetext", /^\d+\.\d of 82\.0 MB$/);
     expect(await axeAllCombos(page, "first run")).toEqual([]);
     await expect(page).toHaveURL(/#\/p\/tidewater-reporting\/live$/, { timeout: 30_000 });
     await expectUnlocked(page);
@@ -224,20 +224,24 @@ test.describe("first run failed", () => {
     await expect(alert).toContainText(
       fill(en.fr_fail_store_unwritable, { file: "/work/data/bartab/store.sqlite" }),
     );
+    await expect(alert).toContainText(/Next try at \d{1,2}:\d{2}\s?[AP]M/);
     expect(await axeAllCombos(page, "first run failed")).toEqual([]);
   });
 
-  // While a retry runs, ingest reports state "running" with retrying true (m0-build.md section 10).
-  test("the retry status shows once the fixture steps to retrying", async ({ context, server }) => {
+  // While a retry runs, ingest reports state "running" with retrying true and keeps the error.
+  test("the finding stays while the retry runs and step 3 goes back to In progress", async ({
+    context,
+    server,
+  }) => {
     const page = await pageWithFirstRun(
       context,
       server.baseURL,
       await server.mint("tidewater-reporting"),
     );
-    const retrying = page.getByText(
-      new RegExp(`^${fill(en.fr_retrying, { time: "\\d{1,2}:\\d{2}\\s?[AP]M" })}$`),
-    );
-    await expect(retrying).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByRole("alert")).toBeVisible({ timeout: 20_000 });
+    const third = page.getByRole("list", { name: en.fr_h }).getByRole("listitem").nth(2);
+    await expect(third).toContainText(en.fr_now, { timeout: 20_000 });
+    await expect(page.getByRole("alert")).toContainText(en.fr_fail_h);
   });
 });
 

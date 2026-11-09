@@ -1,0 +1,1561 @@
+{
+  "generated_at": "2026-10-30T18:00:00-04:00",
+  "model_names": {
+    "claude-fable-5": "Fable 5",
+    "claude-fable-5-1": "Fable 5.1",
+    "claude-haiku-4-5": "Haiku 4.5",
+    "claude-haiku-5-5": "Haiku 5.5",
+    "claude-opus-4-6": "Opus 4.6",
+    "claude-opus-4-7": "Opus 4.7",
+    "claude-opus-4-8": "Opus 4.8",
+    "claude-opus-5": "Opus 5",
+    "claude-opus-5-5": "Opus 5.5",
+    "claude-sonnet-4-6": "Sonnet 4.6",
+    "claude-sonnet-5": "Sonnet 5",
+    "claude-sonnet-5-5": "Sonnet 5.5"
+  },
+  "no_usage": false,
+  "prices": {
+    "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+    "verified_on": "2026-10-30"
+  },
+  "project": "harbor-light",
+  "unreadable": null,
+  "views": {
+    "30d": {
+      "axis": {
+        "runs_ticks": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "tokens_max_nice": 2000000,
+        "tokens_ticks": [
+          0,
+          1000000,
+          2000000
+        ]
+      },
+      "bucket_unit": "day",
+      "buckets": [
+        {
+          "by_model": {},
+          "date": "2026-10-01",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-01T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-02",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-02T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-03",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-03T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-04",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-04T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {
+            "claude-haiku-5-5": 77330,
+            "claude-opus-5-5": 350779,
+            "claude-sonnet-5-5": 463767
+          },
+          "date": "2026-10-05",
+          "hour": null,
+          "runs_by_agent": {
+            "@main": 1,
+            "reviewer": 1,
+            "scribe": 1
+          },
+          "start": "2026-10-05T00:00:00-04:00",
+          "tokens": 891876
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-06",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-06T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-07",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-07T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-08",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-08T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-09",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-09T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-10",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-10T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-11",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-11T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-12",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-12T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {
+            "claude-haiku-5-5": 212885,
+            "claude-opus-5-5": 840127,
+            "claude-sonnet-5-5": 528188
+          },
+          "date": "2026-10-13",
+          "hour": null,
+          "runs_by_agent": {
+            "@main": 1,
+            "reviewer": 1,
+            "scribe": 2
+          },
+          "start": "2026-10-13T00:00:00-04:00",
+          "tokens": 1581200
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-14",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-14T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-15",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-15T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-16",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-16T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-17",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-17T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-18",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-18T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-19",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-19T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {
+            "claude-opus-5-5": 699481,
+            "claude-sonnet-5-5": 340192
+          },
+          "date": "2026-10-20",
+          "hour": null,
+          "runs_by_agent": {
+            "@main": 1,
+            "reviewer": 2
+          },
+          "start": "2026-10-20T00:00:00-04:00",
+          "tokens": 1039673
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-21",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-21T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-22",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-22T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-23",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-23T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-24",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-24T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-25",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-25T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-26",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-26T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-27",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-27T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-28",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-28T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {
+            "claude-haiku-5-5": 44224,
+            "claude-opus-5-5": 508851,
+            "claude-sonnet-5-5": 166454
+          },
+          "date": "2026-10-29",
+          "hour": null,
+          "runs_by_agent": {
+            "@main": 1,
+            "reviewer": 1,
+            "scribe": 1
+          },
+          "start": "2026-10-29T00:00:00-04:00",
+          "tokens": 719529
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-30T00:00:00-04:00",
+          "tokens": 0
+        }
+      ],
+      "by_agent": [
+        {
+          "agent": null,
+          "cache_read": 1814095,
+          "cache_write": 407651,
+          "cache_write_1h": 44790,
+          "cache_write_5m": 362861,
+          "cost": 4.186468,
+          "cost_by_kind": {
+            "cache_read": 0.362819,
+            "cache_write": 2.172625,
+            "input": 0.4747040000000001,
+            "output": 1.1763200000000007
+          },
+          "display": "Main session",
+          "hit_rate": 0.7751144879000453,
+          "input": 118676,
+          "output": 58816,
+          "pin": {
+            "effort": {
+              "cap": null,
+              "expected": {
+                "becomes": null,
+                "file": null,
+                "key": "effortLevel",
+                "layer": "default",
+                "line": null,
+                "reason": "Nothing sets an effort level that counts for Opus 5.5, so it runs at its default, medium. /effort status shows this as auto (currently medium).",
+                "rule_id": "effort-default-by-model",
+                "status": "default",
+                "value": "medium",
+                "via": null
+              },
+              "pinned": {
+                "file": null,
+                "id": "medium",
+                "line": null,
+                "status": "default",
+                "value": "medium"
+              },
+              "ran": [
+                "medium"
+              ],
+              "runs_match_pin": false,
+              "state": "matches"
+            },
+            "mismatched_runs": 0,
+            "model": {
+              "cap": null,
+              "expected": {
+                "becomes": null,
+                "file": "config/settings.json",
+                "key": "model",
+                "layer": "user",
+                "line": 2,
+                "reason": "config/settings.json sets the model. --model beats ANTHROPIC_MODEL, which beats the model key in any file, managed included.",
+                "rule_id": "model-main-session-order",
+                "status": "in_effect",
+                "value": "claude-opus-5-5",
+                "via": null
+              },
+              "pinned": {
+                "file": "config/settings.json",
+                "id": "claude-opus-5-5",
+                "line": 2,
+                "status": "in_effect",
+                "value": "claude-opus-5-5"
+              },
+              "ran": [
+                "claude-opus-5-5"
+              ],
+              "runs_match_pin": false,
+              "state": "matches"
+            },
+            "pinned": "both",
+            "source": "settings",
+            "state": "matches",
+            "total_runs": 4
+          },
+          "ran_with": [
+            {
+              "effort": "medium",
+              "model": "claude-opus-5-5",
+              "requests": 62,
+              "runs": 4
+            }
+          ],
+          "recent_runs": [
+            {
+              "cost": 0.9509831999999999,
+              "effort": "medium",
+              "hit_rate": 0.752192730476081,
+              "model": "claude-opus-5-5",
+              "project": "Harbor Light",
+              "requests": 13,
+              "run_id": null,
+              "session_id": "29fc84ab-0604-4039-9119-13a2043e437e",
+              "session_started": "2026-10-29T15:14:04.387000-04:00",
+              "started": "2026-10-29T15:14:04.387000-04:00",
+              "tokens": 508851,
+              "unpriced_requests": 0
+            },
+            {
+              "cost": 1.1885142000000002,
+              "effort": "medium",
+              "hit_rate": 0.7828004765596264,
+              "model": "claude-opus-5-5",
+              "project": "Harbor Light",
+              "requests": 18,
+              "run_id": null,
+              "session_id": "9fb7405b-2c1e-4dc1-9c29-df2fb3944fb1",
+              "session_started": "2026-10-20T11:20:52.852000-04:00",
+              "started": "2026-10-20T11:20:52.852000-04:00",
+              "tokens": 699481,
+              "unpriced_requests": 0
+            },
+            {
+              "cost": 1.4372303999999994,
+              "effort": "medium",
+              "hit_rate": 0.7835760167387499,
+              "model": "claude-opus-5-5",
+              "project": "Harbor Light",
+              "requests": 22,
+              "run_id": null,
+              "session_id": "4570aae5-923f-4466-bf9c-7f0e13b54239",
+              "session_started": "2026-10-13T11:59:24.043000-04:00",
+              "started": "2026-10-13T11:59:24.043000-04:00",
+              "tokens": 840127,
+              "unpriced_requests": 0
+            },
+            {
+              "cost": 0.6097402,
+              "effort": "medium",
+              "hit_rate": 0.7727494485911687,
+              "model": "claude-opus-5-5",
+              "project": "Harbor Light",
+              "requests": 9,
+              "run_id": null,
+              "session_id": "b3d8d770-68d0-4b8a-a244-3d2168c919f1",
+              "session_started": "2026-10-05T15:50:54.674000-04:00",
+              "started": "2026-10-05T15:50:54.674000-04:00",
+              "tokens": 350779,
+              "unpriced_requests": 0
+            }
+          ],
+          "requests": 62,
+          "route_key": "@main",
+          "runs": 0,
+          "runs_per_day": [
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0
+          ],
+          "runs_ticks": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "sessions": 4,
+          "thinking": 18185,
+          "tokens": 2399238,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "agent": "reviewer",
+          "cache_read": 1153300,
+          "cache_write": 223627,
+          "cache_write_1h": 25965,
+          "cache_write_5m": 197662,
+          "cost": 1.2544930000000003,
+          "cost_by_kind": {
+            "cache_read": 0.11533,
+            "cache_write": 0.5980150000000002,
+            "input": 0.16889799999999994,
+            "output": 0.37225
+          },
+          "display": "reviewer",
+          "hit_rate": 0.7891877244460016,
+          "input": 84449,
+          "output": 37225,
+          "pin": {
+            "effort": {
+              "cap": null,
+              "expected": {
+                "becomes": null,
+                "file": "config/agents/reviewer.md",
+                "key": "effort",
+                "layer": "agent",
+                "line": 5,
+                "reason": "config/agents/reviewer.md sets the effort for reviewer. CLAUDE_CODE_EFFORT_LEVEL beats the agent's effort frontmatter, which beats --effort and the settings that count for its own model.",
+                "rule_id": "agent-effort-order",
+                "status": "in_effect",
+                "value": "high",
+                "via": null
+              },
+              "pinned": {
+                "file": "config/agents/reviewer.md",
+                "id": "high",
+                "line": 5,
+                "status": "in_effect",
+                "value": "high"
+              },
+              "ran": [
+                "high"
+              ],
+              "runs_match_pin": false,
+              "state": "matches"
+            },
+            "mismatched_runs": 0,
+            "model": {
+              "cap": null,
+              "expected": {
+                "becomes": null,
+                "file": "config/agents/reviewer.md",
+                "key": "model",
+                "layer": "agent",
+                "line": 4,
+                "reason": "config/agents/reviewer.md sets the model for reviewer. The agent's frontmatter model, inherit included, beats CLAUDE_CODE_SUBAGENT_MODEL, which beats the main model, unless CLAUDE_CODE_SUBAGENT_MODEL_FORCE is on. A model passed at dispatch, or set by a mod's agent.spawn hook, beats the frontmatter, and the dashboard can't see either.",
+                "rule_id": "subagent-model-order",
+                "status": "in_effect",
+                "value": "claude-sonnet-5-5",
+                "via": null
+              },
+              "pinned": {
+                "file": "config/agents/reviewer.md",
+                "id": "claude-sonnet-5-5",
+                "line": 4,
+                "status": "in_effect",
+                "value": "claude-sonnet-5-5"
+              },
+              "ran": [
+                "claude-sonnet-5-5"
+              ],
+              "runs_match_pin": false,
+              "state": "matches"
+            },
+            "pinned": "both",
+            "source": "agent_file",
+            "state": "matches",
+            "total_runs": 5
+          },
+          "ran_with": [
+            {
+              "effort": "high",
+              "model": "claude-sonnet-5-5",
+              "requests": 55,
+              "runs": 5
+            }
+          ],
+          "recent_runs": [
+            {
+              "cost": 0.167677,
+              "effort": "high",
+              "hit_rate": 0.7456537654956755,
+              "model": "claude-sonnet-5-5",
+              "project": "Harbor Light",
+              "requests": 6,
+              "run_id": "a1bbe4f79aad",
+              "session_id": "29fc84ab-0604-4039-9119-13a2043e437e",
+              "session_started": "2026-10-29T15:14:04.387000-04:00",
+              "started": "2026-10-29T15:18:03.145000-04:00",
+              "tokens": 166454,
+              "unpriced_requests": 0
+            },
+            {
+              "cost": 0.1250516,
+              "effort": "high",
+              "hit_rate": 0.7411318358341407,
+              "model": "claude-sonnet-5-5",
+              "project": "Harbor Light",
+              "requests": 5,
+              "run_id": "e921bc57d88c",
+              "session_id": "9fb7405b-2c1e-4dc1-9c29-df2fb3944fb1",
+              "session_started": "2026-10-20T11:20:52.852000-04:00",
+              "started": "2026-10-20T11:39:28.644000-04:00",
+              "tokens": 126574,
+              "unpriced_requests": 0
+            },
+            {
+              "cost": 0.15411930000000001,
+              "effort": "high",
+              "hit_rate": 0.8018862545730983,
+              "model": "claude-sonnet-5-5",
+              "project": "Harbor Light",
+              "requests": 7,
+              "run_id": "608bee5f5430",
+              "session_id": "9fb7405b-2c1e-4dc1-9c29-df2fb3944fb1",
+              "session_started": "2026-10-20T11:20:52.852000-04:00",
+              "started": "2026-10-20T11:25:20.167000-04:00",
+              "tokens": 213618,
+              "unpriced_requests": 0
+            },
+            {
+              "cost": 0.4622288,
+              "effort": "high",
+              "hit_rate": 0.7768211611215768,
+              "model": "claude-sonnet-5-5",
+              "project": "Harbor Light",
+              "requests": 21,
+              "run_id": "126a4496d182",
+              "session_id": "4570aae5-923f-4466-bf9c-7f0e13b54239",
+              "session_started": "2026-10-13T11:59:24.043000-04:00",
+              "started": "2026-10-13T12:09:12.716000-04:00",
+              "tokens": 528188,
+              "unpriced_requests": 0
+            },
+            {
+              "cost": 0.3454163,
+              "effort": "high",
+              "hit_rate": 0.8258298624676366,
+              "model": "claude-sonnet-5-5",
+              "project": "Harbor Light",
+              "requests": 16,
+              "run_id": "0ea8e6c5757f",
+              "session_id": "b3d8d770-68d0-4b8a-a244-3d2168c919f1",
+              "session_started": "2026-10-05T15:50:54.674000-04:00",
+              "started": "2026-10-05T15:59:25.550000-04:00",
+              "tokens": 463767,
+              "unpriced_requests": 0
+            }
+          ],
+          "requests": 55,
+          "route_key": "reviewer",
+          "runs": 5,
+          "runs_per_day": [
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            2,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0
+          ],
+          "runs_ticks": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "sessions": 4,
+          "thinking": 9649,
+          "tokens": 1498601,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "agent": "scribe",
+          "cache_read": 191074,
+          "cache_write": 73408,
+          "cache_write_1h": 6312,
+          "cache_write_5m": 67096,
+          "cost": 0.02708944,
+          "cost_by_kind": {
+            "cache_read": 0.00191074,
+            "cache_write": 0.009649399999999999,
+            "input": 0.004862300000000001,
+            "output": 0.010667
+          },
+          "display": "scribe",
+          "hit_rate": 0.61025534565082,
+          "input": 48623,
+          "output": 21334,
+          "pin": {
+            "effort": {
+              "cap": null,
+              "expected": {
+                "becomes": null,
+                "file": "config/agents/scribe.md",
+                "key": "effort",
+                "layer": "agent",
+                "line": 5,
+                "reason": "config/agents/scribe.md sets the effort for scribe. CLAUDE_CODE_EFFORT_LEVEL beats the agent's effort frontmatter, which beats --effort and the settings that count for its own model.",
+                "rule_id": "agent-effort-order",
+                "status": "in_effect",
+                "value": "medium",
+                "via": null
+              },
+              "pinned": {
+                "file": "config/agents/scribe.md",
+                "id": "medium",
+                "line": 5,
+                "status": "in_effect",
+                "value": "medium"
+              },
+              "ran": [
+                "medium"
+              ],
+              "runs_match_pin": false,
+              "state": "matches"
+            },
+            "mismatched_runs": 4,
+            "model": {
+              "cap": null,
+              "expected": {
+                "becomes": null,
+                "file": "config/agents/scribe.md",
+                "key": "model",
+                "layer": "agent",
+                "line": 4,
+                "reason": "config/agents/scribe.md sets the model for scribe. The agent's frontmatter model, inherit included, beats CLAUDE_CODE_SUBAGENT_MODEL, which beats the main model, unless CLAUDE_CODE_SUBAGENT_MODEL_FORCE is on. A model passed at dispatch, or set by a mod's agent.spawn hook, beats the frontmatter, and the dashboard can't see either.",
+                "rule_id": "subagent-model-order",
+                "status": "in_effect",
+                "value": "claude-haiku-4-5",
+                "via": null
+              },
+              "pinned": {
+                "file": "config/agents/scribe.md",
+                "id": "claude-haiku-4-5",
+                "line": 4,
+                "status": "in_effect",
+                "value": "claude-haiku-4-5"
+              },
+              "ran": [
+                "claude-haiku-5-5"
+              ],
+              "runs_match_pin": false,
+              "state": "differs"
+            },
+            "pinned": "both",
+            "source": "agent_file",
+            "state": "differs",
+            "total_runs": 4
+          },
+          "ran_with": [
+            {
+              "effort": "medium",
+              "model": "claude-haiku-5-5",
+              "requests": 48,
+              "runs": 4
+            }
+          ],
+          "recent_runs": [
+            {
+              "cost": 0.00341568,
+              "effort": "medium",
+              "hit_rate": 0.6246815669310262,
+              "model": "claude-haiku-5-5",
+              "project": "Harbor Light",
+              "requests": 6,
+              "run_id": "a3fb5c3b6a72",
+              "session_id": "29fc84ab-0604-4039-9119-13a2043e437e",
+              "session_started": "2026-10-29T15:14:04.387000-04:00",
+              "started": "2026-10-29T15:27:28.370000-04:00",
+              "tokens": 44224,
+              "unpriced_requests": 0
+            },
+            {
+              "cost": 0.00728663,
+              "effort": "medium",
+              "hit_rate": 0.6052271517977044,
+              "model": "claude-haiku-5-5",
+              "project": "Harbor Light",
+              "requests": 13,
+              "run_id": "537ffffd2add",
+              "session_id": "4570aae5-923f-4466-bf9c-7f0e13b54239",
+              "session_started": "2026-10-13T11:59:24.043000-04:00",
+              "started": "2026-10-13T12:17:17.822000-04:00",
+              "tokens": 85032,
+              "unpriced_requests": 0
+            },
+            {
+              "cost": 0.010222234999999998,
+              "effort": "medium",
+              "hit_rate": 0.5917867171792699,
+              "model": "claude-haiku-5-5",
+              "project": "Harbor Light",
+              "requests": 18,
+              "run_id": "5f6a7bff69f1",
+              "session_id": "4570aae5-923f-4466-bf9c-7f0e13b54239",
+              "session_started": "2026-10-13T11:59:24.043000-04:00",
+              "started": "2026-10-13T12:05:28.100000-04:00",
+              "tokens": 127853,
+              "unpriced_requests": 0
+            },
+            {
+              "cost": 0.006164894999999999,
+              "effort": "medium",
+              "hit_rate": 0.6382297943070849,
+              "model": "claude-haiku-5-5",
+              "project": "Harbor Light",
+              "requests": 11,
+              "run_id": "62344b4479ac",
+              "session_id": "b3d8d770-68d0-4b8a-a244-3d2168c919f1",
+              "session_started": "2026-10-05T15:50:54.674000-04:00",
+              "started": "2026-10-05T16:09:35.048000-04:00",
+              "tokens": 77330,
+              "unpriced_requests": 0
+            }
+          ],
+          "requests": 48,
+          "route_key": "scribe",
+          "runs": 4,
+          "runs_per_day": [
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            2,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0
+          ],
+          "runs_ticks": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "sessions": 3,
+          "thinking": 7093,
+          "tokens": 334439,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        }
+      ],
+      "by_effort": [
+        {
+          "cache_read": 0,
+          "cache_write": 0,
+          "cache_write_1h": 0,
+          "cache_write_5m": 0,
+          "cost": 0.0,
+          "cost_by_kind": {
+            "cache_read": 0.0,
+            "cache_write": 0.0,
+            "input": 0.0,
+            "output": 0.0
+          },
+          "effort": "low",
+          "hit_rate": null,
+          "input": 0,
+          "output": 0,
+          "requests": 0,
+          "runs": 0,
+          "sessions": 0,
+          "thinking": null,
+          "tokens": 0,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "cache_read": 2005169,
+          "cache_write": 481059,
+          "cache_write_1h": 51102,
+          "cache_write_5m": 429957,
+          "cost": 4.213557439999999,
+          "cost_by_kind": {
+            "cache_read": 0.36472973999999997,
+            "cache_write": 2.1822744,
+            "input": 0.4795663,
+            "output": 1.1869870000000007
+          },
+          "effort": "medium",
+          "hit_rate": 0.755661804081888,
+          "input": 167299,
+          "output": 80150,
+          "requests": 110,
+          "runs": 4,
+          "sessions": 4,
+          "thinking": 25278,
+          "tokens": 2733677,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "cache_read": 1153300,
+          "cache_write": 223627,
+          "cache_write_1h": 25965,
+          "cache_write_5m": 197662,
+          "cost": 1.2544930000000003,
+          "cost_by_kind": {
+            "cache_read": 0.11533,
+            "cache_write": 0.5980150000000002,
+            "input": 0.16889799999999994,
+            "output": 0.37225
+          },
+          "effort": "high",
+          "hit_rate": 0.7891877244460016,
+          "input": 84449,
+          "output": 37225,
+          "requests": 55,
+          "runs": 5,
+          "sessions": 4,
+          "thinking": 9649,
+          "tokens": 1498601,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cache_write": 0,
+          "cache_write_1h": 0,
+          "cache_write_5m": 0,
+          "cost": 0.0,
+          "cost_by_kind": {
+            "cache_read": 0.0,
+            "cache_write": 0.0,
+            "input": 0.0,
+            "output": 0.0
+          },
+          "effort": "xhigh",
+          "hit_rate": null,
+          "input": 0,
+          "output": 0,
+          "requests": 0,
+          "runs": 0,
+          "sessions": 0,
+          "thinking": null,
+          "tokens": 0,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        }
+      ],
+      "by_model": [
+        {
+          "agents": [
+            "Main session"
+          ],
+          "cache_read": 1814095,
+          "cache_write": 407651,
+          "cache_write_1h": 44790,
+          "cache_write_5m": 362861,
+          "cat": 1,
+          "cost": 4.186468,
+          "cost_by_kind": {
+            "cache_read": 0.362819,
+            "cache_write": 2.172625,
+            "input": 0.4747040000000001,
+            "output": 1.1763200000000007
+          },
+          "display_name": "Opus 5.5",
+          "hit_rate": 0.7751144879000453,
+          "input": 118676,
+          "model": "claude-opus-5-5",
+          "output": 58816,
+          "requests": 62,
+          "runs": 0,
+          "sessions": 4,
+          "share_lt1": false,
+          "share_pct": 77,
+          "thinking": 18185,
+          "tokens": 2399238,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "agents": [
+            "reviewer"
+          ],
+          "cache_read": 1153300,
+          "cache_write": 223627,
+          "cache_write_1h": 25965,
+          "cache_write_5m": 197662,
+          "cat": 2,
+          "cost": 1.2544930000000003,
+          "cost_by_kind": {
+            "cache_read": 0.11533,
+            "cache_write": 0.5980150000000002,
+            "input": 0.16889799999999994,
+            "output": 0.37225
+          },
+          "display_name": "Sonnet 5.5",
+          "hit_rate": 0.7891877244460016,
+          "input": 84449,
+          "model": "claude-sonnet-5-5",
+          "output": 37225,
+          "requests": 55,
+          "runs": 5,
+          "sessions": 4,
+          "share_lt1": false,
+          "share_pct": 23,
+          "thinking": 9649,
+          "tokens": 1498601,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "agents": [
+            "scribe"
+          ],
+          "cache_read": 191074,
+          "cache_write": 73408,
+          "cache_write_1h": 6312,
+          "cache_write_5m": 67096,
+          "cat": 3,
+          "cost": 0.02708944,
+          "cost_by_kind": {
+            "cache_read": 0.00191074,
+            "cache_write": 0.009649399999999999,
+            "input": 0.004862300000000001,
+            "output": 0.010667
+          },
+          "display_name": "Haiku 5.5",
+          "hit_rate": 0.61025534565082,
+          "input": 48623,
+          "model": "claude-haiku-5-5",
+          "output": 21334,
+          "requests": 48,
+          "runs": 4,
+          "sessions": 3,
+          "share_lt1": true,
+          "share_pct": 0,
+          "thinking": 7093,
+          "tokens": 334439,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        }
+      ],
+      "by_project": null,
+      "deltas": {
+        "cost_pct": -31.83359470622287,
+        "hit_rate_pts": -1.4280606089764447,
+        "runs_pct": -30.76923076923077,
+        "tokens_pct": -39.032015308988846
+      },
+      "end": "2026-10-30T18:00:00-04:00",
+      "notes": {
+        "malformed_lines": 0,
+        "no_id_rows": 0,
+        "skipped_old_files": 5,
+        "synthetic_rows": 0,
+        "tz_fixed": false,
+        "unpriced": []
+      },
+      "previous": {
+        "cache_read": 5285662,
+        "cache_write": 1083119,
+        "cache_write_1h": 102242,
+        "cache_write_5m": 980877,
+        "cost": 8.021620645000002,
+        "cost_by_kind": {
+          "cache_read": 0.7416789200000005,
+          "cache_write": 3.951437025000001,
+          "input": 0.9924036999999998,
+          "output": 2.3361010000000006
+        },
+        "hit_rate": 0.7818488816967472,
+        "input": 391684,
+        "output": 181339,
+        "requests": 250,
+        "runs": 13,
+        "sessions": 6,
+        "thinking": 55487,
+        "tokens": 6941804,
+        "unpriced_requests": 0,
+        "unpriced_tokens": 0
+      },
+      "previous_end": "2026-09-30T18:00:00-04:00",
+      "previous_start": "2026-09-01T00:00:00-04:00",
+      "range": "30d",
+      "sessions": [
+        {
+          "agents": [
+            "reviewer",
+            "scribe"
+          ],
+          "branch": "main",
+          "by_agent": [
+            {
+              "agent": null,
+              "cache_read": 373141,
+              "cache_write": 99728,
+              "cache_write_1h": 9769,
+              "cache_write_5m": 89959,
+              "cost": 0.9509831999999999,
+              "cost_by_kind": {
+                "cache_read": 0.0746282,
+                "cache_write": 0.527947,
+                "input": 0.09280799999999999,
+                "output": 0.2556
+              },
+              "hit_rate": 0.752192730476081,
+              "input": 23202,
+              "output": 12780,
+              "requests": 13,
+              "runs": 0,
+              "sessions": 1,
+              "thinking": 4386,
+              "tokens": 508851,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            },
+            {
+              "agent": "reviewer",
+              "cache_read": 120180,
+              "cache_write": 31515,
+              "cache_write_1h": 3409,
+              "cache_write_5m": 28106,
+              "cost": 0.167677,
+              "cost_by_kind": {
+                "cache_read": 0.012018,
+                "cache_write": 0.083901,
+                "input": 0.018958000000000003,
+                "output": 0.0528
+              },
+              "hit_rate": 0.7456537654956755,
+              "input": 9479,
+              "output": 5280,
+              "requests": 6,
+              "runs": 1,
+              "sessions": 1,
+              "thinking": 1156,
+              "tokens": 166454,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            },
+            {
+              "agent": "scribe",
+              "cache_read": 25993,
+              "cache_write": 9181,
+              "cache_write_1h": 767,
+              "cache_write_5m": 8414,
+              "cost": 0.00341568,
+              "cost_by_kind": {
+                "cache_read": 0.00025993,
+                "cache_write": 0.00120515,
+                "input": 0.0006435999999999999,
+                "output": 0.001307
+              },
+              "hit_rate": 0.6246815669310262,
+              "input": 6436,
+              "output": 2614,
+              "requests": 6,
+              "runs": 1,
+              "sessions": 1,
+              "thinking": 820,
+              "tokens": 44224,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            }
+          ],
+          "cache_read": 519314,
+          "cache_write": 140424,
+          "cache_write_1h": 13945,
+          "cache_write_5m": 126479,
+          "cost": 1.1220758800000001,
+          "cost_by_kind": {
+            "cache_read": 0.08690613,
+            "cache_write": 0.61305315,
+            "input": 0.11240960000000001,
+            "output": 0.30970699999999995
+          },
+          "hit_rate": 0.7430926300877865,
+          "input": 39117,
+          "output": 20674,
+          "project": "Harbor Light",
+          "requests": 25,
+          "runs": 2,
+          "session_id": "29fc84ab-0604-4039-9119-13a2043e437e",
+          "sessions": 1,
+          "started": "2026-10-29T15:14:04.387000-04:00",
+          "thinking": 6362,
+          "tokens": 719529,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "agents": [
+            "reviewer"
+          ],
+          "branch": "main",
+          "by_agent": [
+            {
+              "agent": null,
+              "cache_read": 534176,
+              "cache_write": 115126,
+              "cache_write_1h": 10631,
+              "cache_write_5m": 104495,
+              "cost": 1.1885142000000002,
+              "cost_by_kind": {
+                "cache_read": 0.10683520000000003,
+                "cache_write": 0.607523,
+                "input": 0.132356,
+                "output": 0.34180000000000005
+              },
+              "hit_rate": 0.7828004765596264,
+              "input": 33089,
+              "output": 17090,
+              "requests": 18,
+              "runs": 0,
+              "sessions": 1,
+              "thinking": 4759,
+              "tokens": 699481,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            },
+            {
+              "agent": "reviewer",
+              "cache_read": 259804,
+              "cache_write": 53404,
+              "cache_write_1h": 7035,
+              "cache_write_5m": 46369,
+              "cost": 0.27917090000000006,
+              "cost_by_kind": {
+                "cache_read": 0.025980399999999997,
+                "cache_write": 0.14406250000000004,
+                "input": 0.040178000000000005,
+                "output": 0.06894999999999998
+              },
+              "hit_rate": 0.7794969651692034,
+              "input": 20089,
+              "output": 6895,
+              "requests": 12,
+              "runs": 2,
+              "sessions": 1,
+              "thinking": 1619,
+              "tokens": 340192,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            }
+          ],
+          "cache_read": 793980,
+          "cache_write": 168530,
+          "cache_write_1h": 17666,
+          "cache_write_5m": 150864,
+          "cost": 1.4676851000000002,
+          "cost_by_kind": {
+            "cache_read": 0.1328156,
+            "cache_write": 0.7515855000000001,
+            "input": 0.172534,
+            "output": 0.41075
+          },
+          "hit_rate": 0.7817164326052882,
+          "input": 53178,
+          "output": 23985,
+          "project": "Harbor Light",
+          "requests": 30,
+          "runs": 2,
+          "session_id": "9fb7405b-2c1e-4dc1-9c29-df2fb3944fb1",
+          "sessions": 1,
+          "started": "2026-10-20T11:20:52.852000-04:00",
+          "thinking": 6378,
+          "tokens": 1039673,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "agents": [
+            "reviewer",
+            "scribe"
+          ],
+          "branch": "main",
+          "by_agent": [
+            {
+              "agent": null,
+              "cache_read": 642262,
+              "cache_write": 132070,
+              "cache_write_1h": 19232,
+              "cache_write_5m": 112838,
+              "cost": 1.4372303999999994,
+              "cost_by_kind": {
+                "cache_read": 0.1284524,
+                "cache_write": 0.7180460000000001,
+                "input": 0.18129200000000004,
+                "output": 0.40943999999999997
+              },
+              "hit_rate": 0.7835760167387499,
+              "input": 45323,
+              "output": 20472,
+              "requests": 22,
+              "runs": 0,
+              "sessions": 1,
+              "thinking": 7047,
+              "tokens": 840127,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            },
+            {
+              "agent": "reviewer",
+              "cache_read": 399168,
+              "cache_write": 83357,
+              "cache_write_1h": 5249,
+              "cache_write_5m": 78108,
+              "cost": 0.4622288,
+              "cost_by_kind": {
+                "cache_read": 0.039916799999999995,
+                "cache_write": 0.21626599999999996,
+                "input": 0.06264599999999998,
+                "output": 0.1434
+              },
+              "hit_rate": 0.7768211611215768,
+              "input": 31323,
+              "output": 14340,
+              "requests": 21,
+              "runs": 1,
+              "sessions": 1,
+              "thinking": 3974,
+              "tokens": 528188,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            },
+            {
+              "agent": "scribe",
+              "cache_read": 119004,
+              "cache_write": 49699,
+              "cache_write_1h": 3390,
+              "cache_write_5m": 46309,
+              "cost": 0.017508865,
+              "cost_by_kind": {
+                "cache_read": 0.0011900400000000003,
+                "cache_write": 0.006466625,
+                "input": 0.0030597000000000007,
+                "output": 0.0067925
+              },
+              "hit_rate": 0.5971098845960863,
+              "input": 30597,
+              "output": 13585,
+              "requests": 31,
+              "runs": 2,
+              "sessions": 1,
+              "thinking": 4337,
+              "tokens": 212885,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            }
+          ],
+          "cache_read": 1160434,
+          "cache_write": 265126,
+          "cache_write_1h": 27871,
+          "cache_write_5m": 237255,
+          "cost": 1.9169680649999994,
+          "cost_by_kind": {
+            "cache_read": 0.16955924000000003,
+            "cache_write": 0.9407786249999999,
+            "input": 0.24699770000000001,
+            "output": 0.5596324999999998
+          },
+          "hit_rate": 0.7570666289144788,
+          "input": 107243,
+          "output": 48397,
+          "project": "Harbor Light",
+          "requests": 74,
+          "runs": 3,
+          "session_id": "4570aae5-923f-4466-bf9c-7f0e13b54239",
+          "sessions": 1,
+          "started": "2026-10-13T11:59:24.043000-04:00",
+          "thinking": 15358,
+          "tokens": 1581200,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "agents": [
+            "reviewer",
+            "scribe"
+          ],
+          "branch": "main",
+          "by_agent": [
+            {
+              "agent": null,
+              "cache_read": 264516,
+              "cache_write": 60727,
+              "cache_write_1h": 5158,
+              "cache_write_5m": 55569,
+              "cost": 0.6097402,
+              "cost_by_kind": {
+                "cache_read": 0.0529032,
+                "cache_write": 0.31910900000000003,
+                "input": 0.068248,
+                "output": 0.16948000000000002
+              },
+              "hit_rate": 0.7727494485911687,
+              "input": 17062,
+              "output": 8474,
+              "requests": 9,
+              "runs": 0,
+              "sessions": 1,
+              "thinking": 1993,
+              "tokens": 350779,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            },
+            {
+              "agent": "reviewer",
+              "cache_read": 374148,
+              "cache_write": 55351,
+              "cache_write_1h": 10272,
+              "cache_write_5m": 45079,
+              "cost": 0.3454163,
+              "cost_by_kind": {
+                "cache_read": 0.0374148,
+                "cache_write": 0.15378550000000002,
+                "input": 0.047116,
+                "output": 0.1071
+              },
+              "hit_rate": 0.8258298624676366,
+              "input": 23558,
+              "output": 10710,
+              "requests": 16,
+              "runs": 1,
+              "sessions": 1,
+              "thinking": 2900,
+              "tokens": 463767,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            },
+            {
+              "agent": "scribe",
+              "cache_read": 46077,
+              "cache_write": 14528,
+              "cache_write_1h": 2155,
+              "cache_write_5m": 12373,
+              "cost": 0.006164894999999999,
+              "cost_by_kind": {
+                "cache_read": 0.00046077,
+                "cache_write": 0.0019776249999999998,
+                "input": 0.001159,
+                "output": 0.0025675
+              },
+              "hit_rate": 0.6382297943070849,
+              "input": 11590,
+              "output": 5135,
+              "requests": 11,
+              "runs": 1,
+              "sessions": 1,
+              "thinking": 1936,
+              "tokens": 77330,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            }
+          ],
+          "cache_read": 684741,
+          "cache_write": 130606,
+          "cache_write_1h": 17585,
+          "cache_write_5m": 113021,
+          "cost": 0.9613213949999999,
+          "cost_by_kind": {
+            "cache_read": 0.09077876999999998,
+            "cache_write": 0.474872125,
+            "input": 0.116523,
+            "output": 0.2791475000000001
+          },
+          "hit_rate": 0.7892749410125214,
+          "input": 52210,
+          "output": 24319,
+          "project": "Harbor Light",
+          "requests": 36,
+          "runs": 2,
+          "session_id": "b3d8d770-68d0-4b8a-a244-3d2168c919f1",
+          "sessions": 1,
+          "started": "2026-10-05T15:50:54.674000-04:00",
+          "thinking": 6829,
+          "tokens": 891876,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        }
+      ],
+      "start": "2026-10-01T00:00:00-04:00",
+      "totals": {
+        "cache_read": 3158469,
+        "cache_write": 704686,
+        "cache_write_1h": 77067,
+        "cache_write_5m": 627619,
+        "cost": 5.468050440000001,
+        "cost_by_kind": {
+          "cache_read": 0.48005973999999985,
+          "cache_write": 2.780289400000001,
+          "input": 0.6484643000000003,
+          "output": 1.5592370000000007
+        },
+        "hit_rate": 0.7675682756069827,
+        "input": 251748,
+        "output": 117375,
+        "requests": 165,
+        "runs": 9,
+        "sessions": 4,
+        "thinking": 34927,
+        "tokens": 4232278,
+        "unpriced_requests": 0,
+        "unpriced_tokens": 0
+      }
+    }
+  }
+}

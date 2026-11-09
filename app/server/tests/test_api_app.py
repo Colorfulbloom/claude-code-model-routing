@@ -30,6 +30,7 @@ def test_route_walk_finds_the_expected_routes(settings: main.Settings) -> None:
     assert found >= {
         ("/api/app", "GET"),
         ("/api/projects", "GET"),
+        ("/api/prices", "GET"),
         ("/api/access/swap", "POST"),
         ("/api/access/mint", "POST"),
     }
@@ -78,7 +79,11 @@ def test_get_app_demo(client: Any, key_headers: dict[str, str]) -> None:
         "server_time",
         "instance",
         "claude_version",
+        "as_of",
+        "pass_running_since",
+        "etag",
         "ingest",
+        "history",
         "running",
         "to_fix_count",
         "editable_projects",
@@ -91,6 +96,30 @@ def test_get_app_demo(client: Any, key_headers: dict[str, str]) -> None:
     ]
     assert body["editable_projects"] == []
     assert body["server_time"].startswith("1970-01-12T")
+    assert set(body["ingest"]) == {
+        "state",
+        "files_done",
+        "files_total",
+        "bytes_done",
+        "bytes_total",
+        "error",
+        "retrying",
+        "retry_at",
+    }
+    assert set(body["history"]) == {
+        "oldest",
+        "first_ingest",
+        "last_backup",
+        "backup_failed",
+        "pass_error",
+        "unreadable_files",
+        "kept_files",
+        "no_usage_rows",
+    }
+    assert body["as_of"] is not None
+    assert body["pass_running_since"] is None
+    assert body["etag"]
+    assert body["history"]["pass_error"] is None
 
 
 def test_get_app_without_project_has_null_count(
@@ -141,3 +170,39 @@ def test_get_projects_demo(client: Any, key_headers: dict[str, str]) -> None:
     for project in projects:
         assert set(project) == {"key", "name", "display_path", "state", "running"}
         assert project["display_path"].startswith("/work/")
+
+
+def test_get_prices_demo(client: Any, key_headers: dict[str, str]) -> None:
+    body = client.get("/api/prices", headers=key_headers).json()
+    assert set(body) == {"source", "as_of", "etag", "cross_check", "models"}
+    assert body["source"] == "litellm"
+    assert body["as_of"] == "2026-10-28"
+    assert body["cross_check"] == {"state": "agree", "models": []}
+    first = body["models"][0]
+    assert set(first) == {
+        "model",
+        "source",
+        "input",
+        "output",
+        "cache_read",
+        "cache_write_5m",
+        "cache_write_1h",
+        "tiers",
+        "modifiers",
+        "relative",
+    }
+    assert isinstance(first["input"], float)
+    tiers = [t for m in body["models"] for t in m["tiers"]]
+    assert tiers
+    assert set(tiers[0]) == {
+        "prompt_tokens_over",
+        "input",
+        "output",
+        "cache_read",
+        "cache_write_5m",
+        "cache_write_1h",
+    }
+
+
+def test_get_prices_needs_the_key(client: Any) -> None:
+    assert client.get("/api/prices").status_code == 401

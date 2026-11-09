@@ -1,5 +1,5 @@
 import { QueryClient } from "@tanstack/react-query";
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createApiClient } from "@/api/client";
 import { createAccess, STORAGE_KEYS } from "@/app/access";
@@ -22,7 +22,7 @@ function setup(server: FakeServer = fakeServer()) {
   const api = createApiClient({ access, connection, fetchFn: server.fetch });
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(<App api={api} queryClient={queryClient} launch={launch} />);
-  return { access, connection, server };
+  return { access, connection, server, queryClient };
 }
 
 function unlockedTab(): void {
@@ -76,10 +76,11 @@ describe("App gate", () => {
           state: "running",
           files_done: 312,
           files_total: 1240,
-          bytes_done: 0,
-          bytes_total: 0,
+          bytes_done: 1_200_000_000,
+          bytes_total: 2_000_000_000,
           error: null,
           retrying: false,
+          retry_at: null,
         },
       }),
     });
@@ -90,7 +91,7 @@ describe("App gate", () => {
       name: "Getting the dashboard ready",
     });
     expect(heading).toHaveFocus();
-    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuetext", "312 of 1,240 files");
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuetext", "1.2 of 2.0 GB");
     expect(screen.queryByRole("navigation")).toBeNull();
     server.app = appInfo();
     await act(async () => {
@@ -98,6 +99,40 @@ describe("App gate", () => {
     });
     expect(await screen.findByRole("heading", { level: 1, name: "Live" })).toBeInTheDocument();
     expect(window.location.hash).toBe("#/p/builder/live");
+  });
+
+  it("never flashes first run for a store with no transcripts", async () => {
+    unlockedTab();
+    sessionStorage.setItem(STORAGE_KEYS.project, "builder");
+    history.replaceState(null, "", "#/");
+    // The server fixes the totals at zero files once it has listed the folder, so the page
+    // sees "waiting" and "running" with zero files, then done.
+    const waiting = appInfo({
+      ingest: { ...appInfo().ingest, state: "waiting", files_total: 0, bytes_total: 0 },
+    });
+    const zeroFiles = appInfo({ ingest: { ...appInfo().ingest, state: "running" } });
+    const server = fakeServer({ app: waiting });
+    const { access, queryClient } = setup(server);
+    const seen: string[] = [];
+    const watch = new MutationObserver(() => {
+      if ((document.body.textContent ?? "").includes("Counting files")) seen.push("flash");
+    });
+    watch.observe(document.body, { subtree: true, childList: true, characterData: true });
+    try {
+      await act(() => access.start());
+      await waitFor(() => expect(server.calls.some((c) => c.startsWith("/api/app"))).toBe(true));
+      expect(screen.queryByText("Counting files")).toBeNull();
+      server.app = zeroFiles;
+      await act(() => queryClient.refetchQueries({ queryKey: ["app"] }));
+      expect(screen.queryByText("Counting files")).toBeNull();
+      server.app = appInfo();
+      await act(() => queryClient.refetchQueries({ queryKey: ["app"] }));
+      expect(await screen.findByRole("heading", { level: 1, name: "Live" })).toBeInTheDocument();
+    } finally {
+      watch.disconnect();
+    }
+    expect(seen).toEqual([]);
+    expect(screen.queryByText("Getting the dashboard ready")).toBeNull();
   });
 
   it("shows the stopped page when the server stops answering", async () => {

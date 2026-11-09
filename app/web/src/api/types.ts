@@ -15,6 +15,14 @@ export type IngestError = Schemas["IngestError"];
 export type IngestErrorCode = IngestError["code"];
 export type RunningSession = Schemas["RunningItem"];
 
+export type History = Schemas["HistoryInfo"];
+export type PassError = Schemas["PassError"];
+export type BackupFailure = Schemas["BackupFailure"];
+
+/** GET /api/prices */
+export type PricesAnswer = Schemas["PricesInfo"];
+export type PriceSource = PricesAnswer["source"];
+
 /** One project in the picker. */
 export type Project = Schemas["Project"];
 export type ProjectState = Project["state"];

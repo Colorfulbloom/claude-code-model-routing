@@ -1,9 +1,23 @@
 {
   "claude_version": "2.1.310",
+  "as_of_ago": 90,
+  "pass_running_since_ago": null,
+  "etag": "gen-empty",
   "projects": [],
   "running": [],
   "to_fix_counts": {},
   "editable_projects": [],
+  "history": {
+    "oldest": null,
+    "first_ingest": "2026-09-03T14:31:00Z",
+    "last_backup_ago": null,
+    "backup_failed": null,
+    "pass_error": null,
+    "unreadable_files": 0,
+    "kept_files": 0,
+    "no_usage_rows": 0
+  },
+  "prices": "litellm",
   "ingest_steps": [
     {
       "at": 0,
@@ -13,7 +27,8 @@
       "bytes_done": 0,
       "bytes_total": 0,
       "error": null,
-      "retrying": false
+      "retrying": false,
+      "retry_at_s": null
     }
   ]
 }

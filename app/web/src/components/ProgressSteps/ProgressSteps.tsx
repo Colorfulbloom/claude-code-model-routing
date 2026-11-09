@@ -22,6 +22,8 @@ export interface ProgressStep {
   };
   /** A muted line under the step name with no bar, such as "640 of 1,240 files" on a failed step. */
   note?: string;
+  /** A muted line for a current step whose size is not known yet, such as "Counting files". No bar. */
+  pending?: string;
 }
 
 export interface ProgressStepsProps {
@@ -55,6 +57,15 @@ export function ProgressSteps({ label, steps, className }: ProgressStepsProps) {
             {step.note !== undefined && (
               <small className="progress-step-value progress-step-note muted num">
                 {step.note}
+              </small>
+            )}
+            {step.pending !== undefined && (
+              <small
+                className="progress-step-value progress-step-note muted"
+                role="status"
+                aria-busy="true"
+              >
+                {step.pending}
               </small>
             )}
             {step.progress !== undefined && (

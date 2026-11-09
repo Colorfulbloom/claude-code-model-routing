@@ -55,3 +55,7 @@
   color: var(--text-muted);
   font-size: var(--text-xs);
 }
+
+.top-bar-project-name.is-placeholder {
+  color: var(--text-muted);
+}

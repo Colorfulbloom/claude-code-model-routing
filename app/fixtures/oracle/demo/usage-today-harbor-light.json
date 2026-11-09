@@ -1,0 +1,403 @@
+{
+  "generated_at": "2026-10-30T18:00:00-04:00",
+  "model_names": {
+    "claude-fable-5": "Fable 5",
+    "claude-fable-5-1": "Fable 5.1",
+    "claude-haiku-4-5": "Haiku 4.5",
+    "claude-haiku-5-5": "Haiku 5.5",
+    "claude-opus-4-6": "Opus 4.6",
+    "claude-opus-4-7": "Opus 4.7",
+    "claude-opus-4-8": "Opus 4.8",
+    "claude-opus-5": "Opus 5",
+    "claude-opus-5-5": "Opus 5.5",
+    "claude-sonnet-4-6": "Sonnet 4.6",
+    "claude-sonnet-5": "Sonnet 5",
+    "claude-sonnet-5-5": "Sonnet 5.5"
+  },
+  "no_usage": false,
+  "prices": {
+    "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+    "verified_on": "2026-10-30"
+  },
+  "project": "harbor-light",
+  "unreadable": null,
+  "views": {
+    "today": {
+      "axis": {
+        "runs_ticks": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "tokens_max_nice": 1,
+        "tokens_ticks": [
+          0,
+          1
+        ]
+      },
+      "bucket_unit": "hour",
+      "buckets": [
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 0,
+          "runs_by_agent": {},
+          "start": "2026-10-30T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 1,
+          "runs_by_agent": {},
+          "start": "2026-10-30T01:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 2,
+          "runs_by_agent": {},
+          "start": "2026-10-30T02:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 3,
+          "runs_by_agent": {},
+          "start": "2026-10-30T03:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 4,
+          "runs_by_agent": {},
+          "start": "2026-10-30T04:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 5,
+          "runs_by_agent": {},
+          "start": "2026-10-30T05:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 6,
+          "runs_by_agent": {},
+          "start": "2026-10-30T06:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 7,
+          "runs_by_agent": {},
+          "start": "2026-10-30T07:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 8,
+          "runs_by_agent": {},
+          "start": "2026-10-30T08:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 9,
+          "runs_by_agent": {},
+          "start": "2026-10-30T09:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 10,
+          "runs_by_agent": {},
+          "start": "2026-10-30T10:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 11,
+          "runs_by_agent": {},
+          "start": "2026-10-30T11:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 12,
+          "runs_by_agent": {},
+          "start": "2026-10-30T12:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 13,
+          "runs_by_agent": {},
+          "start": "2026-10-30T13:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 14,
+          "runs_by_agent": {},
+          "start": "2026-10-30T14:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 15,
+          "runs_by_agent": {},
+          "start": "2026-10-30T15:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 16,
+          "runs_by_agent": {},
+          "start": "2026-10-30T16:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 17,
+          "runs_by_agent": {},
+          "start": "2026-10-30T17:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 18,
+          "runs_by_agent": {},
+          "start": "2026-10-30T18:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 19,
+          "runs_by_agent": {},
+          "start": "2026-10-30T19:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 20,
+          "runs_by_agent": {},
+          "start": "2026-10-30T20:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 21,
+          "runs_by_agent": {},
+          "start": "2026-10-30T21:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 22,
+          "runs_by_agent": {},
+          "start": "2026-10-30T22:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 23,
+          "runs_by_agent": {},
+          "start": "2026-10-30T23:00:00-04:00",
+          "tokens": 0
+        }
+      ],
+      "by_agent": [],
+      "by_effort": [
+        {
+          "cache_read": 0,
+          "cache_write": 0,
+          "cache_write_1h": 0,
+          "cache_write_5m": 0,
+          "cost": 0.0,
+          "cost_by_kind": {
+            "cache_read": 0.0,
+            "cache_write": 0.0,
+            "input": 0.0,
+            "output": 0.0
+          },
+          "effort": "low",
+          "hit_rate": null,
+          "input": 0,
+          "output": 0,
+          "requests": 0,
+          "runs": 0,
+          "sessions": 0,
+          "thinking": null,
+          "tokens": 0,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cache_write": 0,
+          "cache_write_1h": 0,
+          "cache_write_5m": 0,
+          "cost": 0.0,
+          "cost_by_kind": {
+            "cache_read": 0.0,
+            "cache_write": 0.0,
+            "input": 0.0,
+            "output": 0.0
+          },
+          "effort": "medium",
+          "hit_rate": null,
+          "input": 0,
+          "output": 0,
+          "requests": 0,
+          "runs": 0,
+          "sessions": 0,
+          "thinking": null,
+          "tokens": 0,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cache_write": 0,
+          "cache_write_1h": 0,
+          "cache_write_5m": 0,
+          "cost": 0.0,
+          "cost_by_kind": {
+            "cache_read": 0.0,
+            "cache_write": 0.0,
+            "input": 0.0,
+            "output": 0.0
+          },
+          "effort": "high",
+          "hit_rate": null,
+          "input": 0,
+          "output": 0,
+          "requests": 0,
+          "runs": 0,
+          "sessions": 0,
+          "thinking": null,
+          "tokens": 0,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cache_write": 0,
+          "cache_write_1h": 0,
+          "cache_write_5m": 0,
+          "cost": 0.0,
+          "cost_by_kind": {
+            "cache_read": 0.0,
+            "cache_write": 0.0,
+            "input": 0.0,
+            "output": 0.0
+          },
+          "effort": "xhigh",
+          "hit_rate": null,
+          "input": 0,
+          "output": 0,
+          "requests": 0,
+          "runs": 0,
+          "sessions": 0,
+          "thinking": null,
+          "tokens": 0,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        }
+      ],
+      "by_model": [],
+      "by_project": null,
+      "deltas": {
+        "cost_pct": -100.0,
+        "hit_rate_pts": null,
+        "runs_pct": -100.0,
+        "tokens_pct": -100.0
+      },
+      "end": "2026-10-30T18:00:00-04:00",
+      "notes": {
+        "malformed_lines": 0,
+        "no_id_rows": 0,
+        "skipped_old_files": 5,
+        "synthetic_rows": 0,
+        "tz_fixed": false,
+        "unpriced": []
+      },
+      "previous": {
+        "cache_read": 519314,
+        "cache_write": 140424,
+        "cache_write_1h": 13945,
+        "cache_write_5m": 126479,
+        "cost": 1.1220758800000001,
+        "cost_by_kind": {
+          "cache_read": 0.08690613,
+          "cache_write": 0.61305315,
+          "input": 0.11240960000000001,
+          "output": 0.30970699999999995
+        },
+        "hit_rate": 0.7430926300877865,
+        "input": 39117,
+        "output": 20674,
+        "requests": 25,
+        "runs": 2,
+        "sessions": 1,
+        "thinking": 6362,
+        "tokens": 719529,
+        "unpriced_requests": 0,
+        "unpriced_tokens": 0
+      },
+      "previous_end": "2026-10-29T18:00:00-04:00",
+      "previous_start": "2026-10-29T00:00:00-04:00",
+      "range": "today",
+      "sessions": [],
+      "start": "2026-10-30T00:00:00-04:00",
+      "totals": {
+        "cache_read": 0,
+        "cache_write": 0,
+        "cache_write_1h": 0,
+        "cache_write_5m": 0,
+        "cost": 0.0,
+        "cost_by_kind": {
+          "cache_read": 0.0,
+          "cache_write": 0.0,
+          "input": 0.0,
+          "output": 0.0
+        },
+        "hit_rate": null,
+        "input": 0,
+        "output": 0,
+        "requests": 0,
+        "runs": 0,
+        "sessions": 0,
+        "thinking": null,
+        "tokens": 0,
+        "unpriced_requests": 0,
+        "unpriced_tokens": 0
+      }
+    }
+  }
+}

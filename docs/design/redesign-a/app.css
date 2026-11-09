@@ -12,7 +12,7 @@ button, select { font: inherit; color: inherit; }
 :focus-visible { outline: var(--focus-width) solid var(--focus-ring); outline-offset: var(--focus-offset); }
 
 /* ---------- Shell: sidebar (A, C) ---------- */
-.shell { display: grid; grid-template-columns: 224px minmax(0, 1fr); min-height: 100vh; }
+.shell { display: grid; grid-template-columns: 240px minmax(0, 1fr); min-height: 100vh; }
 .side { background: var(--sidebar-bg); border-right: 1px solid var(--border); padding: var(--space-4) var(--space-3); display: flex; flex-direction: column; gap: var(--space-1); position: sticky; top: 0; height: 100vh; overflow: auto; }
 .brand { display: flex; align-items: center; gap: var(--space-2); font-weight: var(--weight-semibold); padding: 0 var(--space-2) var(--space-3); }
 .brand .logo { width: 22px; height: 22px; border-radius: 6px; background: var(--accent); display: grid; place-items: center; color: var(--text-on-accent); font-size: 12px; }

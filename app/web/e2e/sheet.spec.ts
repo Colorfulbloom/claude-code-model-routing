@@ -149,6 +149,9 @@ for (const width of widths) {
     test(`sheet at ${String(width)} ${theme}: axe, focus ring and target size`, async ({
       page,
     }) => {
+      // The per-cell loop (axe, Tab, measure, screenshot) runs past 60 s on the 2-vCPU Linux
+      // runner, as the hover tests below do, so it gets the same longer limit.
+      test.setTimeout(240_000);
       await page.setViewportSize({ width, height: 900 });
       const cells = await openSheet(page, theme);
       expect(cells.length).toBeGreaterThan(40);

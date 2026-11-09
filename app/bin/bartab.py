@@ -6,8 +6,10 @@ python3 "<checkout>/app/bin/bartab.py" [global options] [action] [args].
 Python 3.9 standard library only, and no imports from the repo.
 
 Global options come before the action: --data DIR (else env BARTAB_DATA, else
-app/.data in the checkout), --default-project DIR (else the working folder) and
---session ID. After the action only that action's own options are allowed, so the
+app/.data in the checkout), --default-project DIR (else the working folder),
+--session ID, --demo (the server reads the demo build) and --ingest-pace-ms N
+(demo only, slows the first read so first run is watchable). Only start uses the
+last two. After the action only that action's own options are allowed, so the
 skill's $ARGUMENTS can't override a global option.
 
 Actions
@@ -80,17 +82,20 @@ MAX_PORT = 65535
 LAUNCH_LINE_MAX = 4096
 SESSION_RE = re.compile(r"[A-Za-z0-9_-]{0,128}")
 FIXTURE_RE = re.compile(r"[a-z0-9_]{1,40}")
+PACE_RE = re.compile(r"[0-9]{1,5}")
 CODE_RE = re.compile(r"[A-Za-z0-9_.~-]{1,300}")
 UV_URL = "https://docs.astral.sh/uv/getting-started/installation/"
 USAGE = (
     "usage: bartab.py [--data DIR] [--default-project DIR] [--session ID] "
+    "[--demo] [--ingest-pace-ms N] "
     "[start [--project DIR] [--no-open] [--port N] [--fixture NAME] | "
     "code [--project DIR] [--no-open] | stop | status]"
 )
 CONNECT_HINT = "Connect to the internet and run the command again."
 SANDBOX_MESSAGE = "Claude Code's sandbox blocked the Bar Tab launcher."
 
-GLOBAL_OPTIONS = ("--data", "--default-project", "--session")
+GLOBAL_OPTIONS = ("--data", "--default-project", "--session", "--ingest-pace-ms")
+GLOBAL_FLAGS = ("--demo",)
 # action -> (options as {name: takes a value}, number of positional words)
 ACTIONS: dict[str, tuple[dict[str, bool], int]] = {
     "start": (
@@ -228,6 +233,8 @@ class Ctx:
         self.default_project = default_project
         self.skill = session is not None
         self.owner: Owner | None = None
+        self.demo = False
+        self.pace_ms: str | None = None
 
     @property
     def server_json(self) -> Path:
@@ -302,12 +309,16 @@ def parse_globals(
     """Read the global options. Returns (globals, the words left)."""
     glob: dict[str, str] = {}
     i = 0
-    while i < len(argv) and argv[i] in GLOBAL_OPTIONS:
+    while i < len(argv) and (argv[i] in GLOBAL_OPTIONS or argv[i] in GLOBAL_FLAGS):
         name = argv[i]
         if name == "--session":
             state["skill"] = True
         if name in glob:
             usage(f"{name} was given twice")
+        if name in GLOBAL_FLAGS:
+            glob[name] = "1"
+            i += 1
+            continue
         if i + 1 >= len(argv):
             usage(f"{name} needs a value")
         glob[name] = argv[i + 1]
@@ -382,7 +393,16 @@ def build_ctx(glob: dict[str, str]) -> Ctx:
     if session is not None and not SESSION_RE.fullmatch(session):
         usage("--session takes letters, digits, - and _ (up to 128)")
     default = Path(glob.get("--default-project") or Path.cwd()).resolve()
-    return Ctx(data_folder(glob), session, default)
+    ctx = Ctx(data_folder(glob), session, default)
+    ctx.demo = "--demo" in glob
+    pace = glob.get("--ingest-pace-ms")
+    if pace is not None:
+        if not PACE_RE.fullmatch(pace):
+            usage("--ingest-pace-ms takes a number of milliseconds, up to 99999")
+        if not ctx.demo:
+            usage("--ingest-pace-ms is for the demo build only, add --demo")
+        ctx.pace_ms = pace
+    return ctx
 
 
 # --------------------------------------------------------------------------
@@ -1079,7 +1099,11 @@ def read_launch_line(ctx: Ctx, fd: int, proc: subprocess.Popen[bytes]) -> Launch
 
 
 def spawn_once(
-    ctx: Ctx, port: int, project: Path, fixture: str | None
+    ctx: Ctx,
+    port: int,
+    project: Path,
+    fixture: str | None,
+    extra: tuple[str, ...] = (),
 ) -> Launch | None:
     """Start one server on port. Returns None when it stopped before it was ready."""
     argv = [
@@ -1097,6 +1121,7 @@ def spawn_once(
     ]
     if fixture:
         argv += ["--fixture", fixture]
+    argv += extra
     r, w = os.pipe()
     try:
         argv += ["--launch-fd", str(w)]
@@ -1126,7 +1151,11 @@ def spawn_once(
 
 
 def bring_up(
-    ctx: Ctx, project: Path, asked: int | None, fixture: str | None
+    ctx: Ctx,
+    project: Path,
+    asked: int | None,
+    fixture: str | None,
+    extra: tuple[str, ...] = (),
 ) -> tuple[Launch, str]:
     """Start the server, trying up to 3 ports. Returns (launch, note)."""
     taken: tuple[int, ...] = ()
@@ -1134,7 +1163,7 @@ def bring_up(
     for attempt in range(3):
         port, pick_note = pick_port(ctx, asked, taken)
         note = note or pick_note
-        launch = spawn_once(ctx, port, project, fixture)
+        launch = spawn_once(ctx, port, project, fixture, extra)
         if launch is not None:
             return launch, note
         detail = last_log_line(ctx)
@@ -1235,6 +1264,9 @@ def do_start(ctx: Ctx, opts: dict[str, str | bool]) -> None:
         not isinstance(fixture, str) or not FIXTURE_RE.fullmatch(fixture)
     ):
         usage("--fixture takes lowercase letters, digits and _")
+    extra: tuple[str, ...] = ("--demo",) if ctx.demo else ()
+    if ctx.pace_ms is not None:
+        extra += ("--ingest-pace-ms", ctx.pace_ms)
     no_open = "--no-open" in opts
     rec = live_server(ctx)
     if rec is not None:
@@ -1248,7 +1280,7 @@ def do_start(ctx: Ctx, opts: dict[str, str | bool]) -> None:
     uv = find_uv()
     ensure_packages(ctx, uv)
     launch, note = bring_up(
-        ctx, project, asked, fixture if isinstance(fixture, str) else None
+        ctx, project, asked, fixture if isinstance(fixture, str) else None, extra
     )
     adopt_record(ctx, launch, project)
     with contextlib.suppress(OSError):

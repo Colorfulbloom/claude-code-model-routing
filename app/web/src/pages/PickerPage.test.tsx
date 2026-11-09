@@ -37,8 +37,12 @@ describe("project picker modal (#/ with no launch project)", () => {
     const { router } = await mount("#/reference/glossary");
     await screen.findByRole("heading", { level: 1, name: "Glossary" });
     await act(() => router.navigate("/"));
-    await screen.findByRole("dialog", { name: "Projects" });
+    const dialog = await screen.findByRole("dialog", { name: "Projects" });
     expect(screen.getByRole("button", { name: "Close" })).toBeInTheDocument();
+    // Esc is heard from inside the dialog, so wait for the route harness to focus its h1.
+    await waitFor(() => {
+      expect(within(dialog).getByRole("heading", { level: 1, name: "Projects" })).toHaveFocus();
+    });
     await user.keyboard("{Escape}");
     await waitFor(() => {
       expect(router.state.location.pathname).toBe("/reference/glossary");

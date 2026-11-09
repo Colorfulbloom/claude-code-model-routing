@@ -10,7 +10,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { RefObject } from "react";
 import { Navigate, useNavigate } from "react-router";
-import { useApi, useAppInfo, useProjects } from "@/api/client";
+import { useApi, useAppInfo, usePrices, useProjects } from "@/api/client";
 import { useActiveProject } from "@/app/active-project";
 import { hidesTabBar, livePath, projectHref, sidebarCurrent, tabCurrent } from "@/app/nav";
 import { pageName, parseRoute, routeForProject } from "@/app/routes";
@@ -24,11 +24,15 @@ import {
 import { RunStateGlyph } from "@/components/RunStateGlyph/RunStateGlyph";
 import { Select } from "@/components/Select/Select";
 import { Sidebar } from "@/components/Sidebar/Sidebar";
+import { SidebarFooter } from "@/components/SidebarFooter/SidebarFooter";
+import { StoppedNotice } from "@/components/StoppedNotice/StoppedNotice";
 import type { SidebarGroup } from "@/components/Sidebar/Sidebar";
 import { TabBar } from "@/components/TabBar/TabBar";
 import type { TabBarItem } from "@/components/TabBar/TabBar";
 import { TopBar } from "@/components/TopBar/TopBar";
 import { clockMedium } from "@/lib/clock";
+import { footerLines } from "@/lib/history";
+import { stoppedSentence } from "@/lib/stopped";
 import { useIsDesktop } from "@/lib/media";
 import { projectItem } from "@/lib/projects";
 import { t, tn } from "@/strings/t";
@@ -55,10 +59,17 @@ export function Shell({ page, routeProject, pathname, mainRef, children }: Shell
   const desktop = useIsDesktop();
   const projects = useProjects();
   const projectList = projects.data?.projects;
-  const activeProject = useActiveProject(routeProject);
+  const activeProject = useActiveProject(routeProject, { fallback: page !== "picker" });
   const app = useAppInfo(activeProject);
+  const prices = usePrices();
   const conn = useSyncExternalStore(connection.subscribe, connection.getState);
   const otherTab = useSyncExternalStore(access.subscribe, access.getOtherTabBack);
+
+  const stopped = app.data?.history.pass_error ?? null;
+  // The notice is a polite status only when it appears after a load that had none, so it speaks once.
+  const [sawClear, setSawClear] = useState(false);
+  if (app.data !== undefined && stopped === null && !sawClear) setSawClear(true);
+  const announce = sawClear;
 
   const [trayOpen, setTrayOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -230,7 +241,11 @@ export function Shell({ page, routeProject, pathname, mainRef, children }: Shell
           brand={t("product")}
           groups={groups}
           {...(app.data !== undefined
-            ? { footer: t("more_ver_cc", { version: app.data.claude_version }) }
+            ? {
+                footer: (
+                  <SidebarFooter lines={footerLines(app.data, prices.data, app.data.server_time)} />
+                ),
+              }
             : {})}
           projectSlot={
             <Select
@@ -239,7 +254,7 @@ export function Shell({ page, routeProject, pathname, mainRef, children }: Shell
               items={items.map(projectOption)}
               value={activeProject}
               onChange={switchProject}
-              placeholder={t("pk_h")}
+              placeholder={t("pk_placeholder")}
               heading={t("pk_h")}
               emptyState={
                 projectList === undefined ? (
@@ -255,15 +270,16 @@ export function Shell({ page, routeProject, pathname, mainRef, children }: Shell
         />
       ) : (
         <TopBar
-          title={pageName(page)}
-          {...(activeProject !== null && projectName !== null
+          title={page === "picker" ? t("product") : pageName(page)}
+          {...(page === "picker" || (activeProject !== null && projectName !== null)
             ? {
                 project: {
-                  name: projectName,
-                  label: t("project_aria", { name: projectName }),
-                  open: trayOpen,
+                  name: projectName ?? t("pk_placeholder"),
+                  placeholder: projectName === null,
+                  label: t("project_aria", { name: projectName ?? t("pk_placeholder") }),
+                  open: page === "picker" || trayOpen,
                   onPress: () => {
-                    setTrayOpen(true);
+                    if (page !== "picker") setTrayOpen(true);
                   },
                 },
                 projectRef: triggerRef,
@@ -277,6 +293,11 @@ export function Shell({ page, routeProject, pathname, mainRef, children }: Shell
             <NewTabLine>
               {t("lk_tab_back", { page: pageName(backPage), project: backProject ?? t("product") })}
             </NewTabLine>
+          )}
+          {stopped !== null && (
+            <StoppedNotice {...(announce ? { role: "status" as const } : {})}>
+              {stoppedSentence(stopped, app.data?.server_time ?? stopped.since)}
+            </StoppedNotice>
           )}
           {conn.retrying && (
             <p className="shell-updated muted">

@@ -32,7 +32,8 @@ export interface SidebarProps {
   /** The project Select goes here. */
   projectSlot?: React.ReactNode;
   groups: SidebarGroup[];
-  footer?: string;
+  /** The footer block, such as SidebarFooter. */
+  footer?: React.ReactNode;
   className?: string;
 }
 
@@ -73,7 +74,7 @@ export function Sidebar({ label, brand, projectSlot, groups, footer, className }
           </div>
         );
       })}
-      {footer !== undefined && <p className="sidebar-footer">{footer}</p>}
+      {footer}
     </nav>
   );
 }

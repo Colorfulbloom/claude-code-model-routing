@@ -81,11 +81,3 @@
 .sidebar-link[aria-current="page"] .sidebar-end {
   color: var(--accent);
 }
-
-.sidebar-footer {
-  margin-top: auto;
-  padding: var(--space-3) var(--space-2) 0;
-  border-top: 1px solid var(--border);
-  color: var(--text-muted);
-  font-size: var(--text-xs);
-}

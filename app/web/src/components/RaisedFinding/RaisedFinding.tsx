@@ -34,7 +34,12 @@ export function RaisedFinding({
 }: RaisedFindingProps) {
   return (
     <div
-      className={cx("raised-finding", `raised-finding-${variant}`, className)}
+      className={cx(
+        "raised-finding",
+        `raised-finding-${variant}`,
+        variant !== "plain" && "raised-finding-marked",
+        className,
+      )}
       role={roles[variant]}
     >
       {variant !== "plain" && <span className="raised-finding-mark" aria-hidden="true" />}

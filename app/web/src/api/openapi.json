@@ -5,6 +5,18 @@
         "additionalProperties": false,
         "description": "Answer of ``GET /api/app``.",
         "properties": {
+          "as_of": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
           "claude_version": {
             "title": "Claude Version",
             "type": "string"
@@ -16,12 +28,31 @@
             "title": "Editable Projects",
             "type": "array"
           },
+          "etag": {
+            "title": "Etag",
+            "type": "string"
+          },
+          "history": {
+            "$ref": "#/components/schemas/HistoryInfo"
+          },
           "ingest": {
             "$ref": "#/components/schemas/Ingest"
           },
           "instance": {
             "title": "Instance",
             "type": "string"
+          },
+          "pass_running_since": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pass Running Since"
           },
           "running": {
             "items": {
@@ -51,12 +82,71 @@
           "server_time",
           "instance",
           "claude_version",
+          "as_of",
+          "pass_running_since",
+          "etag",
           "ingest",
+          "history",
           "running",
           "to_fix_count",
           "editable_projects"
         ],
         "title": "AppInfo",
+        "type": "object"
+      },
+      "BackupFailure": {
+        "additionalProperties": false,
+        "description": "A daily backup that did not finish. A later good copy clears it.",
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "reason_code": {
+            "enum": [
+              "no_space",
+              "unwritable",
+              "check_failed",
+              "copy_failed"
+            ],
+            "title": "Reason Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "at",
+          "reason_code"
+        ],
+        "title": "BackupFailure",
+        "type": "object"
+      },
+      "CrossCheck": {
+        "additionalProperties": false,
+        "description": "Result of comparing the active table with a second public list.",
+        "properties": {
+          "models": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Models",
+            "type": "array"
+          },
+          "state": {
+            "enum": [
+              "agree",
+              "disagree",
+              "not_checked"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "models"
+        ],
+        "title": "CrossCheck",
         "type": "object"
       },
       "ErrorEnvelope": {
@@ -96,6 +186,92 @@
         "title": "ErrorEnvelope",
         "type": "object"
       },
+      "HistoryInfo": {
+        "additionalProperties": false,
+        "description": "What the store holds and how well it is kept.",
+        "properties": {
+          "backup_failed": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BackupFailure"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "first_ingest": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Ingest"
+          },
+          "kept_files": {
+            "title": "Kept Files",
+            "type": "integer"
+          },
+          "last_backup": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Backup"
+          },
+          "no_usage_rows": {
+            "title": "No Usage Rows",
+            "type": "integer"
+          },
+          "oldest": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Oldest"
+          },
+          "pass_error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PassError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "unreadable_files": {
+            "title": "Unreadable Files",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "oldest",
+          "first_ingest",
+          "last_backup",
+          "backup_failed",
+          "pass_error",
+          "unreadable_files",
+          "kept_files",
+          "no_usage_rows"
+        ],
+        "title": "HistoryInfo",
+        "type": "object"
+      },
       "Ingest": {
         "additionalProperties": false,
         "description": "Progress of the first read of the usage history.",
@@ -105,8 +281,15 @@
             "type": "integer"
           },
           "bytes_total": {
-            "title": "Bytes Total",
-            "type": "integer"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bytes Total"
           },
           "error": {
             "anyOf": [
@@ -123,8 +306,27 @@
             "type": "integer"
           },
           "files_total": {
-            "title": "Files Total",
-            "type": "integer"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Files Total"
+          },
+          "retry_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retry At"
           },
           "retrying": {
             "title": "Retrying",
@@ -148,7 +350,8 @@
           "bytes_done",
           "bytes_total",
           "error",
-          "retrying"
+          "retrying",
+          "retry_at"
         ],
         "title": "Ingest",
         "type": "object"
@@ -163,6 +366,7 @@
               "config_dir_unreadable",
               "store_unwritable",
               "store_damaged",
+              "store_newer",
               "unexpected"
             ],
             "title": "Code",
@@ -220,6 +424,210 @@
           "code"
         ],
         "title": "MintResponse",
+        "type": "object"
+      },
+      "ModelPrice": {
+        "additionalProperties": false,
+        "description": "One model's rates in USD per million tokens.",
+        "properties": {
+          "cache_read": {
+            "title": "Cache Read",
+            "type": "number"
+          },
+          "cache_write_1h": {
+            "title": "Cache Write 1H",
+            "type": "number"
+          },
+          "cache_write_5m": {
+            "title": "Cache Write 5M",
+            "type": "number"
+          },
+          "input": {
+            "title": "Input",
+            "type": "number"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "modifiers": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Modifiers",
+            "type": "object"
+          },
+          "output": {
+            "title": "Output",
+            "type": "number"
+          },
+          "relative": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relative"
+          },
+          "source": {
+            "enum": [
+              "model_pricing",
+              "litellm",
+              "last_good",
+              "bundled"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "tiers": {
+            "items": {
+              "$ref": "#/components/schemas/PriceTier"
+            },
+            "title": "Tiers",
+            "type": "array"
+          }
+        },
+        "required": [
+          "model",
+          "source",
+          "input",
+          "output",
+          "cache_read",
+          "cache_write_5m",
+          "cache_write_1h",
+          "tiers",
+          "modifiers",
+          "relative"
+        ],
+        "title": "ModelPrice",
+        "type": "object"
+      },
+      "PassError": {
+        "additionalProperties": false,
+        "description": "A whole-pass failure after the first ingest. The next good pass clears it.",
+        "properties": {
+          "code": {
+            "enum": [
+              "config_dir_missing",
+              "config_dir_unreadable",
+              "store_unwritable",
+              "store_damaged",
+              "store_newer",
+              "unexpected"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "file": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File"
+          },
+          "since": {
+            "format": "date-time",
+            "title": "Since",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "file",
+          "since"
+        ],
+        "title": "PassError",
+        "type": "object"
+      },
+      "PriceTier": {
+        "additionalProperties": false,
+        "description": "Rates that apply once a prompt passes a size, in USD per million tokens.",
+        "properties": {
+          "cache_read": {
+            "title": "Cache Read",
+            "type": "number"
+          },
+          "cache_write_1h": {
+            "title": "Cache Write 1H",
+            "type": "number"
+          },
+          "cache_write_5m": {
+            "title": "Cache Write 5M",
+            "type": "number"
+          },
+          "input": {
+            "title": "Input",
+            "type": "number"
+          },
+          "output": {
+            "title": "Output",
+            "type": "number"
+          },
+          "prompt_tokens_over": {
+            "title": "Prompt Tokens Over",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "prompt_tokens_over",
+          "input",
+          "output",
+          "cache_read",
+          "cache_write_5m",
+          "cache_write_1h"
+        ],
+        "title": "PriceTier",
+        "type": "object"
+      },
+      "PricesInfo": {
+        "additionalProperties": false,
+        "description": "Answer of ``GET /api/prices``.",
+        "properties": {
+          "as_of": {
+            "format": "date",
+            "title": "As Of",
+            "type": "string"
+          },
+          "cross_check": {
+            "$ref": "#/components/schemas/CrossCheck"
+          },
+          "etag": {
+            "title": "Etag",
+            "type": "string"
+          },
+          "models": {
+            "items": {
+              "$ref": "#/components/schemas/ModelPrice"
+            },
+            "title": "Models",
+            "type": "array"
+          },
+          "source": {
+            "enum": [
+              "model_pricing",
+              "litellm",
+              "last_good",
+              "bundled"
+            ],
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "as_of",
+          "etag",
+          "cross_check",
+          "models"
+        ],
+        "title": "PricesInfo",
         "type": "object"
       },
       "Project": {
@@ -523,6 +931,47 @@
           }
         },
         "summary": "Get App",
+        "tags": [
+          "app"
+        ]
+      }
+    },
+    "/api/prices": {
+      "get": {
+        "operationId": "get_prices",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PricesInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "summary": "Get Prices",
         "tags": [
           "app"
         ]

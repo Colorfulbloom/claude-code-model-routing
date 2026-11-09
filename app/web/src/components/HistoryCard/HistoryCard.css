@@ -1,0 +1,50 @@
+.history-card {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+}
+
+.history-card-title {
+  margin-bottom: var(--space-1);
+  color: var(--text-muted);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+}
+
+.history-card-reason {
+  font-size: var(--text-sm);
+}
+
+.history-card-rows {
+  display: grid;
+  margin: 0;
+}
+
+.history-card-row {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: var(--space-3);
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+  font-size: var(--text-sm);
+}
+
+.history-card-row:first-child {
+  border-top: 0;
+}
+
+.history-card-row dt {
+  color: var(--text-muted);
+}
+
+.history-card-row dd {
+  margin: 0;
+}
+
+.history-card-row dd.is-warn {
+  color: var(--status-overridden-fg);
+}
+
+.history-card-mark {
+  margin-right: 5px;
+}

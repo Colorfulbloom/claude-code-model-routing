@@ -288,9 +288,8 @@ test("more at 1440 goes to Live", async ({ page, shared }) => {
   await expect(page).toHaveURL(new RegExp(`#${base}/live$`));
 });
 
-// Owner decision pending: "How Claude Code decides" needs about 14px more than the 224px sidebar
-// gives, and the a-live-1440 boards wrap it too. Un-fixme once a width, spacing or label is picked.
-test.fixme("every sidebar label is one line at 1440", async ({ page, shared }) => {
+// The owner widened the sidebar to 240px on November 8 so "How Claude Code decides" fits one line.
+test("every sidebar label is one line at 1440", async ({ page, shared }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await open(page, shared);
   const rows = await page.locator(".sidebar-link").evaluateAll((links) =>

@@ -1,0 +1,311 @@
+{
+  "data": [
+    {
+      "id": "anthropic/claude-haiku-5.5",
+      "pricing": {
+        "completion": "0.0000005",
+        "input_cache_read": "0.00000001",
+        "input_cache_write": "0.000000125",
+        "input_cache_write_1h": "0.0000002",
+        "prompt": "0.0000001"
+      }
+    },
+    {
+      "id": "anthropic/claude-haiku-5.5:batch",
+      "pricing": {
+        "completion": "0.00000025",
+        "input_cache_read": "0.000000005",
+        "input_cache_write": "0.0000000625",
+        "input_cache_write_1h": "0.0000001",
+        "prompt": "0.00000005"
+      }
+    },
+    {
+      "id": "anthropic/claude-sonnet-5.5",
+      "pricing": {
+        "completion": "0.00001",
+        "input_cache_read": "0.0000001",
+        "input_cache_write": "0.0000025",
+        "input_cache_write_1h": "0.000004",
+        "prompt": "0.000002"
+      }
+    },
+    {
+      "id": "anthropic/claude-sonnet-5.5:batch",
+      "pricing": {
+        "completion": "0.000005",
+        "input_cache_read": "0.00000005",
+        "input_cache_write": "0.00000125",
+        "input_cache_write_1h": "0.000002",
+        "prompt": "0.000001"
+      }
+    },
+    {
+      "id": "anthropic/claude-opus-5.5",
+      "pricing": {
+        "completion": "0.00002",
+        "input_cache_read": "0.0000002",
+        "input_cache_write": "0.000005",
+        "input_cache_write_1h": "0.000008",
+        "prompt": "0.000004"
+      }
+    },
+    {
+      "id": "anthropic/claude-opus-5.5:batch",
+      "pricing": {
+        "completion": "0.00001",
+        "input_cache_read": "0.0000001",
+        "input_cache_write": "0.0000025",
+        "input_cache_write_1h": "0.000004",
+        "prompt": "0.000002"
+      }
+    },
+    {
+      "id": "anthropic/claude-fable-5.1",
+      "pricing": {
+        "completion": "0.00005",
+        "input_cache_read": "0.00000025",
+        "input_cache_write": "0.0000125",
+        "input_cache_write_1h": "0.00002",
+        "prompt": "0.00001"
+      }
+    },
+    {
+      "id": "anthropic/claude-fable-5.1:batch",
+      "pricing": {
+        "completion": "0.000025",
+        "input_cache_read": "0.000000125",
+        "input_cache_write": "0.00000625",
+        "input_cache_write_1h": "0.00001",
+        "prompt": "0.000005"
+      }
+    },
+    {
+      "id": "anthropic/claude-opus-5",
+      "pricing": {
+        "completion": "0.000025",
+        "input_cache_read": "0.0000005",
+        "input_cache_write": "0.00000625",
+        "input_cache_write_1h": "0.00001",
+        "prompt": "0.000005"
+      }
+    },
+    {
+      "id": "anthropic/claude-opus-5:batch",
+      "pricing": {
+        "completion": "0.0000125",
+        "input_cache_read": "0.00000025",
+        "input_cache_write": "0.000003125",
+        "input_cache_write_1h": "0.000005",
+        "prompt": "0.0000025"
+      }
+    },
+    {
+      "id": "anthropic/claude-sonnet-5",
+      "pricing": {
+        "completion": "0.00001",
+        "input_cache_read": "0.0000002",
+        "input_cache_write": "0.0000025",
+        "input_cache_write_1h": "0.000004",
+        "prompt": "0.000002"
+      }
+    },
+    {
+      "id": "anthropic/claude-sonnet-5:batch",
+      "pricing": {
+        "completion": "0.000005",
+        "input_cache_read": "0.0000001",
+        "input_cache_write": "0.00000125",
+        "input_cache_write_1h": "0.000002",
+        "prompt": "0.000001"
+      }
+    },
+    {
+      "id": "anthropic/claude-fable-5",
+      "pricing": {
+        "completion": "0.00005",
+        "input_cache_read": "0.000001",
+        "input_cache_write": "0.0000125",
+        "input_cache_write_1h": "0.00002",
+        "prompt": "0.00001"
+      }
+    },
+    {
+      "id": "anthropic/claude-fable-5:batch",
+      "pricing": {
+        "completion": "0.000025",
+        "input_cache_read": "0.0000005",
+        "input_cache_write": "0.00000625",
+        "input_cache_write_1h": "0.00001",
+        "prompt": "0.000005"
+      }
+    },
+    {
+      "id": "anthropic/claude-opus-4.8",
+      "pricing": {
+        "completion": "0.000025",
+        "input_cache_read": "0.0000005",
+        "input_cache_write": "0.00000625",
+        "input_cache_write_1h": "0.00001",
+        "prompt": "0.000005"
+      }
+    },
+    {
+      "id": "anthropic/claude-opus-4.8:batch",
+      "pricing": {
+        "completion": "0.0000125",
+        "input_cache_read": "0.00000025",
+        "input_cache_write": "0.000003125",
+        "input_cache_write_1h": "0.000005",
+        "prompt": "0.0000025"
+      }
+    },
+    {
+      "id": "anthropic/claude-opus-4.7",
+      "pricing": {
+        "completion": "0.000025",
+        "input_cache_read": "0.0000005",
+        "input_cache_write": "0.00000625",
+        "input_cache_write_1h": "0.00001",
+        "prompt": "0.000005"
+      }
+    },
+    {
+      "id": "anthropic/claude-opus-4.7:batch",
+      "pricing": {
+        "completion": "0.0000125",
+        "input_cache_read": "0.00000025",
+        "input_cache_write": "0.000003125",
+        "input_cache_write_1h": "0.000005",
+        "prompt": "0.0000025"
+      }
+    },
+    {
+      "id": "anthropic/claude-sonnet-4.6",
+      "pricing": {
+        "completion": "0.000015",
+        "input_cache_read": "0.0000003",
+        "input_cache_write": "0.00000375",
+        "input_cache_write_1h": "0.000006",
+        "prompt": "0.000003"
+      }
+    },
+    {
+      "id": "anthropic/claude-sonnet-4.6:batch",
+      "pricing": {
+        "completion": "0.0000075",
+        "input_cache_read": "0.00000015",
+        "input_cache_write": "0.000001875",
+        "input_cache_write_1h": "0.000003",
+        "prompt": "0.0000015"
+      }
+    },
+    {
+      "id": "anthropic/claude-opus-4.6",
+      "pricing": {
+        "completion": "0.000025",
+        "input_cache_read": "0.0000005",
+        "input_cache_write": "0.00000625",
+        "input_cache_write_1h": "0.00001",
+        "prompt": "0.000005"
+      }
+    },
+    {
+      "id": "anthropic/claude-opus-4.6:batch",
+      "pricing": {
+        "completion": "0.0000125",
+        "input_cache_read": "0.00000025",
+        "input_cache_write": "0.000003125",
+        "input_cache_write_1h": "0.000005",
+        "prompt": "0.0000025"
+      }
+    },
+    {
+      "id": "anthropic/claude-opus-4.5",
+      "pricing": {
+        "completion": "0.000025",
+        "input_cache_read": "0.0000005",
+        "input_cache_write": "0.00000625",
+        "input_cache_write_1h": "0.00001",
+        "prompt": "0.000005"
+      }
+    },
+    {
+      "id": "anthropic/claude-opus-4.5:batch",
+      "pricing": {
+        "completion": "0.0000125",
+        "input_cache_read": "0.00000025",
+        "input_cache_write": "0.000003125",
+        "input_cache_write_1h": "0.000005",
+        "prompt": "0.0000025"
+      }
+    },
+    {
+      "id": "anthropic/claude-haiku-4.5",
+      "pricing": {
+        "completion": "0.000005",
+        "input_cache_read": "0.0000001",
+        "input_cache_write": "0.00000125",
+        "input_cache_write_1h": "0.000002",
+        "prompt": "0.000001"
+      }
+    },
+    {
+      "id": "anthropic/claude-haiku-4.5:batch",
+      "pricing": {
+        "completion": "0.0000025",
+        "input_cache_read": "0.00000005",
+        "input_cache_write": "0.000000625",
+        "input_cache_write_1h": "0.000001",
+        "prompt": "0.0000005"
+      }
+    },
+    {
+      "id": "anthropic/claude-sonnet-4.5",
+      "pricing": {
+        "completion": "0.000015",
+        "input_cache_read": "0.0000003",
+        "input_cache_write": "0.00000375",
+        "input_cache_write_1h": "0.000006",
+        "prompt": "0.000003"
+      }
+    },
+    {
+      "id": "anthropic/claude-sonnet-4.5:batch",
+      "pricing": {
+        "completion": "0.0000075",
+        "input_cache_read": "0.00000015",
+        "input_cache_write": "0.000001875",
+        "input_cache_write_1h": "0.000003",
+        "prompt": "0.0000015"
+      }
+    },
+    {
+      "id": "anthropic/claude-opus-4.1",
+      "pricing": {
+        "completion": "0.000075",
+        "input_cache_read": "0.0000015",
+        "input_cache_write": "0.00001875",
+        "input_cache_write_1h": "0.00003",
+        "prompt": "0.000015"
+      }
+    },
+    {
+      "id": "anthropic/claude-opus-4.1:batch",
+      "pricing": {
+        "completion": "0.0000375",
+        "input_cache_read": "0.00000075",
+        "input_cache_write": "0.000009375",
+        "input_cache_write_1h": "0.000015",
+        "prompt": "0.0000075"
+      }
+    },
+    {
+      "id": "openai/gpt-fixture-4",
+      "pricing": {
+        "completion": "0.000002",
+        "prompt": "0.000001"
+      }
+    }
+  ]
+}

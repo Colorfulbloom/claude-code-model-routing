@@ -1,0 +1,2854 @@
+{
+  "generated_at": "2026-10-30T18:00:00-04:00",
+  "model_names": {
+    "claude-fable-5": "Fable 5",
+    "claude-fable-5-1": "Fable 5.1",
+    "claude-haiku-4-5": "Haiku 4.5",
+    "claude-haiku-5-5": "Haiku 5.5",
+    "claude-opus-4-6": "Opus 4.6",
+    "claude-opus-4-7": "Opus 4.7",
+    "claude-opus-4-8": "Opus 4.8",
+    "claude-opus-5": "Opus 5",
+    "claude-opus-5-5": "Opus 5.5",
+    "claude-sonnet-4-6": "Sonnet 4.6",
+    "claude-sonnet-5": "Sonnet 5",
+    "claude-sonnet-5-5": "Sonnet 5.5"
+  },
+  "no_usage": false,
+  "prices": {
+    "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+    "verified_on": "2026-10-30"
+  },
+  "project": "tidewater-reporting",
+  "unreadable": null,
+  "views": {
+    "7d": {
+      "axis": {
+        "runs_ticks": [
+          0,
+          5,
+          10,
+          15,
+          20
+        ],
+        "tokens_max_nice": 10000000,
+        "tokens_ticks": [
+          0,
+          2000000,
+          4000000,
+          6000000,
+          8000000,
+          10000000
+        ]
+      },
+      "bucket_unit": "day",
+      "buckets": [
+        {
+          "by_model": {
+            "claude-fable-5-1": 5346340,
+            "claude-haiku-5-5": 285878,
+            "claude-opus-5-5": 1910373,
+            "claude-sonnet-5-5": 495650
+          },
+          "date": "2026-10-24",
+          "hour": null,
+          "runs_by_agent": {
+            "@main": 3,
+            "builder": 7,
+            "reviewer": 1,
+            "scribe": 2
+          },
+          "start": "2026-10-24T00:00:00-04:00",
+          "tokens": 8038241
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-25",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-25T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-26",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-26T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {
+            "claude-fable-5-1": 3773376,
+            "claude-haiku-5-5": 238517,
+            "claude-opus-5-5": 555953,
+            "claude-sonnet-5-5": 442162
+          },
+          "date": "2026-10-27",
+          "hour": null,
+          "runs_by_agent": {
+            "@main": 2,
+            "builder": 5,
+            "reviewer": 2,
+            "scribe": 3
+          },
+          "start": "2026-10-27T00:00:00-04:00",
+          "tokens": 5010008
+        },
+        {
+          "by_model": {
+            "claude-fable-5-1": 2463912,
+            "claude-haiku-5-5": 190524,
+            "claude-opus-5-5": 1411732,
+            "claude-sonnet-5-5": 1655848
+          },
+          "date": "2026-10-28",
+          "hour": null,
+          "runs_by_agent": {
+            "@main": 3,
+            "builder": 5,
+            "reviewer": 5,
+            "scribe": 3
+          },
+          "start": "2026-10-28T00:00:00-04:00",
+          "tokens": 5722016
+        },
+        {
+          "by_model": {
+            "claude-fable-5-1": 2763218,
+            "claude-haiku-5-5": 320103,
+            "claude-opus-5-5": 2419880,
+            "claude-sonnet-5-5": 1061381
+          },
+          "date": "2026-10-29",
+          "hour": null,
+          "runs_by_agent": {
+            "@main": 3,
+            "builder": 5,
+            "reviewer": 4,
+            "scribe": 5
+          },
+          "start": "2026-10-29T00:00:00-04:00",
+          "tokens": 6564582
+        },
+        {
+          "by_model": {
+            "claude-fable-5-1": 2084393,
+            "claude-haiku-5-5": 166290,
+            "claude-opus-5-5": 1392732,
+            "claude-sonnet-5-5": 436856
+          },
+          "date": "2026-10-30",
+          "hour": null,
+          "runs_by_agent": {
+            "@main": 2,
+            "builder": 2,
+            "reviewer": 3,
+            "scribe": 2
+          },
+          "start": "2026-10-30T00:00:00-04:00",
+          "tokens": 4080271
+        }
+      ],
+      "by_agent": [
+        {
+          "agent": "builder",
+          "cache_read": 12659466,
+          "cache_write": 2580102,
+          "cache_write_1h": 225522,
+          "cache_write_5m": 2354580,
+          "cost": 67.93222650000001,
+          "cost_by_kind": {
+            "cache_read": 3.1648665000000005,
+            "cache_write": 33.942690000000006,
+            "input": 7.189720000000004,
+            "output": 23.634950000000003
+          },
+          "display": "builder",
+          "hit_rate": 0.7932721915663964,
+          "input": 718972,
+          "output": 472699,
+          "pin": {
+            "effort": {
+              "cap": {
+                "file": null,
+                "key": "maxEffortLevel",
+                "line": null,
+                "model": "claude-fable-5-1",
+                "value": "medium"
+              },
+              "expected": {
+                "becomes": "medium",
+                "file": "projects/tidewater-reporting/.claude/settings.local.json",
+                "key": "effort",
+                "layer": "env",
+                "line": 3,
+                "reason": "builder is set to xhigh in projects/tidewater-reporting/.claude/settings.local.json but runs as medium, because maxEffortLevel caps Fable 5.1 at medium.",
+                "rule_id": "agent-effort-lowered-by-cap",
+                "status": "lowered",
+                "value": "xhigh",
+                "via": "CLAUDE_CODE_EFFORT_LEVEL"
+              },
+              "pinned": {
+                "file": "config/agents/builder.md",
+                "id": "xhigh",
+                "line": 5,
+                "status": "overridden",
+                "value": "xhigh"
+              },
+              "ran": [
+                "medium"
+              ],
+              "runs_match_pin": false,
+              "state": "overridden"
+            },
+            "mismatched_runs": 0,
+            "model": {
+              "cap": null,
+              "expected": {
+                "becomes": null,
+                "file": "config/agents/builder.md",
+                "key": "model",
+                "layer": "agent",
+                "line": 4,
+                "reason": "config/agents/builder.md sets the model for builder. The agent's frontmatter model, inherit included, beats CLAUDE_CODE_SUBAGENT_MODEL, which beats the main model, unless CLAUDE_CODE_SUBAGENT_MODEL_FORCE is on. A model passed at dispatch, or set by a mod's agent.spawn hook, beats the frontmatter, and the dashboard can't see either.",
+                "rule_id": "subagent-model-order",
+                "status": "in_effect",
+                "value": "claude-fable-5-1",
+                "via": null
+              },
+              "pinned": {
+                "file": "config/agents/builder.md",
+                "id": "claude-fable-5-1",
+                "line": 4,
+                "status": "in_effect",
+                "value": "claude-fable-5-1"
+              },
+              "ran": [
+                "claude-fable-5-1"
+              ],
+              "runs_match_pin": false,
+              "state": "matches"
+            },
+            "pinned": "both",
+            "source": "agent_file",
+            "state": "overridden",
+            "total_runs": 24
+          },
+          "ran_with": [
+            {
+              "effort": "medium",
+              "model": "claude-fable-5-1",
+              "requests": 274,
+              "runs": 24
+            }
+          ],
+          "recent_runs": [
+            {
+              "cost": 4.628356500000001,
+              "effort": "medium",
+              "hit_rate": 0.8015283858970654,
+              "model": "claude-fable-5-1",
+              "project": "Tidewater reporting",
+              "requests": 19,
+              "run_id": "a04e4477cb7b",
+              "session_id": "e795e3be-36e4-49d3-8e70-f65f6ea40e17",
+              "session_started": "2026-10-30T14:01:28.859000-04:00",
+              "started": "2026-10-30T14:22:56.817000-04:00",
+              "tokens": 1114674,
+              "unpriced_requests": 0
+            },
+            {
+              "cost": 3.6929504999999994,
+              "effort": "medium",
+              "hit_rate": 0.8005891115854735,
+              "model": "claude-fable-5-1",
+              "project": "Tidewater reporting",
+              "requests": 15,
+              "run_id": "fa62e3a19620",
+              "session_id": "e795e3be-36e4-49d3-8e70-f65f6ea40e17",
+              "session_started": "2026-10-30T14:01:28.859000-04:00",
+              "started": "2026-10-30T14:21:01.628000-04:00",
+              "tokens": 969719,
+              "unpriced_requests": 0
+            },
+            {
+              "cost": 2.02457725,
+              "effort": "medium",
+              "hit_rate": 0.809397823517028,
+              "model": "claude-fable-5-1",
+              "project": "Tidewater reporting",
+              "requests": 8,
+              "run_id": "75fdc897f201",
+              "session_id": "7a8c05a2-9b18-47d1-80a7-4cbc6ead16ef",
+              "session_started": "2026-10-29T14:58:29.648000-04:00",
+              "started": "2026-10-29T15:09:02.102000-04:00",
+              "tokens": 507892,
+              "unpriced_requests": 0
+            },
+            {
+              "cost": 2.024292,
+              "effort": "medium",
+              "hit_rate": 0.7893099784559412,
+              "model": "claude-fable-5-1",
+              "project": "Tidewater reporting",
+              "requests": 8,
+              "run_id": "536efac1e03d",
+              "session_id": "7a8c05a2-9b18-47d1-80a7-4cbc6ead16ef",
+              "session_started": "2026-10-29T14:58:29.648000-04:00",
+              "started": "2026-10-29T15:07:10.838000-04:00",
+              "tokens": 456804,
+              "unpriced_requests": 0
+            },
+            {
+              "cost": 1.4955827499999998,
+              "effort": "medium",
+              "hit_rate": 0.7773203986941466,
+              "model": "claude-fable-5-1",
+              "project": "Tidewater reporting",
+              "requests": 6,
+              "run_id": "42a5ddec030f",
+              "session_id": "47c73b4b-85ca-42cf-ba38-64f4b308750a",
+              "session_started": "2026-10-29T14:55:20.949000-04:00",
+              "started": "2026-10-29T15:06:21.937000-04:00",
+              "tokens": 334077,
+              "unpriced_requests": 0
+            },
+            {
+              "cost": 4.7407175,
+              "effort": "medium",
+              "hit_rate": 0.778412706945259,
+              "model": "claude-fable-5-1",
+              "project": "Tidewater reporting",
+              "requests": 18,
+              "run_id": "f242f3e9a186",
+              "session_id": "47c73b4b-85ca-42cf-ba38-64f4b308750a",
+              "session_started": "2026-10-29T14:55:20.949000-04:00",
+              "started": "2026-10-29T15:01:06.617000-04:00",
+              "tokens": 1074887,
+              "unpriced_requests": 0
+            },
+            {
+              "cost": 1.904342,
+              "effort": "medium",
+              "hit_rate": 0.7612650687543163,
+              "model": "claude-fable-5-1",
+              "project": "Tidewater reporting",
+              "requests": 7,
+              "run_id": "fb7eb2891449",
+              "session_id": "47c73b4b-85ca-42cf-ba38-64f4b308750a",
+              "session_started": "2026-10-29T14:55:20.949000-04:00",
+              "started": "2026-10-29T15:00:32.648000-04:00",
+              "tokens": 389558,
+              "unpriced_requests": 0
+            },
+            {
+              "cost": 3.21661425,
+              "effort": "medium",
+              "hit_rate": 0.7628589496352465,
+              "model": "claude-fable-5-1",
+              "project": "Tidewater reporting",
+              "requests": 13,
+              "run_id": "a48ccfd9de2a",
+              "session_id": "546dea33-68e9-4978-9aa0-5ccbf0b7c173",
+              "session_started": "2026-10-28T17:43:30.485000-04:00",
+              "started": "2026-10-28T18:10:20.655000-04:00",
+              "tokens": 723175,
+              "unpriced_requests": 0
+            }
+          ],
+          "requests": 274,
+          "route_key": "builder",
+          "runs": 24,
+          "runs_per_day": [
+            7,
+            0,
+            0,
+            5,
+            5,
+            5,
+            2
+          ],
+          "runs_ticks": [
+            0,
+            2,
+            4,
+            6,
+            8
+          ],
+          "sessions": 10,
+          "thinking": 145799,
+          "tokens": 16431239,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "agent": null,
+          "cache_read": 5908022,
+          "cache_write": 1210362,
+          "cache_write_1h": 129075,
+          "cache_write_5m": 1081287,
+          "cost": 12.960583400000006,
+          "cost_by_kind": {
+            "cache_read": 1.1816044,
+            "cache_write": 6.439035000000003,
+            "input": 1.5264439999999995,
+            "output": 3.8134999999999994
+          },
+          "display": "Main session",
+          "hit_rate": 0.7877367918245279,
+          "input": 381611,
+          "output": 190675,
+          "pin": {
+            "effort": {
+              "cap": {
+                "file": "projects/tidewater-reporting/.claude/settings.json",
+                "key": "maxEffortLevel",
+                "line": 3,
+                "model": "claude-opus-5-5",
+                "value": "high"
+              },
+              "expected": {
+                "becomes": "high",
+                "file": "projects/tidewater-reporting/.claude/settings.local.json",
+                "key": "effortLevel",
+                "layer": "env",
+                "line": 3,
+                "reason": "xhigh from projects/tidewater-reporting/.claude/settings.local.json runs as high, because maxEffortLevel caps Opus 5.5 at high.",
+                "rule_id": "effort-lowered-by-cap",
+                "status": "lowered",
+                "value": "xhigh",
+                "via": "CLAUDE_CODE_EFFORT_LEVEL"
+              },
+              "pinned": {
+                "file": "projects/tidewater-reporting/.claude/settings.local.json",
+                "id": "xhigh",
+                "line": 3,
+                "status": "lowered",
+                "value": "xhigh"
+              },
+              "ran": [
+                "high"
+              ],
+              "runs_match_pin": false,
+              "state": "matches_lowered"
+            },
+            "mismatched_runs": 0,
+            "model": {
+              "cap": null,
+              "expected": {
+                "becomes": null,
+                "file": "config/settings.json",
+                "key": "model",
+                "layer": "user",
+                "line": 2,
+                "reason": "config/settings.json sets the model. --model beats ANTHROPIC_MODEL, which beats the model key in any file, managed included.",
+                "rule_id": "model-main-session-order",
+                "status": "in_effect",
+                "value": "claude-opus-5-5",
+                "via": null
+              },
+              "pinned": {
+                "file": "config/settings.json",
+                "id": "claude-opus-5-5",
+                "line": 2,
+                "status": "in_effect",
+                "value": "claude-opus-5-5"
+              },
+              "ran": [
+                "claude-opus-5-5"
+              ],
+              "runs_match_pin": false,
+              "state": "matches"
+            },
+            "pinned": "both",
+            "source": "settings",
+            "state": "matches_lowered",
+            "total_runs": 13
+          },
+          "ran_with": [
+            {
+              "effort": "high",
+              "model": "claude-opus-5-5",
+              "requests": 198,
+              "runs": 13
+            }
+          ],
+          "recent_runs": [
+            {
+              "cost": 0.7576158000000001,
+              "effort": "high",
+              "hit_rate": 0.804684945915597,
+              "model": "claude-opus-5-5",
+              "project": "Tidewater reporting",
+              "requests": 11,
+              "run_id": null,
+              "session_id": "c57d41c0-9c54-4701-ac0b-85822561f2ab",
+              "session_started": "2026-10-30T16:01:05.527000-04:00",
+              "started": "2026-10-30T16:01:05.527000-04:00",
+              "tokens": 503227,
+              "unpriced_requests": 0
+            },
+            {
+              "cost": 1.6059839999999996,
+              "effort": "high",
+              "hit_rate": 0.7804548019031753,
+              "model": "claude-opus-5-5",
+              "project": "Tidewater reporting",
+              "requests": 24,
+              "run_id": null,
+              "session_id": "e795e3be-36e4-49d3-8e70-f65f6ea40e17",
+              "session_started": "2026-10-30T14:01:28.859000-04:00",
+              "started": "2026-10-30T14:01:28.859000-04:00",
+              "tokens": 889505,
+              "unpriced_requests": 0
+            },
+            {
+              "cost": 1.6801581999999997,
+              "effort": "high",
+              "hit_rate": 0.7825611057749001,
+              "model": "claude-opus-5-5",
+              "project": "Tidewater reporting",
+              "requests": 27,
+              "run_id": null,
+              "session_id": "b5ce542c-ad5d-4fc6-b74e-e4d0ca939d47",
+              "session_started": "2026-10-29T16:58:50.832000-04:00",
+              "started": "2026-10-29T16:58:50.832000-04:00",
+              "tokens": 1014850,
+              "unpriced_requests": 0
+            },
+            {
+              "cost": 0.855729,
+              "effort": "high",
+              "hit_rate": 0.7452830638964064,
+              "model": "claude-opus-5-5",
+              "project": "Tidewater reporting",
+              "requests": 13,
+              "run_id": null,
+              "session_id": "7a8c05a2-9b18-47d1-80a7-4cbc6ead16ef",
+              "session_started": "2026-10-29T14:58:29.648000-04:00",
+              "started": "2026-10-29T14:58:29.648000-04:00",
+              "tokens": 432338,
+              "unpriced_requests": 0
+            },
+            {
+              "cost": 1.7255996,
+              "effort": "high",
+              "hit_rate": 0.7664879404568945,
+              "model": "claude-opus-5-5",
+              "project": "Tidewater reporting",
+              "requests": 25,
+              "run_id": null,
+              "session_id": "47c73b4b-85ca-42cf-ba38-64f4b308750a",
+              "session_started": "2026-10-29T14:55:20.949000-04:00",
+              "started": "2026-10-29T14:55:20.949000-04:00",
+              "tokens": 972692,
+              "unpriced_requests": 0
+            },
+            {
+              "cost": 1.1064866,
+              "effort": "high",
+              "hit_rate": 0.7894139642437623,
+              "model": "claude-opus-5-5",
+              "project": "Tidewater reporting",
+              "requests": 16,
+              "run_id": null,
+              "session_id": "546dea33-68e9-4978-9aa0-5ccbf0b7c173",
+              "session_started": "2026-10-28T17:43:30.485000-04:00",
+              "started": "2026-10-28T17:43:30.485000-04:00",
+              "tokens": 665649,
+              "unpriced_requests": 0
+            },
+            {
+              "cost": 0.3392192,
+              "effort": "high",
+              "hit_rate": 0.812200040787655,
+              "model": "claude-opus-5-5",
+              "project": "Tidewater reporting",
+              "requests": 6,
+              "run_id": null,
+              "session_id": "fdd7db8f-63d7-495d-a53e-8e35e4c3da70",
+              "session_started": "2026-10-28T14:03:41.635000-04:00",
+              "started": "2026-10-28T14:03:41.635000-04:00",
+              "tokens": 225339,
+              "unpriced_requests": 0
+            },
+            {
+              "cost": 0.7666362,
+              "effort": "high",
+              "hit_rate": 0.8210337069820904,
+              "model": "claude-opus-5-5",
+              "project": "Tidewater reporting",
+              "requests": 12,
+              "run_id": null,
+              "session_id": "0814c17f-e373-4f2a-a35e-221af3cfe719",
+              "session_started": "2026-10-28T10:17:39.522000-04:00",
+              "started": "2026-10-28T10:17:39.522000-04:00",
+              "tokens": 520744,
+              "unpriced_requests": 0
+            }
+          ],
+          "requests": 198,
+          "route_key": "@main",
+          "runs": 0,
+          "runs_per_day": [
+            3,
+            0,
+            0,
+            2,
+            3,
+            3,
+            2
+          ],
+          "runs_ticks": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "sessions": 13,
+          "thinking": 60221,
+          "tokens": 7690670,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "agent": "reviewer",
+          "cache_read": 3125278,
+          "cache_write": 634316,
+          "cache_write_1h": 57990,
+          "cache_write_5m": 576326,
+          "cost": 3.497932800000001,
+          "cost_by_kind": {
+            "cache_read": 0.3125277999999999,
+            "cache_write": 1.6727750000000001,
+            "input": 0.45259999999999995,
+            "output": 1.0600300000000002
+          },
+          "display": "reviewer",
+          "hit_rate": 0.7840845742510965,
+          "input": 226300,
+          "output": 106003,
+          "pin": {
+            "effort": {
+              "cap": null,
+              "expected": {
+                "becomes": null,
+                "file": "projects/tidewater-reporting/.claude/settings.local.json",
+                "key": "effort",
+                "layer": "env",
+                "line": 3,
+                "reason": "CLAUDE_CODE_EFFORT_LEVEL sets the effort for reviewer. CLAUDE_CODE_EFFORT_LEVEL beats the agent's effort frontmatter, which beats --effort and the settings that count for its own model.",
+                "rule_id": "agent-effort-order",
+                "status": "in_effect",
+                "value": "xhigh",
+                "via": "CLAUDE_CODE_EFFORT_LEVEL"
+              },
+              "pinned": {
+                "file": "config/agents/reviewer.md",
+                "id": "high",
+                "line": 5,
+                "status": "overridden",
+                "value": "high"
+              },
+              "ran": [
+                "xhigh"
+              ],
+              "runs_match_pin": false,
+              "state": "overridden"
+            },
+            "mismatched_runs": 0,
+            "model": {
+              "cap": null,
+              "expected": {
+                "becomes": null,
+                "file": "config/agents/reviewer.md",
+                "key": "model",
+                "layer": "agent",
+                "line": 4,
+                "reason": "config/agents/reviewer.md sets the model for reviewer. The agent's frontmatter model, inherit included, beats CLAUDE_CODE_SUBAGENT_MODEL, which beats the main model, unless CLAUDE_CODE_SUBAGENT_MODEL_FORCE is on. A model passed at dispatch, or set by a mod's agent.spawn hook, beats the frontmatter, and the dashboard can't see either.",
+                "rule_id": "subagent-model-order",
+                "status": "in_effect",
+                "value": "claude-sonnet-5-5",
+                "via": null
+              },
+              "pinned": {
+                "file": "config/agents/reviewer.md",
+                "id": "claude-sonnet-5-5",
+                "line": 4,
+                "status": "in_effect",
+                "value": "claude-sonnet-5-5"
+              },
+              "ran": [
+                "claude-sonnet-5-5"
+              ],
+              "runs_match_pin": false,
+              "state": "matches"
+            },
+            "pinned": "both",
+            "source": "agent_file",
+            "state": "overridden",
+            "total_runs": 15
+          },
+          "ran_with": [
+            {
+              "effort": "xhigh",
+              "model": "claude-sonnet-5-5",
+              "requests": 152,
+              "runs": 15
+            }
+          ],
+          "recent_runs": [
+            {
+              "cost": 0.1567884,
+              "effort": "xhigh",
+              "hit_rate": 0.7625974333896447,
+              "model": "claude-sonnet-5-5",
+              "project": "Tidewater reporting",
+              "requests": 7,
+              "run_id": "9dbc38e58a7f",
+              "session_id": "c57d41c0-9c54-4701-ac0b-85822561f2ab",
+              "session_started": "2026-10-30T16:01:05.527000-04:00",
+              "started": "2026-10-30T16:17:55.958000-04:00",
+              "tokens": 173316,
+              "unpriced_requests": 0
+            },
+            {
+              "cost": 0.0899241,
+              "effort": "xhigh",
+              "hit_rate": 0.7740791748468954,
+              "model": "claude-sonnet-5-5",
+              "project": "Tidewater reporting",
+              "requests": 4,
+              "run_id": "4f102caa7f0e",
+              "session_id": "c57d41c0-9c54-4701-ac0b-85822561f2ab",
+              "session_started": "2026-10-30T16:01:05.527000-04:00",
+              "started": "2026-10-30T16:13:18.075000-04:00",
+              "tokens": 104907,
+              "unpriced_requests": 0
+            },
+            {
+              "cost": 0.1195316,
+              "effort": "xhigh",
+              "hit_rate": 0.8195232324274148,
+              "model": "claude-sonnet-5-5",
+              "project": "Tidewater reporting",
+              "requests": 5,
+              "run_id": "0bb2079fc10f",
+              "session_id": "e795e3be-36e4-49d3-8e70-f65f6ea40e17",
+              "session_started": "2026-10-30T14:01:28.859000-04:00",
+              "started": "2026-10-30T14:15:57.156000-04:00",
+              "tokens": 158633,
+              "unpriced_requests": 0
+            },
+            {
+              "cost": 0.1224041,
+              "effort": "xhigh",
+              "hit_rate": 0.802612725890403,
+              "model": "claude-sonnet-5-5",
+              "project": "Tidewater reporting",
+              "requests": 5,
+              "run_id": "329928204eff",
+              "session_id": "b5ce542c-ad5d-4fc6-b74e-e4d0ca939d47",
+              "session_started": "2026-10-29T16:58:50.832000-04:00",
+              "started": "2026-10-29T17:16:24.677000-04:00",
+              "tokens": 141290,
+              "unpriced_requests": 0
+            },
+            {
+              "cost": 0.15665449999999997,
+              "effort": "xhigh",
+              "hit_rate": 0.7995396917508434,
+              "model": "claude-sonnet-5-5",
+              "project": "Tidewater reporting",
+              "requests": 7,
+              "run_id": "9555761f8590",
+              "session_id": "47c73b4b-85ca-42cf-ba38-64f4b308750a",
+              "session_started": "2026-10-29T14:55:20.949000-04:00",
+              "started": "2026-10-29T15:20:00.203000-04:00",
+              "tokens": 207410,
+              "unpriced_requests": 0
+            },
+            {
+              "cost": 0.2904507,
+              "effort": "xhigh",
+              "hit_rate": 0.7869921329314021,
+              "model": "claude-sonnet-5-5",
+              "project": "Tidewater reporting",
+              "requests": 13,
+              "run_id": "7811b6794659",
+              "session_id": "7a8c05a2-9b18-47d1-80a7-4cbc6ead16ef",
+              "session_started": "2026-10-29T14:58:29.648000-04:00",
+              "started": "2026-10-29T15:19:05.118000-04:00",
+              "tokens": 348119,
+              "unpriced_requests": 0
+            },
+            {
+              "cost": 0.34458739999999993,
+              "effort": "xhigh",
+              "hit_rate": 0.7587763913377639,
+              "model": "claude-sonnet-5-5",
+              "project": "Tidewater reporting",
+              "requests": 15,
+              "run_id": "7d206308adea",
+              "session_id": "7a8c05a2-9b18-47d1-80a7-4cbc6ead16ef",
+              "session_started": "2026-10-29T14:58:29.648000-04:00",
+              "started": "2026-10-29T15:06:35.092000-04:00",
+              "tokens": 364562,
+              "unpriced_requests": 0
+            },
+            {
+              "cost": 0.0849213,
+              "effort": "xhigh",
+              "hit_rate": 0.8315322516185757,
+              "model": "claude-sonnet-5-5",
+              "project": "Tidewater reporting",
+              "requests": 4,
+              "run_id": "5330e6c3e007",
+              "session_id": "546dea33-68e9-4978-9aa0-5ccbf0b7c173",
+              "session_started": "2026-10-28T17:43:30.485000-04:00",
+              "started": "2026-10-28T17:57:19.604000-04:00",
+              "tokens": 127555,
+              "unpriced_requests": 0
+            }
+          ],
+          "requests": 152,
+          "route_key": "reviewer",
+          "runs": 15,
+          "runs_per_day": [
+            1,
+            0,
+            0,
+            2,
+            5,
+            4,
+            3
+          ],
+          "runs_ticks": [
+            0,
+            2,
+            4,
+            6
+          ],
+          "sessions": 10,
+          "thinking": 31339,
+          "tokens": 4091897,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "agent": "scribe",
+          "cache_read": 680608,
+          "cache_write": 276162,
+          "cache_write_1h": 25396,
+          "cache_write_5m": 250766,
+          "cost": 0.09749803000000001,
+          "cost_by_kind": {
+            "cache_read": 0.006806079999999999,
+            "cache_write": 0.036424950000000005,
+            "input": 0.017000999999999995,
+            "output": 0.037266
+          },
+          "display": "scribe",
+          "hit_rate": 0.6040291804966365,
+          "input": 170010,
+          "output": 74532,
+          "pin": {
+            "effort": {
+              "cap": {
+                "file": null,
+                "key": "maxEffortLevel",
+                "line": null,
+                "model": "claude-haiku-4-5",
+                "value": "high"
+              },
+              "expected": {
+                "becomes": "high",
+                "file": "projects/tidewater-reporting/.claude/settings.local.json",
+                "key": "effort",
+                "layer": "env",
+                "line": 3,
+                "reason": "scribe is set to xhigh in projects/tidewater-reporting/.claude/settings.local.json but runs as high, because maxEffortLevel caps Haiku 4.5 at high.",
+                "rule_id": "agent-effort-lowered-by-cap",
+                "status": "lowered",
+                "value": "xhigh",
+                "via": "CLAUDE_CODE_EFFORT_LEVEL"
+              },
+              "pinned": {
+                "file": "config/agents/scribe.md",
+                "id": "medium",
+                "line": 5,
+                "status": "overridden",
+                "value": "medium"
+              },
+              "ran": [
+                "high"
+              ],
+              "runs_match_pin": false,
+              "state": "overridden"
+            },
+            "mismatched_runs": 15,
+            "model": {
+              "cap": null,
+              "expected": {
+                "becomes": null,
+                "file": "config/agents/scribe.md",
+                "key": "model",
+                "layer": "agent",
+                "line": 4,
+                "reason": "config/agents/scribe.md sets the model for scribe. The agent's frontmatter model, inherit included, beats CLAUDE_CODE_SUBAGENT_MODEL, which beats the main model, unless CLAUDE_CODE_SUBAGENT_MODEL_FORCE is on. A model passed at dispatch, or set by a mod's agent.spawn hook, beats the frontmatter, and the dashboard can't see either.",
+                "rule_id": "subagent-model-order",
+                "status": "in_effect",
+                "value": "claude-haiku-4-5",
+                "via": null
+              },
+              "pinned": {
+                "file": "config/agents/scribe.md",
+                "id": "claude-haiku-4-5",
+                "line": 4,
+                "status": "in_effect",
+                "value": "claude-haiku-4-5"
+              },
+              "ran": [
+                "claude-haiku-5-5"
+              ],
+              "runs_match_pin": false,
+              "state": "differs"
+            },
+            "pinned": "both",
+            "source": "agent_file",
+            "state": "differs",
+            "total_runs": 15
+          },
+          "ran_with": [
+            {
+              "effort": "high",
+              "model": "claude-haiku-5-5",
+              "requests": 175,
+              "runs": 15
+            }
+          ],
+          "recent_runs": [
+            {
+              "cost": 0.00592031,
+              "effort": "high",
+              "hit_rate": 0.5547072123734312,
+              "model": "claude-haiku-5-5",
+              "project": "Tidewater reporting",
+              "requests": 10,
+              "run_id": "360f291fc826",
+              "session_id": "c57d41c0-9c54-4701-ac0b-85822561f2ab",
+              "session_started": "2026-10-30T16:01:05.527000-04:00",
+              "started": "2026-10-30T16:26:45.143000-04:00",
+              "tokens": 65528,
+              "unpriced_requests": 0
+            },
+            {
+              "cost": 0.008412375000000001,
+              "effort": "high",
+              "hit_rate": 0.5916549759809548,
+              "model": "claude-haiku-5-5",
+              "project": "Tidewater reporting",
+              "requests": 15,
+              "run_id": "383168002f8a",
+              "session_id": "c57d41c0-9c54-4701-ac0b-85822561f2ab",
+              "session_started": "2026-10-30T16:01:05.527000-04:00",
+              "started": "2026-10-30T16:16:41.666000-04:00",
+              "tokens": 100762,
+              "unpriced_requests": 0
+            },
+            {
+              "cost": 0.00214608,
+              "effort": "high",
+              "hit_rate": 0.5746244951672188,
+              "model": "claude-haiku-5-5",
+              "project": "Tidewater reporting",
+              "requests": 4,
+              "run_id": "18bf32361bcb",
+              "session_id": "b5ce542c-ad5d-4fc6-b74e-e4d0ca939d47",
+              "session_started": "2026-10-29T16:58:50.832000-04:00",
+              "started": "2026-10-29T17:18:16.914000-04:00",
+              "tokens": 23854,
+              "unpriced_requests": 0
+            },
+            {
+              "cost": 0.006816150000000001,
+              "effort": "high",
+              "hit_rate": 0.5987562350197577,
+              "model": "claude-haiku-5-5",
+              "project": "Tidewater reporting",
+              "requests": 12,
+              "run_id": "91cf46d10c31",
+              "session_id": "b5ce542c-ad5d-4fc6-b74e-e4d0ca939d47",
+              "session_started": "2026-10-29T16:58:50.832000-04:00",
+              "started": "2026-10-29T17:07:39.887000-04:00",
+              "tokens": 82441,
+              "unpriced_requests": 0
+            },
+            {
+              "cost": 0.012096420000000002,
+              "effort": "high",
+              "hit_rate": 0.6192381984686149,
+              "model": "claude-haiku-5-5",
+              "project": "Tidewater reporting",
+              "requests": 22,
+              "run_id": "e7f80fd67d69",
+              "session_id": "7a8c05a2-9b18-47d1-80a7-4cbc6ead16ef",
+              "session_started": "2026-10-29T14:58:29.648000-04:00",
+              "started": "2026-10-29T15:04:53.922000-04:00",
+              "tokens": 153352,
+              "unpriced_requests": 0
+            },
+            {
+              "cost": 0.00237535,
+              "effort": "high",
+              "hit_rate": 0.6527680448493343,
+              "model": "claude-haiku-5-5",
+              "project": "Tidewater reporting",
+              "requests": 4,
+              "run_id": "602e6f66f658",
+              "session_id": "47c73b4b-85ca-42cf-ba38-64f4b308750a",
+              "session_started": "2026-10-29T14:55:20.949000-04:00",
+              "started": "2026-10-29T15:04:48.659000-04:00",
+              "tokens": 30614,
+              "unpriced_requests": 0
+            },
+            {
+              "cost": 0.0025910300000000002,
+              "effort": "high",
+              "hit_rate": 0.5712658408087712,
+              "model": "claude-haiku-5-5",
+              "project": "Tidewater reporting",
+              "requests": 4,
+              "run_id": "68c8585c6ce0",
+              "session_id": "47c73b4b-85ca-42cf-ba38-64f4b308750a",
+              "session_started": "2026-10-29T14:55:20.949000-04:00",
+              "started": "2026-10-29T15:04:22.956000-04:00",
+              "tokens": 29842,
+              "unpriced_requests": 0
+            },
+            {
+              "cost": 0.010152,
+              "effort": "high",
+              "hit_rate": 0.5724311727725991,
+              "model": "claude-haiku-5-5",
+              "project": "Tidewater reporting",
+              "requests": 18,
+              "run_id": "377ea00eb0a0",
+              "session_id": "546dea33-68e9-4978-9aa0-5ccbf0b7c173",
+              "session_started": "2026-10-28T17:43:30.485000-04:00",
+              "started": "2026-10-28T17:51:55.784000-04:00",
+              "tokens": 118203,
+              "unpriced_requests": 0
+            }
+          ],
+          "requests": 175,
+          "route_key": "scribe",
+          "runs": 15,
+          "runs_per_day": [
+            2,
+            0,
+            0,
+            3,
+            3,
+            5,
+            2
+          ],
+          "runs_ticks": [
+            0,
+            2,
+            4,
+            6
+          ],
+          "sessions": 11,
+          "thinking": 22566,
+          "tokens": 1201312,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        }
+      ],
+      "by_effort": [
+        {
+          "cache_read": 0,
+          "cache_write": 0,
+          "cache_write_1h": 0,
+          "cache_write_5m": 0,
+          "cost": 0.0,
+          "cost_by_kind": {
+            "cache_read": 0.0,
+            "cache_write": 0.0,
+            "input": 0.0,
+            "output": 0.0
+          },
+          "effort": "low",
+          "hit_rate": null,
+          "input": 0,
+          "output": 0,
+          "requests": 0,
+          "runs": 0,
+          "sessions": 0,
+          "thinking": null,
+          "tokens": 0,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "cache_read": 12659466,
+          "cache_write": 2580102,
+          "cache_write_1h": 225522,
+          "cache_write_5m": 2354580,
+          "cost": 67.93222650000001,
+          "cost_by_kind": {
+            "cache_read": 3.1648665000000005,
+            "cache_write": 33.942690000000006,
+            "input": 7.189720000000004,
+            "output": 23.634950000000003
+          },
+          "effort": "medium",
+          "hit_rate": 0.7932721915663964,
+          "input": 718972,
+          "output": 472699,
+          "requests": 274,
+          "runs": 24,
+          "sessions": 10,
+          "thinking": 145799,
+          "tokens": 16431239,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "cache_read": 6588630,
+          "cache_write": 1486524,
+          "cache_write_1h": 154471,
+          "cache_write_5m": 1332053,
+          "cost": 13.05808143,
+          "cost_by_kind": {
+            "cache_read": 1.1884104800000002,
+            "cache_write": 6.475459950000001,
+            "input": 1.5434449999999995,
+            "output": 3.8507659999999984
+          },
+          "effort": "high",
+          "hit_rate": 0.7637419545542802,
+          "input": 551621,
+          "output": 265207,
+          "requests": 373,
+          "runs": 15,
+          "sessions": 13,
+          "thinking": 82787,
+          "tokens": 8891982,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "cache_read": 3125278,
+          "cache_write": 634316,
+          "cache_write_1h": 57990,
+          "cache_write_5m": 576326,
+          "cost": 3.497932800000001,
+          "cost_by_kind": {
+            "cache_read": 0.3125277999999999,
+            "cache_write": 1.6727750000000001,
+            "input": 0.45259999999999995,
+            "output": 1.0600300000000002
+          },
+          "effort": "xhigh",
+          "hit_rate": 0.7840845742510965,
+          "input": 226300,
+          "output": 106003,
+          "requests": 152,
+          "runs": 15,
+          "sessions": 10,
+          "thinking": 31339,
+          "tokens": 4091897,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        }
+      ],
+      "by_model": [
+        {
+          "agents": [
+            "builder"
+          ],
+          "cache_read": 12659466,
+          "cache_write": 2580102,
+          "cache_write_1h": 225522,
+          "cache_write_5m": 2354580,
+          "cat": 4,
+          "cost": 67.93222650000001,
+          "cost_by_kind": {
+            "cache_read": 3.1648665000000005,
+            "cache_write": 33.942690000000006,
+            "input": 7.189720000000004,
+            "output": 23.634950000000003
+          },
+          "display_name": "Fable 5.1",
+          "hit_rate": 0.7932721915663964,
+          "input": 718972,
+          "model": "claude-fable-5-1",
+          "output": 472699,
+          "requests": 274,
+          "runs": 24,
+          "sessions": 10,
+          "share_lt1": false,
+          "share_pct": 81,
+          "thinking": 145799,
+          "tokens": 16431239,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "agents": [
+            "Main session"
+          ],
+          "cache_read": 5908022,
+          "cache_write": 1210362,
+          "cache_write_1h": 129075,
+          "cache_write_5m": 1081287,
+          "cat": 1,
+          "cost": 12.960583400000006,
+          "cost_by_kind": {
+            "cache_read": 1.1816044,
+            "cache_write": 6.439035000000003,
+            "input": 1.5264439999999995,
+            "output": 3.8134999999999994
+          },
+          "display_name": "Opus 5.5",
+          "hit_rate": 0.7877367918245279,
+          "input": 381611,
+          "model": "claude-opus-5-5",
+          "output": 190675,
+          "requests": 198,
+          "runs": 0,
+          "sessions": 13,
+          "share_lt1": false,
+          "share_pct": 15,
+          "thinking": 60221,
+          "tokens": 7690670,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "agents": [
+            "reviewer"
+          ],
+          "cache_read": 3125278,
+          "cache_write": 634316,
+          "cache_write_1h": 57990,
+          "cache_write_5m": 576326,
+          "cat": 2,
+          "cost": 3.497932800000001,
+          "cost_by_kind": {
+            "cache_read": 0.3125277999999999,
+            "cache_write": 1.6727750000000001,
+            "input": 0.45259999999999995,
+            "output": 1.0600300000000002
+          },
+          "display_name": "Sonnet 5.5",
+          "hit_rate": 0.7840845742510965,
+          "input": 226300,
+          "model": "claude-sonnet-5-5",
+          "output": 106003,
+          "requests": 152,
+          "runs": 15,
+          "sessions": 10,
+          "share_lt1": false,
+          "share_pct": 4,
+          "thinking": 31339,
+          "tokens": 4091897,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "agents": [
+            "scribe"
+          ],
+          "cache_read": 680608,
+          "cache_write": 276162,
+          "cache_write_1h": 25396,
+          "cache_write_5m": 250766,
+          "cat": 3,
+          "cost": 0.09749803000000001,
+          "cost_by_kind": {
+            "cache_read": 0.006806079999999999,
+            "cache_write": 0.036424950000000005,
+            "input": 0.017000999999999995,
+            "output": 0.037266
+          },
+          "display_name": "Haiku 5.5",
+          "hit_rate": 0.6040291804966365,
+          "input": 170010,
+          "model": "claude-haiku-5-5",
+          "output": 74532,
+          "requests": 175,
+          "runs": 15,
+          "sessions": 11,
+          "share_lt1": true,
+          "share_pct": 0,
+          "thinking": 22566,
+          "tokens": 1201312,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        }
+      ],
+      "by_project": null,
+      "deltas": {
+        "cost_pct": 9.76370298756524,
+        "hit_rate_pts": 0.143765954189623,
+        "runs_pct": 28.57142857142857,
+        "tokens_pct": -1.0332737483021968
+      },
+      "end": "2026-10-30T18:00:00-04:00",
+      "notes": {
+        "malformed_lines": 0,
+        "no_id_rows": 0,
+        "skipped_old_files": 5,
+        "synthetic_rows": 0,
+        "tz_fixed": false,
+        "unpriced": []
+      },
+      "previous": {
+        "cache_read": 22568469,
+        "cache_write": 4771455,
+        "cache_write_1h": 472348,
+        "cache_write_5m": 4299107,
+        "cost": 76.97284113999989,
+        "cost_by_kind": {
+          "cache_read": 4.499503989999999,
+          "cache_write": 38.35714304999997,
+          "input": 8.409959100000004,
+          "output": 25.706235000000017
+        },
+        "hit_rate": 0.7816364483826231,
+        "input": 1533434,
+        "output": 848872,
+        "requests": 845,
+        "runs": 42,
+        "sessions": 13,
+        "thinking": 253692,
+        "tokens": 29722230,
+        "unpriced_requests": 0,
+        "unpriced_tokens": 0
+      },
+      "previous_end": "2026-10-23T18:00:00-04:00",
+      "previous_start": "2026-10-17T00:00:00-04:00",
+      "range": "7d",
+      "sessions": [
+        {
+          "agents": [
+            "reviewer",
+            "scribe"
+          ],
+          "branch": "feature/quarter-close",
+          "by_agent": [
+            {
+              "agent": null,
+              "cache_read": 396284,
+              "cache_write": 71900,
+              "cache_write_1h": 2197,
+              "cache_write_5m": 69703,
+              "cost": 0.7576158000000001,
+              "cost_by_kind": {
+                "cache_read": 0.0792568,
+                "cache_write": 0.366091,
+                "input": 0.09714800000000001,
+                "output": 0.21512
+              },
+              "hit_rate": 0.804684945915597,
+              "input": 24287,
+              "output": 10756,
+              "requests": 11,
+              "runs": 0,
+              "sessions": 1,
+              "thinking": 4244,
+              "tokens": 503227,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            },
+            {
+              "agent": "reviewer",
+              "cache_read": 207905,
+              "cache_write": 45571,
+              "cache_write_1h": 3603,
+              "cache_write_5m": 41968,
+              "cost": 0.24671250000000003,
+              "cost_by_kind": {
+                "cache_read": 0.020790499999999996,
+                "cache_write": 0.119332,
+                "input": 0.03522,
+                "output": 0.07136999999999999
+              },
+              "hit_rate": 0.7669337405841689,
+              "input": 17610,
+              "output": 7137,
+              "requests": 11,
+              "runs": 2,
+              "sessions": 1,
+              "thinking": 1919,
+              "tokens": 278223,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            },
+            {
+              "agent": "scribe",
+              "cache_read": 89526,
+              "cache_write": 42661,
+              "cache_write_1h": 3052,
+              "cache_write_5m": 39609,
+              "cost": 0.014332685000000003,
+              "cost_by_kind": {
+                "cache_read": 0.0008952600000000004,
+                "cache_write": 0.005561525,
+                "input": 0.0022939000000000006,
+                "output": 0.005582000000000001
+              },
+              "hit_rate": 0.5771179557263129,
+              "input": 22939,
+              "output": 11164,
+              "requests": 25,
+              "runs": 2,
+              "sessions": 1,
+              "thinking": 3284,
+              "tokens": 166290,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            }
+          ],
+          "cache_read": 693715,
+          "cache_write": 160132,
+          "cache_write_1h": 8852,
+          "cache_write_5m": 151280,
+          "cost": 1.0186609849999997,
+          "cost_by_kind": {
+            "cache_read": 0.10094255999999997,
+            "cache_write": 0.49098452500000017,
+            "input": 0.13466189999999995,
+            "output": 0.292072
+          },
+          "hit_rate": 0.7551190127606585,
+          "input": 64836,
+          "output": 29057,
+          "project": "Tidewater reporting",
+          "requests": 47,
+          "runs": 4,
+          "session_id": "c57d41c0-9c54-4701-ac0b-85822561f2ab",
+          "sessions": 1,
+          "started": "2026-10-30T16:01:05.527000-04:00",
+          "thinking": 9447,
+          "tokens": 947740,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "agents": [
+            "builder",
+            "reviewer"
+          ],
+          "branch": "feature/quarter-close",
+          "by_agent": [
+            {
+              "agent": "builder",
+              "cache_read": 1622738,
+              "cache_write": 316934,
+              "cache_write_1h": 21005,
+              "cache_write_5m": 295929,
+              "cost": 8.321307000000001,
+              "cost_by_kind": {
+                "cache_read": 0.4056845,
+                "cache_write": 4.1192125,
+                "input": 0.8599100000000003,
+                "output": 2.9365000000000006
+              },
+              "hit_rate": 0.8010898160256666,
+              "input": 85991,
+              "output": 58730,
+              "requests": 34,
+              "runs": 2,
+              "sessions": 1,
+              "thinking": 17132,
+              "tokens": 2084393,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            },
+            {
+              "agent": null,
+              "cache_read": 673680,
+              "cache_write": 144067,
+              "cache_write_1h": 14275,
+              "cache_write_5m": 129792,
+              "cost": 1.6059839999999996,
+              "cost_by_kind": {
+                "cache_read": 0.13473600000000002,
+                "cache_write": 0.76316,
+                "input": 0.18176799999999999,
+                "output": 0.5263199999999999
+              },
+              "hit_rate": 0.7804548019031753,
+              "input": 45442,
+              "output": 26316,
+              "requests": 24,
+              "runs": 0,
+              "sessions": 1,
+              "thinking": 9434,
+              "tokens": 889505,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            },
+            {
+              "agent": "reviewer",
+              "cache_read": 127131,
+              "cache_write": 21751,
+              "cache_write_1h": 3266,
+              "cache_write_5m": 18485,
+              "cost": 0.1195316,
+              "cost_by_kind": {
+                "cache_read": 0.0127131,
+                "cache_write": 0.0592765,
+                "input": 0.012492,
+                "output": 0.03505
+              },
+              "hit_rate": 0.8195232324274148,
+              "input": 6246,
+              "output": 3505,
+              "requests": 5,
+              "runs": 1,
+              "sessions": 1,
+              "thinking": 997,
+              "tokens": 158633,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            }
+          ],
+          "cache_read": 2423549,
+          "cache_write": 482752,
+          "cache_write_1h": 38546,
+          "cache_write_5m": 444206,
+          "cost": 10.046822599999999,
+          "cost_by_kind": {
+            "cache_read": 0.5531336000000001,
+            "cache_write": 4.941649000000001,
+            "input": 1.05417,
+            "output": 3.4978700000000003
+          },
+          "hit_rate": 0.7961777015617711,
+          "input": 137679,
+          "output": 88551,
+          "project": "Tidewater reporting",
+          "requests": 63,
+          "runs": 3,
+          "session_id": "e795e3be-36e4-49d3-8e70-f65f6ea40e17",
+          "sessions": 1,
+          "started": "2026-10-30T14:01:28.859000-04:00",
+          "thinking": 27563,
+          "tokens": 3132531,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "agents": [
+            "reviewer",
+            "scribe"
+          ],
+          "branch": "feature/quarter-close",
+          "by_agent": [
+            {
+              "agent": null,
+              "cache_read": 776436,
+              "cache_write": 160527,
+              "cache_write_1h": 15952,
+              "cache_write_5m": 144575,
+              "cost": 1.6801581999999997,
+              "cost_by_kind": {
+                "cache_read": 0.15528720000000004,
+                "cache_write": 0.850491,
+                "input": 0.22084,
+                "output": 0.45353999999999994
+              },
+              "hit_rate": 0.7825611057749001,
+              "input": 55210,
+              "output": 22677,
+              "requests": 27,
+              "runs": 0,
+              "sessions": 1,
+              "thinking": 6042,
+              "tokens": 1014850,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            },
+            {
+              "agent": "reviewer",
+              "cache_read": 109791,
+              "cache_write": 18097,
+              "cache_write_1h": 2263,
+              "cache_write_5m": 15834,
+              "cost": 0.1224041,
+              "cost_by_kind": {
+                "cache_read": 0.010979099999999999,
+                "cache_write": 0.04863700000000001,
+                "input": 0.017807999999999997,
+                "output": 0.04498
+              },
+              "hit_rate": 0.802612725890403,
+              "input": 8904,
+              "output": 4498,
+              "requests": 5,
+              "runs": 1,
+              "sessions": 1,
+              "thinking": 1432,
+              "tokens": 141290,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            },
+            {
+              "agent": "scribe",
+              "cache_read": 58878,
+              "cache_write": 25916,
+              "cache_write_1h": 2062,
+              "cache_write_5m": 23854,
+              "cost": 0.008962229999999998,
+              "cost_by_kind": {
+                "cache_read": 0.0005887800000000001,
+                "cache_write": 0.00339415,
+                "input": 0.0014428000000000002,
+                "output": 0.0035365
+              },
+              "hit_rate": 0.593396625748322,
+              "input": 14428,
+              "output": 7073,
+              "requests": 16,
+              "runs": 2,
+              "sessions": 1,
+              "thinking": 2196,
+              "tokens": 106295,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            }
+          ],
+          "cache_read": 945105,
+          "cache_write": 204540,
+          "cache_write_1h": 20277,
+          "cache_write_5m": 184263,
+          "cost": 1.8115245299999998,
+          "cost_by_kind": {
+            "cache_read": 0.16685508000000007,
+            "cache_write": 0.9025221499999999,
+            "input": 0.24009079999999997,
+            "output": 0.5020565
+          },
+          "hit_rate": 0.7695122973944521,
+          "input": 78542,
+          "output": 34248,
+          "project": "Tidewater reporting",
+          "requests": 48,
+          "runs": 3,
+          "session_id": "b5ce542c-ad5d-4fc6-b74e-e4d0ca939d47",
+          "sessions": 1,
+          "started": "2026-10-29T16:58:50.832000-04:00",
+          "thinking": 9670,
+          "tokens": 1262435,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "agents": [
+            "builder",
+            "reviewer",
+            "scribe"
+          ],
+          "branch": "feature/quarter-close",
+          "by_agent": [
+            {
+              "agent": "builder",
+              "cache_read": 748267,
+              "cache_write": 142387,
+              "cache_write_1h": 22782,
+              "cache_write_5m": 119605,
+              "cost": 4.04886925,
+              "cost_by_kind": {
+                "cache_read": 0.18706675,
+                "cache_write": 1.9507025,
+                "input": 0.4477499999999999,
+                "output": 1.46335
+              },
+              "hit_rate": 0.7999185400495388,
+              "input": 44775,
+              "output": 29267,
+              "requests": 16,
+              "runs": 2,
+              "sessions": 1,
+              "thinking": 8328,
+              "tokens": 964696,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            },
+            {
+              "agent": null,
+              "cache_read": 312290,
+              "cache_write": 82068,
+              "cache_write_1h": 5985,
+              "cache_write_5m": 76083,
+              "cost": 0.855729,
+              "cost_by_kind": {
+                "cache_read": 0.06245799999999999,
+                "cache_write": 0.428295,
+                "input": 0.098656,
+                "output": 0.26631999999999995
+              },
+              "hit_rate": 0.7452830638964064,
+              "input": 24664,
+              "output": 13316,
+              "requests": 13,
+              "runs": 0,
+              "sessions": 1,
+              "thinking": 4110,
+              "tokens": 432338,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            },
+            {
+              "agent": "reviewer",
+              "cache_read": 536131,
+              "cache_write": 118920,
+              "cache_write_1h": 12566,
+              "cache_write_5m": 106354,
+              "cost": 0.6350380999999999,
+              "cost_by_kind": {
+                "cache_read": 0.053613100000000004,
+                "cache_write": 0.31614899999999996,
+                "input": 0.07775600000000002,
+                "output": 0.18752000000000005
+              },
+              "hit_rate": 0.7726020961798685,
+              "input": 38878,
+              "output": 18752,
+              "requests": 28,
+              "runs": 2,
+              "sessions": 1,
+              "thinking": 5576,
+              "tokens": 712681,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            },
+            {
+              "agent": "scribe",
+              "cache_read": 89122,
+              "cache_write": 32941,
+              "cache_write_1h": 2489,
+              "cache_write_5m": 30452,
+              "cost": 0.012096420000000002,
+              "cost_by_kind": {
+                "cache_read": 0.0008912200000000001,
+                "cache_write": 0.0043043,
+                "input": 0.0021859,
+                "output": 0.0047150000000000004
+              },
+              "hit_rate": 0.6192381984686149,
+              "input": 21859,
+              "output": 9430,
+              "requests": 22,
+              "runs": 1,
+              "sessions": 1,
+              "thinking": 3152,
+              "tokens": 153352,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            }
+          ],
+          "cache_read": 1685810,
+          "cache_write": 376316,
+          "cache_write_1h": 43822,
+          "cache_write_5m": 332494,
+          "cost": 5.551732770000001,
+          "cost_by_kind": {
+            "cache_read": 0.30402907000000007,
+            "cache_write": 2.6994507999999997,
+            "input": 0.6263478999999994,
+            "output": 1.9219049999999993
+          },
+          "hit_rate": 0.7689679615308475,
+          "input": 130176,
+          "output": 70765,
+          "project": "Tidewater reporting",
+          "requests": 79,
+          "runs": 5,
+          "session_id": "7a8c05a2-9b18-47d1-80a7-4cbc6ead16ef",
+          "sessions": 1,
+          "started": "2026-10-29T14:58:29.648000-04:00",
+          "thinking": 21166,
+          "tokens": 2263067,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "agents": [
+            "builder",
+            "reviewer",
+            "scribe"
+          ],
+          "branch": "feature/quarter-close",
+          "by_agent": [
+            {
+              "agent": "builder",
+              "cache_read": 1347379,
+              "cache_write": 307827,
+              "cache_write_1h": 22368,
+              "cache_write_5m": 285459,
+              "cost": 8.14064225,
+              "cost_by_kind": {
+                "cache_read": 0.33684475,
+                "cache_write": 4.015597499999999,
+                "input": 0.8443999999999998,
+                "output": 2.9438000000000004
+              },
+              "hit_rate": 0.77451332052613,
+              "input": 84440,
+              "output": 58876,
+              "requests": 31,
+              "runs": 3,
+              "sessions": 1,
+              "thinking": 18680,
+              "tokens": 1798522,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            },
+            {
+              "agent": null,
+              "cache_read": 727778,
+              "cache_write": 173567,
+              "cache_write_1h": 18567,
+              "cache_write_5m": 155000,
+              "cost": 1.7255996,
+              "cost_by_kind": {
+                "cache_read": 0.14555559999999998,
+                "cache_write": 0.923536,
+                "input": 0.19260799999999997,
+                "output": 0.46390000000000003
+              },
+              "hit_rate": 0.7664879404568945,
+              "input": 48152,
+              "output": 23195,
+              "requests": 25,
+              "runs": 0,
+              "sessions": 1,
+              "thinking": 7661,
+              "tokens": 972692,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            },
+            {
+              "agent": "reviewer",
+              "cache_read": 162580,
+              "cache_write": 29104,
+              "cache_write_1h": 2427,
+              "cache_write_5m": 26677,
+              "cost": 0.15665449999999997,
+              "cost_by_kind": {
+                "cache_read": 0.016258,
+                "cache_write": 0.0764005,
+                "input": 0.023316000000000003,
+                "output": 0.04068
+              },
+              "hit_rate": 0.7995396917508434,
+              "input": 11658,
+              "output": 4068,
+              "requests": 7,
+              "runs": 1,
+              "sessions": 1,
+              "thinking": 1289,
+              "tokens": 207410,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            },
+            {
+              "agent": "scribe",
+              "cache_read": 34678,
+              "cache_write": 14917,
+              "cache_write_1h": 1857,
+              "cache_write_5m": 13060,
+              "cost": 0.004966380000000001,
+              "cost_by_kind": {
+                "cache_read": 0.00034678,
+                "cache_write": 0.0020039000000000003,
+                "input": 0.0007037,
+                "output": 0.001912
+              },
+              "hit_rate": 0.6123393134623535,
+              "input": 7037,
+              "output": 3824,
+              "requests": 8,
+              "runs": 2,
+              "sessions": 1,
+              "thinking": 1066,
+              "tokens": 60456,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            }
+          ],
+          "cache_read": 2272415,
+          "cache_write": 525415,
+          "cache_write_1h": 45219,
+          "cache_write_5m": 480196,
+          "cost": 10.027862730000006,
+          "cost_by_kind": {
+            "cache_read": 0.4990051300000002,
+            "cache_write": 5.017537899999999,
+            "input": 1.0610277,
+            "output": 3.450292000000001
+          },
+          "hit_rate": 0.7705408093337769,
+          "input": 151287,
+          "output": 89963,
+          "project": "Tidewater reporting",
+          "requests": 71,
+          "runs": 6,
+          "session_id": "47c73b4b-85ca-42cf-ba38-64f4b308750a",
+          "sessions": 1,
+          "started": "2026-10-29T14:55:20.949000-04:00",
+          "thinking": 28696,
+          "tokens": 3039080,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "agents": [
+            "builder",
+            "reviewer",
+            "scribe"
+          ],
+          "branch": "feature/quarter-close",
+          "by_agent": [
+            {
+              "agent": "builder",
+              "cache_read": 914903,
+              "cache_write": 213947,
+              "cache_write_1h": 15405,
+              "cache_write_5m": 198542,
+              "cost": 5.350310749999999,
+              "cost_by_kind": {
+                "cache_read": 0.22872575,
+                "cache_write": 2.7898749999999994,
+                "input": 0.5639100000000001,
+                "output": 1.7677999999999994
+              },
+              "hit_rate": 0.7719130539696146,
+              "input": 56391,
+              "output": 35356,
+              "requests": 21,
+              "runs": 2,
+              "sessions": 1,
+              "thinking": 10656,
+              "tokens": 1220597,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            },
+            {
+              "agent": null,
+              "cache_read": 513438,
+              "cache_write": 107937,
+              "cache_write_1h": 14366,
+              "cache_write_5m": 93571,
+              "cost": 1.1064866,
+              "cost_by_kind": {
+                "cache_read": 0.10268760000000002,
+                "cache_write": 0.5827829999999999,
+                "input": 0.11611600000000001,
+                "output": 0.3049
+              },
+              "hit_rate": 0.7894139642437623,
+              "input": 29029,
+              "output": 15245,
+              "requests": 16,
+              "runs": 0,
+              "sessions": 1,
+              "thinking": 5539,
+              "tokens": 665649,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            },
+            {
+              "agent": "reviewer",
+              "cache_read": 447790,
+              "cache_write": 90028,
+              "cache_write_1h": 6077,
+              "cache_write_5m": 83951,
+              "cost": 0.5025785,
+              "cost_by_kind": {
+                "cache_read": 0.044779000000000006,
+                "cache_write": 0.2341855,
+                "input": 0.061844,
+                "output": 0.16177
+              },
+              "hit_rate": 0.7873369202095861,
+              "input": 30922,
+              "output": 16177,
+              "requests": 22,
+              "runs": 2,
+              "sessions": 1,
+              "thinking": 4977,
+              "tokens": 584917,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            },
+            {
+              "agent": "scribe",
+              "cache_read": 63375,
+              "cache_write": 29271,
+              "cache_write_1h": 4097,
+              "cache_write_5m": 25174,
+              "cost": 0.010152,
+              "cost_by_kind": {
+                "cache_read": 0.0006337500000000001,
+                "cache_write": 0.00396615,
+                "input": 0.0018066,
+                "output": 0.0037455
+              },
+              "hit_rate": 0.5724311727725991,
+              "input": 18066,
+              "output": 7491,
+              "requests": 18,
+              "runs": 1,
+              "sessions": 1,
+              "thinking": 2104,
+              "tokens": 118203,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            }
+          ],
+          "cache_read": 1939506,
+          "cache_write": 441183,
+          "cache_write_1h": 39945,
+          "cache_write_5m": 401238,
+          "cost": 6.969527850000001,
+          "cost_by_kind": {
+            "cache_read": 0.3768260999999999,
+            "cache_write": 3.61080965,
+            "input": 0.7436766,
+            "output": 2.2382155
+          },
+          "hit_rate": 0.7711456059150005,
+          "input": 134408,
+          "output": 74269,
+          "project": "Tidewater reporting",
+          "requests": 77,
+          "runs": 5,
+          "session_id": "546dea33-68e9-4978-9aa0-5ccbf0b7c173",
+          "sessions": 1,
+          "started": "2026-10-28T17:43:30.485000-04:00",
+          "thinking": 23276,
+          "tokens": 2589366,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "agents": [
+            "builder",
+            "reviewer",
+            "scribe"
+          ],
+          "branch": "feature/quarter-close",
+          "by_agent": [
+            {
+              "agent": "builder",
+              "cache_read": 982014,
+              "cache_write": 180700,
+              "cache_write_1h": 19998,
+              "cache_write_5m": 160702,
+              "cost": 4.739608500000001,
+              "cost_by_kind": {
+                "cache_read": 0.24550349999999999,
+                "cache_write": 2.408735,
+                "input": 0.48617,
+                "output": 1.5991999999999997
+              },
+              "hit_rate": 0.8106900591167897,
+              "input": 48617,
+              "output": 31984,
+              "requests": 19,
+              "runs": 3,
+              "sessions": 1,
+              "thinking": 9420,
+              "tokens": 1243315,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            },
+            {
+              "agent": null,
+              "cache_read": 179216,
+              "cache_write": 30416,
+              "cache_write_1h": 4508,
+              "cache_write_5m": 25908,
+              "cost": 0.3392192,
+              "cost_by_kind": {
+                "cache_read": 0.0358432,
+                "cache_write": 0.165604,
+                "input": 0.044092,
+                "output": 0.09368
+              },
+              "hit_rate": 0.812200040787655,
+              "input": 11023,
+              "output": 4684,
+              "requests": 6,
+              "runs": 0,
+              "sessions": 1,
+              "thinking": 1489,
+              "tokens": 225339,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            },
+            {
+              "agent": "reviewer",
+              "cache_read": 95773,
+              "cache_write": 12958,
+              "cache_write_1h": 1042,
+              "cache_write_5m": 11916,
+              "cost": 0.08624330000000001,
+              "cost_by_kind": {
+                "cache_read": 0.0095773,
+                "cache_write": 0.033958,
+                "input": 0.010608,
+                "output": 0.032100000000000004
+              },
+              "hit_rate": 0.8398561845047573,
+              "input": 5304,
+              "output": 3210,
+              "requests": 4,
+              "runs": 1,
+              "sessions": 1,
+              "thinking": 960,
+              "tokens": 117245,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            },
+            {
+              "agent": "scribe",
+              "cache_read": 26150,
+              "cache_write": 9879,
+              "cache_write_1h": 422,
+              "cache_write_5m": 9457,
+              "cost": 0.003476025,
+              "cost_by_kind": {
+                "cache_read": 0.00026149999999999996,
+                "cache_write": 0.0012665250000000001,
+                "input": 0.0008485000000000001,
+                "output": 0.0010994999999999998
+              },
+              "hit_rate": 0.5874556319360201,
+              "input": 8485,
+              "output": 2199,
+              "requests": 7,
+              "runs": 1,
+              "sessions": 1,
+              "thinking": 697,
+              "tokens": 46713,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            }
+          ],
+          "cache_read": 1283153,
+          "cache_write": 233953,
+          "cache_write_1h": 25970,
+          "cache_write_5m": 207983,
+          "cost": 5.168547025,
+          "cost_by_kind": {
+            "cache_read": 0.29118549999999993,
+            "cache_write": 2.609563525,
+            "input": 0.5417185,
+            "output": 1.7260795
+          },
+          "hit_rate": 0.80674301414304,
+          "input": 73429,
+          "output": 42077,
+          "project": "Tidewater reporting",
+          "requests": 36,
+          "runs": 5,
+          "session_id": "fdd7db8f-63d7-495d-a53e-8e35e4c3da70",
+          "sessions": 1,
+          "started": "2026-10-28T14:03:41.635000-04:00",
+          "thinking": 12566,
+          "tokens": 1632612,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "agents": [
+            "reviewer",
+            "scribe"
+          ],
+          "branch": "feature/quarter-close",
+          "by_agent": [
+            {
+              "agent": "reviewer",
+              "cache_read": 736754,
+              "cache_write": 139557,
+              "cache_write_1h": 14416,
+              "cache_write_5m": 125141,
+              "cost": 0.7884859000000002,
+              "cost_by_kind": {
+                "cache_read": 0.0736754,
+                "cache_write": 0.3705165000000001,
+                "input": 0.10736399999999997,
+                "output": 0.23693
+              },
+              "hit_rate": 0.792214565055866,
+              "input": 53682,
+              "output": 23693,
+              "requests": 35,
+              "runs": 2,
+              "sessions": 1,
+              "thinking": 7372,
+              "tokens": 953686,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            },
+            {
+              "agent": null,
+              "cache_read": 417861,
+              "cache_write": 70715,
+              "cache_write_1h": 4011,
+              "cache_write_5m": 66704,
+              "cost": 0.7666362,
+              "cost_by_kind": {
+                "cache_read": 0.08357220000000001,
+                "cache_write": 0.36560800000000004,
+                "input": 0.081476,
+                "output": 0.23598
+              },
+              "hit_rate": 0.8210337069820904,
+              "input": 20369,
+              "output": 11799,
+              "requests": 12,
+              "runs": 0,
+              "sessions": 1,
+              "thinking": 3825,
+              "tokens": 520744,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            },
+            {
+              "agent": "scribe",
+              "cache_read": 13760,
+              "cache_write": 5250,
+              "cache_write_1h": 0,
+              "cache_write_5m": 5250,
+              "cost": 0.0022092500000000003,
+              "cost_by_kind": {
+                "cache_read": 0.0001376,
+                "cache_write": 0.00065625,
+                "input": 0.0004709,
+                "output": 0.0009445
+              },
+              "hit_rate": 0.5801256376744383,
+              "input": 4709,
+              "output": 1889,
+              "requests": 4,
+              "runs": 1,
+              "sessions": 1,
+              "thinking": 432,
+              "tokens": 25608,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            }
+          ],
+          "cache_read": 1168375,
+          "cache_write": 215522,
+          "cache_write_1h": 18427,
+          "cache_write_5m": 197095,
+          "cost": 1.5573313500000001,
+          "cost_by_kind": {
+            "cache_read": 0.15738520000000006,
+            "cache_write": 0.7367807500000002,
+            "input": 0.18931089999999998,
+            "output": 0.4738545000000001
+          },
+          "hit_rate": 0.7988031370307598,
+          "input": 78760,
+          "output": 37381,
+          "project": "Tidewater reporting",
+          "requests": 51,
+          "runs": 3,
+          "session_id": "0814c17f-e373-4f2a-a35e-221af3cfe719",
+          "sessions": 1,
+          "started": "2026-10-28T10:17:39.522000-04:00",
+          "thinking": 11629,
+          "tokens": 1500038,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "agents": [
+            "builder",
+            "scribe"
+          ],
+          "branch": "feature/quarter-close",
+          "by_agent": [
+            {
+              "agent": "builder",
+              "cache_read": 2238932,
+              "cache_write": 452109,
+              "cache_write_1h": 49418,
+              "cache_write_5m": 402691,
+              "cost": 11.842160500000002,
+              "cost_by_kind": {
+                "cache_read": 0.5597329999999998,
+                "cache_write": 6.0219975,
+                "input": 1.2924299999999997,
+                "output": 3.9680000000000004
+              },
+              "hit_rate": 0.7938675679470578,
+              "input": 129243,
+              "output": 79360,
+              "requests": 50,
+              "runs": 3,
+              "sessions": 1,
+              "thinking": 24547,
+              "tokens": 2899644,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            },
+            {
+              "agent": null,
+              "cache_read": 217617,
+              "cache_write": 37378,
+              "cache_write_1h": 2972,
+              "cache_write_5m": 34406,
+              "cost": 0.41692539999999995,
+              "cost_by_kind": {
+                "cache_read": 0.043523400000000004,
+                "cache_write": 0.19580599999999998,
+                "input": 0.05097600000000001,
+                "output": 0.12662
+              },
+              "hit_rate": 0.8127952969122915,
+              "input": 12744,
+              "output": 6331,
+              "requests": 6,
+              "runs": 0,
+              "sessions": 1,
+              "thinking": 2013,
+              "tokens": 274070,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            },
+            {
+              "agent": "scribe",
+              "cache_read": 59157,
+              "cache_write": 23213,
+              "cache_write_1h": 262,
+              "cache_write_5m": 22951,
+              "cost": 0.007658145000000001,
+              "cost_by_kind": {
+                "cache_read": 0.00059157,
+                "cache_write": 0.0029212749999999997,
+                "input": 0.0011432999999999999,
+                "output": 0.0030019999999999995
+              },
+              "hit_rate": 0.6306514717013315,
+              "input": 11433,
+              "output": 6004,
+              "requests": 14,
+              "runs": 1,
+              "sessions": 1,
+              "thinking": 1570,
+              "tokens": 99807,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            }
+          ],
+          "cache_read": 2515706,
+          "cache_write": 512700,
+          "cache_write_1h": 52652,
+          "cache_write_5m": 460048,
+          "cost": 12.266744045000006,
+          "cost_by_kind": {
+            "cache_read": 0.6038479699999998,
+            "cache_write": 6.220724775,
+            "input": 1.3445493,
+            "output": 4.097622
+          },
+          "hit_rate": 0.7906485144065074,
+          "input": 153420,
+          "output": 91695,
+          "project": "Tidewater reporting",
+          "requests": 70,
+          "runs": 4,
+          "session_id": "0c39416d-5a9a-4c9d-a86c-69814ed40517",
+          "sessions": 1,
+          "started": "2026-10-27T11:51:34.568000-04:00",
+          "thinking": 28130,
+          "tokens": 3273521,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "agents": [
+            "builder",
+            "reviewer",
+            "scribe"
+          ],
+          "branch": "feature/quarter-close",
+          "by_agent": [
+            {
+              "agent": "builder",
+              "cache_read": 679329,
+              "cache_write": 136314,
+              "cache_write_1h": 14291,
+              "cache_write_5m": 122023,
+              "cost": 3.4484297500000003,
+              "cost_by_kind": {
+                "cache_read": 0.16983225000000002,
+                "cache_write": 1.8111075,
+                "input": 0.35924,
+                "output": 1.1082499999999997
+              },
+              "hit_rate": 0.7977399312091709,
+              "input": 35924,
+              "output": 22165,
+              "requests": 14,
+              "runs": 2,
+              "sessions": 1,
+              "thinking": 7180,
+              "tokens": 873732,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            },
+            {
+              "agent": null,
+              "cache_read": 217635,
+              "cache_write": 42109,
+              "cache_write_1h": 5541,
+              "cache_write_5m": 36568,
+              "cost": 0.47838699999999995,
+              "cost_by_kind": {
+                "cache_read": 0.043526999999999996,
+                "cache_write": 0.227168,
+                "input": 0.058772000000000005,
+                "output": 0.14892
+              },
+              "hit_rate": 0.793023535456225,
+              "input": 14693,
+              "output": 7446,
+              "requests": 8,
+              "runs": 0,
+              "sessions": 1,
+              "thinking": 1870,
+              "tokens": 281883,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            },
+            {
+              "agent": "reviewer",
+              "cache_read": 342925,
+              "cache_write": 64601,
+              "cache_write_1h": 8071,
+              "cache_write_5m": 56530,
+              "cost": 0.36159750000000007,
+              "cost_by_kind": {
+                "cache_read": 0.034292500000000004,
+                "cache_write": 0.17360899999999999,
+                "input": 0.048165999999999994,
+                "output": 0.10553000000000001
+              },
+              "hit_rate": 0.7945269908644166,
+              "input": 24083,
+              "output": 10553,
+              "requests": 15,
+              "runs": 2,
+              "sessions": 1,
+              "thinking": 2380,
+              "tokens": 442162,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            },
+            {
+              "agent": "scribe",
+              "cache_read": 80724,
+              "cache_write": 30884,
+              "cache_write_1h": 3034,
+              "cache_write_5m": 27850,
+              "cost": 0.011185490000000001,
+              "cost_by_kind": {
+                "cache_read": 0.0008072399999999999,
+                "cache_write": 0.00408805,
+                "input": 0.0018152,
+                "output": 0.004475
+              },
+              "hit_rate": 0.6221023427866831,
+              "input": 18152,
+              "output": 8950,
+              "requests": 19,
+              "runs": 2,
+              "sessions": 1,
+              "thinking": 2742,
+              "tokens": 138710,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            }
+          ],
+          "cache_read": 1320613,
+          "cache_write": 273908,
+          "cache_write_1h": 30937,
+          "cache_write_5m": 242971,
+          "cost": 4.299599739999998,
+          "cost_by_kind": {
+            "cache_read": 0.24845899000000002,
+            "cache_write": 2.2159725500000005,
+            "input": 0.4679932,
+            "output": 1.3671750000000003
+          },
+          "hit_rate": 0.7826443827179883,
+          "input": 92852,
+          "output": 49114,
+          "project": "Tidewater reporting",
+          "requests": 56,
+          "runs": 6,
+          "session_id": "18d7e162-31fc-4075-b3de-69161c1d87ae",
+          "sessions": 1,
+          "started": "2026-10-27T09:02:57.039000-04:00",
+          "thinking": 14172,
+          "tokens": 1736487,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "agents": [
+            "builder",
+            "scribe"
+          ],
+          "branch": "feature/quarter-close",
+          "by_agent": [
+            {
+              "agent": "builder",
+              "cache_read": 2003986,
+              "cache_write": 417850,
+              "cache_write_1h": 28092,
+              "cache_write_5m": 389758,
+              "cost": 10.888451499999999,
+              "cost_by_kind": {
+                "cache_read": 0.5009965,
+                "cache_write": 5.433815000000002,
+                "input": 1.20029,
+                "output": 3.7533499999999997
+              },
+              "hit_rate": 0.7883919877727574,
+              "input": 120029,
+              "output": 75067,
+              "requests": 44,
+              "runs": 3,
+              "sessions": 1,
+              "thinking": 24402,
+              "tokens": 2616932,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            },
+            {
+              "agent": null,
+              "cache_read": 449570,
+              "cache_write": 84531,
+              "cache_write_1h": 8223,
+              "cache_write_5m": 76308,
+              "cost": 1.0039740000000001,
+              "cost_by_kind": {
+                "cache_read": 0.08991400000000002,
+                "cache_write": 0.447324,
+                "input": 0.138536,
+                "output": 0.3282
+              },
+              "hit_rate": 0.7904735949079976,
+              "input": 34634,
+              "output": 16410,
+              "requests": 17,
+              "runs": 0,
+              "sessions": 1,
+              "thinking": 4809,
+              "tokens": 585145,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            },
+            {
+              "agent": "scribe",
+              "cache_read": 82901,
+              "cache_write": 30932,
+              "cache_write_1h": 3684,
+              "cache_write_5m": 27248,
+              "cost": 0.011452409999999998,
+              "cost_by_kind": {
+                "cache_read": 0.0008290099999999999,
+                "cache_write": 0.0041428,
+                "input": 0.0021611000000000004,
+                "output": 0.0043195
+              },
+              "hit_rate": 0.612068456336198,
+              "input": 21611,
+              "output": 8639,
+              "requests": 22,
+              "runs": 1,
+              "sessions": 1,
+              "thinking": 2673,
+              "tokens": 144083,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            }
+          ],
+          "cache_read": 2536457,
+          "cache_write": 533313,
+          "cache_write_1h": 39999,
+          "cache_write_5m": 493314,
+          "cost": 11.903877909999999,
+          "cost_by_kind": {
+            "cache_read": 0.5917395100000001,
+            "cache_write": 5.885281800000002,
+            "input": 1.3409871,
+            "output": 4.0858694999999985
+          },
+          "hit_rate": 0.7813994511473042,
+          "input": 176274,
+          "output": 100116,
+          "project": "Tidewater reporting",
+          "requests": 83,
+          "runs": 4,
+          "session_id": "abb76bdd-7043-417c-b270-86619dee06c1",
+          "sessions": 1,
+          "started": "2026-10-24T16:30:47.564000-04:00",
+          "thinking": 31884,
+          "tokens": 3346160,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "agents": [
+            "builder",
+            "reviewer",
+            "scribe"
+          ],
+          "branch": "feature/quarter-close",
+          "by_agent": [
+            {
+              "agent": "builder",
+              "cache_read": 1678721,
+              "cache_write": 326692,
+              "cache_write_1h": 29845,
+              "cache_write_5m": 296847,
+              "cost": 8.879597749999997,
+              "cost_by_kind": {
+                "cache_read": 0.41968025000000014,
+                "cache_write": 4.307487499999998,
+                "input": 0.9275299999999999,
+                "output": 3.2249000000000008
+              },
+              "hit_rate": 0.8000896973833338,
+              "input": 92753,
+              "output": 64498,
+              "requests": 36,
+              "runs": 3,
+              "sessions": 1,
+              "thinking": 20650,
+              "tokens": 2162664,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            },
+            {
+              "agent": null,
+              "cache_read": 359220,
+              "cache_write": 70885,
+              "cache_write_1h": 10172,
+              "cache_write_5m": 60713,
+              "cost": 0.7739850000000001,
+              "cost_by_kind": {
+                "cache_read": 0.07184399999999999,
+                "cache_write": 0.38494100000000003,
+                "input": 0.08812,
+                "output": 0.22907999999999995
+              },
+              "hit_rate": 0.7944972187510367,
+              "input": 22030,
+              "output": 11454,
+              "requests": 12,
+              "runs": 0,
+              "sessions": 1,
+              "thinking": 2692,
+              "tokens": 463589,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            },
+            {
+              "agent": "reviewer",
+              "cache_read": 358498,
+              "cache_write": 93729,
+              "cache_write_1h": 4259,
+              "cache_write_5m": 89470,
+              "cost": 0.4786868000000001,
+              "cost_by_kind": {
+                "cache_read": 0.0358498,
+                "cache_write": 0.24071099999999998,
+                "input": 0.058026,
+                "output": 0.1441
+              },
+              "hit_rate": 0.7449463884963844,
+              "input": 29013,
+              "output": 14410,
+              "requests": 20,
+              "runs": 1,
+              "sessions": 1,
+              "thinking": 4437,
+              "tokens": 495650,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            },
+            {
+              "agent": "scribe",
+              "cache_read": 82337,
+              "cache_write": 30298,
+              "cache_write_1h": 4437,
+              "cache_write_5m": 25861,
+              "cost": 0.011006995,
+              "cost_by_kind": {
+                "cache_read": 0.00082337,
+                "cache_write": 0.004120024999999999,
+                "input": 0.0021291,
+                "output": 0.0039345000000000005
+              },
+              "hit_rate": 0.6147947373922913,
+              "input": 21291,
+              "output": 7869,
+              "requests": 20,
+              "runs": 1,
+              "sessions": 1,
+              "thinking": 2650,
+              "tokens": 141795,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            }
+          ],
+          "cache_read": 2478776,
+          "cache_write": 521604,
+          "cache_write_1h": 48713,
+          "cache_write_5m": 472891,
+          "cost": 10.143276544999994,
+          "cost_by_kind": {
+            "cache_read": 0.5281974199999999,
+            "cache_write": 4.937259524999999,
+            "input": 1.0758050999999995,
+            "output": 3.6020145000000023
+          },
+          "hit_rate": 0.7830680275611782,
+          "input": 165087,
+          "output": 98231,
+          "project": "Tidewater reporting",
+          "requests": 88,
+          "runs": 5,
+          "session_id": "8cba645d-383c-47d3-92d2-cf9432940102",
+          "sessions": 1,
+          "started": "2026-10-24T13:45:30.763000-04:00",
+          "thinking": 30429,
+          "tokens": 3263698,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "agents": [
+            "builder"
+          ],
+          "branch": "feature/quarter-close",
+          "by_agent": [
+            {
+              "agent": "builder",
+              "cache_read": 443197,
+              "cache_write": 85342,
+              "cache_write_1h": 2318,
+              "cache_write_5m": 83024,
+              "cost": 2.2728492499999997,
+              "cost_by_kind": {
+                "cache_read": 0.11079925,
+                "cache_write": 1.08416,
+                "input": 0.20809000000000002,
+                "output": 0.8698
+              },
+              "hit_rate": 0.8067691153876959,
+              "input": 20809,
+              "output": 17396,
+              "requests": 9,
+              "runs": 1,
+              "sessions": 1,
+              "thinking": 4804,
+              "tokens": 566744,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            },
+            {
+              "agent": null,
+              "cache_read": 666997,
+              "cache_write": 134262,
+              "cache_write_1h": 22306,
+              "cache_write_5m": 111956,
+              "cost": 1.4498834,
+              "cost_by_kind": {
+                "cache_read": 0.1333994,
+                "cache_write": 0.7382280000000001,
+                "input": 0.15733599999999995,
+                "output": 0.42091999999999996
+              },
+              "hit_rate": 0.7934838857806334,
+              "input": 39334,
+              "output": 21046,
+              "requests": 21,
+              "runs": 0,
+              "sessions": 1,
+              "thinking": 6493,
+              "tokens": 861639,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            }
+          ],
+          "cache_read": 1110194,
+          "cache_write": 219604,
+          "cache_write_1h": 24624,
+          "cache_write_5m": 194980,
+          "cost": 3.7227326499999993,
+          "cost_by_kind": {
+            "cache_read": 0.24419865000000002,
+            "cache_write": 1.8223880000000001,
+            "input": 0.36542600000000003,
+            "output": 1.29072
+          },
+          "hit_rate": 0.7987346225487268,
+          "input": 60143,
+          "output": 38442,
+          "project": "Tidewater reporting",
+          "requests": 30,
+          "runs": 1,
+          "session_id": "ec452977-3bba-4d70-a316-b49f85a76163",
+          "sessions": 1,
+          "started": "2026-10-24T09:36:27.458000-04:00",
+          "thinking": 11297,
+          "tokens": 1428383,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        }
+      ],
+      "start": "2026-10-24T00:00:00-04:00",
+      "totals": {
+        "cache_read": 22373374,
+        "cache_write": 4700942,
+        "cache_write_1h": 437983,
+        "cache_write_5m": 4262959,
+        "cost": 84.4882407299999,
+        "cost_by_kind": {
+          "cache_read": 4.66580478,
+          "cache_write": 42.090924950000016,
+          "input": 9.185765000000007,
+          "output": 28.54574599999996
+        },
+        "hit_rate": 0.7830741079245194,
+        "input": 1496893,
+        "output": 843909,
+        "requests": 799,
+        "runs": 54,
+        "sessions": 13,
+        "thinking": 259925,
+        "tokens": 29415118,
+        "unpriced_requests": 0,
+        "unpriced_tokens": 0
+      }
+    }
+  }
+}

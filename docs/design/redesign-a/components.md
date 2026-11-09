@@ -603,3 +603,50 @@ The product is now Bar Tab, and the command is /bartab. Until the M9 rename, the
 
 ### Component sheet
 - New sections show every state above, so axe covers them: Projects (open and empty), the gate (four locked reasons, the retry row default and loading, first run failed, the new-tab line, the wait hold), and More (a focus-visible row).
+
+## M1 data core round (November 8)
+
+Source is in `site/m1.js` and `site/m1.css`, and the words are in `site/strings8.js` (tech-writer drafts). Owner decisions behind this round:
+- The sidebar is 240px.
+- "Updated" is the data-checked clock time in minutes.
+- The updates-stopped notice shows on every page.
+- First run shows size only.
+- Price disagreements don't show in M1.
+
+### 1. Sidebar navigation (revised)
+- The width is 240px (was 224px), so "How Claude Code decides" fits on one line.
+- The footer is now component 53.
+
+### 53. Sidebar footer (new)
+- At rest it has five 12px muted lines, in this order:
+  1. "Updated {time}", from `as_of`, in minutes
+  2. "History since {date}"
+  3. "Last backup {time}"
+  4. "Prices as of {date}". When prices don't come from LiteLLM it reads "{Bundled | Saved | Custom} prices, {date}" instead.
+  5. The Claude Code version
+- With problems. A ▲ line in `--status-overridden-fg` takes the top for unreadable files ("Couldn't read {n} files"). A failed backup replaces the backup line in place ("Backup failed at {time}"). So the footer grows by one line at most, to six. Nothing else collapses. Each line is one line with ellipsis, and every draft fits in 32 characters at 240px. The sidebar scrolls if the window is short.
+- Detail lives on More at 375. At 1440 the reason sentences arrive with To fix in M4.
+- Mapping. Plain text, no live region. The notice line below handles announcements.
+
+### More page (52), revised
+- New first card "Your history", with label and value rows: Updated, History since, Last backup, Prices as of. With problems, a ▲ finding (7, overridden edge) for each problem sits above the rows, with its reason sentence. The Last backup row shows "▲ Backup failed at {time}".
+- Then Reference, then Version.
+
+### 8. Notice line (revised): updates stopped
+- The `pass_error` variant. A 4px `--status-overridden-fg` edge and ▲, then "Updates stopped at {t} because the dashboard couldn't read {f}...". It sits above the page header on every page at both widths, and it clears on the next good pass.
+- It's apart from the M0 connection state. That one is the server-stopped gate, shown only while calls fail. The two never share a slot.
+- `role="status"` only when it appears after load, announced once.
+
+### 34. Progress steps (revised)
+- Counting. Step 3 is In progress with "Counting files" and no bar, so it never shows a 0 of 0 bar.
+- Running. The bar and the label both use bytes ("1.2 of 2.0 GB"). Files no longer show, so the label and bar always agree.
+- Retrying. Step 3 shows ✕ Failed with the bytes done. One error finding (7) holds the reason, "↻ Next try at {time}" (a polite status, announced once per new time), the line "The dashboard tries again on its own. To try now..." and the command. A retry that's running moves step 3 back to Counting, then Running. This replaces the M0 failed and retry boards (`a-firstrun-failed` is superseded).
+
+### 35. Gate page (revised): store_newer
+- An overridden ▲ mark, "This history needs a newer Bar Tab", one sentence with both versions, the next step "Update Bar Tab, then run this command in Claude Code", and /bartab with Copy. The exact update command isn't known yet.
+
+### 51. Project picker (revised): placeholder
+- On `#/` with no launch project, the sidebar Select (and the top bar button at 375) shows "Pick a project" in muted text until a pick. The picker opens over a scrim with no option marked chosen, and the top bar title is "Bar Tab".
+
+### Component sheet
+- New sections hold all of the above: the footer (rest, problem, the three price source words), the history card (rest and problem), the notice, first run (counting, running, retrying), store_newer, and the placeholder Select.

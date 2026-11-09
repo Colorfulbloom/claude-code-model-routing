@@ -1,0 +1,268 @@
+{
+  "claude-fable-5": {
+    "cache_creation_input_token_cost": 1.25e-05,
+    "cache_creation_input_token_cost_above_1hr": 2e-05,
+    "cache_read_input_token_cost": 1e-06,
+    "input_cost_per_token": 1e-05,
+    "litellm_provider": "anthropic",
+    "mode": "chat",
+    "output_cost_per_token": 5e-05,
+    "provider_specific_entry": {
+      "us": 1.1
+    }
+  },
+  "claude-fable-5-1": {
+    "cache_creation_input_token_cost": 1.25e-05,
+    "cache_creation_input_token_cost_above_1hr": 2e-05,
+    "cache_read_input_token_cost": 2.5e-07,
+    "input_cost_per_token": 1e-05,
+    "litellm_provider": "anthropic",
+    "mode": "chat",
+    "output_cost_per_token": 5e-05,
+    "provider_specific_entry": {
+      "us": 1.1
+    }
+  },
+  "claude-haiku-4-5": {
+    "cache_creation_input_token_cost": 1.25e-06,
+    "cache_creation_input_token_cost_above_1hr": 2e-06,
+    "cache_read_input_token_cost": 1e-07,
+    "input_cost_per_token": 1e-06,
+    "litellm_provider": "anthropic",
+    "mode": "chat",
+    "output_cost_per_token": 5e-06
+  },
+  "claude-haiku-4-5-20251001": {
+    "cache_creation_input_token_cost": 1.25e-06,
+    "cache_creation_input_token_cost_above_1hr": 2e-06,
+    "cache_read_input_token_cost": 1e-07,
+    "input_cost_per_token": 1e-06,
+    "litellm_provider": "anthropic",
+    "mode": "chat",
+    "output_cost_per_token": 5e-06
+  },
+  "claude-haiku-5-5": {
+    "cache_creation_input_token_cost": 1.25e-07,
+    "cache_creation_input_token_cost_above_100k_tokens": 6.25e-07,
+    "cache_creation_input_token_cost_above_1hr": 2e-07,
+    "cache_creation_input_token_cost_above_1hr_above_100k_tokens": 1e-06,
+    "cache_read_input_token_cost": 1e-08,
+    "cache_read_input_token_cost_above_100k_tokens": 5e-08,
+    "input_cost_per_token": 1e-07,
+    "input_cost_per_token_above_100k_tokens": 5e-07,
+    "litellm_provider": "anthropic",
+    "mode": "chat",
+    "output_cost_per_token": 5e-07,
+    "output_cost_per_token_above_100k_tokens": 2.5e-06,
+    "provider_specific_entry": {
+      "us": 1.1
+    }
+  },
+  "claude-mythos-5": {
+    "cache_creation_input_token_cost": 1.25e-05,
+    "cache_creation_input_token_cost_above_1hr": 2e-05,
+    "cache_read_input_token_cost": 1e-06,
+    "input_cost_per_token": 1e-05,
+    "litellm_provider": "anthropic",
+    "mode": "chat",
+    "output_cost_per_token": 5e-05,
+    "provider_specific_entry": {
+      "us": 1.1
+    }
+  },
+  "claude-mythos-5-1": {
+    "cache_creation_input_token_cost": 1.25e-05,
+    "cache_creation_input_token_cost_above_1hr": 2e-05,
+    "cache_read_input_token_cost": 2.5e-07,
+    "input_cost_per_token": 1e-05,
+    "litellm_provider": "anthropic",
+    "mode": "chat",
+    "output_cost_per_token": 5e-05,
+    "provider_specific_entry": {
+      "us": 1.1
+    }
+  },
+  "claude-mythos-preview": {
+    "cache_creation_input_token_cost": 1.25e-05,
+    "cache_creation_input_token_cost_above_1hr": 2e-05,
+    "cache_read_input_token_cost": 1e-06,
+    "input_cost_per_token": 1e-05,
+    "litellm_provider": "anthropic",
+    "mode": "chat",
+    "output_cost_per_token": 5e-05,
+    "provider_specific_entry": {
+      "us": 1.1
+    }
+  },
+  "claude-opus-4-5": {
+    "cache_creation_input_token_cost": 6.25e-06,
+    "cache_creation_input_token_cost_above_1hr": 1e-05,
+    "cache_read_input_token_cost": 5e-07,
+    "input_cost_per_token": 5e-06,
+    "litellm_provider": "anthropic",
+    "mode": "chat",
+    "output_cost_per_token": 2.5e-05
+  },
+  "claude-opus-4-5-20251101": {
+    "cache_creation_input_token_cost": 6.25e-06,
+    "cache_creation_input_token_cost_above_1hr": 1e-05,
+    "cache_read_input_token_cost": 5e-07,
+    "input_cost_per_token": 5e-06,
+    "litellm_provider": "anthropic",
+    "mode": "chat",
+    "output_cost_per_token": 2.5e-05
+  },
+  "claude-opus-4-6": {
+    "cache_creation_input_token_cost": 6.25e-06,
+    "cache_creation_input_token_cost_above_1hr": 1e-05,
+    "cache_read_input_token_cost": 5e-06,
+    "input_cost_per_token": 5e-06,
+    "litellm_provider": "anthropic",
+    "mode": "chat",
+    "output_cost_per_token": 2.5e-05,
+    "provider_specific_entry": {
+      "us": 1.1
+    }
+  },
+  "claude-opus-4-6-20260205": {
+    "cache_creation_input_token_cost": 6.25e-06,
+    "cache_creation_input_token_cost_above_1hr": 1e-05,
+    "cache_read_input_token_cost": 5e-07,
+    "input_cost_per_token": 5e-06,
+    "litellm_provider": "anthropic",
+    "mode": "chat",
+    "output_cost_per_token": 2.5e-05,
+    "provider_specific_entry": {
+      "us": 1.1
+    }
+  },
+  "claude-opus-4-7": {
+    "cache_creation_input_token_cost": 6.25e-06,
+    "cache_creation_input_token_cost_above_1hr": 1e-05,
+    "cache_read_input_token_cost": 5e-07,
+    "input_cost_per_token": 5e-06,
+    "litellm_provider": "anthropic",
+    "mode": "chat",
+    "output_cost_per_token": 2.5e-05,
+    "provider_specific_entry": {
+      "us": 1.1
+    }
+  },
+  "claude-opus-4-7-20260416": {
+    "cache_creation_input_token_cost": 6.25e-06,
+    "cache_creation_input_token_cost_above_1hr": 1e-05,
+    "cache_read_input_token_cost": 5e-07,
+    "input_cost_per_token": 5e-06,
+    "litellm_provider": "anthropic",
+    "mode": "chat",
+    "output_cost_per_token": 2.5e-05,
+    "provider_specific_entry": {
+      "us": 1.1
+    }
+  },
+  "claude-opus-4-8": {
+    "cache_creation_input_token_cost": 6.25e-06,
+    "cache_creation_input_token_cost_above_1hr": 1e-05,
+    "cache_read_input_token_cost": 5e-07,
+    "input_cost_per_token": 5e-06,
+    "litellm_provider": "anthropic",
+    "mode": "chat",
+    "output_cost_per_token": 2.5e-05,
+    "provider_specific_entry": {
+      "fast": 2.0,
+      "us": 1.1
+    }
+  },
+  "claude-opus-5": {
+    "cache_creation_input_token_cost": 6.25e-06,
+    "cache_creation_input_token_cost_above_1hr": 1e-05,
+    "cache_read_input_token_cost": 5e-07,
+    "input_cost_per_token": 5e-06,
+    "litellm_provider": "anthropic",
+    "mode": "chat",
+    "output_cost_per_token": 2.5e-05,
+    "provider_specific_entry": {
+      "fast": 2.0,
+      "us": 1.1
+    }
+  },
+  "claude-opus-5-5": {
+    "cache_creation_input_token_cost": 5e-06,
+    "cache_creation_input_token_cost_above_1hr": 8e-06,
+    "cache_read_input_token_cost": 2e-07,
+    "input_cost_per_token": 4e-06,
+    "litellm_provider": "anthropic",
+    "mode": "chat",
+    "output_cost_per_token": 2e-05,
+    "provider_specific_entry": {
+      "fast": 2,
+      "us": 1.1
+    }
+  },
+  "claude-sonnet-4-5": {
+    "cache_creation_input_token_cost": 3.75e-06,
+    "cache_creation_input_token_cost_above_1hr": 6e-06,
+    "cache_read_input_token_cost": 3e-07,
+    "input_cost_per_token": 3e-06,
+    "litellm_provider": "anthropic",
+    "mode": "chat",
+    "output_cost_per_token": 1.5e-05
+  },
+  "claude-sonnet-4-5-20250929": {
+    "cache_creation_input_token_cost": 3.75e-06,
+    "cache_creation_input_token_cost_above_1hr": 6e-06,
+    "cache_read_input_token_cost": 3e-07,
+    "input_cost_per_token": 3e-06,
+    "litellm_provider": "anthropic",
+    "mode": "chat",
+    "output_cost_per_token": 1.5e-05
+  },
+  "claude-sonnet-4-6": {
+    "cache_creation_input_token_cost": 3.75e-06,
+    "cache_creation_input_token_cost_above_1hr": 6e-06,
+    "cache_read_input_token_cost": 3e-07,
+    "input_cost_per_token": 3e-06,
+    "litellm_provider": "anthropic",
+    "mode": "chat",
+    "output_cost_per_token": 1.5e-05,
+    "provider_specific_entry": {
+      "us": 1.1
+    }
+  },
+  "claude-sonnet-5": {
+    "cache_creation_input_token_cost": 2.5e-06,
+    "cache_creation_input_token_cost_above_1hr": 4e-06,
+    "cache_read_input_token_cost": 2e-07,
+    "input_cost_per_token": 2e-06,
+    "litellm_provider": "anthropic",
+    "mode": "chat",
+    "output_cost_per_token": 1e-05,
+    "provider_specific_entry": {
+      "us": 1.1
+    }
+  },
+  "claude-sonnet-5-5": {
+    "cache_creation_input_token_cost": 2.5e-06,
+    "cache_creation_input_token_cost_above_1hr": 4e-06,
+    "cache_read_input_token_cost": 1e-07,
+    "input_cost_per_token": 2e-06,
+    "litellm_provider": "anthropic",
+    "mode": "chat",
+    "output_cost_per_token": 1e-05,
+    "provider_specific_entry": {
+      "us": 1.1
+    }
+  },
+  "gpt-fixture-4": {
+    "input_cost_per_token": 1e-06,
+    "litellm_provider": "openai",
+    "mode": "chat",
+    "output_cost_per_token": 2e-06
+  },
+  "vertex_ai/claude-opus-5": {
+    "input_cost_per_token": 9e-06,
+    "litellm_provider": "vertex_ai-anthropic_models",
+    "mode": "chat",
+    "output_cost_per_token": 9e-05
+  }
+}

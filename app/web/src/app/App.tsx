@@ -8,6 +8,7 @@ import type { QueryClient } from "@tanstack/react-query";
 import { RouterProvider } from "react-router";
 import { ApiContext, useAppInfo, useProjects } from "@/api/client";
 import type { ApiClient } from "@/api/client";
+import type { Ingest } from "@/api/types";
 import type { Access } from "@/app/access";
 import { StatusRegion } from "@/app/harness";
 import { livePath } from "@/app/nav";
@@ -35,6 +36,15 @@ function ReadyRouter({ access, goTo }: { access: Access; goTo: string | null }) 
 }
 
 /**
+ * A first ingest with a known total of zero files (an empty transcript folder) holds on the
+ * brand-only page, so the "Counting files" view never flashes before the server answers done.
+ * While totals are still unknown (null), first run shows, because the count is real work.
+ */
+function holdsFirstRun(ingest: Ingest): boolean {
+  return ingest.state !== "done" && ingest.state !== "failed" && ingest.files_total === 0;
+}
+
+/**
  * Unlocked: reads /api/app and /api/projects first, so names and counts show on the first paint.
  * While the first ingest is not done it shows first run, and when it finishes it goes to Live.
  */
@@ -46,9 +56,11 @@ function Unlocked({ access, command }: { access: Access; command: string }) {
   const [sawFirstRun, setSawFirstRun] = useState(false);
 
   const info = app.data;
-  const firstRun = info !== undefined && info.ingest.state !== "done";
+  const held = info !== undefined && holdsFirstRun(info.ingest);
+  const firstRun = info !== undefined && info.ingest.state !== "done" && !held;
   if (firstRun && !sawFirstRun) setSawFirstRun(true);
 
+  if (held) return <WaitHold brand={t("product")} />;
   if (firstRun) return <FirstRunPage info={info} command={command} />;
   if (app.isPending || projects.isPending) return <WaitHold brand={t("product")} />;
   return <ReadyRouter access={access} goTo={sawFirstRun ? livePath(access.getProject()) : null} />;

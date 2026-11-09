@@ -55,3 +55,14 @@ author: deep-reasoner
 created: 2026-11-02
 last_used: 2026-11-02
 uses: 0
+
+### U-638e sqlite backup hangs under an open write transaction
+fact: In Bar Tab, sqlite3 conn.backup() never returns while its source connection holds an open write transaction, so backup.make_backup refuses one and the store writer backs up only between batches.
+check: app/scripts/uvw run --frozen --directory app pytest -q --no-cov server/tests/test_backup.py
+evidence: app/server/backup.py, app/server/tests/test_backup.py
+fp: c861513ece39
+as_of: ad32428 2026-11-08
+author: deep-reasoner
+created: 2026-11-08
+last_used: 2026-11-08
+uses: 0

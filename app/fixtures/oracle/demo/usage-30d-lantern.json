@@ -1,0 +1,429 @@
+{
+  "generated_at": "2026-10-30T18:00:00-04:00",
+  "model_names": {
+    "claude-fable-5": "Fable 5",
+    "claude-fable-5-1": "Fable 5.1",
+    "claude-haiku-4-5": "Haiku 4.5",
+    "claude-haiku-5-5": "Haiku 5.5",
+    "claude-opus-4-6": "Opus 4.6",
+    "claude-opus-4-7": "Opus 4.7",
+    "claude-opus-4-8": "Opus 4.8",
+    "claude-opus-5": "Opus 5",
+    "claude-opus-5-5": "Opus 5.5",
+    "claude-sonnet-4-6": "Sonnet 4.6",
+    "claude-sonnet-5": "Sonnet 5",
+    "claude-sonnet-5-5": "Sonnet 5.5"
+  },
+  "no_usage": true,
+  "prices": {
+    "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+    "verified_on": "2026-10-30"
+  },
+  "project": "lantern",
+  "unreadable": null,
+  "views": {
+    "30d": {
+      "axis": {
+        "runs_ticks": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "tokens_max_nice": 1,
+        "tokens_ticks": [
+          0,
+          1
+        ]
+      },
+      "bucket_unit": "day",
+      "buckets": [
+        {
+          "by_model": {},
+          "date": "2026-10-01",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-01T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-02",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-02T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-03",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-03T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-04",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-04T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-05",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-05T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-06",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-06T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-07",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-07T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-08",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-08T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-09",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-09T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-10",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-10T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-11",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-11T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-12",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-12T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-13",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-13T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-14",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-14T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-15",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-15T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-16",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-16T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-17",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-17T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-18",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-18T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-19",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-19T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-20",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-20T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-21",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-21T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-22",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-22T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-23",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-23T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-24",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-24T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-25",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-25T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-26",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-26T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-27",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-27T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-28",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-28T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-29",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-29T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": null,
+          "runs_by_agent": {},
+          "start": "2026-10-30T00:00:00-04:00",
+          "tokens": 0
+        }
+      ],
+      "by_agent": [],
+      "by_effort": [
+        {
+          "cache_read": 0,
+          "cache_write": 0,
+          "cache_write_1h": 0,
+          "cache_write_5m": 0,
+          "cost": 0.0,
+          "cost_by_kind": {
+            "cache_read": 0.0,
+            "cache_write": 0.0,
+            "input": 0.0,
+            "output": 0.0
+          },
+          "effort": "low",
+          "hit_rate": null,
+          "input": 0,
+          "output": 0,
+          "requests": 0,
+          "runs": 0,
+          "sessions": 0,
+          "thinking": null,
+          "tokens": 0,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cache_write": 0,
+          "cache_write_1h": 0,
+          "cache_write_5m": 0,
+          "cost": 0.0,
+          "cost_by_kind": {
+            "cache_read": 0.0,
+            "cache_write": 0.0,
+            "input": 0.0,
+            "output": 0.0
+          },
+          "effort": "medium",
+          "hit_rate": null,
+          "input": 0,
+          "output": 0,
+          "requests": 0,
+          "runs": 0,
+          "sessions": 0,
+          "thinking": null,
+          "tokens": 0,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cache_write": 0,
+          "cache_write_1h": 0,
+          "cache_write_5m": 0,
+          "cost": 0.0,
+          "cost_by_kind": {
+            "cache_read": 0.0,
+            "cache_write": 0.0,
+            "input": 0.0,
+            "output": 0.0
+          },
+          "effort": "high",
+          "hit_rate": null,
+          "input": 0,
+          "output": 0,
+          "requests": 0,
+          "runs": 0,
+          "sessions": 0,
+          "thinking": null,
+          "tokens": 0,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cache_write": 0,
+          "cache_write_1h": 0,
+          "cache_write_5m": 0,
+          "cost": 0.0,
+          "cost_by_kind": {
+            "cache_read": 0.0,
+            "cache_write": 0.0,
+            "input": 0.0,
+            "output": 0.0
+          },
+          "effort": "xhigh",
+          "hit_rate": null,
+          "input": 0,
+          "output": 0,
+          "requests": 0,
+          "runs": 0,
+          "sessions": 0,
+          "thinking": null,
+          "tokens": 0,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        }
+      ],
+      "by_model": [],
+      "by_project": null,
+      "deltas": {
+        "cost_pct": null,
+        "hit_rate_pts": null,
+        "runs_pct": null,
+        "tokens_pct": null
+      },
+      "end": "2026-10-30T18:00:00-04:00",
+      "notes": {
+        "malformed_lines": 0,
+        "no_id_rows": 0,
+        "skipped_old_files": 5,
+        "synthetic_rows": 0,
+        "tz_fixed": false,
+        "unpriced": []
+      },
+      "previous": null,
+      "previous_end": "2026-09-30T18:00:00-04:00",
+      "previous_start": "2026-09-01T00:00:00-04:00",
+      "range": "30d",
+      "sessions": [],
+      "start": "2026-10-01T00:00:00-04:00",
+      "totals": {
+        "cache_read": 0,
+        "cache_write": 0,
+        "cache_write_1h": 0,
+        "cache_write_5m": 0,
+        "cost": 0.0,
+        "cost_by_kind": {
+          "cache_read": 0.0,
+          "cache_write": 0.0,
+          "input": 0.0,
+          "output": 0.0
+        },
+        "hit_rate": null,
+        "input": 0,
+        "output": 0,
+        "requests": 0,
+        "runs": 0,
+        "sessions": 0,
+        "thinking": null,
+        "tokens": 0,
+        "unpriced_requests": 0,
+        "unpriced_tokens": 0
+      }
+    }
+  }
+}

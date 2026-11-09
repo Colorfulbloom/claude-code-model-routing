@@ -141,11 +141,15 @@ def _digest(code: str) -> str:
     return hashlib.sha256(code.encode("utf-8")).hexdigest()
 
 
-def build_router(state: AccessState) -> APIRouter:
+def build_router(
+    state: AccessState, on_mint: Callable[[], None] | None = None
+) -> APIRouter:
     """Build the router for ``/api/access/swap`` and ``/api/access/mint``.
 
     Args:
         state: The access state of this server run.
+        on_mint: Called after each mint. The store provider uses it to start a retry
+            of a failed ingest, so the first-run "try again" command works.
 
     Returns:
         A router ready for ``include_router``.
@@ -177,6 +181,9 @@ def build_router(state: AccessState) -> APIRouter:
         responses={401: {"model": ErrorEnvelope}, 422: {"model": ErrorEnvelope}},
     )
     def mint_code(body: MintRequest) -> MintResponse:
-        return MintResponse(code=state.mint_code(body.project))
+        code = state.mint_code(body.project)
+        if on_mint is not None:
+            on_mint()
+        return MintResponse(code=code)
 
     return router

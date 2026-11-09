@@ -1,5 +1,8 @@
 {
   "claude_version": "2.1.310",
+  "as_of_ago": 90,
+  "pass_running_since_ago": null,
+  "etag": "gen-firstrun_failed",
   "projects": [
     {
       "key": "tidewater-reporting",
@@ -27,16 +30,28 @@
     "driftwood": 0
   },
   "editable_projects": [],
+  "history": {
+    "oldest": "2026-09-03T14:20:00Z",
+    "first_ingest": null,
+    "last_backup_ago": null,
+    "backup_failed": null,
+    "pass_error": null,
+    "unreadable_files": 0,
+    "kept_files": 0,
+    "no_usage_rows": 0
+  },
+  "prices": "litellm",
   "ingest_steps": [
     {
       "at": 0,
       "state": "waiting",
       "files_done": 0,
-      "files_total": 82,
+      "files_total": null,
       "bytes_done": 0,
-      "bytes_total": 82000000,
+      "bytes_total": null,
       "error": null,
-      "retrying": false
+      "retrying": false,
+      "retry_at_s": null
     },
     {
       "at": 2,
@@ -46,7 +61,8 @@
       "bytes_done": 10000000,
       "bytes_total": 82000000,
       "error": null,
-      "retrying": false
+      "retrying": false,
+      "retry_at_s": null
     },
     {
       "at": 3,
@@ -56,7 +72,8 @@
       "bytes_done": 23500000,
       "bytes_total": 82000000,
       "error": null,
-      "retrying": false
+      "retrying": false,
+      "retry_at_s": null
     },
     {
       "at": 4,
@@ -66,7 +83,8 @@
       "bytes_done": 41000000,
       "bytes_total": 82000000,
       "error": null,
-      "retrying": false
+      "retrying": false,
+      "retry_at_s": null
     },
     {
       "at": 5,
@@ -79,7 +97,8 @@
         "code": "store_unwritable",
         "file": "/work/data/bartab/store.sqlite"
       },
-      "retrying": false
+      "retrying": false,
+      "retry_at_s": 8
     },
     {
       "at": 8,
@@ -88,8 +107,12 @@
       "files_total": 82,
       "bytes_done": 0,
       "bytes_total": 82000000,
-      "error": null,
-      "retrying": true
+      "error": {
+        "code": "store_unwritable",
+        "file": "/work/data/bartab/store.sqlite"
+      },
+      "retrying": true,
+      "retry_at_s": null
     }
   ]
 }

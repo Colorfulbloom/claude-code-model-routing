@@ -127,7 +127,7 @@ test.describe("picker", () => {
     // #/ with no launch project, on the demo fixture: the picker the owner lands on.
     await page.goto(linkFor(server.baseURL, server.code, "/"));
     await expect(page.getByRole("dialog", { name: en.pk_h })).toBeVisible();
-    await expect(page.getByText(PROJECT_NAME).first()).toBeVisible();
+    await expect(page.getByRole("option", { name: new RegExp(PROJECT_NAME) })).toBeVisible();
     await shootAll(page, "picker-root");
   });
 
@@ -248,10 +248,9 @@ test.describe("first run failed", () => {
 
   test("firstrun-retry", async ({ context, server }) => {
     const page = await firstRunPage(context, server.baseURL, await server.mint(PROJECT));
-    const retrying = page.getByText(
-      new RegExp(`^${fill(en.fr_retrying, { time: "\\d{1,2}:\\d{2}\\s?[AP]M" })}$`),
-    );
-    await expect(retrying).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByRole("alert")).toBeVisible({ timeout: 20_000 });
+    const third = page.getByRole("list", { name: en.fr_h }).getByRole("listitem").nth(2);
+    await expect(third).toContainText(en.fr_now, { timeout: 20_000 });
     await shootAll(page, "firstrun-retry");
   });
 });

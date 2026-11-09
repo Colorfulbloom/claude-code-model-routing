@@ -17,6 +17,30 @@
   border-bottom: 0;
 }
 
+/* Run-state marks in the steps are tinted chips, as on the first-run board. A run state elsewhere stays plain. */
+.progress-step .run-state {
+  justify-self: start;
+  padding: 1px var(--space-2);
+  border-radius: var(--radius-pill);
+}
+
+.progress-step .run-state-working {
+  background: var(--nav-active-bg);
+}
+
+.progress-step .run-state-done {
+  background: var(--status-in-effect-bg);
+}
+
+.progress-step .run-state-idle {
+  background: var(--status-ignored-bg);
+  color: var(--status-ignored-fg);
+}
+
+.progress-step .run-state-failed {
+  background: var(--status-invalid-bg);
+}
+
 .progress-step-bar {
   display: grid;
   grid-column: 2;

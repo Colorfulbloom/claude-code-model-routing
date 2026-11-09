@@ -19,7 +19,15 @@ import sys
 import time
 
 argv = sys.argv[1:]
-args = dict(zip(argv[0::2], argv[1::2]))
+args = {}
+_i = 0
+while _i < len(argv):
+    if argv[_i] == "--demo":  # the one flag with no value
+        args["--demo"] = "1"
+        _i += 1
+    else:
+        args[argv[_i]] = argv[_i + 1]
+        _i += 2
 data = args["--data"]
 mode = os.environ.get("FAKE_SERVE_MODE", "")
 with open(os.path.join(data, "serve-runs.log"), "a") as fh:

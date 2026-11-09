@@ -1,0 +1,220 @@
+{
+  "build_args": {
+    "now": "2026-10-30T18:00",
+    "script": "tests/fixtures/demo/build_demo.py",
+    "tz": "America/New_York"
+  },
+  "files": [
+    "allowed-differences.json",
+    "manifest.json",
+    "projects.json",
+    "truth.json",
+    "usage-30d-all.json",
+    "usage-30d-driftwood.json",
+    "usage-30d-harbor-light.json",
+    "usage-30d-lantern.json",
+    "usage-30d-saltmarsh.json",
+    "usage-30d-tidewater-reporting.json",
+    "usage-7d-all.json",
+    "usage-7d-driftwood.json",
+    "usage-7d-harbor-light.json",
+    "usage-7d-lantern.json",
+    "usage-7d-saltmarsh.json",
+    "usage-7d-tidewater-reporting.json",
+    "usage-today-all.json",
+    "usage-today-driftwood.json",
+    "usage-today-harbor-light.json",
+    "usage-today-lantern.json",
+    "usage-today-saltmarsh.json",
+    "usage-today-tidewater-reporting.json"
+  ],
+  "old_commit": "e9ff175dc63a60cdbaa8c64466e50a28e04ce664",
+  "python": "3.9.6",
+  "queries": [
+    {
+      "call": "api_projects",
+      "file": "projects.json",
+      "query": {}
+    },
+    {
+      "call": "usage",
+      "file": "usage-today-tidewater-reporting.json",
+      "query": {
+        "project": [
+          "tidewater-reporting"
+        ]
+      },
+      "range": "today"
+    },
+    {
+      "call": "usage",
+      "file": "usage-7d-tidewater-reporting.json",
+      "query": {
+        "project": [
+          "tidewater-reporting"
+        ]
+      },
+      "range": "7d"
+    },
+    {
+      "call": "usage",
+      "file": "usage-30d-tidewater-reporting.json",
+      "query": {
+        "project": [
+          "tidewater-reporting"
+        ]
+      },
+      "range": "30d"
+    },
+    {
+      "call": "usage",
+      "file": "usage-today-driftwood.json",
+      "query": {
+        "project": [
+          "driftwood"
+        ]
+      },
+      "range": "today"
+    },
+    {
+      "call": "usage",
+      "file": "usage-7d-driftwood.json",
+      "query": {
+        "project": [
+          "driftwood"
+        ]
+      },
+      "range": "7d"
+    },
+    {
+      "call": "usage",
+      "file": "usage-30d-driftwood.json",
+      "query": {
+        "project": [
+          "driftwood"
+        ]
+      },
+      "range": "30d"
+    },
+    {
+      "call": "usage",
+      "file": "usage-today-harbor-light.json",
+      "query": {
+        "project": [
+          "harbor-light"
+        ]
+      },
+      "range": "today"
+    },
+    {
+      "call": "usage",
+      "file": "usage-7d-harbor-light.json",
+      "query": {
+        "project": [
+          "harbor-light"
+        ]
+      },
+      "range": "7d"
+    },
+    {
+      "call": "usage",
+      "file": "usage-30d-harbor-light.json",
+      "query": {
+        "project": [
+          "harbor-light"
+        ]
+      },
+      "range": "30d"
+    },
+    {
+      "call": "usage",
+      "file": "usage-today-saltmarsh.json",
+      "query": {
+        "project": [
+          "saltmarsh"
+        ]
+      },
+      "range": "today"
+    },
+    {
+      "call": "usage",
+      "file": "usage-7d-saltmarsh.json",
+      "query": {
+        "project": [
+          "saltmarsh"
+        ]
+      },
+      "range": "7d"
+    },
+    {
+      "call": "usage",
+      "file": "usage-30d-saltmarsh.json",
+      "query": {
+        "project": [
+          "saltmarsh"
+        ]
+      },
+      "range": "30d"
+    },
+    {
+      "call": "usage",
+      "file": "usage-today-lantern.json",
+      "query": {
+        "project": [
+          "lantern"
+        ]
+      },
+      "range": "today"
+    },
+    {
+      "call": "usage",
+      "file": "usage-7d-lantern.json",
+      "query": {
+        "project": [
+          "lantern"
+        ]
+      },
+      "range": "7d"
+    },
+    {
+      "call": "usage",
+      "file": "usage-30d-lantern.json",
+      "query": {
+        "project": [
+          "lantern"
+        ]
+      },
+      "range": "30d"
+    },
+    {
+      "call": "usage",
+      "file": "usage-today-all.json",
+      "query": {
+        "project": [
+          "all"
+        ]
+      },
+      "range": "today"
+    },
+    {
+      "call": "usage",
+      "file": "usage-7d-all.json",
+      "query": {
+        "project": [
+          "all"
+        ]
+      },
+      "range": "7d"
+    },
+    {
+      "call": "usage",
+      "file": "usage-30d-all.json",
+      "query": {
+        "project": [
+          "all"
+        ]
+      },
+      "range": "30d"
+    }
+  ]
+}

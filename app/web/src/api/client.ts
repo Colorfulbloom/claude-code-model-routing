@@ -10,12 +10,13 @@ import type { UseQueryResult } from "@tanstack/react-query";
 import { isLockReason } from "@/app/access";
 import type { Access, LockReason } from "@/app/access";
 import type { Connection } from "@/lib/connection";
-import type { AppInfo, ProjectsAnswer } from "@/api/types";
+import type { AppInfo, PricesAnswer, ProjectsAnswer } from "@/api/types";
 
 export const FAILURES_TO_STOP = 3;
 export const APP_POLL_MS = 10_000;
 export const INGEST_POLL_MS = 1_000;
 export const PROJECTS_POLL_MS = 60_000;
+export const PRICES_POLL_MS = 60_000;
 
 export class ApiError extends Error {
   readonly status: number;
@@ -42,6 +43,7 @@ export interface ApiClient {
   connection: Connection;
   getApp: (project: string | null, signal?: AbortSignal) => Promise<AppInfo>;
   getProjects: (signal?: AbortSignal) => Promise<ProjectsAnswer>;
+  getPrices: (signal?: AbortSignal) => Promise<PricesAnswer>;
 }
 
 export interface ApiClientOptions {
@@ -114,6 +116,9 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     getProjects(signal) {
       return request<ProjectsAnswer>("/api/projects", signal);
     },
+    getPrices(signal) {
+      return request<PricesAnswer>("/api/prices", signal);
+    },
   };
 }
 
@@ -153,6 +158,22 @@ export function useProjects(): UseQueryResult<ProjectsAnswer> {
     queryKey: ["projects"],
     queryFn: ({ signal }) => api.getProjects(signal),
     refetchInterval: PROJECTS_POLL_MS,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: "always",
+    retry: false,
+  });
+}
+
+/**
+ * The price table, every 60 s. A failed call keeps the last answer, because TanStack holds the
+ * data of a query that errors, so the footer never loses its prices line to one bad poll.
+ */
+export function usePrices(): UseQueryResult<PricesAnswer> {
+  const api = useApi();
+  return useQuery({
+    queryKey: ["prices"],
+    queryFn: ({ signal }) => api.getPrices(signal),
+    refetchInterval: PRICES_POLL_MS,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: "always",
     retry: false,

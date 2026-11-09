@@ -5,7 +5,7 @@ import { postStatus } from "@/app/harness";
 import { FakeChannel } from "@/app/test-channel";
 import { resetViewport } from "@/test/media";
 import { mount } from "@/test/mount";
-import { appInfo, fakeServer } from "@/test/server";
+import { appInfo, fakeServer, historyInfo, pricesInfo } from "@/test/server";
 
 afterEach(() => {
   cleanup();
@@ -94,12 +94,12 @@ describe("sidebar at 1440", () => {
     await waitFor(() => {
       expect(within(live).getByText("Working")).toBeInTheDocument();
     });
-    expect(screen.queryByText(/^Updated /)).toBeNull();
+    expect(screen.queryByText(/^Updated \d{1,2}:\d{2}:\d{2}/)).toBeNull();
     act(() => {
       connection.recordFailure();
     });
     expect(within(live).queryByText("Working")).toBeNull();
-    expect(screen.getByText(/^Updated /)).toBeInTheDocument();
+    expect(screen.getByText(/^Updated \d{1,2}:\d{2}:\d{2}/)).toBeInTheDocument();
   });
 
   it("shows no Working mark for a project with nothing running", async () => {
@@ -273,11 +273,11 @@ describe("top bar and tab bar at 375", () => {
     act(() => {
       connection.recordFailure();
     });
-    expect(screen.getByText(/^Updated /)).toBeInTheDocument();
+    expect(screen.getByText(/^Updated \d{1,2}:\d{2}:\d{2}/)).toBeInTheDocument();
     act(() => {
       connection.recordAnswer(Date.now());
     });
-    expect(screen.queryByText(/^Updated /)).toBeNull();
+    expect(screen.queryByText(/^Updated \d{1,2}:\d{2}:\d{2}/)).toBeNull();
   });
 });
 
@@ -294,5 +294,202 @@ describe("More page", () => {
     const version = screen.getByRole("region", { name: "Version" });
     expect(await within(version).findByText("Claude Code 2.1.310")).toBeInTheDocument();
     expect(within(version).getByText("Bar Tab 0.0.0")).toBeInTheDocument();
+  });
+});
+
+describe("sidebar footer", () => {
+  const history = (over: Parameters<typeof historyInfo>[0]) => historyInfo(over);
+
+  it("shows the five quiet lines at rest, none a link or a live region", async () => {
+    await mount("#/p/builder/live");
+    const nav = await screen.findByRole("navigation", { name: "Main" });
+    await within(nav).findByText("Prices as of October 28");
+    const lines = [...nav.querySelectorAll(".sidebar-footer-line")].map((el) => el.textContent);
+    expect(lines).toHaveLength(5);
+    expect(lines[0]).toMatch(/^Updated /);
+    expect(lines[1]).toBe("History since September 3");
+    expect(lines[2]).toMatch(/^Last backup /);
+    expect(lines[3]).toBe("Prices as of October 28");
+    expect(lines[4]).toBe("Claude Code 2.1.310");
+    const footer = nav.querySelector(".sidebar-footer");
+    expect(footer?.querySelector("a")).toBeNull();
+    expect(footer?.querySelector("[role], [aria-live]")).toBeNull();
+  });
+
+  it("adds the unreadable line and replaces the backup line on problems", async () => {
+    const app = appInfo({
+      history: history({
+        unreadable_files: 3,
+        backup_failed: { at: "2026-11-08T09:02:00Z", reason_code: "no_space" },
+      }),
+    });
+    await mount("#/p/builder/live", { server: fakeServer({ app }) });
+    const nav = await screen.findByRole("navigation", { name: "Main" });
+    await within(nav).findByText("Couldn't read 3 files");
+    const lines = [...nav.querySelectorAll(".sidebar-footer-line")].map((el) => el.textContent);
+    expect(lines).toHaveLength(6);
+    expect(lines[0]).toBe("Couldn't read 3 files");
+    expect(lines.some((l) => l?.startsWith("Backup failed at "))).toBe(true);
+    expect(lines.some((l) => l?.startsWith("Last backup"))).toBe(false);
+  });
+
+  it("names a prices source that is not LiteLLM", async () => {
+    const server = fakeServer({ prices: pricesInfo({ source: "bundled" }) });
+    await mount("#/p/builder/live", { server });
+    expect(await screen.findByText("Bundled prices, October 28")).toBeInTheDocument();
+  });
+
+  it("keeps the last prices line when a later prices call fails", async () => {
+    const server = fakeServer();
+    await mount("#/p/builder/live", { server });
+    await screen.findByText("Prices as of October 28");
+    const original = server.fetch;
+    server.fetch = (input, init) =>
+      typeof input === "string" && input.startsWith("/api/prices")
+        ? Promise.resolve(new Response("{}", { status: 503 }))
+        : original(input, init);
+    await act(async () => {
+      window.dispatchEvent(new Event("visibilitychange"));
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+    expect(screen.getByText("Prices as of October 28")).toBeInTheDocument();
+  });
+
+  it("asks /api/app again at once when the tab becomes visible", async () => {
+    const server = fakeServer();
+    await mount("#/p/builder/live", { server });
+    await screen.findByText("History since September 3");
+    const before = server.calls.filter((c) => c.startsWith("/api/app")).length;
+    await act(async () => {
+      window.dispatchEvent(new Event("visibilitychange"));
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+    expect(server.calls.filter((c) => c.startsWith("/api/app")).length).toBeGreaterThan(before);
+  });
+});
+
+describe("updates stopped notice", () => {
+  const stopped = appInfo({
+    history: historyInfo({
+      pass_error: {
+        code: "config_dir_unreadable",
+        file: "/work/.claude/projects/a-very-long-folder-name/another-long-folder-name",
+        since: "2026-11-08T15:12:00Z",
+      },
+    }),
+  });
+
+  it.each([1440, 375])("shows above the page on every page at %i px", async (width) => {
+    for (const hash of ["#/p/builder/live", "#/p/builder/review/agents", "#/more"]) {
+      await mount(hash, { width, server: fakeServer({ app: stopped }) });
+      const notice = await screen.findByText(/^Updates stopped at /);
+      const strip = notice.closest(".stopped-notice");
+      expect(strip).not.toBeNull();
+      expect(notice).toHaveTextContent(
+        "because the dashboard couldn't read /work/.claude/projects/a-very-long-folder-name/another-long-folder-name, and it keeps trying again on its own.",
+      );
+      expect(within(notice).getByText(/another-long-folder-name$/).tagName).toBe("CODE");
+      const main = document.querySelector(".shell-content");
+      expect(main?.firstElementChild).toBe(strip);
+      cleanup();
+    }
+  });
+
+  it("says one sentence per code", async () => {
+    const codes = [
+      ["config_dir_missing", null, "couldn't find Claude Code's projects folder"],
+      ["store_unwritable", "/work/data/db", "couldn't save to /work/data/db"],
+      ["store_damaged", "/work/data/db", "database at /work/data/db failed its integrity check"],
+      ["store_newer", null, "a newer Bar Tab upgraded your saved history"],
+      ["unexpected", "/work/data/log", "wrote the details to /work/data/log"],
+    ] as const;
+    for (const [code, file, words] of codes) {
+      const app = appInfo({
+        history: historyInfo({ pass_error: { code, file, since: "2026-11-08T15:12:00Z" } }),
+      });
+      await mount("#/p/builder/live", { server: fakeServer({ app }) });
+      expect(await screen.findByText(/^Updates stopped at /)).toHaveTextContent(words);
+      cleanup();
+    }
+  });
+
+  it("is absent with no pass error and clears on the next good pass", async () => {
+    const server = fakeServer();
+    await mount("#/p/builder/live", { server });
+    await screen.findByRole("heading", { level: 1, name: "Live" });
+    expect(screen.queryByText(/^Updates stopped at /)).toBeNull();
+    server.app = stopped;
+    const notice = await screen.findByText(/^Updates stopped at /, {}, { timeout: 15_000 });
+    expect(notice.closest(".stopped-notice")).toHaveAttribute("role", "status");
+    server.app = appInfo();
+    await waitFor(
+      () => {
+        expect(screen.queryByText(/^Updates stopped at /)).toBeNull();
+      },
+      { timeout: 15_000 },
+    );
+  }, 40_000);
+
+  it("is not announced when it is there from the first load", async () => {
+    await mount("#/p/builder/live", { server: fakeServer({ app: stopped }) });
+    const notice = await screen.findByText(/^Updates stopped at /);
+    expect(notice.closest(".stopped-notice")).not.toHaveAttribute("role");
+  });
+});
+
+describe("picker placeholder", () => {
+  it("shows Pick a project in the sidebar Select and Bar Tab in the title on #/", async () => {
+    await mount("#/");
+    await screen.findByRole("dialog", { name: "Projects" });
+    const button = await screen.findByRole("button", { name: /Pick a project/, hidden: true });
+    expect(button).toHaveAccessibleName("Project Pick a project");
+    expect(within(button).getByText("Pick a project")).toHaveAttribute("data-placeholder");
+    expect(document.title).toBe("Projects, Bar Tab");
+  });
+
+  it("names Bar Tab in the top bar and Pick a project on the button at 375", async () => {
+    await mount("#/", { width: 375 });
+    await screen.findByRole("dialog", { name: "Projects" });
+    const bar = document.querySelector(".top-bar");
+    expect(bar?.querySelector(".top-bar-title")?.textContent).toBe("Bar Tab");
+    const button = screen.getByRole("button", { name: "Project, Pick a project", hidden: true });
+    expect(button).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("drops the first-project fallback on the picker route only", async () => {
+    await mount("#/reference/glossary");
+    const sidebar = await screen.findByRole("navigation", { name: "Main" });
+    expect(await within(sidebar).findByRole("button", { name: /Builder/ })).toBeInTheDocument();
+  });
+});
+
+describe("More history card", () => {
+  it("comes first with the rows at rest", async () => {
+    await mount("#/more", { width: 375 });
+    const card = await screen.findByRole("region", { name: "Your history" });
+    await within(card).findByText("October 28");
+    const labels = [...card.querySelectorAll("dt")].map((el) => el.textContent);
+    expect(labels).toEqual(["Updated", "History since", "Last backup", "Prices as of"]);
+    expect(card.querySelector("h3")).toBeNull();
+    const regions = screen.getAllByRole("region").map((el) => el.getAttribute("aria-labelledby"));
+    expect(regions[0]).toBe("history-card-title");
+  });
+
+  it("adds a finding with its reason for each problem", async () => {
+    const app = appInfo({
+      history: historyInfo({
+        unreadable_files: 3,
+        backup_failed: { at: "2026-11-08T09:02:00Z", reason_code: "no_space" },
+      }),
+    });
+    await mount("#/more", { width: 375, server: fakeServer({ app }) });
+    const card = await screen.findByRole("region", { name: "Your history" });
+    const titles = (await within(card).findAllByRole("heading", { level: 3 })).map(
+      (el) => el.textContent,
+    );
+    expect(titles).toEqual([expect.stringMatching(/^Backup failed at /), "Couldn't read 3 files"]);
+    expect(card).toHaveTextContent("The disk was full, so the backup didn't finish.");
+    expect(card).toHaveTextContent("The dashboard tries these files again on its next pass.");
+    expect(card.querySelector("dd.is-warn")?.textContent).toMatch(/Backup failed at /);
   });
 });

@@ -1,0 +1,50 @@
+{
+  "config_file_display": "config/routing-dashboard.json",
+  "current": "tidewater-reporting",
+  "now": "2026-10-30T18:00:00-04:00",
+  "projects": [
+    {
+      "key": "tidewater-reporting",
+      "name": "Tidewater reporting",
+      "path_display": "projects/tidewater-reporting",
+      "state": "ok"
+    },
+    {
+      "key": "driftwood",
+      "name": "Driftwood",
+      "path_display": "projects/driftwood",
+      "state": "ok"
+    },
+    {
+      "key": "harbor-light",
+      "name": "Harbor Light",
+      "path_display": "projects/harbor-light",
+      "state": "no_claude_folder"
+    },
+    {
+      "key": "saltmarsh",
+      "name": "Saltmarsh",
+      "path_display": "projects/saltmarsh",
+      "state": "ok"
+    },
+    {
+      "key": "lantern",
+      "name": "Lantern",
+      "path_display": "projects/lantern",
+      "state": "missing_folder"
+    }
+  ],
+  "reader": {
+    "files": null,
+    "files_read": null,
+    "readable": true,
+    "skipped": null,
+    "warm": false
+  },
+  "transcripts_dir_display": "config/projects",
+  "tz": "America/New_York",
+  "version": {
+    "installed": "2.1.310",
+    "rules_oldest": "2.1.302"
+  }
+}

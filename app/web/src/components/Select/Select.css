@@ -16,6 +16,12 @@
   white-space: nowrap;
 }
 
+/* The placeholder is real text, "Pick a project", in muted grey and regular weight. */
+.select-value[data-placeholder] {
+  color: var(--text-muted);
+  font-weight: var(--weight-regular);
+}
+
 .select-btn {
   position: relative;
   display: inline-flex;

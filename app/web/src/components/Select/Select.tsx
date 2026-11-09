@@ -114,6 +114,8 @@ export function Select({
 }: SelectProps) {
   const reasonId = useId();
   const headingId = useId();
+  const labelId = useId();
+  const valueId = useId();
   if (isDisabled) {
     const shown = items.find((item) => item.id === value)?.label ?? placeholder ?? "";
     return (
@@ -146,9 +148,12 @@ export function Select({
       }}
       {...(placeholder !== undefined ? { placeholder } : {})}
     >
-      <AriaButton className="select-btn">
-        <Label className="select-label">{label}</Label>
-        <SelectValue className="select-value">
+      {/* The name reads label first, then value: "Project, Pick a project". */}
+      <AriaButton className="select-btn" aria-labelledby={`${labelId} ${valueId}`}>
+        <Label className="select-label" id={labelId}>
+          {label}
+        </Label>
+        <SelectValue className="select-value" id={valueId}>
           {({ selectedText, defaultChildren, isPlaceholder }) =>
             isPlaceholder ? defaultChildren : selectedText
           }

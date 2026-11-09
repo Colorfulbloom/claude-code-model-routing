@@ -4,391 +4,604 @@
  */
 
 export interface paths {
-    "/api/access/mint": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Mint Code */
-        post: operations["mint_code"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+  "/api/access/mint": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/access/swap": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Swap Code */
-        post: operations["swap_code"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /** Mint Code */
+    post: operations["mint_code"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/access/swap": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/app": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get App */
-        get: operations["get_app"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /** Swap Code */
+    post: operations["swap_code"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/app": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/projects": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Projects */
-        get: operations["get_projects"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /** Get App */
+    get: operations["get_app"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/prices": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
+    /** Get Prices */
+    get: operations["get_prices"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/projects": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get Projects */
+    get: operations["get_projects"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: {
-        /**
-         * AppInfo
-         * @description Answer of ``GET /api/app``.
-         */
-        AppInfo: {
-            /** Claude Version */
-            claude_version: string;
-            /** Editable Projects */
-            editable_projects: string[];
-            ingest: components["schemas"]["Ingest"];
-            /** Instance */
-            instance: string;
-            /** Running */
-            running: components["schemas"]["RunningItem"][];
-            /**
-             * Server Time
-             * Format: date-time
-             */
-            server_time: string;
-            /** To Fix Count */
-            to_fix_count: number | null;
-        };
-        /**
-         * ErrorEnvelope
-         * @description The one error body. It never carries input or file paths.
-         */
-        ErrorEnvelope: {
-            /** Code */
-            code: string;
-            /** Path */
-            path: (string | number)[] | null;
-        };
-        /**
-         * Ingest
-         * @description Progress of the first read of the usage history.
-         */
-        Ingest: {
-            /** Bytes Done */
-            bytes_done: number;
-            /** Bytes Total */
-            bytes_total: number;
-            error: components["schemas"]["IngestError"] | null;
-            /** Files Done */
-            files_done: number;
-            /** Files Total */
-            files_total: number;
-            /** Retrying */
-            retrying: boolean;
-            /**
-             * State
-             * @enum {string}
-             */
-            state: "waiting" | "running" | "done" | "failed";
-        };
-        /**
-         * IngestError
-         * @description Why a first-run ingest failed. ``file`` is None when the contract names none.
-         */
-        IngestError: {
-            /**
-             * Code
-             * @enum {string}
-             */
-            code: "config_dir_missing" | "config_dir_unreadable" | "store_unwritable" | "store_damaged" | "unexpected";
-            /** File */
-            file: string | null;
-        };
-        /**
-         * MintRequest
-         * @description Body of ``POST /api/access/mint``.
-         */
-        MintRequest: {
-            /** Project */
-            project?: string | null;
-        };
-        /**
-         * MintResponse
-         * @description A fresh single-use code.
-         */
-        MintResponse: {
-            /** Code */
-            code: string;
-        };
-        /**
-         * Project
-         * @description One project in the picker.
-         */
-        Project: {
-            /** Display Path */
-            display_path: string;
-            /** Key */
-            key: string;
-            /** Name */
-            name: string;
-            /** Running */
-            running: boolean;
-            /**
-             * State
-             * @enum {string}
-             */
-            state: "ok" | "no_claude_folder" | "folder_not_found";
-        };
-        /**
-         * ProjectList
-         * @description Answer of ``GET /api/projects``.
-         */
-        ProjectList: {
-            /** Projects */
-            projects: components["schemas"]["Project"][];
-        };
-        /**
-         * RunningItem
-         * @description One session that is running now.
-         */
-        RunningItem: {
-            /** Project */
-            project: string;
-            /** Session */
-            session: string;
-        };
-        /**
-         * SwapRequest
-         * @description Body of ``POST /api/access/swap``.
-         */
-        SwapRequest: {
-            /** Code */
-            code: string;
-        };
-        /**
-         * SwapResponse
-         * @description Keys handed out after a code swap.
-         */
-        SwapResponse: {
-            /** Edit Keys */
-            edit_keys: {
-                [key: string]: string;
-            };
-            /** Instance */
-            instance: string;
-            /** Project */
-            project: string | null;
-            /** Read Key */
-            read_key: string;
-        };
+  schemas: {
+    /**
+     * AppInfo
+     * @description Answer of ``GET /api/app``.
+     */
+    AppInfo: {
+      /** As Of */
+      as_of: string | null;
+      /** Claude Version */
+      claude_version: string;
+      /** Editable Projects */
+      editable_projects: string[];
+      /** Etag */
+      etag: string;
+      history: components["schemas"]["HistoryInfo"];
+      ingest: components["schemas"]["Ingest"];
+      /** Instance */
+      instance: string;
+      /** Pass Running Since */
+      pass_running_since: string | null;
+      /** Running */
+      running: components["schemas"]["RunningItem"][];
+      /**
+       * Server Time
+       * Format: date-time
+       */
+      server_time: string;
+      /** To Fix Count */
+      to_fix_count: number | null;
     };
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+    /**
+     * BackupFailure
+     * @description A daily backup that did not finish. A later good copy clears it.
+     */
+    BackupFailure: {
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      /**
+       * Reason Code
+       * @enum {string}
+       */
+      reason_code: "no_space" | "unwritable" | "check_failed" | "copy_failed";
+    };
+    /**
+     * CrossCheck
+     * @description Result of comparing the active table with a second public list.
+     */
+    CrossCheck: {
+      /** Models */
+      models: string[];
+      /**
+       * State
+       * @enum {string}
+       */
+      state: "agree" | "disagree" | "not_checked";
+    };
+    /**
+     * ErrorEnvelope
+     * @description The one error body. It never carries input or file paths.
+     */
+    ErrorEnvelope: {
+      /** Code */
+      code: string;
+      /** Path */
+      path: (string | number)[] | null;
+    };
+    /**
+     * HistoryInfo
+     * @description What the store holds and how well it is kept.
+     */
+    HistoryInfo: {
+      backup_failed: components["schemas"]["BackupFailure"] | null;
+      /** First Ingest */
+      first_ingest: string | null;
+      /** Kept Files */
+      kept_files: number;
+      /** Last Backup */
+      last_backup: string | null;
+      /** No Usage Rows */
+      no_usage_rows: number;
+      /** Oldest */
+      oldest: string | null;
+      pass_error: components["schemas"]["PassError"] | null;
+      /** Unreadable Files */
+      unreadable_files: number;
+    };
+    /**
+     * Ingest
+     * @description Progress of the first read of the usage history.
+     */
+    Ingest: {
+      /** Bytes Done */
+      bytes_done: number;
+      /** Bytes Total */
+      bytes_total: number | null;
+      error: components["schemas"]["IngestError"] | null;
+      /** Files Done */
+      files_done: number;
+      /** Files Total */
+      files_total: number | null;
+      /** Retry At */
+      retry_at: string | null;
+      /** Retrying */
+      retrying: boolean;
+      /**
+       * State
+       * @enum {string}
+       */
+      state: "waiting" | "running" | "done" | "failed";
+    };
+    /**
+     * IngestError
+     * @description Why a first-run ingest failed. ``file`` is None when the contract names none.
+     */
+    IngestError: {
+      /**
+       * Code
+       * @enum {string}
+       */
+      code:
+        | "config_dir_missing"
+        | "config_dir_unreadable"
+        | "store_unwritable"
+        | "store_damaged"
+        | "store_newer"
+        | "unexpected";
+      /** File */
+      file: string | null;
+    };
+    /**
+     * MintRequest
+     * @description Body of ``POST /api/access/mint``.
+     */
+    MintRequest: {
+      /** Project */
+      project?: string | null;
+    };
+    /**
+     * MintResponse
+     * @description A fresh single-use code.
+     */
+    MintResponse: {
+      /** Code */
+      code: string;
+    };
+    /**
+     * ModelPrice
+     * @description One model's rates in USD per million tokens.
+     */
+    ModelPrice: {
+      /** Cache Read */
+      cache_read: number;
+      /** Cache Write 1H */
+      cache_write_1h: number;
+      /** Cache Write 5M */
+      cache_write_5m: number;
+      /** Input */
+      input: number;
+      /** Model */
+      model: string;
+      /** Modifiers */
+      modifiers: {
+        [key: string]: number;
+      };
+      /** Output */
+      output: number;
+      /** Relative */
+      relative: number | null;
+      /**
+       * Source
+       * @enum {string}
+       */
+      source: "model_pricing" | "litellm" | "last_good" | "bundled";
+      /** Tiers */
+      tiers: components["schemas"]["PriceTier"][];
+    };
+    /**
+     * PassError
+     * @description A whole-pass failure after the first ingest. The next good pass clears it.
+     */
+    PassError: {
+      /**
+       * Code
+       * @enum {string}
+       */
+      code:
+        | "config_dir_missing"
+        | "config_dir_unreadable"
+        | "store_unwritable"
+        | "store_damaged"
+        | "store_newer"
+        | "unexpected";
+      /** File */
+      file: string | null;
+      /**
+       * Since
+       * Format: date-time
+       */
+      since: string;
+    };
+    /**
+     * PriceTier
+     * @description Rates that apply once a prompt passes a size, in USD per million tokens.
+     */
+    PriceTier: {
+      /** Cache Read */
+      cache_read: number;
+      /** Cache Write 1H */
+      cache_write_1h: number;
+      /** Cache Write 5M */
+      cache_write_5m: number;
+      /** Input */
+      input: number;
+      /** Output */
+      output: number;
+      /** Prompt Tokens Over */
+      prompt_tokens_over: number;
+    };
+    /**
+     * PricesInfo
+     * @description Answer of ``GET /api/prices``.
+     */
+    PricesInfo: {
+      /**
+       * As Of
+       * Format: date
+       */
+      as_of: string;
+      cross_check: components["schemas"]["CrossCheck"];
+      /** Etag */
+      etag: string;
+      /** Models */
+      models: components["schemas"]["ModelPrice"][];
+      /**
+       * Source
+       * @enum {string}
+       */
+      source: "model_pricing" | "litellm" | "last_good" | "bundled";
+    };
+    /**
+     * Project
+     * @description One project in the picker.
+     */
+    Project: {
+      /** Display Path */
+      display_path: string;
+      /** Key */
+      key: string;
+      /** Name */
+      name: string;
+      /** Running */
+      running: boolean;
+      /**
+       * State
+       * @enum {string}
+       */
+      state: "ok" | "no_claude_folder" | "folder_not_found";
+    };
+    /**
+     * ProjectList
+     * @description Answer of ``GET /api/projects``.
+     */
+    ProjectList: {
+      /** Projects */
+      projects: components["schemas"]["Project"][];
+    };
+    /**
+     * RunningItem
+     * @description One session that is running now.
+     */
+    RunningItem: {
+      /** Project */
+      project: string;
+      /** Session */
+      session: string;
+    };
+    /**
+     * SwapRequest
+     * @description Body of ``POST /api/access/swap``.
+     */
+    SwapRequest: {
+      /** Code */
+      code: string;
+    };
+    /**
+     * SwapResponse
+     * @description Keys handed out after a code swap.
+     */
+    SwapResponse: {
+      /** Edit Keys */
+      edit_keys: {
+        [key: string]: string;
+      };
+      /** Instance */
+      instance: string;
+      /** Project */
+      project: string | null;
+      /** Read Key */
+      read_key: string;
+    };
+  };
+  responses: never;
+  parameters: never;
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    mint_code: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["MintRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MintResponse"];
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Unprocessable Content */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-        };
+  mint_code: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    swap_code: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SwapRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SwapResponse"];
-                };
-            };
-            /** @description Forbidden */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Unprocessable Content */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-        };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["MintRequest"];
+      };
     };
-    get_app: {
-        parameters: {
-            query?: {
-                project?: string | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AppInfo"];
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Unprocessable Content */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
+        content: {
+          "application/json": components["schemas"]["MintResponse"];
         };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
     };
-    get_projects: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ProjectList"];
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Unprocessable Content */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-        };
+  };
+  swap_code: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SwapRequest"];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SwapResponse"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  get_app: {
+    parameters: {
+      query?: {
+        project?: string | null;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AppInfo"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  get_prices: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PricesInfo"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
+  get_projects: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProjectList"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorEnvelope"];
+        };
+      };
+    };
+  };
 }

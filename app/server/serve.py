@@ -1,7 +1,13 @@
 """Command line entry that runs the Bar Tab server.
 
 ``serve.py --port N --data DIR --launch-fd 3 --project-dir PATH [--fixture NAME]``
-binds 127.0.0.1, starts uvicorn, then writes ``DIR/server.json`` (mode 0600) and one
+serves the fixture scenario. With ``--demo`` or ``--claude-dir PATH`` it serves the
+store instead (``--store PATH``, default ``DIR/store``), fills it from the Claude
+folder and runs the price feed. ``--demo`` builds the demo set into ``DIR/demo`` when
+it is not there and reads ``DIR/demo/config``. ``--ingest-pace-ms N`` slows the demo
+ingest so first run is watchable and is refused without ``--demo``. ``--no-price-fetch``
+(or ``BARTAB_OFFLINE=1``) turns the live price fetch off. The server binds
+127.0.0.1, starts uvicorn, then writes ``DIR/server.json`` (mode 0600) and one
 JSON launch line to the launch fd, and closes that fd. SIGTERM and SIGINT stop uvicorn
 the normal way, so the lifespan shutdown runs and logs ``shutdown complete``. The
 server stops by itself after ``--idle-exit-minutes`` with no request (0 turns that
@@ -14,14 +20,16 @@ import contextlib
 import json
 import logging
 import os
+import shutil
 import signal
 import socket
+import subprocess
 import sys
 import tempfile
 import threading
 import time
 from collections.abc import Callable, Generator, Sequence
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import cast
@@ -32,7 +40,7 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 import fixture_provider
 from access import AccessState
 from gate import GateMiddleware
-from main import Settings, create_app
+from main import Settings, create_app, make_provider
 
 logger = logging.getLogger("bartab.serve")
 
@@ -40,6 +48,12 @@ HOST = "127.0.0.1"
 DEFAULT_IDLE_MINUTES = 30.0
 FORBIDDEN_PORT = 8377
 DEFAULT_DIST_DIR = Path(__file__).resolve().parent.parent / "web" / "dist"
+REPO_ROOT = Path(__file__).resolve().parents[2]
+DEMO_BUILDER = REPO_ROOT / "tests" / "fixtures" / "demo" / "build_demo.py"
+DEMO_NOW = "2026-10-30T18:00"
+DEMO_TZ = "America/New_York"
+DEMO_BUILD_SECONDS = 120
+OFFLINE_ENV = "BARTAB_OFFLINE"
 SERVER_JSON = "server.json"
 _IDLE_POLL_SECONDS = 1.0
 _GRACEFUL_SHUTDOWN_SECONDS = 3
@@ -56,6 +70,11 @@ class Args:
     fixture: str
     idle_exit_minutes: float
     dist: Path
+    claude_dir: Path | None = None
+    store: Path | None = None
+    demo: bool = False
+    ingest_pace_ms: int = 0
+    no_price_fetch: bool = False
 
 
 def parse_args(argv: Sequence[str] | None = None) -> Args:
@@ -75,9 +94,20 @@ def parse_args(argv: Sequence[str] | None = None) -> Args:
     parser.add_argument("--fixture", choices=fixture_provider.SCENARIOS, default="demo")
     parser.add_argument("--idle-exit-minutes", type=float, default=DEFAULT_IDLE_MINUTES)
     parser.add_argument("--dist", type=Path, default=DEFAULT_DIST_DIR)
+    parser.add_argument("--claude-dir", type=Path, default=None)
+    parser.add_argument("--store", type=Path, default=None)
+    parser.add_argument("--demo", action="store_true")
+    parser.add_argument("--ingest-pace-ms", type=int, default=0)
+    parser.add_argument("--no-price-fetch", action="store_true")
     ns = parser.parse_args(argv)
     if ns.port == FORBIDDEN_PORT:
         parser.error(f"port {FORBIDDEN_PORT} is reserved and is never used")
+    if ns.ingest_pace_ms < 0:
+        parser.error("--ingest-pace-ms must not be negative")
+    if ns.ingest_pace_ms and not ns.demo:
+        parser.error("--ingest-pace-ms is for the demo build only, add --demo")
+    if ns.demo and ns.claude_dir is not None:
+        parser.error("--demo and --claude-dir can't be used together")
     return Args(
         port=ns.port,
         data=ns.data,
@@ -86,7 +116,46 @@ def parse_args(argv: Sequence[str] | None = None) -> Args:
         fixture=ns.fixture,
         idle_exit_minutes=ns.idle_exit_minutes,
         dist=ns.dist,
+        claude_dir=ns.claude_dir,
+        store=ns.store,
+        demo=ns.demo,
+        ingest_pace_ms=ns.ingest_pace_ms,
+        no_price_fetch=ns.no_price_fetch or os.environ.get(OFFLINE_ENV) == "1",
     )
+
+
+def ensure_demo(data: Path) -> Path:
+    """Build the demo set into ``data/demo`` unless it is built, and return its config.
+
+    The builder writes ``truth.json`` last, so that file marks a finished build. A
+    folder left by an interrupted build is removed and built again.
+
+    Args:
+        data: The data folder.
+
+    Returns:
+        The demo's Claude config folder, ``data/demo/config``.
+    """
+    out = data / "demo"
+    if not (out / "truth.json").is_file():
+        shutil.rmtree(out, ignore_errors=True)
+        subprocess.run(  # noqa: S603
+            [
+                sys.executable,
+                "-B",
+                str(DEMO_BUILDER),
+                str(out),
+                "--now",
+                DEMO_NOW,
+                "--tz",
+                DEMO_TZ,
+            ],
+            check=True,
+            timeout=DEMO_BUILD_SECONDS,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+        )
+    return out / "config"
 
 
 class ActivityMiddleware:
@@ -280,6 +349,13 @@ async def run(args: Args) -> int:
         The process exit code.
     """
     args.data.mkdir(parents=True, exist_ok=True, mode=0o700)
+    claude_dir = args.claude_dir
+    if args.demo:
+        try:
+            claude_dir = await asyncio.to_thread(ensure_demo, args.data)
+        except (OSError, subprocess.SubprocessError):
+            logger.error("could not build the demo set")  # noqa: TRY400
+            return 1
     state = AccessState()
     try:
         sock = bind_socket(args.port)
@@ -287,9 +363,6 @@ async def run(args: Args) -> int:
         logger.error("could not bind %s:%d", HOST, args.port)  # noqa: TRY400
         return 1
     port = int(sock.getsockname()[1])
-    project = fixture_provider.FixtureProvider(args.fixture).resolve_project(
-        args.project_dir
-    )
     settings = Settings(
         port=port,
         data_dir=args.data,
@@ -298,7 +371,15 @@ async def run(args: Args) -> int:
         project_dir=args.project_dir,
         idle_exit_minutes=args.idle_exit_minutes,
         access_state=state,
+        claude_dir=claude_dir,
+        store_dir=args.store,
+        demo=args.demo,
+        ingest_pace_ms=args.ingest_pace_ms,
+        price_fetch=not args.no_price_fetch,
     )
+    provider = make_provider(settings)
+    project = provider.resolve_project(args.project_dir, first_if_none=args.demo)
+    settings = replace(settings, provider=provider)
     app, tracker = create_tracked_app(settings)
     config = uvicorn.Config(
         app,

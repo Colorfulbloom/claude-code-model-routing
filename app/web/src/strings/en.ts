@@ -78,7 +78,8 @@ export const en = {
   fr_done: "Done",
   fr_now: "In progress",
   fr_next: "Next",
-  fr_files: "{n} of {m} files",
+  fr_counting: "Counting files",
+  fr_size: "{d} of {t}",
   fr_local: "This step reads files on this computer, so it doesn't need an internet connection.",
   fr_failed: "Failed",
   fr_fail_h: "The dashboard couldn't finish setting up",
@@ -91,13 +92,67 @@ export const en = {
   fr_fail_store_damaged: "The dashboard's database at {file} failed its integrity check.",
   fr_fail_unexpected: "Something unexpected stopped this step. The details are in {file}.",
   fr_fail_fix: "Run this command in Claude Code to try again.",
-  fr_retrying: "Trying again since {time}",
+  fr_fail_fix2:
+    "The dashboard tries again on its own. To try now, run this command in Claude Code.",
+  fr_next_try: "Next try at {t}",
+
+  // A store written by a newer Bar Tab
+  sn_h: "This history needs a newer Bar Tab",
+  sn_body:
+    "A newer Bar Tab upgraded your saved history, so Bar Tab {old}, the version running now, can't open it.",
+  sn_next: "Update Bar Tab, then run this command in Claude Code.",
+
+  // Sidebar footer
+  ft_updated: "Updated {t}",
+  ft_since: "History since {d}",
+  ft_backup: "Last backup {t}",
+  ft_prices: "Prices as of {d}",
+  ft_prices_bundled: "Bundled prices, {d}",
+  ft_prices_saved: "Saved prices, {d}",
+  ft_prices_custom: "Custom prices",
+  ft_backup_failed: "Backup failed at {t}",
+  ft_unreadable_one: "Couldn't read {n} file",
+  ft_unreadable_other: "Couldn't read {n} files",
+
+  // Updates stopped notice, one sentence per code
+  nt_stopped_config_dir_missing:
+    "Updates stopped at {t} because the dashboard couldn't find Claude Code's projects folder, and it keeps trying again on its own.",
+  nt_stopped_config_dir_unreadable:
+    "Updates stopped at {t} because the dashboard couldn't read {f}, and it keeps trying again on its own.",
+  nt_stopped_store_unwritable:
+    "Updates stopped at {t} because the dashboard couldn't save to {f}, and it keeps trying again on its own.",
+  nt_stopped_store_damaged:
+    "Updates stopped at {t} because the database at {f} failed its integrity check, and the dashboard keeps trying again on its own.",
+  nt_stopped_store_newer:
+    "Updates stopped at {t} because a newer Bar Tab upgraded your saved history, so update Bar Tab to bring them back.",
+  nt_stopped_unexpected:
+    "Updates stopped at {t} after something unexpected went wrong, so the dashboard wrote the details to {f} and keeps trying.",
+  nt_stopped_nofile: "a file",
 
   // More page
   more_h1: "More",
   more_ver_h: "Version",
   more_ver_cc: "Claude Code {version}",
   more_ver_app: "Bar Tab {version}",
+  more_hist_h: "Your history",
+  more_l_updated: "Updated",
+  more_l_since: "History since",
+  more_l_backup: "Last backup",
+  more_l_prices: "Prices as of",
+  more_prices_bundled: "Bundled prices, {d}",
+  more_prices_saved: "Saved prices, {d}",
+  more_prices_custom: "Custom prices",
+  mb_backup_no_space:
+    "The disk was full, so the backup didn't finish. Your saved history isn't affected, and the dashboard keeps your last seven good backups.",
+  mb_backup_unwritable:
+    "The dashboard couldn't write to its backup folder, so the backup didn't finish. Your saved history isn't affected.",
+  mb_backup_check_failed:
+    "The new backup failed its check, so the dashboard threw it away. Your saved history isn't affected.",
+  mb_backup_copy_failed:
+    "The dashboard couldn't copy your history, so the backup didn't finish. Your saved history isn't affected.",
+  mb_backup_newest: "The newest good backup is from {d}.",
+  mb_unread_b:
+    "Requests in these files aren't counted yet, but the rest of your history is. The dashboard tries these files again on its next pass.",
 
   // Project picker
   pk_h: "Projects",
@@ -112,6 +167,7 @@ export const en = {
   pk_empty: "A project appears here after you use Claude Code in it.",
   pk_close: "Close",
   pk_loading: "Loading projects",
+  pk_placeholder: "Pick a project",
 
   // Placeholder pages
   ph_body: "This page comes in a later release.",

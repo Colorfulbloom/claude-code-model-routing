@@ -35,7 +35,7 @@ function sidebar(items, extra = "") {
     <div class="brand">${S.product}</div>
     <button class="proj" aria-haspopup="listbox" aria-expanded="false" aria-label="${S.project_label}, ${S.project_name}"><small>${S.project_label}</small><b>${S.project_name}<span aria-hidden="true">&#x25BE;</span></b></button>
     ${nav}${extra}
-    <div class="foot">${S.version}</div></nav>`;
+    ${typeof footHTML === "function" ? footHTML() : `<div class="foot">${S.version}</div>`}</nav>`;
 }
 function topbar(title, open) { return `<header class="topbar"><span class="pname">${title}</span><button class="proj-s" aria-haspopup="listbox" aria-expanded="${!!open}" aria-label="${S.project_label}, ${S.project_name}">${S.project_name}<span aria-hidden="true"> &#x25BE;</span></button></header>`; }
 function tabbar(items) {

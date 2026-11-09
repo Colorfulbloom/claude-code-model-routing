@@ -26,7 +26,7 @@ package = false
 line-length = 88
 target-version = "py311"
 src = ["server"]
-per-file-target-version = { "bin/*.py" = "py39" }
+per-file-target-version = { "bin/*.py" = "py39", "oracle/*.py" = "py39" }
 
 [tool.ruff.format]
 quote-style = "double"
@@ -46,11 +46,12 @@ convention = "google"
 [tool.pyright]
 typeCheckingMode = "strict"
 pythonVersion = "3.11"
-include = ["server", "bin"]
+include = ["server", "bin", "oracle"]
 venvPath = "."
 venv = ".venv"
 executionEnvironments = [
     { root = "bin", pythonVersion = "3.9" },
+    { root = "oracle", pythonVersion = "3.9" },
     { root = "server", extraPaths = ["server"] },
 ]
 
@@ -58,6 +59,7 @@ executionEnvironments = [
 addopts = ["--strict-markers", "--import-mode=importlib", "--dist=loadgroup"]
 testpaths = ["server/tests"]
 pythonpath = ["server"]
+markers = ["slow: measures time on the demo build; deselect with -m 'not slow'"]
 
 [tool.coverage.run]
 source = ["server"]

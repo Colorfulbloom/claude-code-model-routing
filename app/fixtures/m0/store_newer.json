@@ -1,0 +1,60 @@
+{
+  "claude_version": "2.1.310",
+  "as_of_ago": 90,
+  "pass_running_since_ago": null,
+  "etag": "gen-store_newer",
+  "projects": [
+    {
+      "key": "tidewater-reporting",
+      "name": "Tidewater Reporting",
+      "display_path": "/work/tidewater-reporting",
+      "state": "ok"
+    },
+    {
+      "key": "saltmarsh",
+      "name": "Saltmarsh",
+      "display_path": "/work/saltmarsh",
+      "state": "no_claude_folder"
+    },
+    {
+      "key": "driftwood",
+      "name": "Driftwood",
+      "display_path": "/work/driftwood",
+      "state": "folder_not_found"
+    }
+  ],
+  "running": [],
+  "to_fix_counts": {
+    "tidewater-reporting": 4,
+    "saltmarsh": 0,
+    "driftwood": 0
+  },
+  "editable_projects": [],
+  "history": {
+    "oldest": "2026-09-03T14:20:00Z",
+    "first_ingest": null,
+    "last_backup_ago": null,
+    "backup_failed": null,
+    "pass_error": null,
+    "unreadable_files": 0,
+    "kept_files": 0,
+    "no_usage_rows": 0
+  },
+  "prices": "litellm",
+  "ingest_steps": [
+    {
+      "at": 0,
+      "state": "failed",
+      "files_done": 0,
+      "files_total": null,
+      "bytes_done": 0,
+      "bytes_total": null,
+      "error": {
+        "code": "store_newer",
+        "file": null
+      },
+      "retrying": false,
+      "retry_at_s": null
+    }
+  ]
+}

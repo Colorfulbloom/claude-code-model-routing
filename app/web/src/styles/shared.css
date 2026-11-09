@@ -182,11 +182,11 @@ code {
   content: "\00B6" / "";
 }
 
-/* Shell layout. Two columns at 721px and up with a 224px sidebar; below that the sidebar hides,
+/* Shell layout. Two columns at 721px and up with a 240px sidebar; below that the sidebar hides,
    a sticky 52px top bar and a fixed tab bar take over. Task 11 uses these classes. */
 .shell {
   display: grid;
-  grid-template-columns: 224px minmax(0, 1fr);
+  grid-template-columns: 240px minmax(0, 1fr);
   min-height: 100vh;
 }
 

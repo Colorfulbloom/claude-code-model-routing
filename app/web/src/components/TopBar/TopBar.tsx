@@ -13,6 +13,8 @@ export interface TopBarProps {
     label: string;
     /** True while the project tray is open. It draws the 2px accent ring. */
     open?: boolean;
+    /** The name is the "Pick a project" placeholder, so it shows muted. */
+    placeholder?: boolean;
     onPress: () => void;
   };
   /** The project button's ref, so the page can return focus to it when the tray closes. */
@@ -38,7 +40,11 @@ export function TopBar({ title, project, projectRef, className }: TopBarProps) {
           aria-label={project.label}
           onClick={project.onPress}
         >
-          <span className="top-bar-project-name">{project.name}</span>
+          <span
+            className={cx("top-bar-project-name", project.placeholder === true && "is-placeholder")}
+          >
+            {project.name}
+          </span>
           <span className="top-bar-project-caret" aria-hidden="true">
             {"\u25BE"}
           </span>

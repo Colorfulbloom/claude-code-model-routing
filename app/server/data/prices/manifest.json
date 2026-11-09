@@ -1,0 +1,9 @@
+{
+  "file": "litellm-anthropic-2026-11-08.json",
+  "url": "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json",
+  "fetched_at": "2026-11-08T21:52:58-05:00",
+  "download_bytes": 3474076,
+  "download_sha256": "faa400408127c27aa323d29544389f85a06ab77660aa910b6d6e30dc46f33aa2",
+  "file_sha256": "c33b17bfdf92ed4ed77c00004aa43ecc82f99d4df1f9c3457908d48952766e74",
+  "rows": 22
+}

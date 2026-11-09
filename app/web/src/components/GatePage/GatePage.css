@@ -48,15 +48,6 @@
   flex: none;
 }
 
-/* The command row and the route line sit --space-5 from the text above them. */
-.gate-card .command-row {
-  margin-top: var(--space-3);
-}
-
-.gate-card .command-row + .gate-line {
-  margin-top: calc(var(--space-2) * -1);
-}
-
 @media (width <= 720px) {
   .gate-main {
     padding: var(--space-4);
@@ -76,4 +67,20 @@
 .gate-file {
   overflow-wrap: anywhere;
   font-size: var(--text-xs);
+}
+
+/* The mark above a gate sentence that is a warning, not a failure. */
+.gate-card .gate-warn {
+  font-size: var(--text-xl);
+}
+
+.gate-card .gate-warn::before {
+  font-size: var(--text-xl);
+}
+
+.gate-next-try {
+  display: flex;
+  gap: var(--space-2);
+  align-items: baseline;
+  font-weight: var(--weight-medium);
 }

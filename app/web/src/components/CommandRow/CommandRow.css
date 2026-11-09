@@ -1,7 +1,8 @@
 .command-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: var(--space-1) var(--space-2);
+  gap: 0 var(--space-2);
+  margin-block: var(--space-3);
   align-items: center;
 }
 
@@ -10,9 +11,9 @@
   align-items: center;
   min-height: 38px;
   padding: 0 var(--space-3);
-  background: var(--card-bg);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-md);
+  background: var(--inset-bg);
+  border: 1px solid var(--inset-border);
+  border-radius: var(--radius-lg);
   font-family: var(--font-mono);
   font-size: var(--text-sm);
   overflow-wrap: anywhere;
@@ -21,8 +22,13 @@
 
 .command-row-status {
   grid-column: 1 / -1;
-  min-height: var(--space-4);
   font-size: var(--text-xs);
+}
+
+/* An empty status takes no room. The copied line sits under the row once it has text. */
+.command-row-status:not(:empty) {
+  min-height: var(--space-4);
+  margin-top: var(--space-1);
 }
 
 .command-row .button {

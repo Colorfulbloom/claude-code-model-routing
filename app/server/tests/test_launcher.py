@@ -135,12 +135,17 @@ class Tree:
         return f"{stub} %s"
 
     def env(self, **extra: str) -> dict[str, str]:
-        """A clean environment with no uv on PATH, an empty home and no SSH."""
+        """A clean environment with no uv on PATH, an empty home, no SSH and a display.
+
+        DISPLAY is set so the launcher's Linux display check passes on any host.
+        Pass DISPLAY="" to test the no-display path.
+        """
         env = {
             "PATH": f"{self.emptybin}:/usr/bin:/bin",
             "HOME": str(self.home),
             "FAKE_UV_LOG": str(self.uv_log),
             "LANG": "C",
+            "DISPLAY": ":0",
         }
         env.update(extra)
         return env
@@ -586,6 +591,37 @@ def test_the_fixture_option_reaches_the_server(tree: Tree) -> None:
     tree.start(None, "--fixture", "firstrun").check_returncode()
     argv = tree.serve_argv()
     assert argv[argv.index("--fixture") + 1] == "firstrun"
+
+
+def test_the_demo_and_pace_globals_reach_the_server(tree: Tree) -> None:
+    tree.run(
+        "--demo", "--ingest-pace-ms", "30", "start", "--no-open"
+    ).check_returncode()
+    argv = tree.serve_argv()
+    assert "--demo" in argv
+    assert argv[argv.index("--ingest-pace-ms") + 1] == "30"
+
+
+def test_the_server_gets_no_demo_flags_unless_asked(tree: Tree) -> None:
+    tree.start("s1").check_returncode()
+    argv = tree.serve_argv()
+    assert "--demo" not in argv
+    assert "--ingest-pace-ms" not in argv
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        ["--ingest-pace-ms", "30", "start"],
+        ["--demo", "--ingest-pace-ms", "abc", "start"],
+        ["--demo", "--demo", "start"],
+    ],
+)
+def test_bad_demo_globals_are_usage_errors(tree: Tree, args: list[str]) -> None:
+    proc = tree.run(*args)
+    assert proc.returncode == 2
+    assert proc.stderr.startswith("error: ")
+    assert tree.record() is None
 
 
 def test_server_json_stays_private_and_keeps_the_servers_keys(tree: Tree) -> None:
@@ -1275,6 +1311,20 @@ def test_no_open_ssh_and_missing_display_skip_the_browser(
         "No display found, so no browser opened.",
     )
     assert rec.calls == []
+
+
+def test_a_missing_display_blocks_the_browser_on_linux_only(
+    bartab: ModuleType, browsers: list[Recorder], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("DISPLAY", raising=False)
+    monkeypatch.delenv("WAYLAND_DISPLAY", raising=False)
+    monkeypatch.setattr(sys, "platform", "linux")
+    assert bartab.browser_blocked() == "No display found, so no browser opened."
+    monkeypatch.setenv("WAYLAND_DISPLAY", "wayland-0")
+    assert bartab.browser_blocked() is None
+    monkeypatch.delenv("WAYLAND_DISPLAY")
+    monkeypatch.setattr(sys, "platform", "darwin")
+    assert bartab.browser_blocked() is None
 
 
 def test_start_opens_the_link_through_the_browser_variable(tree: Tree) -> None:

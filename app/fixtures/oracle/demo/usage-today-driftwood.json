@@ -1,0 +1,1050 @@
+{
+  "generated_at": "2026-10-30T18:00:00-04:00",
+  "model_names": {
+    "claude-fable-5": "Fable 5",
+    "claude-fable-5-1": "Fable 5.1",
+    "claude-haiku-4-5": "Haiku 4.5",
+    "claude-haiku-5-5": "Haiku 5.5",
+    "claude-opus-4-6": "Opus 4.6",
+    "claude-opus-4-7": "Opus 4.7",
+    "claude-opus-4-8": "Opus 4.8",
+    "claude-opus-5": "Opus 5",
+    "claude-opus-5-5": "Opus 5.5",
+    "claude-sonnet-4-6": "Sonnet 4.6",
+    "claude-sonnet-5": "Sonnet 5",
+    "claude-sonnet-5-5": "Sonnet 5.5"
+  },
+  "no_usage": false,
+  "prices": {
+    "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+    "verified_on": "2026-10-30"
+  },
+  "project": "driftwood",
+  "unreadable": null,
+  "views": {
+    "today": {
+      "axis": {
+        "runs_ticks": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "tokens_max_nice": 800000,
+        "tokens_ticks": [
+          0,
+          200000,
+          400000,
+          600000,
+          800000
+        ]
+      },
+      "bucket_unit": "hour",
+      "buckets": [
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 0,
+          "runs_by_agent": {},
+          "start": "2026-10-30T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 1,
+          "runs_by_agent": {},
+          "start": "2026-10-30T01:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 2,
+          "runs_by_agent": {},
+          "start": "2026-10-30T02:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 3,
+          "runs_by_agent": {},
+          "start": "2026-10-30T03:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 4,
+          "runs_by_agent": {},
+          "start": "2026-10-30T04:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 5,
+          "runs_by_agent": {},
+          "start": "2026-10-30T05:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 6,
+          "runs_by_agent": {},
+          "start": "2026-10-30T06:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 7,
+          "runs_by_agent": {},
+          "start": "2026-10-30T07:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 8,
+          "runs_by_agent": {},
+          "start": "2026-10-30T08:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 9,
+          "runs_by_agent": {},
+          "start": "2026-10-30T09:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 10,
+          "runs_by_agent": {},
+          "start": "2026-10-30T10:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 11,
+          "runs_by_agent": {},
+          "start": "2026-10-30T11:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 12,
+          "runs_by_agent": {},
+          "start": "2026-10-30T12:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 13,
+          "runs_by_agent": {},
+          "start": "2026-10-30T13:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 14,
+          "runs_by_agent": {},
+          "start": "2026-10-30T14:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {
+            "claude-haiku-5-5": 63115,
+            "claude-opus-6-preview": 482411,
+            "claude-sonnet-5-5": 207315
+          },
+          "date": "2026-10-30",
+          "hour": 15,
+          "runs_by_agent": {
+            "@main": 1,
+            "reviewer": 1,
+            "scribe": 1
+          },
+          "start": "2026-10-30T15:00:00-04:00",
+          "tokens": 752841
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 16,
+          "runs_by_agent": {},
+          "start": "2026-10-30T16:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 17,
+          "runs_by_agent": {},
+          "start": "2026-10-30T17:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 18,
+          "runs_by_agent": {},
+          "start": "2026-10-30T18:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 19,
+          "runs_by_agent": {},
+          "start": "2026-10-30T19:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 20,
+          "runs_by_agent": {},
+          "start": "2026-10-30T20:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 21,
+          "runs_by_agent": {},
+          "start": "2026-10-30T21:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 22,
+          "runs_by_agent": {},
+          "start": "2026-10-30T22:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 23,
+          "runs_by_agent": {},
+          "start": "2026-10-30T23:00:00-04:00",
+          "tokens": 0
+        }
+      ],
+      "by_agent": [
+        {
+          "agent": "reviewer",
+          "cache_read": 159947,
+          "cache_write": 32453,
+          "cache_write_1h": 7028,
+          "cache_write_5m": 25425,
+          "cost": 0.17206720000000003,
+          "cost_by_kind": {
+            "cache_read": 0.0159947,
+            "cache_write": 0.0916745,
+            "input": 0.021188000000000002,
+            "output": 0.04321
+          },
+          "display": "reviewer",
+          "hit_rate": 0.7879395450111826,
+          "input": 10594,
+          "output": 4321,
+          "pin": {
+            "effort": {
+              "cap": null,
+              "expected": {
+                "becomes": null,
+                "file": "config/agents/reviewer.md",
+                "key": "effort",
+                "layer": "agent",
+                "line": 5,
+                "reason": "config/agents/reviewer.md sets the effort for reviewer. CLAUDE_CODE_EFFORT_LEVEL beats the agent's effort frontmatter, which beats --effort and the settings that count for its own model.",
+                "rule_id": "agent-effort-order",
+                "status": "in_effect",
+                "value": "high",
+                "via": null
+              },
+              "pinned": {
+                "file": "config/agents/reviewer.md",
+                "id": "high",
+                "line": 5,
+                "status": "in_effect",
+                "value": "high"
+              },
+              "ran": [
+                "high"
+              ],
+              "runs_match_pin": false,
+              "state": "matches"
+            },
+            "mismatched_runs": 0,
+            "model": {
+              "cap": null,
+              "expected": {
+                "becomes": null,
+                "file": "config/agents/reviewer.md",
+                "key": "model",
+                "layer": "agent",
+                "line": 4,
+                "reason": "config/agents/reviewer.md sets the model for reviewer. The agent's frontmatter model, inherit included, beats CLAUDE_CODE_SUBAGENT_MODEL, which beats the main model, unless CLAUDE_CODE_SUBAGENT_MODEL_FORCE is on. A model passed at dispatch, or set by a mod's agent.spawn hook, beats the frontmatter, and the dashboard can't see either.",
+                "rule_id": "subagent-model-order",
+                "status": "in_effect",
+                "value": "claude-sonnet-5-5",
+                "via": null
+              },
+              "pinned": {
+                "file": "config/agents/reviewer.md",
+                "id": "claude-sonnet-5-5",
+                "line": 4,
+                "status": "in_effect",
+                "value": "claude-sonnet-5-5"
+              },
+              "ran": [
+                "claude-sonnet-5-5"
+              ],
+              "runs_match_pin": false,
+              "state": "matches"
+            },
+            "pinned": "both",
+            "source": "agent_file",
+            "state": "matches",
+            "total_runs": 1
+          },
+          "ran_with": [
+            {
+              "effort": "high",
+              "model": "claude-sonnet-5-5",
+              "requests": 8,
+              "runs": 1
+            }
+          ],
+          "recent_runs": [
+            {
+              "cost": 0.17206720000000003,
+              "effort": "high",
+              "hit_rate": 0.7879395450111826,
+              "model": "claude-sonnet-5-5",
+              "project": "Driftwood",
+              "requests": 8,
+              "run_id": "bb31117eb986",
+              "session_id": "23af5b50-39fa-4dcd-ae66-0c17b8e46b8f",
+              "session_started": "2026-10-30T15:02:52.425000-04:00",
+              "started": "2026-10-30T15:27:15.568000-04:00",
+              "tokens": 207315,
+              "unpriced_requests": 0
+            }
+          ],
+          "requests": 8,
+          "route_key": "reviewer",
+          "runs": 1,
+          "runs_per_day": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "runs_ticks": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "sessions": 1,
+          "thinking": 1175,
+          "tokens": 207315,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "agent": "scribe",
+          "cache_read": 38418,
+          "cache_write": 12366,
+          "cache_write_1h": 1624,
+          "cache_write_5m": 10742,
+          "cost": 0.004714029999999999,
+          "cost_by_kind": {
+            "cache_read": 0.00038418,
+            "cache_write": 0.0016675499999999998,
+            "input": 0.0008758000000000001,
+            "output": 0.0017865000000000001
+          },
+          "display": "scribe",
+          "hit_rate": 0.6452252191730207,
+          "input": 8758,
+          "output": 3573,
+          "pin": {
+            "effort": {
+              "cap": null,
+              "expected": {
+                "becomes": null,
+                "file": "config/agents/scribe.md",
+                "key": "effort",
+                "layer": "agent",
+                "line": 5,
+                "reason": "config/agents/scribe.md sets the effort for scribe. CLAUDE_CODE_EFFORT_LEVEL beats the agent's effort frontmatter, which beats --effort and the settings that count for its own model.",
+                "rule_id": "agent-effort-order",
+                "status": "in_effect",
+                "value": "medium",
+                "via": null
+              },
+              "pinned": {
+                "file": "config/agents/scribe.md",
+                "id": "medium",
+                "line": 5,
+                "status": "in_effect",
+                "value": "medium"
+              },
+              "ran": [
+                "medium"
+              ],
+              "runs_match_pin": false,
+              "state": "matches"
+            },
+            "mismatched_runs": 1,
+            "model": {
+              "cap": null,
+              "expected": {
+                "becomes": null,
+                "file": "config/agents/scribe.md",
+                "key": "model",
+                "layer": "agent",
+                "line": 4,
+                "reason": "config/agents/scribe.md sets the model for scribe. The agent's frontmatter model, inherit included, beats CLAUDE_CODE_SUBAGENT_MODEL, which beats the main model, unless CLAUDE_CODE_SUBAGENT_MODEL_FORCE is on. A model passed at dispatch, or set by a mod's agent.spawn hook, beats the frontmatter, and the dashboard can't see either.",
+                "rule_id": "subagent-model-order",
+                "status": "in_effect",
+                "value": "claude-haiku-4-5",
+                "via": null
+              },
+              "pinned": {
+                "file": "config/agents/scribe.md",
+                "id": "claude-haiku-4-5",
+                "line": 4,
+                "status": "in_effect",
+                "value": "claude-haiku-4-5"
+              },
+              "ran": [
+                "claude-haiku-5-5"
+              ],
+              "runs_match_pin": false,
+              "state": "differs"
+            },
+            "pinned": "both",
+            "source": "agent_file",
+            "state": "differs",
+            "total_runs": 1
+          },
+          "ran_with": [
+            {
+              "effort": "medium",
+              "model": "claude-haiku-5-5",
+              "requests": 9,
+              "runs": 1
+            }
+          ],
+          "recent_runs": [
+            {
+              "cost": 0.004714029999999999,
+              "effort": "medium",
+              "hit_rate": 0.6452252191730207,
+              "model": "claude-haiku-5-5",
+              "project": "Driftwood",
+              "requests": 9,
+              "run_id": "1dbdfd782950",
+              "session_id": "23af5b50-39fa-4dcd-ae66-0c17b8e46b8f",
+              "session_started": "2026-10-30T15:02:52.425000-04:00",
+              "started": "2026-10-30T15:23:24.792000-04:00",
+              "tokens": 63115,
+              "unpriced_requests": 0
+            }
+          ],
+          "requests": 9,
+          "route_key": "scribe",
+          "runs": 1,
+          "runs_per_day": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "runs_ticks": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "sessions": 1,
+          "thinking": 1211,
+          "tokens": 63115,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "agent": null,
+          "cache_read": 369434,
+          "cache_write": 75704,
+          "cache_write_1h": 8260,
+          "cache_write_5m": 67444,
+          "cost": 0.0,
+          "cost_by_kind": {
+            "cache_read": 0.0,
+            "cache_write": 0.0,
+            "input": 0.0,
+            "output": 0.0
+          },
+          "display": "Main session",
+          "hit_rate": 0.7861468729385228,
+          "input": 24792,
+          "output": 12481,
+          "pin": {
+            "effort": {
+              "cap": null,
+              "expected": {
+                "becomes": null,
+                "file": "config/settings.json",
+                "key": "effortLevel",
+                "layer": "user",
+                "line": 3,
+                "reason": "config/settings.json sets a top-level effortLevel of xhigh, and that level may not reach the session. Opus 5.5 and models released after it ignore this key in the user file, and earlier models use it. The dashboard doesn't know the session's model, so it can't say which level the session runs at. To check, run /effort status in a new session started in this project.",
+                "rule_id": "effort-level-user-settings-model-unknown",
+                "status": "unknown",
+                "value": "xhigh",
+                "via": null
+              },
+              "pinned": {
+                "file": "config/settings.json",
+                "id": "xhigh",
+                "line": 3,
+                "status": "unknown",
+                "value": "xhigh"
+              },
+              "ran": [
+                "medium"
+              ],
+              "runs_match_pin": false,
+              "state": "cannot_check"
+            },
+            "mismatched_runs": 0,
+            "model": {
+              "cap": null,
+              "expected": {
+                "becomes": null,
+                "file": "projects/driftwood/.claude/settings.local.json",
+                "key": "model",
+                "layer": "local",
+                "line": 2,
+                "reason": "projects/driftwood/.claude/settings.local.json sets the model. --model beats ANTHROPIC_MODEL, which beats the model key in any file, managed included.",
+                "rule_id": "model-main-session-order",
+                "status": "in_effect",
+                "value": "claude-opus-6-preview",
+                "via": null
+              },
+              "pinned": {
+                "file": "projects/driftwood/.claude/settings.local.json",
+                "id": "claude-opus-6-preview",
+                "line": 2,
+                "status": "in_effect",
+                "value": "claude-opus-6-preview"
+              },
+              "ran": [
+                "claude-opus-6-preview"
+              ],
+              "runs_match_pin": false,
+              "state": "matches"
+            },
+            "pinned": "both",
+            "source": "settings",
+            "state": "cannot_check",
+            "total_runs": 1
+          },
+          "ran_with": [
+            {
+              "effort": "medium",
+              "model": "claude-opus-6-preview",
+              "requests": 15,
+              "runs": 1
+            }
+          ],
+          "recent_runs": [
+            {
+              "cost": 0.0,
+              "effort": "medium",
+              "hit_rate": 0.7861468729385228,
+              "model": "claude-opus-6-preview",
+              "project": "Driftwood",
+              "requests": 15,
+              "run_id": null,
+              "session_id": "23af5b50-39fa-4dcd-ae66-0c17b8e46b8f",
+              "session_started": "2026-10-30T15:02:52.425000-04:00",
+              "started": "2026-10-30T15:02:52.425000-04:00",
+              "tokens": 482411,
+              "unpriced_requests": 15
+            }
+          ],
+          "requests": 15,
+          "route_key": "@main",
+          "runs": 0,
+          "runs_per_day": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "runs_ticks": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "sessions": 1,
+          "thinking": 3255,
+          "tokens": 482411,
+          "unpriced_requests": 15,
+          "unpriced_tokens": 482411
+        }
+      ],
+      "by_effort": [
+        {
+          "cache_read": 0,
+          "cache_write": 0,
+          "cache_write_1h": 0,
+          "cache_write_5m": 0,
+          "cost": 0.0,
+          "cost_by_kind": {
+            "cache_read": 0.0,
+            "cache_write": 0.0,
+            "input": 0.0,
+            "output": 0.0
+          },
+          "effort": "low",
+          "hit_rate": null,
+          "input": 0,
+          "output": 0,
+          "requests": 0,
+          "runs": 0,
+          "sessions": 0,
+          "thinking": null,
+          "tokens": 0,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "cache_read": 407852,
+          "cache_write": 88070,
+          "cache_write_1h": 9884,
+          "cache_write_5m": 78186,
+          "cost": 0.004714029999999999,
+          "cost_by_kind": {
+            "cache_read": 0.00038418,
+            "cache_write": 0.0016675499999999998,
+            "input": 0.0008758000000000001,
+            "output": 0.0017865000000000001
+          },
+          "effort": "medium",
+          "hit_rate": 0.7702994681494016,
+          "input": 33550,
+          "output": 16054,
+          "requests": 24,
+          "runs": 1,
+          "sessions": 1,
+          "thinking": 4466,
+          "tokens": 545526,
+          "unpriced_requests": 15,
+          "unpriced_tokens": 482411
+        },
+        {
+          "cache_read": 159947,
+          "cache_write": 32453,
+          "cache_write_1h": 7028,
+          "cache_write_5m": 25425,
+          "cost": 0.17206720000000003,
+          "cost_by_kind": {
+            "cache_read": 0.0159947,
+            "cache_write": 0.0916745,
+            "input": 0.021188000000000002,
+            "output": 0.04321
+          },
+          "effort": "high",
+          "hit_rate": 0.7879395450111826,
+          "input": 10594,
+          "output": 4321,
+          "requests": 8,
+          "runs": 1,
+          "sessions": 1,
+          "thinking": 1175,
+          "tokens": 207315,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "cache_read": 0,
+          "cache_write": 0,
+          "cache_write_1h": 0,
+          "cache_write_5m": 0,
+          "cost": 0.0,
+          "cost_by_kind": {
+            "cache_read": 0.0,
+            "cache_write": 0.0,
+            "input": 0.0,
+            "output": 0.0
+          },
+          "effort": "xhigh",
+          "hit_rate": null,
+          "input": 0,
+          "output": 0,
+          "requests": 0,
+          "runs": 0,
+          "sessions": 0,
+          "thinking": null,
+          "tokens": 0,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        }
+      ],
+      "by_model": [
+        {
+          "agents": [
+            "reviewer"
+          ],
+          "cache_read": 159947,
+          "cache_write": 32453,
+          "cache_write_1h": 7028,
+          "cache_write_5m": 25425,
+          "cat": 2,
+          "cost": 0.17206720000000003,
+          "cost_by_kind": {
+            "cache_read": 0.0159947,
+            "cache_write": 0.0916745,
+            "input": 0.021188000000000002,
+            "output": 0.04321
+          },
+          "display_name": "Sonnet 5.5",
+          "hit_rate": 0.7879395450111826,
+          "input": 10594,
+          "model": "claude-sonnet-5-5",
+          "output": 4321,
+          "requests": 8,
+          "runs": 1,
+          "sessions": 1,
+          "share_lt1": false,
+          "share_pct": 97,
+          "thinking": 1175,
+          "tokens": 207315,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "agents": [
+            "scribe"
+          ],
+          "cache_read": 38418,
+          "cache_write": 12366,
+          "cache_write_1h": 1624,
+          "cache_write_5m": 10742,
+          "cat": 3,
+          "cost": 0.004714029999999999,
+          "cost_by_kind": {
+            "cache_read": 0.00038418,
+            "cache_write": 0.0016675499999999998,
+            "input": 0.0008758000000000001,
+            "output": 0.0017865000000000001
+          },
+          "display_name": "Haiku 5.5",
+          "hit_rate": 0.6452252191730207,
+          "input": 8758,
+          "model": "claude-haiku-5-5",
+          "output": 3573,
+          "requests": 9,
+          "runs": 1,
+          "sessions": 1,
+          "share_lt1": false,
+          "share_pct": 3,
+          "thinking": 1211,
+          "tokens": 63115,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "agents": [
+            "Main session"
+          ],
+          "cache_read": 369434,
+          "cache_write": 75704,
+          "cache_write_1h": 8260,
+          "cache_write_5m": 67444,
+          "cat": "other",
+          "cost": null,
+          "cost_by_kind": {
+            "cache_read": 0.0,
+            "cache_write": 0.0,
+            "input": 0.0,
+            "output": 0.0
+          },
+          "display_name": "claude-opus-6-preview",
+          "hit_rate": 0.7861468729385228,
+          "input": 24792,
+          "model": "claude-opus-6-preview",
+          "output": 12481,
+          "requests": 15,
+          "runs": 0,
+          "sessions": 1,
+          "share_lt1": false,
+          "share_pct": 0,
+          "thinking": 3255,
+          "tokens": 482411,
+          "unpriced_requests": 15,
+          "unpriced_tokens": 482411
+        }
+      ],
+      "by_project": null,
+      "deltas": {
+        "cost_pct": -58.60685330682768,
+        "hit_rate_pts": -0.4803658772669972,
+        "runs_pct": 0.0,
+        "tokens_pct": -28.274899487433547
+      },
+      "end": "2026-10-30T18:00:00-04:00",
+      "notes": {
+        "malformed_lines": 0,
+        "no_id_rows": 0,
+        "skipped_old_files": 5,
+        "synthetic_rows": 0,
+        "tz_fixed": false,
+        "unpriced": [
+          {
+            "model": "claude-opus-6-preview",
+            "requests": 15,
+            "tokens": 482411
+          }
+        ]
+      },
+      "previous": {
+        "cache_read": 795190,
+        "cache_write": 163467,
+        "cache_write_1h": 14732,
+        "cache_write_5m": 148735,
+        "cost": 0.42707849999999997,
+        "cost_by_kind": {
+          "cache_read": 0.03326599999999999,
+          "cache_write": 0.1901285,
+          "input": 0.063324,
+          "output": 0.14036
+        },
+        "hit_rate": 0.7799918586345066,
+        "input": 60828,
+        "output": 30135,
+        "requests": 38,
+        "runs": 2,
+        "sessions": 1,
+        "thinking": 9132,
+        "tokens": 1049620,
+        "unpriced_requests": 19,
+        "unpriced_tokens": 599251
+      },
+      "previous_end": "2026-10-29T18:00:00-04:00",
+      "previous_start": "2026-10-29T00:00:00-04:00",
+      "range": "today",
+      "sessions": [
+        {
+          "agents": [
+            "reviewer",
+            "scribe"
+          ],
+          "branch": "main",
+          "by_agent": [
+            {
+              "agent": "reviewer",
+              "cache_read": 159947,
+              "cache_write": 32453,
+              "cache_write_1h": 7028,
+              "cache_write_5m": 25425,
+              "cost": 0.17206720000000003,
+              "cost_by_kind": {
+                "cache_read": 0.0159947,
+                "cache_write": 0.0916745,
+                "input": 0.021188000000000002,
+                "output": 0.04321
+              },
+              "hit_rate": 0.7879395450111826,
+              "input": 10594,
+              "output": 4321,
+              "requests": 8,
+              "runs": 1,
+              "sessions": 1,
+              "thinking": 1175,
+              "tokens": 207315,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            },
+            {
+              "agent": "scribe",
+              "cache_read": 38418,
+              "cache_write": 12366,
+              "cache_write_1h": 1624,
+              "cache_write_5m": 10742,
+              "cost": 0.004714029999999999,
+              "cost_by_kind": {
+                "cache_read": 0.00038418,
+                "cache_write": 0.0016675499999999998,
+                "input": 0.0008758000000000001,
+                "output": 0.0017865000000000001
+              },
+              "hit_rate": 0.6452252191730207,
+              "input": 8758,
+              "output": 3573,
+              "requests": 9,
+              "runs": 1,
+              "sessions": 1,
+              "thinking": 1211,
+              "tokens": 63115,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            },
+            {
+              "agent": null,
+              "cache_read": 369434,
+              "cache_write": 75704,
+              "cache_write_1h": 8260,
+              "cache_write_5m": 67444,
+              "cost": 0.0,
+              "cost_by_kind": {
+                "cache_read": 0.0,
+                "cache_write": 0.0,
+                "input": 0.0,
+                "output": 0.0
+              },
+              "hit_rate": 0.7861468729385228,
+              "input": 24792,
+              "output": 12481,
+              "requests": 15,
+              "runs": 0,
+              "sessions": 1,
+              "thinking": 3255,
+              "tokens": 482411,
+              "unpriced_requests": 15,
+              "unpriced_tokens": 482411
+            }
+          ],
+          "cache_read": 567799,
+          "cache_write": 120523,
+          "cache_write_1h": 16912,
+          "cache_write_5m": 103611,
+          "cost": 0.17678122999999996,
+          "cost_by_kind": {
+            "cache_read": 0.016378880000000002,
+            "cache_write": 0.09334205000000002,
+            "input": 0.022063799999999998,
+            "output": 0.044996499999999995
+          },
+          "hit_rate": 0.7751881998618366,
+          "input": 44144,
+          "output": 20375,
+          "project": "Driftwood",
+          "requests": 32,
+          "runs": 2,
+          "session_id": "23af5b50-39fa-4dcd-ae66-0c17b8e46b8f",
+          "sessions": 1,
+          "started": "2026-10-30T15:02:52.425000-04:00",
+          "thinking": 5641,
+          "tokens": 752841,
+          "unpriced_requests": 15,
+          "unpriced_tokens": 482411
+        }
+      ],
+      "start": "2026-10-30T00:00:00-04:00",
+      "totals": {
+        "cache_read": 567799,
+        "cache_write": 120523,
+        "cache_write_1h": 16912,
+        "cache_write_5m": 103611,
+        "cost": 0.17678122999999996,
+        "cost_by_kind": {
+          "cache_read": 0.016378880000000002,
+          "cache_write": 0.09334205000000002,
+          "input": 0.022063799999999998,
+          "output": 0.044996499999999995
+        },
+        "hit_rate": 0.7751881998618366,
+        "input": 44144,
+        "output": 20375,
+        "requests": 32,
+        "runs": 2,
+        "sessions": 1,
+        "thinking": 5641,
+        "tokens": 752841,
+        "unpriced_requests": 15,
+        "unpriced_tokens": 482411
+      }
+    }
+  }
+}

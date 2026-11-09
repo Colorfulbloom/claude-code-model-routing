@@ -14,7 +14,10 @@ import { ProgressSteps, type ProgressStep } from "@/components/ProgressSteps/Pro
 import { RaisedFinding, type RaisedFindingVariant } from "@/components/RaisedFinding/RaisedFinding";
 import { RetryRow } from "@/components/RetryRow/RetryRow";
 import { RunStateGlyph, type RunState } from "@/components/RunStateGlyph/RunStateGlyph";
+import { HistoryCard } from "@/components/HistoryCard/HistoryCard";
 import { Sidebar, type SidebarGroup } from "@/components/Sidebar/Sidebar";
+import { SidebarFooter } from "@/components/SidebarFooter/SidebarFooter";
+import { StoppedNotice } from "@/components/StoppedNotice/StoppedNotice";
 import { SkeletonBones } from "@/components/SkeletonBones/SkeletonBones";
 import { TabBar, type TabBarItem } from "@/components/TabBar/TabBar";
 import { TopBar } from "@/components/TopBar/TopBar";
@@ -22,9 +25,38 @@ import { WaitHold } from "@/components/WaitHold/WaitHold";
 import { Well } from "@/components/Well/Well";
 import { FirstRunContent, LockedContent } from "@/pages/GatePages";
 import { projectItem } from "@/lib/projects";
-import { t } from "@/strings/t";
+import { t, tn } from "@/strings/t";
 import { SelectDemo } from "./SelectDemo";
 import { W } from "./words";
+
+function footerSample(problem: boolean) {
+  return [
+    ...(problem ? [{ id: "unreadable", text: tn("ft_unreadable", 3), warn: true as const }] : []),
+    { id: "updated", text: t("ft_updated", { t: "6:41 PM" }) },
+    { id: "since", text: t("ft_since", { d: "September 3" }) },
+    problem
+      ? { id: "backup", text: t("ft_backup_failed", { t: "4:02 AM" }), warn: true as const }
+      : { id: "backup", text: t("ft_backup", { t: "4:02 AM" }) },
+    { id: "prices", text: t("ft_prices", { d: "October 28" }) },
+    { id: "claude", text: t("more_ver_cc", { version: "2.1.310" }) },
+  ];
+}
+
+function historySampleRows(problem: boolean) {
+  return [
+    { id: "updated", label: t("more_l_updated"), value: "6:41 PM" },
+    { id: "since", label: t("more_l_since"), value: "September 3" },
+    problem
+      ? {
+          id: "backup",
+          label: t("more_l_backup"),
+          value: t("ft_backup_failed", { t: "4:02 AM" }),
+          warn: true as const,
+        }
+      : { id: "backup", label: t("more_l_backup"), value: "4:02 AM" },
+    { id: "prices", label: t("more_l_prices"), value: "October 28" },
+  ];
+}
 
 /** One rendered state of one component. `component` is the folder name under src/components. */
 export interface ManifestEntry {
@@ -541,18 +573,81 @@ export const manifest: ManifestEntry[] = [
         <GatePage brand={t("product")}>
           <FirstRunContent
             command={sampleCommand}
-            retryingSince={null}
             ingest={{
               state: "failed",
               files_done: 640,
               files_total: 1240,
-              bytes_done: 0,
-              bytes_total: 0,
+              bytes_done: 800_000_000,
+              bytes_total: 2_000_000_000,
               retrying: false,
+              retry_at: "2026-11-08T23:14:00Z",
               error: { code: "config_dir_unreadable", file: "~/.claude/projects/tidewater" },
             }}
           />
         </GatePage>
+      </div>
+    ),
+  },
+  // SidebarFooter
+  {
+    component: "SidebarFooter",
+    state: "default",
+    render: () => (
+      <div className="sheet-sidebar">
+        <SidebarFooter lines={footerSample(false)} />
+      </div>
+    ),
+  },
+  {
+    component: "SidebarFooter",
+    state: "problem",
+    render: () => (
+      <div className="sheet-sidebar">
+        <SidebarFooter lines={footerSample(true)} />
+      </div>
+    ),
+  },
+  // StoppedNotice
+  {
+    component: "StoppedNotice",
+    state: "default",
+    render: () => (
+      <StoppedNotice>
+        {t("nt_stopped_config_dir_unreadable", { t: "6:12 PM", f: "/work/.claude/projects" })}
+      </StoppedNotice>
+    ),
+  },
+  // HistoryCard
+  {
+    component: "HistoryCard",
+    state: "default",
+    render: () => (
+      <div className="sheet-phone">
+        <HistoryCard title={t("more_hist_h")} rows={historySampleRows(false)} />
+      </div>
+    ),
+  },
+  {
+    component: "HistoryCard",
+    state: "problem",
+    render: () => (
+      <div className="sheet-phone">
+        <HistoryCard
+          title={t("more_hist_h")}
+          findings={[
+            {
+              id: "backup",
+              title: t("ft_backup_failed", { t: "4:02 AM" }),
+              body: t("mb_backup_no_space"),
+            },
+            {
+              id: "unreadable",
+              title: tn("ft_unreadable", 3),
+              body: t("mb_unread_b"),
+            },
+          ]}
+          rows={historySampleRows(true)}
+        />
       </div>
     ),
   },

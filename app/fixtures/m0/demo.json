@@ -1,5 +1,8 @@
 {
   "claude_version": "2.1.310",
+  "as_of_ago": 90,
+  "pass_running_since_ago": null,
+  "etag": "gen-demo",
   "projects": [
     {
       "key": "tidewater-reporting",
@@ -32,6 +35,17 @@
     "driftwood": 0
   },
   "editable_projects": [],
+  "history": {
+    "oldest": "2026-09-03T14:20:00Z",
+    "first_ingest": "2026-09-03T14:31:00Z",
+    "last_backup_ago": 10800,
+    "backup_failed": null,
+    "pass_error": null,
+    "unreadable_files": 0,
+    "kept_files": 0,
+    "no_usage_rows": 0
+  },
+  "prices": "litellm",
   "ingest_steps": [
     {
       "at": 0,
@@ -41,7 +55,8 @@
       "bytes_done": 82000000,
       "bytes_total": 82000000,
       "error": null,
-      "retrying": false
+      "retrying": false,
+      "retry_at_s": null
     }
   ]
 }

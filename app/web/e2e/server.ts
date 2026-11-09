@@ -20,7 +20,10 @@ export interface StartOptions {
   dataDir?: string;
   /** Bind this port, for the restart check. 0 picks a free one. */
   port?: number;
-  fixture?: string;
+  /** The fixture scenario. null leaves --fixture off, for a server that reads the store. */
+  fixture?: string | null;
+  /** More serve.py arguments, such as --demo. */
+  args?: string[];
 }
 
 export interface Server {
@@ -85,12 +88,12 @@ export async function startServer(options: StartOptions = {}): Promise<Server> {
     dist,
     "--data",
     dataDir,
-    "--fixture",
-    options.fixture ?? "demo",
+    ...(options.fixture === null ? [] : ["--fixture", options.fixture ?? "demo"]),
     "--launch-fd",
     "3",
     "--idle-exit-minutes",
     "0",
+    ...(options.args ?? []),
   ];
   const child = spawn(PYTHON, args, {
     cwd: join(appDir, "server"),

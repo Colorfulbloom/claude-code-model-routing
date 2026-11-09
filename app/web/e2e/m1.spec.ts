@@ -1,0 +1,233 @@
+/// <reference lib="dom" />
+/// <reference types="node" />
+/*
+ * The M1 screens on the fixture scenarios. Each one goes through axe at 375 and 1440, light and
+ * dark, and carries the checks that prove the page is in the state its scenario names: the
+ * sidebar footer at rest and with problems, the updates-stopped notice, the More history card,
+ * first run counting, running and retrying, the store_newer gate and the project picker placeholder.
+ */
+import AxeBuilder from "@axe-core/playwright";
+import type { Page } from "@playwright/test";
+import { en } from "../src/strings/en";
+import { expectUnlocked, fill, gateHeading, linkFor } from "./gate";
+import { expect, test } from "./server";
+
+const TAGS = ["wcag2a", "wcag2aa", "wcag22aa"];
+const COMBOS = [
+  { width: 375, theme: "light" },
+  { width: 375, theme: "dark" },
+  { width: 1440, theme: "light" },
+  { width: 1440, theme: "dark" },
+] as const;
+const PROJECT = "tidewater-reporting";
+
+async function axeAllCombos(page: Page, label: string): Promise<string[]> {
+  const problems: string[] = [];
+  for (const { width, theme } of COMBOS) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.emulateMedia({ colorScheme: theme });
+    // Colours transition on a theme change, and axe would read them half way.
+    await page.waitForTimeout(500);
+    const result = await new AxeBuilder({ page: page as never }).withTags(TAGS).analyze();
+    for (const v of result.violations) {
+      problems.push(
+        `${label} ${String(width)} ${theme} axe ${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(" | ")}`,
+      );
+    }
+  }
+  return problems;
+}
+
+async function noHorizontalScroll(page: Page): Promise<void> {
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(0);
+}
+
+test.describe("footer at rest", () => {
+  test("shows five muted lines with no live region and passes axe", async ({ page, server }) => {
+    await page.goto(linkFor(server.baseURL, await server.mint(PROJECT), `/p/${PROJECT}/live`));
+    await expectUnlocked(page);
+    const lines = page.locator(".sidebar-footer-line");
+    await expect(lines).toHaveCount(5);
+    await expect(lines.nth(1)).toHaveText(/^History since /);
+    await expect(lines.nth(3)).toHaveText(/^Prices as of /);
+    await expect(lines.nth(4)).toHaveText(`Claude Code 2.1.310`);
+    await expect(page.locator(".sidebar-footer [role], .sidebar-footer a")).toHaveCount(0);
+    await expect(page.locator(".stopped-notice")).toHaveCount(0);
+    expect(await axeAllCombos(page, "footer")).toEqual([]);
+  });
+});
+
+test.describe("footer with problems", () => {
+  test.use({ fixture: "history_problem" });
+
+  test("adds the unreadable line, replaces the backup line and keeps the lines on one row", async ({
+    page,
+    server,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto(linkFor(server.baseURL, await server.mint(PROJECT), `/p/${PROJECT}/live`));
+    await expectUnlocked(page);
+    const lines = page.locator(".sidebar-footer-line");
+    await expect(lines).toHaveCount(6);
+    await expect(lines.nth(0)).toHaveText(/Couldn't read 3 files$/);
+    await expect(page.locator(".sidebar-footer")).toContainText(/Backup failed at /);
+    await expect(page.locator(".sidebar-footer")).not.toContainText(/Last backup/);
+    const wrapped = await lines.evaluateAll((els) =>
+      els.filter((el) => el.scrollWidth > el.clientWidth).map((el) => el.textContent),
+    );
+    expect(wrapped).toEqual([]);
+    expect(await axeAllCombos(page, "footer problem")).toEqual([]);
+  });
+
+  test("More at 375 opens with the history card and the reasons", async ({ page, server }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto(linkFor(server.baseURL, await server.mint(PROJECT), "/more"));
+    const card = page.getByRole("region", { name: en.more_hist_h });
+    await expect(card).toBeVisible();
+    await expect(card.getByRole("heading", { level: 3 })).toHaveCount(2);
+    await expect(card).toContainText(en.mb_backup_no_space);
+    await expect(card).toContainText(en.mb_unread_b);
+    await expect(card.locator("dt")).toHaveText([
+      en.more_l_updated,
+      en.more_l_since,
+      en.more_l_backup,
+      en.more_l_prices,
+    ]);
+    const first = await page.locator("main section").first().getAttribute("aria-labelledby");
+    expect(first).toBe("history-card-title");
+    await noHorizontalScroll(page);
+    expect(await axeAllCombos(page, "more history problem")).toEqual([]);
+  });
+});
+
+test.describe("More history card at rest", () => {
+  test("lists four rows with no findings", async ({ page, server }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto(linkFor(server.baseURL, await server.mint(PROJECT), "/more"));
+    const card = page.getByRole("region", { name: en.more_hist_h });
+    await expect(card.locator("dt")).toHaveCount(4);
+    await expect(card.getByRole("heading", { level: 3 })).toHaveCount(0);
+    expect(await axeAllCombos(page, "more history")).toEqual([]);
+  });
+});
+
+test.describe("prices from the bundled copy", () => {
+  test.use({ fixture: "prices_bundled" });
+
+  test("names the source in the footer", async ({ page, server }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto(linkFor(server.baseURL, await server.mint(PROJECT), `/p/${PROJECT}/live`));
+    await expect(page.locator(".sidebar-footer")).toContainText(
+      fill(en.ft_prices_bundled, { d: "October 20" }),
+    );
+  });
+});
+
+test.describe("updates stopped", () => {
+  test.use({ fixture: "stopped" });
+
+  test("the notice shows above the page at both widths, on every page", async ({
+    page,
+    server,
+  }) => {
+    await page.goto(linkFor(server.baseURL, await server.mint(PROJECT), `/p/${PROJECT}/live`));
+    await expectUnlocked(page);
+    for (const width of [1440, 375]) {
+      await page.setViewportSize({ width, height: 800 });
+      const notice = page.locator(".stopped-notice");
+      await expect(notice).toHaveCount(1);
+      await expect(notice).toContainText(/^Updates stopped at /);
+      await expect(notice).toContainText("/work/.claude/projects");
+      await noHorizontalScroll(page);
+    }
+    await page.goto(
+      linkFor(server.baseURL, await server.mint(PROJECT), `/p/${PROJECT}/review/agents`),
+    );
+    await expect(page.locator(".stopped-notice")).toHaveCount(1);
+    await page.setViewportSize({ width: 375, height: 800 });
+    await page.getByRole("link", { name: en.nav_more }).click();
+    await expect(page.locator(".stopped-notice")).toHaveCount(1);
+    expect(await axeAllCombos(page, "updates stopped")).toEqual([]);
+  });
+});
+
+test.describe("first run counting", () => {
+  test.use({ fixture: "firstrun_counting" });
+
+  test("says Counting files with no bar", async ({ page, server }) => {
+    await page.goto(linkFor(server.baseURL, await server.mint(PROJECT), "/"));
+    await expect(gateHeading(page, "firstrun")).toBeVisible();
+    await expect(page.getByText(en.fr_counting)).toBeVisible();
+    await expect(page.getByRole("progressbar")).toHaveCount(0);
+    await expect(page.locator("main")).not.toContainText("0 of 0");
+    expect(await axeAllCombos(page, "first run counting")).toEqual([]);
+  });
+});
+
+test.describe("first run running", () => {
+  test.use({ fixture: "firstrun" });
+
+  test("counts first, then shows the bar by size", async ({ page, server }) => {
+    await page.goto(linkFor(server.baseURL, await server.mint(PROJECT), "/"));
+    await expect(gateHeading(page, "firstrun")).toBeVisible();
+    await expect(page.getByRole("progressbar")).toHaveAttribute(
+      "aria-valuetext",
+      /^\d+\.\d of 82\.0 MB$/,
+      { timeout: 20_000 },
+    );
+    expect(await axeAllCombos(page, "first run progress")).toEqual([]);
+  });
+});
+
+test.describe("first run retry", () => {
+  test.use({ fixture: "firstrun_retry" });
+
+  test("keeps the error, the size and the next try time", async ({ page, server }) => {
+    await page.goto(linkFor(server.baseURL, await server.mint(PROJECT), "/"));
+    const alert = page.getByRole("alert");
+    await expect(alert).toBeVisible();
+    await expect(alert).toContainText("/work/.claude/projects/tidewater-reporting/9f2c.jsonl");
+    await expect(alert).toContainText(/Next try at \d{1,2}:\d{2}\s?[AP]M/);
+    await expect(alert).toContainText(en.fr_fail_fix2);
+    await expect(page.getByText("0.8 of 2.0 GB")).toBeVisible();
+    await noHorizontalScroll(page);
+    expect(await axeAllCombos(page, "first run retry")).toEqual([]);
+  });
+});
+
+test.describe("store_newer", () => {
+  test.use({ fixture: "store_newer" });
+
+  test("shows the gate sentence, the next step and the command", async ({ page, server }) => {
+    await page.goto(linkFor(server.baseURL, await server.mint(PROJECT), "/"));
+    const heading = page.getByRole("heading", { level: 1, name: en.sn_h });
+    await expect(heading).toBeFocused();
+    await expect(page.getByText(en.sn_next)).toBeVisible();
+    await expect(page.getByText("/bartab-preview")).toBeVisible();
+    await expect(page.getByRole("button", { name: en.lk_copy })).toBeVisible();
+    expect(await axeAllCombos(page, "store newer")).toEqual([]);
+  });
+});
+
+test.describe("picker placeholder", () => {
+  test("shows Pick a project in the Select and Bar Tab in the top bar", async ({
+    page,
+    server,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto(linkFor(server.baseURL, server.code, "/"));
+    await expect(page.getByRole("dialog", { name: en.pk_h })).toBeVisible();
+    await expect(page.locator(".sidebar .select-value")).toHaveText(en.pk_placeholder);
+    await expect(page.locator(".sidebar .select-value")).toHaveAttribute(
+      "data-placeholder",
+      "true",
+    );
+    await page.setViewportSize({ width: 375, height: 812 });
+    await expect(page.locator(".top-bar-title")).toHaveText(en.product);
+    await expect(page.locator(".top-bar-project")).toHaveText(new RegExp(en.pk_placeholder));
+    expect(await axeAllCombos(page, "picker placeholder")).toEqual([]);
+  });
+});

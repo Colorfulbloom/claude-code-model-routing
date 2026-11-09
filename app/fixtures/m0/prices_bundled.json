@@ -1,0 +1,62 @@
+{
+  "claude_version": "2.1.310",
+  "as_of_ago": 90,
+  "pass_running_since_ago": null,
+  "etag": "gen-prices_bundled",
+  "projects": [
+    {
+      "key": "tidewater-reporting",
+      "name": "Tidewater Reporting",
+      "display_path": "/work/tidewater-reporting",
+      "state": "ok"
+    },
+    {
+      "key": "saltmarsh",
+      "name": "Saltmarsh",
+      "display_path": "/work/saltmarsh",
+      "state": "no_claude_folder"
+    },
+    {
+      "key": "driftwood",
+      "name": "Driftwood",
+      "display_path": "/work/driftwood",
+      "state": "folder_not_found"
+    }
+  ],
+  "running": [
+    {
+      "project": "tidewater-reporting",
+      "session": "a1b2c3d4"
+    }
+  ],
+  "to_fix_counts": {
+    "tidewater-reporting": 4,
+    "saltmarsh": 0,
+    "driftwood": 0
+  },
+  "editable_projects": [],
+  "history": {
+    "oldest": "2026-09-03T14:20:00Z",
+    "first_ingest": "2026-09-03T14:31:00Z",
+    "last_backup_ago": 10800,
+    "backup_failed": null,
+    "pass_error": null,
+    "unreadable_files": 0,
+    "kept_files": 0,
+    "no_usage_rows": 0
+  },
+  "prices": "bundled",
+  "ingest_steps": [
+    {
+      "at": 0,
+      "state": "done",
+      "files_done": 82,
+      "files_total": 82,
+      "bytes_done": 82000000,
+      "bytes_total": 82000000,
+      "error": null,
+      "retrying": false,
+      "retry_at_s": null
+    }
+  ]
+}

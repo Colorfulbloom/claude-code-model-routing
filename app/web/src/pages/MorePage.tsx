@@ -1,22 +1,83 @@
 /*
- * The More page (phone only). Reference links and the version lines. At 721px and up the Shell
- * redirects #/more to the current project's Live, so this page never shows on a desktop.
+ * The More page (phone only). The history card first, then the reference links and the version
+ * lines. At 721px and up the Shell redirects #/more to the current project's Live, so this page
+ * never shows on a desktop.
  */
-import { useAppInfo } from "@/api/client";
+import { useAppInfo, usePrices } from "@/api/client";
+import type { AppInfo, PricesAnswer } from "@/api/types";
 import { useActiveProject } from "@/app/active-project";
+import { HistoryCard } from "@/components/HistoryCard/HistoryCard";
+import type { HistoryFinding, HistoryRow } from "@/components/HistoryCard/HistoryCard";
 import { MoreCard } from "@/components/MoreCard/MoreCard";
 import { PageHeader } from "@/components/PageHeader/PageHeader";
+import { clockStamp, dayLong } from "@/lib/clock";
+import { backupReason, pricesValue } from "@/lib/history";
 import { VERSION } from "@/lib/version";
-import { t } from "@/strings/t";
+import { t, tn } from "@/strings/t";
 import "./MorePage.css";
+
+/** The card's findings and rows from the history facts. Quiet facts stay out, as in the footer. */
+export function historyCardParts(
+  app: AppInfo,
+  prices: PricesAnswer | undefined,
+  now: number | string | Date,
+): { findings: HistoryFinding[]; rows: HistoryRow[] } {
+  const { history } = app;
+  const findings: HistoryFinding[] = [];
+  if (history.backup_failed !== null) {
+    findings.push({
+      id: "backup",
+      title: t("ft_backup_failed", { t: clockStamp(history.backup_failed.at, now) }),
+      body: backupReason(history.backup_failed, history.last_backup),
+    });
+  }
+  if (history.unreadable_files > 0) {
+    findings.push({
+      id: "unreadable",
+      title: tn("ft_unreadable", history.unreadable_files),
+      body: t("mb_unread_b"),
+    });
+  }
+  const rows: HistoryRow[] = [];
+  if (app.as_of !== null) {
+    rows.push({ id: "updated", label: t("more_l_updated"), value: clockStamp(app.as_of, now) });
+  }
+  if (history.oldest !== null) {
+    rows.push({ id: "since", label: t("more_l_since"), value: dayLong(history.oldest) });
+  }
+  if (history.backup_failed !== null) {
+    rows.push({
+      id: "backup",
+      label: t("more_l_backup"),
+      value: t("ft_backup_failed", { t: clockStamp(history.backup_failed.at, now) }),
+      warn: true,
+    });
+  } else if (history.last_backup !== null) {
+    rows.push({
+      id: "backup",
+      label: t("more_l_backup"),
+      value: clockStamp(history.last_backup, now),
+    });
+  }
+  if (prices !== undefined) {
+    rows.push({ id: "prices", label: t("more_l_prices"), value: pricesValue(prices) });
+  }
+  return { findings, rows };
+}
 
 export function MorePage() {
   const project = useActiveProject(null);
   const app = useAppInfo(project);
+  const prices = usePrices();
+  const card =
+    app.data === undefined ? null : historyCardParts(app.data, prices.data, app.data.server_time);
   return (
     <>
       <PageHeader title={t("more_h1")} />
       <div className="grid">
+        {card !== null && (
+          <HistoryCard title={t("more_hist_h")} findings={card.findings} rows={card.rows} />
+        )}
         <MoreCard
           title={t("nav_ref_h")}
           rows={[

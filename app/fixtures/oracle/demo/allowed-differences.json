@@ -1,0 +1,25 @@
+{
+  "_doc": "Each entry is {path, reason, plan_ref}. path names a payload field, for example usage-30d-all.json:views.30d.totals.cost. reason says why the new answer may differ from the old one. plan_ref points to the plan section that allows it.",
+  "differences": [
+    {
+      "path": "projects.json:projects.lantern.state",
+      "plan_ref": "docs/rebuild/planning/m1-build.md section 3, task 3 (rename) and section 4, GET /api/projects",
+      "reason": "The state word missing_folder is renamed folder_not_found."
+    },
+    {
+      "path": "projects.json:projects.quarry-notes.name",
+      "plan_ref": "docs/rebuild/planning/m1-build.md section 4, GET /api/projects",
+      "reason": "A transcript folder that no listed project claims becomes an unlisted project. The old /api/projects listed only routing-dashboard.json entries and counted quarry-notes in All projects without naming it. Its name is the cwd basename and its state follows its cwd (the demo has no quarry-notes folder on disk)."
+    },
+    {
+      "path": "projects.json:projects.quarry-notes.path_display",
+      "plan_ref": "docs/rebuild/planning/m1-build.md section 4, GET /api/projects",
+      "reason": "A transcript folder that no listed project claims becomes an unlisted project. The old /api/projects listed only routing-dashboard.json entries and counted quarry-notes in All projects without naming it. Its name is the cwd basename and its state follows its cwd (the demo has no quarry-notes folder on disk)."
+    },
+    {
+      "path": "projects.json:projects.quarry-notes.state",
+      "plan_ref": "docs/rebuild/planning/m1-build.md section 4, GET /api/projects",
+      "reason": "A transcript folder that no listed project claims becomes an unlisted project. The old /api/projects listed only routing-dashboard.json entries and counted quarry-notes in All projects without naming it. Its name is the cwd basename and its state follows its cwd (the demo has no quarry-notes folder on disk)."
+    }
+  ]
+}

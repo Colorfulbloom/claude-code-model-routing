@@ -1,0 +1,1529 @@
+{
+  "generated_at": "2026-10-30T18:00:00-04:00",
+  "model_names": {
+    "claude-fable-5": "Fable 5",
+    "claude-fable-5-1": "Fable 5.1",
+    "claude-haiku-4-5": "Haiku 4.5",
+    "claude-haiku-5-5": "Haiku 5.5",
+    "claude-opus-4-6": "Opus 4.6",
+    "claude-opus-4-7": "Opus 4.7",
+    "claude-opus-4-8": "Opus 4.8",
+    "claude-opus-5": "Opus 5",
+    "claude-opus-5-5": "Opus 5.5",
+    "claude-sonnet-4-6": "Sonnet 4.6",
+    "claude-sonnet-5": "Sonnet 5",
+    "claude-sonnet-5-5": "Sonnet 5.5"
+  },
+  "no_usage": false,
+  "prices": {
+    "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+    "verified_on": "2026-10-30"
+  },
+  "project": "all",
+  "unreadable": null,
+  "views": {
+    "today": {
+      "axis": {
+        "runs_ticks": [
+          0,
+          2,
+          4,
+          6
+        ],
+        "tokens_max_nice": 4000000,
+        "tokens_ticks": [
+          0,
+          1000000,
+          2000000,
+          3000000,
+          4000000
+        ]
+      },
+      "bucket_unit": "hour",
+      "buckets": [
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 0,
+          "runs_by_agent": {},
+          "start": "2026-10-30T00:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 1,
+          "runs_by_agent": {},
+          "start": "2026-10-30T01:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 2,
+          "runs_by_agent": {},
+          "start": "2026-10-30T02:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 3,
+          "runs_by_agent": {},
+          "start": "2026-10-30T03:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 4,
+          "runs_by_agent": {},
+          "start": "2026-10-30T04:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 5,
+          "runs_by_agent": {},
+          "start": "2026-10-30T05:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 6,
+          "runs_by_agent": {},
+          "start": "2026-10-30T06:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 7,
+          "runs_by_agent": {},
+          "start": "2026-10-30T07:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 8,
+          "runs_by_agent": {},
+          "start": "2026-10-30T08:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 9,
+          "runs_by_agent": {},
+          "start": "2026-10-30T09:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 10,
+          "runs_by_agent": {},
+          "start": "2026-10-30T10:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 11,
+          "runs_by_agent": {},
+          "start": "2026-10-30T11:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 12,
+          "runs_by_agent": {},
+          "start": "2026-10-30T12:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {
+            "claude-sonnet-5-5": 679007
+          },
+          "date": "2026-10-30",
+          "hour": 13,
+          "runs_by_agent": {
+            "@main": 1
+          },
+          "start": "2026-10-30T13:00:00-04:00",
+          "tokens": 679007
+        },
+        {
+          "by_model": {
+            "claude-fable-5-1": 2084393,
+            "claude-opus-5-5": 889505,
+            "claude-sonnet-5-5": 158633
+          },
+          "date": "2026-10-30",
+          "hour": 14,
+          "runs_by_agent": {
+            "@main": 1,
+            "builder": 2,
+            "reviewer": 1
+          },
+          "start": "2026-10-30T14:00:00-04:00",
+          "tokens": 3132531
+        },
+        {
+          "by_model": {
+            "claude-haiku-5-5": 63115,
+            "claude-opus-6-preview": 482411,
+            "claude-sonnet-5-5": 207315
+          },
+          "date": "2026-10-30",
+          "hour": 15,
+          "runs_by_agent": {
+            "@main": 1,
+            "reviewer": 1,
+            "scribe": 1
+          },
+          "start": "2026-10-30T15:00:00-04:00",
+          "tokens": 752841
+        },
+        {
+          "by_model": {
+            "claude-haiku-5-5": 166290,
+            "claude-opus-5-5": 503227,
+            "claude-sonnet-5-5": 278223
+          },
+          "date": "2026-10-30",
+          "hour": 16,
+          "runs_by_agent": {
+            "@main": 1,
+            "reviewer": 2,
+            "scribe": 2
+          },
+          "start": "2026-10-30T16:00:00-04:00",
+          "tokens": 947740
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 17,
+          "runs_by_agent": {},
+          "start": "2026-10-30T17:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 18,
+          "runs_by_agent": {},
+          "start": "2026-10-30T18:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 19,
+          "runs_by_agent": {},
+          "start": "2026-10-30T19:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 20,
+          "runs_by_agent": {},
+          "start": "2026-10-30T20:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 21,
+          "runs_by_agent": {},
+          "start": "2026-10-30T21:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 22,
+          "runs_by_agent": {},
+          "start": "2026-10-30T22:00:00-04:00",
+          "tokens": 0
+        },
+        {
+          "by_model": {},
+          "date": "2026-10-30",
+          "hour": 23,
+          "runs_by_agent": {},
+          "start": "2026-10-30T23:00:00-04:00",
+          "tokens": 0
+        }
+      ],
+      "by_agent": [
+        {
+          "agent": "builder",
+          "cache_read": 1622738,
+          "cache_write": 316934,
+          "cache_write_1h": 21005,
+          "cache_write_5m": 295929,
+          "cost": 8.321307000000001,
+          "cost_by_kind": {
+            "cache_read": 0.4056845,
+            "cache_write": 4.1192125,
+            "input": 0.8599100000000003,
+            "output": 2.9365000000000006
+          },
+          "display": "builder",
+          "hit_rate": 0.8010898160256666,
+          "input": 85991,
+          "output": 58730,
+          "pin": null,
+          "ran_with": [
+            {
+              "effort": "medium",
+              "model": "claude-fable-5-1",
+              "requests": 34,
+              "runs": 2
+            }
+          ],
+          "recent_runs": [
+            {
+              "cost": 4.628356500000001,
+              "effort": "medium",
+              "hit_rate": 0.8015283858970654,
+              "model": "claude-fable-5-1",
+              "project": "Tidewater reporting",
+              "requests": 19,
+              "run_id": "a04e4477cb7b",
+              "session_id": "e795e3be-36e4-49d3-8e70-f65f6ea40e17",
+              "session_started": "2026-10-30T14:01:28.859000-04:00",
+              "started": "2026-10-30T14:22:56.817000-04:00",
+              "tokens": 1114674,
+              "unpriced_requests": 0
+            },
+            {
+              "cost": 3.6929504999999994,
+              "effort": "medium",
+              "hit_rate": 0.8005891115854735,
+              "model": "claude-fable-5-1",
+              "project": "Tidewater reporting",
+              "requests": 15,
+              "run_id": "fa62e3a19620",
+              "session_id": "e795e3be-36e4-49d3-8e70-f65f6ea40e17",
+              "session_started": "2026-10-30T14:01:28.859000-04:00",
+              "started": "2026-10-30T14:21:01.628000-04:00",
+              "tokens": 969719,
+              "unpriced_requests": 0
+            }
+          ],
+          "requests": 34,
+          "route_key": "builder",
+          "runs": 2,
+          "runs_per_day": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            2,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "runs_ticks": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "sessions": 1,
+          "thinking": 17132,
+          "tokens": 2084393,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "agent": null,
+          "cache_read": 1937801,
+          "cache_write": 407188,
+          "cache_write_1h": 29680,
+          "cache_write_5m": 377508,
+          "cost": 2.9974125999999996,
+          "cost_by_kind": {
+            "cache_read": 0.26383310000000004,
+            "cache_write": 1.4254655,
+            "input": 0.3696940000000001,
+            "output": 0.9384200000000003
+          },
+          "display": "Main session",
+          "hit_rate": 0.7798308905110429,
+          "input": 139910,
+          "output": 69251,
+          "pin": null,
+          "ran_with": [
+            {
+              "effort": "high",
+              "model": "claude-opus-5-5",
+              "requests": 35,
+              "runs": 2
+            },
+            {
+              "effort": "medium",
+              "model": "claude-sonnet-5-5",
+              "requests": 28,
+              "runs": 1
+            },
+            {
+              "effort": "medium",
+              "model": "claude-opus-6-preview",
+              "requests": 15,
+              "runs": 1
+            }
+          ],
+          "recent_runs": [
+            {
+              "cost": 0.7576158000000001,
+              "effort": "high",
+              "hit_rate": 0.804684945915597,
+              "model": "claude-opus-5-5",
+              "project": "Tidewater reporting",
+              "requests": 11,
+              "run_id": null,
+              "session_id": "c57d41c0-9c54-4701-ac0b-85822561f2ab",
+              "session_started": "2026-10-30T16:01:05.527000-04:00",
+              "started": "2026-10-30T16:01:05.527000-04:00",
+              "tokens": 503227,
+              "unpriced_requests": 0
+            },
+            {
+              "cost": 0.0,
+              "effort": "medium",
+              "hit_rate": 0.7861468729385228,
+              "model": "claude-opus-6-preview",
+              "project": "Driftwood",
+              "requests": 15,
+              "run_id": null,
+              "session_id": "23af5b50-39fa-4dcd-ae66-0c17b8e46b8f",
+              "session_started": "2026-10-30T15:02:52.425000-04:00",
+              "started": "2026-10-30T15:02:52.425000-04:00",
+              "tokens": 482411,
+              "unpriced_requests": 15
+            },
+            {
+              "cost": 1.6059839999999996,
+              "effort": "high",
+              "hit_rate": 0.7804548019031753,
+              "model": "claude-opus-5-5",
+              "project": "Tidewater reporting",
+              "requests": 24,
+              "run_id": null,
+              "session_id": "e795e3be-36e4-49d3-8e70-f65f6ea40e17",
+              "session_started": "2026-10-30T14:01:28.859000-04:00",
+              "started": "2026-10-30T14:01:28.859000-04:00",
+              "tokens": 889505,
+              "unpriced_requests": 0
+            },
+            {
+              "cost": 0.6338127999999998,
+              "effort": "medium",
+              "hit_rate": 0.7559475147464998,
+              "model": "claude-sonnet-5-5",
+              "project": "quarry-notes",
+              "requests": 28,
+              "run_id": null,
+              "session_id": "3b056c41-3a3d-465d-8249-dce13a1ecbea",
+              "session_started": "2026-10-30T13:03:24.608000-04:00",
+              "started": "2026-10-30T13:03:24.608000-04:00",
+              "tokens": 679007,
+              "unpriced_requests": 0
+            }
+          ],
+          "requests": 78,
+          "route_key": "@main",
+          "runs": 0,
+          "runs_per_day": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            1,
+            1,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "runs_ticks": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "sessions": 4,
+          "thinking": 23055,
+          "tokens": 2554150,
+          "unpriced_requests": 15,
+          "unpriced_tokens": 482411
+        },
+        {
+          "agent": "reviewer",
+          "cache_read": 494983,
+          "cache_write": 99775,
+          "cache_write_1h": 13897,
+          "cache_write_5m": 85878,
+          "cost": 0.5383113,
+          "cost_by_kind": {
+            "cache_read": 0.0494983,
+            "cache_write": 0.270283,
+            "input": 0.06889999999999999,
+            "output": 0.14963000000000004
+          },
+          "display": "reviewer",
+          "hit_rate": 0.7866762660360326,
+          "input": 34450,
+          "output": 14963,
+          "pin": null,
+          "ran_with": [
+            {
+              "effort": "xhigh",
+              "model": "claude-sonnet-5-5",
+              "requests": 16,
+              "runs": 3
+            },
+            {
+              "effort": "high",
+              "model": "claude-sonnet-5-5",
+              "requests": 8,
+              "runs": 1
+            }
+          ],
+          "recent_runs": [
+            {
+              "cost": 0.1567884,
+              "effort": "xhigh",
+              "hit_rate": 0.7625974333896447,
+              "model": "claude-sonnet-5-5",
+              "project": "Tidewater reporting",
+              "requests": 7,
+              "run_id": "9dbc38e58a7f",
+              "session_id": "c57d41c0-9c54-4701-ac0b-85822561f2ab",
+              "session_started": "2026-10-30T16:01:05.527000-04:00",
+              "started": "2026-10-30T16:17:55.958000-04:00",
+              "tokens": 173316,
+              "unpriced_requests": 0
+            },
+            {
+              "cost": 0.0899241,
+              "effort": "xhigh",
+              "hit_rate": 0.7740791748468954,
+              "model": "claude-sonnet-5-5",
+              "project": "Tidewater reporting",
+              "requests": 4,
+              "run_id": "4f102caa7f0e",
+              "session_id": "c57d41c0-9c54-4701-ac0b-85822561f2ab",
+              "session_started": "2026-10-30T16:01:05.527000-04:00",
+              "started": "2026-10-30T16:13:18.075000-04:00",
+              "tokens": 104907,
+              "unpriced_requests": 0
+            },
+            {
+              "cost": 0.17206720000000003,
+              "effort": "high",
+              "hit_rate": 0.7879395450111826,
+              "model": "claude-sonnet-5-5",
+              "project": "Driftwood",
+              "requests": 8,
+              "run_id": "bb31117eb986",
+              "session_id": "23af5b50-39fa-4dcd-ae66-0c17b8e46b8f",
+              "session_started": "2026-10-30T15:02:52.425000-04:00",
+              "started": "2026-10-30T15:27:15.568000-04:00",
+              "tokens": 207315,
+              "unpriced_requests": 0
+            },
+            {
+              "cost": 0.1195316,
+              "effort": "xhigh",
+              "hit_rate": 0.8195232324274148,
+              "model": "claude-sonnet-5-5",
+              "project": "Tidewater reporting",
+              "requests": 5,
+              "run_id": "0bb2079fc10f",
+              "session_id": "e795e3be-36e4-49d3-8e70-f65f6ea40e17",
+              "session_started": "2026-10-30T14:01:28.859000-04:00",
+              "started": "2026-10-30T14:15:57.156000-04:00",
+              "tokens": 158633,
+              "unpriced_requests": 0
+            }
+          ],
+          "requests": 24,
+          "route_key": "reviewer",
+          "runs": 4,
+          "runs_per_day": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            1,
+            2,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "runs_ticks": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "sessions": 3,
+          "thinking": 4091,
+          "tokens": 644171,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "agent": "scribe",
+          "cache_read": 127944,
+          "cache_write": 55027,
+          "cache_write_1h": 4676,
+          "cache_write_5m": 50351,
+          "cost": 0.019046715,
+          "cost_by_kind": {
+            "cache_read": 0.00127944,
+            "cache_write": 0.007229075,
+            "input": 0.0031697000000000006,
+            "output": 0.007368500000000001
+          },
+          "display": "scribe",
+          "hit_rate": 0.5960087204427301,
+          "input": 31697,
+          "output": 14737,
+          "pin": null,
+          "ran_with": [
+            {
+              "effort": "high",
+              "model": "claude-haiku-5-5",
+              "requests": 25,
+              "runs": 2
+            },
+            {
+              "effort": "medium",
+              "model": "claude-haiku-5-5",
+              "requests": 9,
+              "runs": 1
+            }
+          ],
+          "recent_runs": [
+            {
+              "cost": 0.00592031,
+              "effort": "high",
+              "hit_rate": 0.5547072123734312,
+              "model": "claude-haiku-5-5",
+              "project": "Tidewater reporting",
+              "requests": 10,
+              "run_id": "360f291fc826",
+              "session_id": "c57d41c0-9c54-4701-ac0b-85822561f2ab",
+              "session_started": "2026-10-30T16:01:05.527000-04:00",
+              "started": "2026-10-30T16:26:45.143000-04:00",
+              "tokens": 65528,
+              "unpriced_requests": 0
+            },
+            {
+              "cost": 0.008412375000000001,
+              "effort": "high",
+              "hit_rate": 0.5916549759809548,
+              "model": "claude-haiku-5-5",
+              "project": "Tidewater reporting",
+              "requests": 15,
+              "run_id": "383168002f8a",
+              "session_id": "c57d41c0-9c54-4701-ac0b-85822561f2ab",
+              "session_started": "2026-10-30T16:01:05.527000-04:00",
+              "started": "2026-10-30T16:16:41.666000-04:00",
+              "tokens": 100762,
+              "unpriced_requests": 0
+            },
+            {
+              "cost": 0.004714029999999999,
+              "effort": "medium",
+              "hit_rate": 0.6452252191730207,
+              "model": "claude-haiku-5-5",
+              "project": "Driftwood",
+              "requests": 9,
+              "run_id": "1dbdfd782950",
+              "session_id": "23af5b50-39fa-4dcd-ae66-0c17b8e46b8f",
+              "session_started": "2026-10-30T15:02:52.425000-04:00",
+              "started": "2026-10-30T15:23:24.792000-04:00",
+              "tokens": 63115,
+              "unpriced_requests": 0
+            }
+          ],
+          "requests": 34,
+          "route_key": "scribe",
+          "runs": 3,
+          "runs_per_day": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            2,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "runs_ticks": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "sessions": 2,
+          "thinking": 4495,
+          "tokens": 229405,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        }
+      ],
+      "by_effort": [
+        {
+          "cache_read": 0,
+          "cache_write": 0,
+          "cache_write_1h": 0,
+          "cache_write_5m": 0,
+          "cost": 0.0,
+          "cost_by_kind": {
+            "cache_read": 0.0,
+            "cache_write": 0.0,
+            "input": 0.0,
+            "output": 0.0
+          },
+          "effort": "low",
+          "hit_rate": null,
+          "input": 0,
+          "output": 0,
+          "requests": 0,
+          "runs": 0,
+          "sessions": 0,
+          "thinking": null,
+          "tokens": 0,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "cache_read": 2528993,
+          "cache_write": 520521,
+          "cache_write_1h": 35837,
+          "cache_write_5m": 484684,
+          "cost": 8.959833829999997,
+          "cost_by_kind": {
+            "cache_read": 0.45590897999999996,
+            "cache_write": 4.417094549999998,
+            "input": 0.9515638000000002,
+            "output": 3.1352665
+          },
+          "effort": "medium",
+          "hit_rate": 0.7867590787084796,
+          "input": 164930,
+          "output": 94482,
+          "requests": 86,
+          "runs": 3,
+          "sessions": 3,
+          "thinking": 27720,
+          "tokens": 3308926,
+          "unpriced_requests": 15,
+          "unpriced_tokens": 482411
+        },
+        {
+          "cache_read": 1319437,
+          "cache_write": 291081,
+          "cache_write_1h": 26552,
+          "cache_write_5m": 264529,
+          "cost": 2.549999685,
+          "cost_by_kind": {
+            "cache_read": 0.23088276000000002,
+            "cache_write": 1.2264870250000002,
+            "input": 0.30239789999999994,
+            "output": 0.7902320000000002
+          },
+          "effort": "high",
+          "hit_rate": 0.7698987034508513,
+          "input": 103262,
+          "output": 52557,
+          "requests": 68,
+          "runs": 3,
+          "sessions": 3,
+          "thinking": 18137,
+          "tokens": 1766337,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "cache_read": 335036,
+          "cache_write": 67322,
+          "cache_write_1h": 6869,
+          "cache_write_5m": 60453,
+          "cost": 0.36624409999999996,
+          "cost_by_kind": {
+            "cache_read": 0.033503599999999994,
+            "cache_write": 0.17860849999999995,
+            "input": 0.047712,
+            "output": 0.10642
+          },
+          "effort": "xhigh",
+          "hit_rate": 0.7860746010220218,
+          "input": 23856,
+          "output": 10642,
+          "requests": 16,
+          "runs": 3,
+          "sessions": 2,
+          "thinking": 2916,
+          "tokens": 436856,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        }
+      ],
+      "by_model": [
+        {
+          "agents": [
+            "builder"
+          ],
+          "cache_read": 1622738,
+          "cache_write": 316934,
+          "cache_write_1h": 21005,
+          "cache_write_5m": 295929,
+          "cat": 4,
+          "cost": 8.321307000000001,
+          "cost_by_kind": {
+            "cache_read": 0.4056845,
+            "cache_write": 4.1192125,
+            "input": 0.8599100000000003,
+            "output": 2.9365000000000006
+          },
+          "display_name": "Fable 5.1",
+          "hit_rate": 0.8010898160256666,
+          "input": 85991,
+          "model": "claude-fable-5-1",
+          "output": 58730,
+          "requests": 34,
+          "runs": 2,
+          "sessions": 1,
+          "share_lt1": false,
+          "share_pct": 70,
+          "thinking": 17132,
+          "tokens": 2084393,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "agents": [
+            "Main session"
+          ],
+          "cache_read": 1069964,
+          "cache_write": 215967,
+          "cache_write_1h": 16472,
+          "cache_write_5m": 199495,
+          "cat": 1,
+          "cost": 2.3635998,
+          "cost_by_kind": {
+            "cache_read": 0.21399280000000004,
+            "cache_write": 1.1292509999999998,
+            "input": 0.27891599999999994,
+            "output": 0.7414399999999999
+          },
+          "display_name": "Opus 5.5",
+          "hit_rate": 0.7892568933213343,
+          "input": 69729,
+          "model": "claude-opus-5-5",
+          "output": 37072,
+          "requests": 35,
+          "runs": 0,
+          "sessions": 2,
+          "share_lt1": false,
+          "share_pct": 20,
+          "thinking": 13678,
+          "tokens": 1392732,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "agents": [
+            "Main session",
+            "reviewer"
+          ],
+          "cache_read": 993386,
+          "cache_write": 215292,
+          "cache_write_1h": 18845,
+          "cache_write_5m": 196447,
+          "cat": 2,
+          "cost": 1.1721241,
+          "cost_by_kind": {
+            "cache_read": 0.09933860000000001,
+            "cache_write": 0.5664975000000001,
+            "input": 0.159678,
+            "output": 0.34661
+          },
+          "display_name": "Sonnet 5.5",
+          "hit_rate": 0.7709529637560079,
+          "input": 79839,
+          "model": "claude-sonnet-5-5",
+          "output": 34661,
+          "requests": 52,
+          "runs": 4,
+          "sessions": 4,
+          "share_lt1": false,
+          "share_pct": 10,
+          "thinking": 10213,
+          "tokens": 1323178,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "agents": [
+            "scribe"
+          ],
+          "cache_read": 127944,
+          "cache_write": 55027,
+          "cache_write_1h": 4676,
+          "cache_write_5m": 50351,
+          "cat": 3,
+          "cost": 0.019046715,
+          "cost_by_kind": {
+            "cache_read": 0.00127944,
+            "cache_write": 0.007229075,
+            "input": 0.0031697000000000006,
+            "output": 0.007368500000000001
+          },
+          "display_name": "Haiku 5.5",
+          "hit_rate": 0.5960087204427301,
+          "input": 31697,
+          "model": "claude-haiku-5-5",
+          "output": 14737,
+          "requests": 34,
+          "runs": 3,
+          "sessions": 2,
+          "share_lt1": true,
+          "share_pct": 0,
+          "thinking": 4495,
+          "tokens": 229405,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "agents": [
+            "Main session"
+          ],
+          "cache_read": 369434,
+          "cache_write": 75704,
+          "cache_write_1h": 8260,
+          "cache_write_5m": 67444,
+          "cat": "other",
+          "cost": null,
+          "cost_by_kind": {
+            "cache_read": 0.0,
+            "cache_write": 0.0,
+            "input": 0.0,
+            "output": 0.0
+          },
+          "display_name": "claude-opus-6-preview",
+          "hit_rate": 0.7861468729385228,
+          "input": 24792,
+          "model": "claude-opus-6-preview",
+          "output": 12481,
+          "requests": 15,
+          "runs": 0,
+          "sessions": 1,
+          "share_lt1": false,
+          "share_pct": 0,
+          "thinking": 3255,
+          "tokens": 482411,
+          "unpriced_requests": 15,
+          "unpriced_tokens": 482411
+        }
+      ],
+      "by_project": [
+        {
+          "cache_read": 3117264,
+          "cache_write": 642884,
+          "cache_write_1h": 47398,
+          "cache_write_5m": 595486,
+          "cost": 11.065483584999996,
+          "cost_by_kind": {
+            "cache_read": 0.6540761600000001,
+            "cache_write": 5.432633525,
+            "input": 1.1888319000000003,
+            "output": 3.7899420000000004
+          },
+          "hit_rate": 0.7866588705625485,
+          "input": 202515,
+          "key": "tidewater-reporting",
+          "listed": true,
+          "name": "Tidewater reporting",
+          "output": 117608,
+          "requests": 110,
+          "runs": 7,
+          "sessions": 2,
+          "thinking": 37010,
+          "tokens": 4080271,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "cache_read": 498403,
+          "cache_write": 115517,
+          "cache_write_1h": 4948,
+          "cache_write_5m": 110569,
+          "cost": 0.6338127999999998,
+          "cost_by_kind": {
+            "cache_read": 0.049840300000000004,
+            "cache_write": 0.29621450000000005,
+            "input": 0.09077800000000001,
+            "output": 0.19698
+          },
+          "hit_rate": 0.7559475147464998,
+          "input": 45389,
+          "key": null,
+          "listed": false,
+          "name": "quarry-notes",
+          "output": 19698,
+          "requests": 28,
+          "runs": 0,
+          "sessions": 1,
+          "thinking": 6122,
+          "tokens": 679007,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "cache_read": 567799,
+          "cache_write": 120523,
+          "cache_write_1h": 16912,
+          "cache_write_5m": 103611,
+          "cost": 0.17678122999999996,
+          "cost_by_kind": {
+            "cache_read": 0.016378880000000002,
+            "cache_write": 0.09334205000000002,
+            "input": 0.022063799999999998,
+            "output": 0.044996499999999995
+          },
+          "hit_rate": 0.7751881998618366,
+          "input": 44144,
+          "key": "driftwood",
+          "listed": true,
+          "name": "Driftwood",
+          "output": 20375,
+          "requests": 32,
+          "runs": 2,
+          "sessions": 1,
+          "thinking": 5641,
+          "tokens": 752841,
+          "unpriced_requests": 15,
+          "unpriced_tokens": 482411
+        }
+      ],
+      "deltas": {
+        "cost_pct": -37.297225172568155,
+        "hit_rate_pts": 1.2530258479719447,
+        "runs_pct": -50.0,
+        "tokens_pct": -33.857728309205086
+      },
+      "end": "2026-10-30T18:00:00-04:00",
+      "notes": {
+        "malformed_lines": 0,
+        "no_id_rows": 0,
+        "skipped_old_files": 5,
+        "synthetic_rows": 0,
+        "tz_fixed": false,
+        "unpriced": [
+          {
+            "model": "claude-opus-6-preview",
+            "requests": 15,
+            "tokens": 482411
+          }
+        ]
+      },
+      "previous": {
+        "cache_read": 6217834,
+        "cache_write": 1410162,
+        "cache_write_1h": 137995,
+        "cache_write_5m": 1272167,
+        "cost": 18.940274409999994,
+        "cost_by_kind": {
+          "cache_read": 1.0900614099999992,
+          "cache_write": 9.422692499999997,
+          "input": 2.1031999999999997,
+          "output": 6.324320500000003
+        },
+        "hit_rate": 0.768777882542737,
+        "input": 459950,
+        "output": 245785,
+        "requests": 261,
+        "runs": 18,
+        "sessions": 5,
+        "thinking": 75026,
+        "tokens": 8333731,
+        "unpriced_requests": 19,
+        "unpriced_tokens": 599251
+      },
+      "previous_end": "2026-10-29T18:00:00-04:00",
+      "previous_start": "2026-10-29T00:00:00-04:00",
+      "range": "today",
+      "sessions": [
+        {
+          "agents": [
+            "reviewer",
+            "scribe"
+          ],
+          "branch": "feature/quarter-close",
+          "by_agent": [
+            {
+              "agent": null,
+              "cache_read": 396284,
+              "cache_write": 71900,
+              "cache_write_1h": 2197,
+              "cache_write_5m": 69703,
+              "cost": 0.7576158000000001,
+              "cost_by_kind": {
+                "cache_read": 0.0792568,
+                "cache_write": 0.366091,
+                "input": 0.09714800000000001,
+                "output": 0.21512
+              },
+              "hit_rate": 0.804684945915597,
+              "input": 24287,
+              "output": 10756,
+              "requests": 11,
+              "runs": 0,
+              "sessions": 1,
+              "thinking": 4244,
+              "tokens": 503227,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            },
+            {
+              "agent": "reviewer",
+              "cache_read": 207905,
+              "cache_write": 45571,
+              "cache_write_1h": 3603,
+              "cache_write_5m": 41968,
+              "cost": 0.24671250000000003,
+              "cost_by_kind": {
+                "cache_read": 0.020790499999999996,
+                "cache_write": 0.119332,
+                "input": 0.03522,
+                "output": 0.07136999999999999
+              },
+              "hit_rate": 0.7669337405841689,
+              "input": 17610,
+              "output": 7137,
+              "requests": 11,
+              "runs": 2,
+              "sessions": 1,
+              "thinking": 1919,
+              "tokens": 278223,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            },
+            {
+              "agent": "scribe",
+              "cache_read": 89526,
+              "cache_write": 42661,
+              "cache_write_1h": 3052,
+              "cache_write_5m": 39609,
+              "cost": 0.014332685000000003,
+              "cost_by_kind": {
+                "cache_read": 0.0008952600000000004,
+                "cache_write": 0.005561525,
+                "input": 0.0022939000000000006,
+                "output": 0.005582000000000001
+              },
+              "hit_rate": 0.5771179557263129,
+              "input": 22939,
+              "output": 11164,
+              "requests": 25,
+              "runs": 2,
+              "sessions": 1,
+              "thinking": 3284,
+              "tokens": 166290,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            }
+          ],
+          "cache_read": 693715,
+          "cache_write": 160132,
+          "cache_write_1h": 8852,
+          "cache_write_5m": 151280,
+          "cost": 1.0186609849999997,
+          "cost_by_kind": {
+            "cache_read": 0.10094255999999997,
+            "cache_write": 0.49098452500000017,
+            "input": 0.13466189999999995,
+            "output": 0.292072
+          },
+          "hit_rate": 0.7551190127606585,
+          "input": 64836,
+          "output": 29057,
+          "project": "Tidewater reporting",
+          "requests": 47,
+          "runs": 4,
+          "session_id": "c57d41c0-9c54-4701-ac0b-85822561f2ab",
+          "sessions": 1,
+          "started": "2026-10-30T16:01:05.527000-04:00",
+          "thinking": 9447,
+          "tokens": 947740,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "agents": [
+            "reviewer",
+            "scribe"
+          ],
+          "branch": "main",
+          "by_agent": [
+            {
+              "agent": "reviewer",
+              "cache_read": 159947,
+              "cache_write": 32453,
+              "cache_write_1h": 7028,
+              "cache_write_5m": 25425,
+              "cost": 0.17206720000000003,
+              "cost_by_kind": {
+                "cache_read": 0.0159947,
+                "cache_write": 0.0916745,
+                "input": 0.021188000000000002,
+                "output": 0.04321
+              },
+              "hit_rate": 0.7879395450111826,
+              "input": 10594,
+              "output": 4321,
+              "requests": 8,
+              "runs": 1,
+              "sessions": 1,
+              "thinking": 1175,
+              "tokens": 207315,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            },
+            {
+              "agent": "scribe",
+              "cache_read": 38418,
+              "cache_write": 12366,
+              "cache_write_1h": 1624,
+              "cache_write_5m": 10742,
+              "cost": 0.004714029999999999,
+              "cost_by_kind": {
+                "cache_read": 0.00038418,
+                "cache_write": 0.0016675499999999998,
+                "input": 0.0008758000000000001,
+                "output": 0.0017865000000000001
+              },
+              "hit_rate": 0.6452252191730207,
+              "input": 8758,
+              "output": 3573,
+              "requests": 9,
+              "runs": 1,
+              "sessions": 1,
+              "thinking": 1211,
+              "tokens": 63115,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            },
+            {
+              "agent": null,
+              "cache_read": 369434,
+              "cache_write": 75704,
+              "cache_write_1h": 8260,
+              "cache_write_5m": 67444,
+              "cost": 0.0,
+              "cost_by_kind": {
+                "cache_read": 0.0,
+                "cache_write": 0.0,
+                "input": 0.0,
+                "output": 0.0
+              },
+              "hit_rate": 0.7861468729385228,
+              "input": 24792,
+              "output": 12481,
+              "requests": 15,
+              "runs": 0,
+              "sessions": 1,
+              "thinking": 3255,
+              "tokens": 482411,
+              "unpriced_requests": 15,
+              "unpriced_tokens": 482411
+            }
+          ],
+          "cache_read": 567799,
+          "cache_write": 120523,
+          "cache_write_1h": 16912,
+          "cache_write_5m": 103611,
+          "cost": 0.17678122999999996,
+          "cost_by_kind": {
+            "cache_read": 0.016378880000000002,
+            "cache_write": 0.09334205000000002,
+            "input": 0.022063799999999998,
+            "output": 0.044996499999999995
+          },
+          "hit_rate": 0.7751881998618366,
+          "input": 44144,
+          "output": 20375,
+          "project": "Driftwood",
+          "requests": 32,
+          "runs": 2,
+          "session_id": "23af5b50-39fa-4dcd-ae66-0c17b8e46b8f",
+          "sessions": 1,
+          "started": "2026-10-30T15:02:52.425000-04:00",
+          "thinking": 5641,
+          "tokens": 752841,
+          "unpriced_requests": 15,
+          "unpriced_tokens": 482411
+        },
+        {
+          "agents": [
+            "builder",
+            "reviewer"
+          ],
+          "branch": "feature/quarter-close",
+          "by_agent": [
+            {
+              "agent": "builder",
+              "cache_read": 1622738,
+              "cache_write": 316934,
+              "cache_write_1h": 21005,
+              "cache_write_5m": 295929,
+              "cost": 8.321307000000001,
+              "cost_by_kind": {
+                "cache_read": 0.4056845,
+                "cache_write": 4.1192125,
+                "input": 0.8599100000000003,
+                "output": 2.9365000000000006
+              },
+              "hit_rate": 0.8010898160256666,
+              "input": 85991,
+              "output": 58730,
+              "requests": 34,
+              "runs": 2,
+              "sessions": 1,
+              "thinking": 17132,
+              "tokens": 2084393,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            },
+            {
+              "agent": null,
+              "cache_read": 673680,
+              "cache_write": 144067,
+              "cache_write_1h": 14275,
+              "cache_write_5m": 129792,
+              "cost": 1.6059839999999996,
+              "cost_by_kind": {
+                "cache_read": 0.13473600000000002,
+                "cache_write": 0.76316,
+                "input": 0.18176799999999999,
+                "output": 0.5263199999999999
+              },
+              "hit_rate": 0.7804548019031753,
+              "input": 45442,
+              "output": 26316,
+              "requests": 24,
+              "runs": 0,
+              "sessions": 1,
+              "thinking": 9434,
+              "tokens": 889505,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            },
+            {
+              "agent": "reviewer",
+              "cache_read": 127131,
+              "cache_write": 21751,
+              "cache_write_1h": 3266,
+              "cache_write_5m": 18485,
+              "cost": 0.1195316,
+              "cost_by_kind": {
+                "cache_read": 0.0127131,
+                "cache_write": 0.0592765,
+                "input": 0.012492,
+                "output": 0.03505
+              },
+              "hit_rate": 0.8195232324274148,
+              "input": 6246,
+              "output": 3505,
+              "requests": 5,
+              "runs": 1,
+              "sessions": 1,
+              "thinking": 997,
+              "tokens": 158633,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            }
+          ],
+          "cache_read": 2423549,
+          "cache_write": 482752,
+          "cache_write_1h": 38546,
+          "cache_write_5m": 444206,
+          "cost": 10.046822599999999,
+          "cost_by_kind": {
+            "cache_read": 0.5531336000000001,
+            "cache_write": 4.941649000000001,
+            "input": 1.05417,
+            "output": 3.4978700000000003
+          },
+          "hit_rate": 0.7961777015617711,
+          "input": 137679,
+          "output": 88551,
+          "project": "Tidewater reporting",
+          "requests": 63,
+          "runs": 3,
+          "session_id": "e795e3be-36e4-49d3-8e70-f65f6ea40e17",
+          "sessions": 1,
+          "started": "2026-10-30T14:01:28.859000-04:00",
+          "thinking": 27563,
+          "tokens": 3132531,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        },
+        {
+          "agents": [],
+          "branch": "main",
+          "by_agent": [
+            {
+              "agent": null,
+              "cache_read": 498403,
+              "cache_write": 115517,
+              "cache_write_1h": 4948,
+              "cache_write_5m": 110569,
+              "cost": 0.6338127999999998,
+              "cost_by_kind": {
+                "cache_read": 0.049840300000000004,
+                "cache_write": 0.29621450000000005,
+                "input": 0.09077800000000001,
+                "output": 0.19698
+              },
+              "hit_rate": 0.7559475147464998,
+              "input": 45389,
+              "output": 19698,
+              "requests": 28,
+              "runs": 0,
+              "sessions": 1,
+              "thinking": 6122,
+              "tokens": 679007,
+              "unpriced_requests": 0,
+              "unpriced_tokens": 0
+            }
+          ],
+          "cache_read": 498403,
+          "cache_write": 115517,
+          "cache_write_1h": 4948,
+          "cache_write_5m": 110569,
+          "cost": 0.6338127999999998,
+          "cost_by_kind": {
+            "cache_read": 0.049840300000000004,
+            "cache_write": 0.29621450000000005,
+            "input": 0.09077800000000001,
+            "output": 0.19698
+          },
+          "hit_rate": 0.7559475147464998,
+          "input": 45389,
+          "output": 19698,
+          "project": "quarry-notes",
+          "requests": 28,
+          "runs": 0,
+          "session_id": "3b056c41-3a3d-465d-8249-dce13a1ecbea",
+          "sessions": 1,
+          "started": "2026-10-30T13:03:24.608000-04:00",
+          "thinking": 6122,
+          "tokens": 679007,
+          "unpriced_requests": 0,
+          "unpriced_tokens": 0
+        }
+      ],
+      "start": "2026-10-30T00:00:00-04:00",
+      "totals": {
+        "cache_read": 4183466,
+        "cache_write": 878924,
+        "cache_write_1h": 69258,
+        "cache_write_5m": 809666,
+        "cost": 11.876077614999991,
+        "cost_by_kind": {
+          "cache_read": 0.7202953400000005,
+          "cache_write": 5.822190074999998,
+          "input": 1.3016737000000003,
+          "output": 4.031918500000002
+        },
+        "hit_rate": 0.7813081410224565,
+        "input": 292048,
+        "output": 157681,
+        "requests": 170,
+        "runs": 9,
+        "sessions": 4,
+        "thinking": 48773,
+        "tokens": 5512119,
+        "unpriced_requests": 15,
+        "unpriced_tokens": 482411
+      }
+    }
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "projects": {
+    "Driftwood": {
+      "cache_read": 6352007,
+      "cache_write_1h": 130039,
+      "cache_write_5m": 1236554,
+      "cost": 2.77861508,
+      "input": 484105,
+      "output": 239398,
+      "requests": 327,
+      "runs": 16,
+      "sessions": 9,
+      "thinking": 72601,
+      "unpriced_requests": 150
+    },
+    "Harbor Light": {
+      "cache_read": 3158469,
+      "cache_write_1h": 77067,
+      "cache_write_5m": 627619,
+      "cost": 5.46805044,
+      "input": 251748,
+      "output": 117375,
+      "requests": 165,
+      "runs": 9,
+      "sessions": 4,
+      "thinking": 34927,
+      "unpriced_requests": 0
+    },
+    "Tidewater reporting": {
+      "cache_read": 89076369,
+      "cache_write_1h": 1827034,
+      "cache_write_5m": 17040156,
+      "cost": 319.61503237,
+      "input": 5987439,
+      "output": 3317776,
+      "requests": 3259,
+      "runs": 190,
+      "sessions": 53,
+      "thinking": 999663,
+      "unpriced_requests": 0
+    }
+  },
+  "window": {
+    "end": "2026-10-30T22:00:00Z",
+    "start": "2026-10-01T04:00:00Z",
+    "tz": "America/New_York"
+  }
+}

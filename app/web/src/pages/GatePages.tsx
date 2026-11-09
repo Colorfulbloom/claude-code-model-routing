@@ -17,6 +17,8 @@ import type { ProgressStep } from "@/components/ProgressSteps/ProgressSteps";
 import { RaisedFinding } from "@/components/RaisedFinding/RaisedFinding";
 import { RetryRow } from "@/components/RetryRow/RetryRow";
 import { clockShort } from "@/lib/clock";
+import { percentOf, sizeParts } from "@/lib/size";
+import { VERSION } from "@/lib/version";
 import { t } from "@/strings/t";
 
 export const STOPPED_RETRY_MS = 10_000;
@@ -234,12 +236,6 @@ export function StoppedPage({ command, route }: StoppedPageProps) {
 export interface FirstRunContentProps {
   ingest: Ingest;
   command: string;
-  /** The clock time the current retry started, shown while ingest.retrying is true. */
-  retryingSince: string | null;
-}
-
-function count(n: number): string {
-  return n.toLocaleString("en-US");
 }
 
 /** Fills {file} with a code element, so the path reads in mono. A missing file leaves the gap out. */
@@ -257,6 +253,8 @@ function reasonLine(ingest: Ingest): React.ReactNode {
         return t("fr_fail_store_unwritable", { file: marker });
       case "store_damaged":
         return t("fr_fail_store_damaged", { file: marker });
+      case "store_newer":
+        return "";
       case "unexpected":
         return t("fr_fail_unexpected", { file: marker });
     }
@@ -272,32 +270,62 @@ function reasonLine(ingest: Ingest): React.ReactNode {
   );
 }
 
-export function FirstRunContent({ ingest, command, retryingSince }: FirstRunContentProps) {
+/** "1.2 of 2.0 GB" from the pass's bytes, or null while the totals are unknown. */
+export function sizeText(ingest: Pick<Ingest, "bytes_done" | "bytes_total">): string | null {
+  if (ingest.bytes_total === null || ingest.bytes_total <= 0) return null;
+  const parts = sizeParts(ingest.bytes_done, ingest.bytes_total);
+  return t("fr_size", { d: parts.done, t: parts.total });
+}
+
+export function StoreNewerContent({ command }: { command: string }) {
+  return (
+    <>
+      <span className="gate-warn glyph" aria-hidden="true" data-glyph="overridden" />
+      <h1 className="gate-title" data-gate="store-newer">
+        {t("sn_h")}
+      </h1>
+      <p>{t("sn_body", { old: VERSION })}</p>
+      <p>{t("sn_next")}</p>
+      <CommandRow command={command} copyLabel={t("lk_copy")} copiedLabel={t("cs_copied")} />
+    </>
+  );
+}
+
+export function FirstRunContent({ ingest, command }: FirstRunContentProps) {
+  if (ingest.error?.code === "store_newer") return <StoreNewerContent command={command} />;
   const failed = ingest.state === "failed";
-  const retrying = !failed && ingest.retrying && retryingSince !== null;
+  const kept = ingest.error !== null;
   const done: Pick<ProgressStep, "state" | "stateWord"> = {
     state: "done",
     stateWord: t("fr_done"),
   };
-  const files = t("fr_files", { n: count(ingest.files_done), m: count(ingest.files_total) });
-  const percent =
-    ingest.files_total > 0 ? Math.round((ingest.files_done / ingest.files_total) * 100) : 0;
+  const size = sizeText(ingest);
+  const counting = size === null;
   const third: ProgressStep = failed
-    ? { id: "3", name: t("fr_s3"), state: "failed", stateWord: t("fr_failed"), note: files }
-    : retrying
+    ? {
+        id: "3",
+        name: t("fr_s3"),
+        state: "failed",
+        stateWord: t("fr_failed"),
+        ...(size !== null ? { note: size } : {}),
+      }
+    : counting
       ? {
           id: "3",
           name: t("fr_s3"),
           state: "current",
           stateWord: t("fr_now"),
-          progress: { percent: 0, text: t("fr_retrying", { time: retryingSince }), live: true },
+          pending: t("fr_counting"),
         }
       : {
           id: "3",
           name: t("fr_s3"),
           state: "current",
           stateWord: t("fr_now"),
-          progress: { percent, text: files },
+          progress: {
+            percent: percentOf(ingest.bytes_done, ingest.bytes_total ?? 0),
+            text: size,
+          },
         };
   const steps: ProgressStep[] = [
     { id: "1", name: t("fr_s1"), ...done },
@@ -309,16 +337,22 @@ export function FirstRunContent({ ingest, command, retryingSince }: FirstRunCont
       <h1
         className="gate-title"
         data-gate="firstrun"
-        data-step-state={failed ? "failed" : retrying ? "retrying" : "running"}
+        data-step-state={failed ? "failed" : counting ? "counting" : "running"}
       >
         {t("fr_h")}
       </h1>
       <p>{t("fr_body")}</p>
       <ProgressSteps label={t("fr_h")} steps={steps} />
-      {failed ? (
+      {kept ? (
         <RaisedFinding variant="error" title={t("fr_fail_h")}>
           <p>{reasonLine(ingest)}</p>
-          <p>{t("fr_fail_fix")}</p>
+          {ingest.retry_at !== null && (
+            <p className="gate-next-try" role="status">
+              <span aria-hidden="true">{"\u21BB"}</span>{" "}
+              {t("fr_next_try", { t: clockShort(ingest.retry_at) })}
+            </p>
+          )}
+          <p>{ingest.retry_at !== null ? t("fr_fail_fix2") : t("fr_fail_fix")}</p>
           <CommandRow command={command} copyLabel={t("lk_copy")} copiedLabel={t("cs_copied")} />
         </RaisedFinding>
       ) : (
@@ -328,21 +362,44 @@ export function FirstRunContent({ ingest, command, retryingSince }: FirstRunCont
   );
 }
 
+/**
+ * Never lets the bar move back. Within one pass the totals are fixed, so a smaller bytes_done
+ * than one already shown is held at the larger. A new total, or a retry starting or ending,
+ * begins a new pass and forgets the old maximum.
+ */
+export function clampIngest(
+  ingest: Ingest,
+  seen: { total: number | null; retrying: boolean; max: number } | null,
+): { ingest: Ingest; seen: { total: number | null; retrying: boolean; max: number } } {
+  const samePass =
+    seen !== null && seen.total === ingest.bytes_total && seen.retrying === ingest.retrying;
+  const max = samePass ? Math.max(seen.max, ingest.bytes_done) : ingest.bytes_done;
+  return {
+    ingest: max === ingest.bytes_done ? ingest : { ...ingest, bytes_done: max },
+    seen: { total: ingest.bytes_total, retrying: ingest.retrying, max },
+  };
+}
+
 export function FirstRunPage({ info, command }: { info: AppInfo; command: string }) {
   const rootRef = useRef<HTMLDivElement>(null);
+  const storeNewer = info.ingest.error?.code === "store_newer";
   useHarness(rootRef, {
-    id: "first-run",
-    title: t("title_bare", { page: t("fr_h") }),
-    status: t("fr_h"),
+    id: storeNewer ? "store-newer" : "first-run",
+    title: t("title_bare", { page: storeNewer ? t("sn_h") : t("fr_h") }),
+    status: storeNewer ? t("sn_h") : t("fr_h"),
   });
-  // The retry line shows when this retry began, the first answer that said so.
-  const [since, setSince] = useState<string | null>(null);
-  const retrying = info.ingest.retrying;
-  if (retrying && since === null) setSince(clockShort(info.server_time));
-  if (!retrying && since !== null) setSince(null);
+  const [seen, setSeen] = useState<ReturnType<typeof clampIngest>["seen"] | null>(null);
+  const clamped = clampIngest(info.ingest, seen);
+  if (
+    seen?.max !== clamped.seen.max ||
+    seen.total !== clamped.seen.total ||
+    seen.retrying !== clamped.seen.retrying
+  ) {
+    setSeen(clamped.seen);
+  }
   return (
     <GatePage brand={t("product")} ref={rootRef}>
-      <FirstRunContent ingest={info.ingest} command={command} retryingSince={since} />
+      <FirstRunContent ingest={clamped.ingest} command={command} />
     </GatePage>
   );
 }
