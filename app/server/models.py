@@ -45,6 +45,14 @@ class ErrorEnvelope(_Response):
     path: list[str | int] | None
 
 
+# The 422 description is fixed here because FastAPI otherwise reads it from
+# ``http.HTTPStatus``, which Python 3.13 renamed from "Unprocessable Entity".
+INVALID_REQUEST_RESPONSE: dict[str, object] = {
+    "model": ErrorEnvelope,
+    "description": "Unprocessable Content",
+}
+
+
 class IngestError(_Response):
     """Why a first-run ingest failed. ``file`` is None when the contract names none."""
 

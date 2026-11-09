@@ -4,7 +4,14 @@ from typing import Annotated
 
 from fastapi import APIRouter, Query
 
-from models import PROJECT_KEY_PATTERN, AppInfo, ErrorEnvelope, PricesInfo, ProjectList
+from models import (
+    INVALID_REQUEST_RESPONSE,
+    PROJECT_KEY_PATTERN,
+    AppInfo,
+    ErrorEnvelope,
+    PricesInfo,
+    ProjectList,
+)
 from provider import Provider
 
 
@@ -21,7 +28,7 @@ def build_router(provider: Provider, instance: str) -> APIRouter:
     router = APIRouter(
         prefix="/api",
         tags=["app"],
-        responses={401: {"model": ErrorEnvelope}, 422: {"model": ErrorEnvelope}},
+        responses={401: {"model": ErrorEnvelope}, 422: INVALID_REQUEST_RESPONSE},
     )
 
     @router.get("/app", response_model=AppInfo, name="get_app")

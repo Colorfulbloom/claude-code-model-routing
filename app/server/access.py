@@ -18,6 +18,7 @@ from typing import Literal
 from fastapi import APIRouter, HTTPException
 
 from models import (
+    INVALID_REQUEST_RESPONSE,
     ErrorEnvelope,
     MintRequest,
     MintResponse,
@@ -160,7 +161,7 @@ def build_router(
         "/swap",
         response_model=SwapResponse,
         name="swap_code",
-        responses={403: {"model": ErrorEnvelope}, 422: {"model": ErrorEnvelope}},
+        responses={403: {"model": ErrorEnvelope}, 422: INVALID_REQUEST_RESPONSE},
     )
     def swap_code(body: SwapRequest) -> SwapResponse:
         try:
@@ -178,7 +179,7 @@ def build_router(
         "/mint",
         response_model=MintResponse,
         name="mint_code",
-        responses={401: {"model": ErrorEnvelope}, 422: {"model": ErrorEnvelope}},
+        responses={401: {"model": ErrorEnvelope}, 422: INVALID_REQUEST_RESPONSE},
     )
     def mint_code(body: MintRequest) -> MintResponse:
         code = state.mint_code(body.project)
