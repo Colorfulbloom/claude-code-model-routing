@@ -294,9 +294,14 @@ class Tree:
 
 
 def command_of(pid: int) -> str:
-    """The command line of pid, or an empty string when it is gone."""
+    """The command line of pid, or an empty string when it is gone.
+
+    ``-ww`` lifts the width limit. Under pytest on Linux, ps cut the command at 80
+    columns, which dropped ``serve.py`` off the end of a long temp path, so
+    ``kill_fakes`` skipped a live fake. The launcher's own ``run_ps`` passes it too.
+    """
     return subprocess.run(  # noqa: S603
-        ["/bin/ps", "-o", "command=", "-p", str(pid)],
+        ["/bin/ps", "-ww", "-o", "command=", "-p", str(pid)],
         capture_output=True,
         text=True,
         check=False,

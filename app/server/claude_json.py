@@ -123,13 +123,25 @@ def _drop(_pairs: list[tuple[str, object]]) -> None:
     return None
 
 
+INVALID = "not valid JSON"
+
+
 def validate(text: str) -> None:
-    """Raise ``ValueError`` when the text is not JSON."""
+    """Raise ``ValueError`` when the text is not JSON.
+
+    The message is always ``INVALID``, so what the parser says about the text never
+    reaches a caller. CPython words its own errors by version. A text nested 100,000
+    deep raises ``RecursionError`` on 3.11 and 3.13, but 3.14.4 on Linux parses that
+    depth and fails at the next token with ``Expecting value``. A text the parser
+    rejects raises ``json.JSONDecodeError`` (a ``ValueError``) with the position kept,
+    because callers report the line.
+    """
     try:
         json.loads(text, object_pairs_hook=_drop)
     except RecursionError as exc:
-        msg = "nested too deeply"
-        raise ValueError(msg) from exc
+        raise ValueError(INVALID) from exc
+    except json.JSONDecodeError as exc:
+        raise json.JSONDecodeError(INVALID, text, exc.pos) from None
 
 
 class _Scan:

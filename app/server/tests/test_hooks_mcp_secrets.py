@@ -379,9 +379,12 @@ def test_no_log_record_is_written_by_the_new_collectors(
 
 def test_an_exception_text_from_the_reader_holds_no_value(tmp_path: Path) -> None:
     """A text the reader cannot parse must not leak through ``ValueError``."""
-    with pytest.raises(ValueError, match="nested too deeply") as caught:
+    # CPython raises RecursionError for this text on 3.11 and 3.13 and a decode error
+    # on 3.14.4, so the reader's own fixed message is what both must give.
+    with pytest.raises(ValueError, match=f"^{claude_json.INVALID}") as caught:
         claude_json.validate("[" * 100_000 + "SWEEP-DEEP")
     assert "SWEEP-DEEP" not in str(caught.value)
+    assert "SWEEP-DEEP" not in repr(caught.value)
     ctx = sc.scratch(tmp_path, {})
     (tmp_path / "home" / ".claude.json").write_text(
         "[" * 100_000 + "SWEEP-DEEP", "utf-8"
@@ -390,3 +393,27 @@ def test_an_exception_text_from_the_reader_holds_no_value(tmp_path: Path) -> Non
     got = claude_json.COLLECTOR.read(ctx, {})
     assert [r.code for r in got.problems] == ["json_invalid"]
     assert "SWEEP-DEEP" not in hm.everything({"claude_json": got})
+
+
+def test_a_recursion_error_from_the_parser_gives_the_fixed_message(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The nesting branch holds on every platform, not only where CPython hits it."""
+
+    def deep(*_args: object, **_kwargs: object) -> object:
+        msg = "maximum recursion depth exceeded SWEEP-REC"
+        raise RecursionError(msg)
+
+    monkeypatch.setattr(claude_json.json, "loads", deep)
+    with pytest.raises(ValueError, match=f"^{claude_json.INVALID}$") as caught:
+        claude_json.validate("[[[[")
+    assert "SWEEP-REC" not in str(caught.value)
+
+
+def test_a_syntax_error_keeps_its_line_but_not_the_parser_words() -> None:
+    """The callers report the line, so the decode error keeps it."""
+    with pytest.raises(json.JSONDecodeError, match=f"^{claude_json.INVALID}: ") as got:
+        claude_json.validate('{"a": 1,\n"b": SWEEP-SYN}')
+    assert got.value.lineno == 2
+    assert "Expecting" not in str(got.value)
+    assert "SWEEP-SYN" not in str(got.value)

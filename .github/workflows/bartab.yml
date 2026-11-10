@@ -24,7 +24,9 @@ jobs:
   python:
     name: python ${{ matrix.python }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # Run 42914526705 on 5282 tests took 14 min 47 s on 3.11 and 6 min 5 s on 3.14.
+    # 3.11 took 2.4 times as long on the same tests, so the cap is twice its time.
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -54,11 +56,12 @@ jobs:
 
   web:
     # Pyright lives in the npm scripts but reads the Python environment at
-    # app/.venv, so this job also installs uv and syncs. One job keeps the
-    # build and the Playwright run on the same checkout without passing artifacts.
+    # app/.venv, so this job also installs uv and syncs. The Playwright specs run
+    # in the e2e job below, because one job needed about 29 minutes for them.
     name: web
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # Run 42914526705 ran every step here, through the dist check, in about 3 minutes.
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -100,12 +103,53 @@ jobs:
       - name: Check that dist matches the build
         working-directory: app/web
         run: git diff --exit-code -- dist
+
+  e2e:
+    # The global setup builds the app into a temp folder, so a shard needs no
+    # output from the web job. Playwright splits the tests by count, and the sheet
+    # spec is the slowest part, so the shards differ in length. In run 42914526705
+    # the 380 tests that finished added up to 52 minutes of test time. Six shards
+    # put about 8 minutes of wall time on the longest one, on 2 workers.
+    name: e2e shard ${{ matrix.shard }} of ${{ matrix.total }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6]
+        total: [6]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@18d369b23da25a81e9458561248e1aafff6a70fa # v10.3.1
+        with:
+          version: "0.13.5"
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: ".nvmrc"
+          cache: npm
+          cache-dependency-path: app/web/package-lock.json
+      # The specs start the real server, which runs on app/.venv.
+      - name: Sync the Python environment
+        run: uv sync --frozen --project app
+      - name: Install npm packages
+        working-directory: app/web
+        run: npm ci --ignore-scripts
       - name: Install Chromium for Playwright
         working-directory: app/web
         run: npx playwright install --with-deps chromium
-      - name: Playwright
+      - name: Playwright shard ${{ matrix.shard }} of ${{ matrix.total }}
         working-directory: app/web
-        run: npm run e2e
+        run: npm run e2e -- --shard=${{ matrix.shard }}/${{ matrix.total }}
+      - name: Upload the Playwright results
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: playwright-results-shard-${{ matrix.shard }}-of-${{ matrix.total }}
+          path: app/web/test-results
+          if-no-files-found: ignore
+          retention-days: 7
 
   shellcheck:
     # shellcheck 0.9.0 is preinstalled on ubuntu-latest (Ubuntu 24.04 image readme).
