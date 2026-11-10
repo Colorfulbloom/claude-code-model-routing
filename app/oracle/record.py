@@ -3,7 +3,7 @@
 
 Run from the repo root with the system Python:
 
-    /usr/bin/python3 app/oracle/record.py [--only usage|live]
+    /usr/bin/python3 app/oracle/record.py [--only usage|live|long]
 
 Usage part. It builds the demo set into a temp folder outside the repo, builds a
 context with dashboard/server.py fixture_context, and calls the old
@@ -17,6 +17,10 @@ api_live.live in process. A reduced projection of each answer goes to
 app/fixtures/oracle/live/<scenario>/at-<T>.json. The old pin check for each agent
 of the session goes to <scenario>/pincheck.json, at the scenario clock.
 
+Long part. It builds the 400-day demo with app/oracle/long_demo.py into a temp
+folder and sums the generator's own request list per project, window, model,
+agent type and local day. The output goes to app/fixtures/oracle/demo-long/.
+
 No server starts and no port opens. Python 3.9 standard library only. The old code
 is imported and run, never changed.
 
@@ -29,12 +33,17 @@ import argparse
 import datetime as dt
 import importlib
 import json
+import math
 import shutil
 import subprocess
 import sys
 import tempfile
+import zoneinfo
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
+
+import long_demo
 
 REPO = Path(__file__).resolve().parents[2]
 OUT = REPO / "app" / "fixtures" / "oracle" / "demo"
@@ -551,15 +560,218 @@ def _record_live() -> None:
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+LONG_OUT = REPO / "app" / "fixtures" / "oracle" / "demo-long"
+TOKEN_FIELDS = (
+    "input",
+    "output",
+    "cache_read",
+    "cache_write_5m",
+    "cache_write_1h",
+    "thinking",
+)
+LONG_RANGES = (("30d", 30), ("90d", 90), ("12m", 365))
+ALL = "all"
+STAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
+UTC = dt.timezone.utc
+
+
+def _wall(tz: dt.tzinfo, day: dt.date, clock: dt.time) -> dt.datetime:
+    """Local moment for a date and wall clock time, as the old _wall builds it."""
+    naive = dt.datetime.combine(day, clock)
+    return naive.replace(tzinfo=tz).astimezone(UTC).astimezone(tz)
+
+
+def _window(
+    tz: dt.tzinfo, now_local: dt.datetime, days: int
+) -> tuple[dt.datetime, dt.datetime, dt.datetime]:
+    """Return (start, prior_start, prior_end) as the old _window does."""
+    today = now_local.date()
+    one = dt.timedelta
+    start = _wall(tz, today - one(days=days - 1), dt.time.min)
+    prior_start = _wall(tz, today - one(days=2 * days - 1), dt.time.min)
+    prior_end = _wall(tz, today - one(days=days), now_local.time())
+    return start, prior_start, prior_end
+
+
+def _demo_module() -> Any:  # noqa: ANN401
+    """Import the demo builder module."""
+    path = str(REPO / "tests" / "fixtures" / "demo")
+    if path not in sys.path:
+        sys.path.insert(0, path)
+    return importlib.import_module("build_demo")
+
+
+def _stamp_utc(moment: dt.datetime) -> str:
+    """Return a moment as an ISO UTC string."""
+    return moment.astimezone(UTC).strftime(STAMP_FORMAT)
+
+
+def _totals(
+    reqs: list[dict[str, Any]],
+    cost_of: Any,  # noqa: ANN401
+) -> dict[str, Any]:
+    """Sum one request group with the same fields and rules as the builder's _truth."""
+    costs = [c for c in (cost_of(r) for r in reqs) if c is not None]
+    out: dict[str, Any] = {f: sum(r[f] for r in reqs) for f in TOKEN_FIELDS}
+    out["requests"] = len(reqs)
+    out["runs"] = len({(r["session"], r["run"]) for r in reqs if r["run"] is not None})
+    out["sessions"] = len({r["session"] for r in reqs})
+    out["cost"] = math.fsum(costs)
+    out["unpriced_requests"] = len(reqs) - len(costs)
+    return out
+
+
+def _agent_types(folder: Path) -> dict[tuple[str, str], str]:
+    """Map (session, run) to the agentType in each run's meta file."""
+    found: dict[tuple[str, str], str] = {}
+    pattern = "config/projects/*/*/subagents/agent-*.meta.json"
+    for meta in sorted(folder.glob(pattern)):
+        session = meta.parent.parent.name
+        run = meta.name[len("agent-") : -len(".meta.json")]
+        data = json.loads(meta.read_text(encoding="utf-8"))
+        found[(session, run)] = str(data.get("agentType") or "@unnamed")
+    return found
+
+
+def _groups(
+    reqs: list[dict[str, Any]],
+    key: Any,  # noqa: ANN401
+) -> dict[str, list[dict[str, Any]]]:
+    """Group requests by a key function, keeping request order inside a group."""
+    out: dict[str, list[dict[str, Any]]] = {}
+    for req in reqs:
+        out.setdefault(key(req), []).append(req)
+    return out
+
+
+def _long_truth(
+    truth: dict[str, Any], requests: list[dict[str, Any]], folder: Path
+) -> dict[str, Any]:
+    """Sum the long build's request list per project, range, model, agent and day."""
+    build_demo = _demo_module()
+    tz = zoneinfo.ZoneInfo(long_demo.TZ)
+    now_local = dt.datetime.fromisoformat(long_demo.NOW).replace(tzinfo=tz)
+    now_utc = now_local.astimezone(UTC)
+    agents = _agent_types(folder)
+
+    def agent_of(req: dict[str, Any]) -> str:
+        if req["run"] is None:
+            return "@main"
+        return agents.get((req["session"], req["run"]), "@unnamed")
+
+    def model_of(req: dict[str, Any]) -> str:
+        return str(req["model"])
+
+    def local_day(req: dict[str, Any]) -> str:
+        return req["ts"].astimezone(tz).date().isoformat()
+
+    windows: dict[str, Any] = {}
+    bounds: dict[str, tuple[dt.datetime, dt.datetime, dt.datetime]] = {}
+    for name, days in LONG_RANGES:
+        start, prior_start, prior_end = _window(tz, now_local, days)
+        bounds[name] = (start, prior_start, prior_end)
+        windows[name] = {
+            "end": _stamp_utc(now_utc),
+            "prior_end": _stamp_utc(prior_end),
+            "prior_start": _stamp_utc(prior_start),
+            "start": _stamp_utc(start),
+        }
+    windows[ALL] = {"end": _stamp_utc(now_utc), "prior_end": None,
+                    "prior_start": None, "start": None}  # fmt: skip
+
+    projects: dict[str, Any] = {}
+    for key, prof in build_demo.PROJECTS.items():
+        if prof["name"] is None:
+            continue
+        mine = [r for r in requests if r["project"] == key]
+        out: dict[str, Any] = {}
+        ranges = [*LONG_RANGES, (ALL, 0)]
+        for name, _days in ranges:
+            entry: dict[str, Any] = {"prior": None}
+            if name == ALL:
+                cur = [r for r in mine if r["ts"] <= now_utc]
+                if cur:
+                    entry["start"] = _stamp_utc(min(r["ts"] for r in cur))
+            else:
+                start, prior_start, prior_end = bounds[name]
+                cur = [r for r in mine if start <= r["ts"] <= now_utc]
+                prior = [r for r in mine if prior_start <= r["ts"] <= prior_end]
+                entry["prior"] = _totals(prior, build_demo.cost_of)
+            entry["current"] = _totals(cur, build_demo.cost_of)
+            keyers: tuple[tuple[str, Callable[[dict[str, Any]], str]], ...] = (
+                ("by_model", model_of),
+                ("by_agent", agent_of),
+                ("by_day", local_day),
+            )
+            for field, fn in keyers:
+                entry[field] = {
+                    group: _totals(rows, build_demo.cost_of)
+                    for group, rows in sorted(_groups(cur, fn).items())
+                }
+            out[name] = entry
+        projects[prof["name"]] = out
+
+    # Self-check: the 30d window must equal the build's own truth.json numbers.
+    for name, row in truth["projects"].items():
+        if projects[name]["30d"]["current"] != row:
+            msg = f"30d sums for {name} differ from the build's truth.json"
+            raise RuntimeError(msg)
+    return {"projects": projects, "windows": windows}
+
+
+def _record_long() -> None:
+    """Build the long demo, sum its requests per window, write the demo-long files."""
+    tmp = Path(tempfile.mkdtemp(prefix="oracle-")).resolve()
+    try:
+        folder = tmp / "demo-long"
+        truth, requests = long_demo.build_long(str(folder))
+        payload = _long_truth(truth, requests, folder)
+        files = {
+            "truth-30d.json": _dumps(truth),
+            "truth-long.json": _dumps(payload),
+        }
+        LONG_OUT.mkdir(parents=True, exist_ok=True)
+        keep = {*files, "manifest.json"}
+        for old in LONG_OUT.glob("*.json"):
+            if old.name not in keep:
+                old.unlink()
+        for name, text in files.items():
+            _write(LONG_OUT / name, text)
+        version = sys.version_info
+        build_demo = _demo_module()
+        manifest = {
+            "build_args": {
+                "history_days": long_demo.LONG_HISTORY_DAYS,
+                "now": long_demo.NOW,
+                "script": "tests/fixtures/demo/build_demo.py",
+                "seed": build_demo.SEED,
+                "seed_note": "build_demo.SEED is fixed, so the same build repeats",
+                "tz": long_demo.TZ,
+                "via": "app/oracle/long_demo.py build_long",
+            },
+            "files": sorted(keep),
+            "old_commit": _git(
+                "log", "-1", "--format=%H", OLD_COMMIT_REF, "--", "dashboard"
+            ),
+            "python": f"{version[0]}.{version[1]}.{version[2]}",
+            "requests": len(requests),
+        }
+        _write(LONG_OUT / "manifest.json", _dumps(manifest))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def main() -> int:
     """Run the chosen recorders. Return the exit code."""
     parser = argparse.ArgumentParser(description="Record the old app's answers.")
-    parser.add_argument("--only", choices=("usage", "live"), default=None)
+    parser.add_argument("--only", choices=("usage", "live", "long"), default=None)
     args = parser.parse_args()
     if args.only in (None, "usage"):
         _record_usage()
     if args.only in (None, "live"):
         _record_live()
+    if args.only in (None, "long"):
+        _record_long()
     return 0
 
 

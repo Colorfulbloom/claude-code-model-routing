@@ -14,6 +14,7 @@ from collections.abc import AsyncGenerator, Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, replace
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, FastAPI, HTTPException, Response
 from fastapi.responses import FileResponse
@@ -24,6 +25,7 @@ import access
 import api_app
 import api_dev
 import api_live
+import api_review
 import csp
 import errors
 import fixture_provider
@@ -56,6 +58,10 @@ class Settings:
     then reports mode ``real``, hands the model check a copy of the server's
     environment, the platform's managed folder and the HOME folder, and the writer
     reports its pass times in ``data_dir/health.json``.
+
+    ``tz`` is the zone Review counts local days in. None means the demo or flow build's
+    own ``session.json`` zone, or UTC for anything else. ``serve.py`` passes the
+    machine's zone with ``--real``.
     """
 
     port: int
@@ -78,6 +84,7 @@ class Settings:
     price_fetch: bool = True
     transport: price_transport.Transport | None = None
     provider: Provider | None = None
+    tz: ZoneInfo | None = None
 
 
 HEALTH_FILE = "health.json"
@@ -117,6 +124,7 @@ def make_provider(settings: Settings) -> Provider:
             home=(os.environ.get("HOME") or None) if settings.real else None,
             shell_env=dict(os.environ) if settings.real else None,
             health_path=settings.data_dir / HEALTH_FILE if settings.real else None,
+            tz=settings.tz,
         )
     return fixture_provider.FixtureProvider(
         settings.fixture, settings.clock, settings.fixtures_dir
@@ -202,6 +210,7 @@ def build_app(settings: Settings) -> FastAPI:
     )
     app.include_router(api_app.build_router(provider, state.instance))
     app.include_router(api_live.build_router(provider))
+    app.include_router(api_review.build_router(provider))
     app.add_middleware(api_live.ApiGzipMiddleware)
     if settings.test_clock:
         if settings.data_clock is None or settings.data_clock.kind != "test":

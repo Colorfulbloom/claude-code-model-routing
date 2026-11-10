@@ -49,7 +49,9 @@
     "dashboard-band",
     "dashboard-live",
     "testing-live",
-    "testing-hivemind"
+    "testing-hivemind",
+    "bartab-web",
+    "bartab-server"
   ],
   "id_prefix": {
     "testing": "T",
@@ -71,7 +73,9 @@
     "dashboard-band": "A",
     "dashboard-live": "V",
     "testing-live": "Q",
-    "testing-hivemind": "H"
+    "testing-hivemind": "H",
+    "bartab-web": "J",
+    "bartab-server": "M"
   },
   "slices": {
     "deep-reasoner": [
@@ -80,27 +84,32 @@
     "scout": [
       "testing*",
       "dead-ends",
-      "dashboard*"
+      "dashboard*",
+      "bartab*"
     ],
     "fast-worker": [
       "testing*",
       "dead-ends",
-      "dashboard*"
+      "dashboard*",
+      "bartab*"
     ],
     "verifier": [
       "testing*",
       "failed-briefs",
       "dead-ends",
-      "dashboard*"
+      "dashboard*",
+      "bartab*"
     ],
     "judge": [
       "dead-ends",
-      "dashboard*"
+      "dashboard*",
+      "bartab*"
     ],
     "designer": [
       "failed-briefs",
       "token-tallies",
-      "dashboard*"
+      "dashboard*",
+      "bartab*"
     ],
     "*": []
   }

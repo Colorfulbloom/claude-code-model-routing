@@ -63,6 +63,7 @@ import collections
 import functools
 import os
 from collections.abc import Iterable, Mapping, Sequence
+from dataclasses import dataclass
 from pathlib import Path, PurePath
 from typing import Any
 
@@ -276,9 +277,9 @@ def _ranked(values: Iterable[str | None]) -> list[str]:
     return sorted(dict.fromkeys(seen), key=lambda v: -counts[v])
 
 
-def _ran(runs: Sequence[TimelineRun]) -> RanPair:
-    models = _ranked(r.model for r in runs)
-    efforts = _ranked(r.effort for r in runs)
+def _ran(runs: Sequence[Row]) -> RanPair:
+    models = _ranked(r["model"] for r in runs)
+    efforts = _ranked(r["effort"] for r in runs)
     return RanPair(
         model=models[0] if models else None,
         effort=efforts[0] if efforts else None,
@@ -290,11 +291,15 @@ def _set_value(setting: Row | None, source: str) -> SetValue | None:
     """Return what a pin sets.
 
     The scope is ``agent`` for an agent file, else the layer of the winning settings
-    entry (the Main session's pin is the winner).
+    entry (the Main session's pin is the winner). A pin whose value is None sets
+    nothing, so it returns None (the resolver's default with no value, when no
+    settings file sets the model or the effort).
     """
     if setting is None:
         return None
     pinned: Row = setting["pinned"]
+    if pinned["value"] is None:
+        return None
     scope = "agent" if source == "agent_file" else setting["expected"].get("layer")
     return SetValue(
         value=str(pinned["value"]),
@@ -304,24 +309,53 @@ def _set_value(setting: Row | None, source: str) -> SetValue | None:
     )
 
 
-def _row(
-    agent: str | None,
-    runs: Sequence[TimelineRun],
-    entries: list[Row],
+@dataclass(frozen=True)
+class Verdict:
+    """The check of one agent key: what it sets, how the runs compare, the status.
+
+    ``status`` is None when nothing is pinned (``reason_code`` then says why, one of
+    ``no_agent_file``, ``no_pin`` and ``unnamed_agent``). ``runs`` counts the runs
+    given. ``mismatched_runs`` counts the runs that differ from the pin on a
+    setting whose runs differ or are mixed.
+    """
+
+    set: SetPair
+    status: ModelCheckStatus | None
+    reason_code: str
+    params: dict[str, str]
+    runs: int
+    mismatched_runs: int
+
+
+def agent_key(agent: str | None) -> str:
+    """Return the pin check key for a timeline agent (None is the main session)."""
+    if agent is None:
+        return _MAIN_KEY
+    return _UNNAMED_KEY if agent == _TIMELINE_UNNAMED else agent
+
+
+def judge_agent(
+    entries: Sequence[Row],
+    key: str,
+    runs: Sequence[Row],
     catalog: model_catalog.Catalog,
-) -> ModelCheckRow:
-    key = (
-        _MAIN_KEY
-        if agent is None
-        else _UNNAMED_KEY
-        if agent == _TIMELINE_UNNAMED
-        else agent
-    )
-    ran_with = [
-        {"run_id": r.run_id, "model": r.model, "effort": r.effort} for r in runs
-    ]
-    check = pincheck.check_agent(entries, key, [], ran_with, catalog)
-    ran = _ran(runs)
+) -> Verdict:
+    """Check one agent key against the resolver entries and map it to a status.
+
+    This is the per-agent check the timeline's rows and the Agents page share, so
+    both use the mapping in the module docstring.
+
+    Args:
+        entries: The ``resolve_entries`` result for the project.
+        key: ``@main``, ``@unnamed`` or an agent type.
+        runs: The agent's runs as ``{run_id, model, effort}`` (``requests`` may be
+            there too). Empty for a check of the setup alone.
+        catalog: The model catalog, so an alias and its dated name compare equal.
+
+    Returns:
+        The verdict. A key with no file, no pin, or ``@unnamed`` has status None.
+    """
+    check = pincheck.check_agent(list(entries), key, [], runs, catalog)
     if check is None or check["pinned"] == "none":
         code = (
             "unnamed_agent"
@@ -330,10 +364,8 @@ def _row(
             if check is not None
             else "no_agent_file"
         )
-        return ModelCheckRow(
-            agent=agent,
+        return Verdict(
             set=SetPair(model=None, effort=None),
-            ran=ran,
             status=None,
             reason_code=code,
             params={},
@@ -344,19 +376,35 @@ def _row(
     judged = {k: _judge_setting(k, s) for k, s in settings.items()}
     status, code, params = _worst(judged)
     same = [k for k, (s, _c, _p) in judged.items() if s == status]
-    params = params | {"settings": ",".join(same)}
-    return ModelCheckRow(
-        agent=agent,
+    return Verdict(
         set=SetPair(
             model=_set_value(settings.get("model"), check["source"]),
             effort=_set_value(settings.get("effort"), check["source"]),
         ),
-        ran=ran,
         status=status,
         reason_code=code,
-        params=params,
+        params=params | {"settings": ",".join(same)},
         runs=check["total_runs"],
         mismatched_runs=check["mismatched_runs"],
+    )
+
+
+def _row(
+    agent: str | None,
+    runs: Sequence[Row],
+    entries: list[Row],
+    catalog: model_catalog.Catalog,
+) -> ModelCheckRow:
+    verdict = judge_agent(entries, agent_key(agent), runs, catalog)
+    return ModelCheckRow(
+        agent=agent,
+        set=verdict.set,
+        ran=_ran(runs),
+        status=verdict.status,
+        reason_code=verdict.reason_code,
+        params=verdict.params,
+        runs=verdict.runs,
+        mismatched_runs=verdict.mismatched_runs,
     )
 
 
@@ -382,11 +430,41 @@ def build_model_check(
         agent name with the main session ahead of the named agents. Rows whose status
         is in_effect come last. ``in_effect_count`` counts those rows.
     """
-    by_agent: dict[str | None, list[TimelineRun]] = {}
+    by_agent: dict[str | None, list[Row]] = {}
     for run in runs:
-        by_agent.setdefault(run.agent, []).append(run)
+        by_agent.setdefault(run.agent, []).append(
+            {"run_id": run.run_id, "model": run.model, "effort": run.effort}
+        )
+    return build_model_check_from_runs(
+        entries=entries, runs_by_agent=by_agent, catalog=catalog
+    )
+
+
+def build_model_check_from_runs(
+    *,
+    entries: Sequence[Row],
+    runs_by_agent: Mapping[str | None, Sequence[Row]],
+    catalog: model_catalog.Catalog,
+) -> ModelCheck:
+    """Build the Model check from runs that are already grouped by agent.
+
+    This is ``build_model_check`` without the timeline's run objects, for a caller
+    that holds many runs (Review's Summary). The result is the same.
+
+    Args:
+        entries: The ``resolve_entries`` result for the project.
+        runs_by_agent: Each agent's runs as ``{run_id, model, effort}`` dicts. The key
+            is the timeline's agent name: None for the main session, ``unnamed`` for an
+            unnamed agent, else the agent type.
+        catalog: The model catalog, so an alias and its dated name compare equal.
+
+    Returns:
+        The Model check, as ``build_model_check`` returns it.
+    """
     listed = list(entries)
-    rows = [_row(agent, group, listed, catalog) for agent, group in by_agent.items()]
+    rows = [
+        _row(agent, group, listed, catalog) for agent, group in runs_by_agent.items()
+    ]
     rows.sort(key=_sort_key)
     return ModelCheck(
         rows=rows,

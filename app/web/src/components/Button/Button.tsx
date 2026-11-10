@@ -21,6 +21,8 @@ export interface ButtonProps {
   busyLabel?: string;
   /** Required for the icon variant. */
   ariaLabel?: string;
+  /** Id of a visible line that explains the button, such as the Pager's why-line. Joins the reason id. */
+  describedBy?: string;
   /** Extra classes. The component sheet uses is-hover, is-focus and is-pressed to force a state. */
   className?: string;
 }
@@ -41,12 +43,16 @@ export function Button({
   busy = false,
   busyLabel,
   ariaLabel,
+  describedBy,
   className,
 }: ButtonProps) {
   const reasonId = useId();
   const blocked = disabled || busy;
   const hasReason = disabled && disabledReason !== undefined;
   const classes = cx("button", `button-${variant}`, className);
+  const describedIds = [hasReason ? reasonId : undefined, describedBy].filter(
+    (id): id is string => id !== undefined,
+  );
   const label = busy && busyLabel !== undefined ? busyLabel : children;
 
   const control =
@@ -65,7 +71,7 @@ export function Button({
         aria-label={ariaLabel}
         aria-disabled={blocked ? "true" : undefined}
         aria-busy={busy ? "true" : undefined}
-        aria-describedby={hasReason ? reasonId : undefined}
+        aria-describedby={describedIds.length > 0 ? describedIds.join(" ") : undefined}
         onClick={() => {
           if (!blocked) onPress?.();
         }}

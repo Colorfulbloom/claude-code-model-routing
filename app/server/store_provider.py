@@ -17,10 +17,12 @@ import threading
 import time
 from collections.abc import Callable, Generator, Mapping, Sequence
 from contextlib import contextmanager
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
-from typing import cast, get_args
+from typing import TypeVar, cast, get_args
+from zoneinfo import ZoneInfo
 
+import agent_setup
 import history
 import ingest
 import live_sessions
@@ -30,16 +32,22 @@ import price_feed
 import price_transport
 import project_map
 import projects
+import review_answers
+import review_query
+import review_windows
+import server_zone
 import store
 import store_writer
 import timeline
 import usage_query
 from data_clock import DataClock
 from models import (
+    AgentList,
     AppInfo,
     AppMode,
     BackupFailure,
     BackupReasonCode,
+    CostChart,
     HistoryInfo,
     Ingest,
     IngestError,
@@ -47,11 +55,15 @@ from models import (
     LiveSessions,
     LiveSessionsUnchanged,
     ModelCheck,
+    ModelList,
     PassError,
     PricesInfo,
     Project,
     ProjectList,
+    ReviewRange,
     RunningItem,
+    SessionList,
+    Summary,
     Timeline,
     TimelinePrices,
     TimelineRun,
@@ -61,6 +73,8 @@ from provider import UnknownProjectError, UnknownSessionError
 from store_paths import StoreLayout
 
 logger = logging.getLogger(__name__)
+
+_A = TypeVar("_A", Summary, CostChart, SessionList, AgentList, ModelList)
 
 RUNNING_WINDOW = timedelta(minutes=30)
 # A paced demo ingest starts this long after the server, so the page can show its
@@ -234,6 +248,7 @@ class StoreProvider:
         managed_dir: Path | None = None,
         shell_env: dict[str, str] | None = None,
         home: str | None = None,
+        tz: ZoneInfo | None = None,
     ) -> None:
         """Wire the provider. Nothing starts until ``start``.
 
@@ -256,7 +271,11 @@ class StoreProvider:
             shell_env: The shell environment the model check reads. Empty by default.
             home: The home folder that "~" expands to in the project list and that
                 project paths shorten against, or None for no expansion.
+            tz: The server's zone, where Review counts local days. Every Review
+                answer's ``window.tz`` is its key. UTC when None.
         """
+        self._tz = tz if tz is not None else ZoneInfo(server_zone.UTC_ZONE)
+        self._reviews = review_answers.ReviewCache()
         self._layout = layout
         self._claude_dir = claude_dir
         self._writer = writer
@@ -455,14 +474,20 @@ class StoreProvider:
 
     def _pricer_on(self, conn: sqlite3.Connection) -> usage_query.Pricer:
         """Return the pricer for the active price table, rebuilt when it changes."""
+        return self._pricer_and_hash(conn)[0]
+
+    def _pricer_and_hash(
+        self, conn: sqlite3.Connection
+    ) -> tuple[usage_query.Pricer, str]:
+        """Return the pricer and the hash of the price table it was built from."""
         table = price_feed.price_table(conn, self._prices, now=self._clock())
         with self._cache_lock:
             cached = self._pricer
             if cached is not None and cached[0] == table.hash:
-                return cached[1]
+                return cached[1], table.hash
             pricer = usage_query.Pricer(table.document)
             self._pricer = (table.hash, pricer)
-            return pricer
+            return pricer, table.hash
 
     def _timeline_prices(self, conn: sqlite3.Connection) -> TimelinePrices:
         info = self._prices_on(conn)
@@ -483,31 +508,45 @@ class StoreProvider:
             return None
         return Path(project.path if project.path else str(self._project_dir))
 
+    def _entries_for(self, project: project_map.MappedProject) -> list[model_check.Row]:
+        """Return the project's resolver entries, read at most once per 10 s."""
+        now = self._clock()
+        with self._cache_lock:
+            cached = self._entries.get(project.key)
+        if cached is not None and now - cached[0] < ENTRIES_TTL_SECONDS:
+            return cached[1]
+        entries = model_check.resolve_entries(
+            claude_dir=self._claude_dir,
+            project_dir=self._check_dir(project),
+            managed_dir=self._managed_dir,
+            shell_env=self._shell_env,
+        )
+        with self._cache_lock:
+            self._entries[project.key] = (now, entries)
+        return entries
+
     def _model_check_for(
         self, project: project_map.MappedProject
     ) -> timeline.ModelCheckFn:
         """Return the model check function for one project, entries cached 10 s."""
 
         def check(_key: str, runs: Sequence[TimelineRun]) -> ModelCheck:
-            now = self._clock()
-            with self._cache_lock:
-                cached = self._entries.get(project.key)
-            if cached is not None and now - cached[0] < ENTRIES_TTL_SECONDS:
-                entries = cached[1]
-            else:
-                entries = model_check.resolve_entries(
-                    claude_dir=self._claude_dir,
-                    project_dir=self._check_dir(project),
-                    managed_dir=self._managed_dir,
-                    shell_env=self._shell_env,
-                )
-                with self._cache_lock:
-                    self._entries[project.key] = (now, entries)
             return model_check.build_model_check(
-                entries=entries, runs=runs, catalog=self._catalog
+                entries=self._entries_for(project), runs=runs, catalog=self._catalog
             )
 
         return check
+
+    def _setup_for(self, project: project_map.MappedProject) -> agent_setup.AgentSetup:
+        """Return the project's agent setup, built from the cached entries.
+
+        A read that raises one of ``agent_setup.SETUP_ERRORS`` gives a failed setup,
+        so the answer's other cards stay.
+        """
+        try:
+            return agent_setup.from_entries(self._entries_for(project), self._catalog)
+        except agent_setup.SETUP_ERRORS:
+            return agent_setup.AgentSetup(failed=True)
 
     def _build_timeline(
         self,
@@ -591,6 +630,180 @@ class StoreProvider:
                 server_time=answer.server_time, etag=answer.etag, unchanged=True
             )
         return answer
+
+    # ------------------------------------------------------------ Review
+
+    def _review(  # noqa: PLR0913, PLR0917 - one request's parts
+        self,
+        route: str,
+        project: str,
+        review_range: ReviewRange,
+        variant: str | Callable[[datetime], str],
+        etag: str | None,
+        build: Callable[[review_answers.Context, project_map.MappedProject], _A],
+    ) -> _A | Unchanged:
+        """Answer one Review route from the cache, or build the answer and keep it.
+
+        The cache key is documented in ``review_answers``. ``variant`` is its fourth
+        part, or a function of T that gives it. A request whose ``etag`` matches the
+        answer's gets the short answer. A cached answer is returned with the current
+        ``server_time`` and nothing else changed.
+        """
+        with self._reader() as conn:
+            mapped = self._mapped_projects(conn)
+            item = next((m for m in mapped if m.key == project), None)
+            if item is None or not item.folders:
+                # The 5 s mapping cache can predate the project's first transcripts.
+                mapped = self._mapped_projects(conn, refresh=True)
+                item = next((m for m in mapped if m.key == project), None)
+            if item is None:
+                raise UnknownProjectError
+            pricer, table_hash = self._pricer_and_hash(conn)
+            now = self.now()
+            marker = review_answers.pass_marker(conn)
+            key: review_answers.CacheKey = (
+                route,
+                project,
+                review_range,
+                variant(now) if callable(variant) else variant,
+                now.astimezone(self._tz).date(),
+                marker or "",
+                table_hash,
+            )
+            cached = None if marker is None else self._reviews.get(key)
+            if cached is None:
+                folders = frozenset(item.folders)
+                oldest = review_query.oldest_request(conn, folders)
+                ctx = review_answers.Context(
+                    conn=conn,
+                    project=project,
+                    folders=folders,
+                    review_range=review_range,
+                    now=now,
+                    tz=self._tz.key,
+                    oldest=oldest,
+                    window=review_windows.review_window(
+                        review_range, now, self._tz.key, oldest
+                    ),
+                    doc=pricer.doc,
+                    catalog_ids=[str(m["id"]) for m in pricer.catalog],
+                    prices=self._timeline_prices(conn),
+                    as_of=timeline.as_of(conn, now),
+                )
+                answer = cast("_A", review_answers.finish(build(ctx, item)))
+                if marker is not None:
+                    self._reviews.put(key, answer)
+            else:
+                answer = cast("_A", cached).model_copy(update={"server_time": now})
+        if etag is not None and etag == answer.etag:
+            return Unchanged(
+                project=project, server_time=now, etag=answer.etag, unchanged=True
+            )
+        return answer
+
+    def summary(
+        self, project: str, review_range: ReviewRange, etag: str | None
+    ) -> Summary | Unchanged:
+        """Return Review's Summary, or the short answer when ``etag`` matches.
+
+        Raises:
+            UnknownProjectError: When ``project`` is not a project key.
+        """
+        return self._review(
+            "summary",
+            project,
+            review_range,
+            "",
+            etag,
+            lambda ctx, item: review_answers.build_summary(ctx, self._setup_for(item)),
+        )
+
+    def cost_chart(
+        self,
+        project: str,
+        review_range: ReviewRange,
+        end: date | None,
+        etag: str | None,
+    ) -> CostChart | Unchanged:
+        """Return the cost chart page that holds the local date ``end``.
+
+        ``end`` None means the newest page.
+
+        Raises:
+            UnknownProjectError: When ``project`` is not a project key.
+        """
+
+        def page_of(now: datetime) -> int:
+            if end is None:
+                return 0
+            return review_windows.page_for_end(review_range, now, self._tz.key, end)
+
+        return self._review(
+            "cost-chart",
+            project,
+            review_range,
+            lambda now: f"page {page_of(now)}",
+            etag,
+            lambda ctx, _item: review_answers.build_cost_chart(ctx, page_of(ctx.now)),
+        )
+
+    def sessions(
+        self,
+        project: str,
+        review_range: ReviewRange,
+        cursor: str | None,
+        etag: str | None,
+    ) -> SessionList | Unchanged:
+        """Return one page of the range's sessions, after ``cursor`` when it is set.
+
+        Raises:
+            UnknownProjectError: When ``project`` is not a project key.
+            ValueError: When ``cursor`` is not a cursor this provider made.
+        """
+        if cursor is not None:
+            review_query.decode_cursor(cursor)
+        return self._review(
+            "sessions",
+            project,
+            review_range,
+            cursor or "",
+            etag,
+            lambda ctx, _item: review_answers.build_sessions(ctx, cursor),
+        )
+
+    def agents(
+        self, project: str, review_range: ReviewRange, etag: str | None
+    ) -> AgentList | Unchanged:
+        """Return the agents that ran in the range and the agent files that did not.
+
+        Raises:
+            UnknownProjectError: When ``project`` is not a project key.
+        """
+        return self._review(
+            "agents",
+            project,
+            review_range,
+            "",
+            etag,
+            lambda ctx, item: review_answers.build_agents(ctx, self._setup_for(item)),
+        )
+
+    def models(
+        self, project: str, review_range: ReviewRange, etag: str | None
+    ) -> ModelList | Unchanged:
+        """Return the range's models with their kinds of cost.
+
+        Raises:
+            UnknownProjectError: When ``project`` is not a project key.
+        """
+        return self._review(
+            "models",
+            project,
+            review_range,
+            "",
+            etag,
+            lambda ctx, _item: review_answers.build_models(ctx),
+        )
 
     def _history(self, status: history.HistoryStatus) -> HistoryInfo:
         snap = self._writer.snapshot()
@@ -756,6 +969,7 @@ def create(  # noqa: PLR0913 - one server's settings, keyword-only
     shell_env: Mapping[str, str] | None = None,
     health_path: Path | None = None,
     home: str | None = None,
+    tz: ZoneInfo | None = None,
 ) -> StoreProvider:
     """Build the provider with its writer and price feed. Nothing starts yet.
 
@@ -780,6 +994,9 @@ def create(  # noqa: PLR0913 - one server's settings, keyword-only
             empty mapping.
         health_path: The file the writer reports its pass times and lag in, or None.
         home: The home folder that "~" expands to, or None.
+        tz: The server's zone. A demo or flow build defaults to the ``tz`` of its
+            ``session.json``, anything else to UTC. Real mode passes the machine's
+            zone (``server_zone.machine_zone``).
 
     Returns:
         A provider that ``start`` brings up.
@@ -829,4 +1046,7 @@ def create(  # noqa: PLR0913 - one server's settings, keyword-only
             else (shell_env_of(claude_dir) if demo else {})
         ),
         home=home,
+        tz=tz
+        if tz is not None
+        else (server_zone.session_zone(claude_dir.parent) if demo else None),
     )

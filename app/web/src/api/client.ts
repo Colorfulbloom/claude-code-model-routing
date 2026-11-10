@@ -11,11 +11,17 @@ import { isLockReason } from "@/app/access";
 import type { Access, LockReason } from "@/app/access";
 import type { Connection } from "@/lib/connection";
 import type {
+  AgentList,
   AppInfo,
+  CostChart,
   LiveSessions,
   LiveSessionsUnchanged,
+  ModelList,
   PricesAnswer,
   ProjectsAnswer,
+  ReviewRange,
+  SessionList,
+  Summary,
   Timeline,
   Unchanged,
 } from "@/api/types";
@@ -68,6 +74,45 @@ export interface ApiClient {
     etag: string | null,
     signal?: AbortSignal,
   ) => Promise<LiveSessions | LiveSessionsUnchanged>;
+  /**
+   * The Review reads. Each takes the project, a valid range and the last answer's etag, and a
+   * matching etag gets the short `unchanged` body. They count into the connection like any page
+   * call, so a run of failures moves the tab to the server stopped page.
+   */
+  getSummary: (
+    project: string,
+    range: ReviewRange,
+    etag: string | null,
+    signal?: AbortSignal,
+  ) => Promise<Summary | Unchanged>;
+  /** `end` is a local date (YYYY-MM-DD), or null for the newest window. */
+  getCostChart: (
+    project: string,
+    range: ReviewRange,
+    end: string | null,
+    etag: string | null,
+    signal?: AbortSignal,
+  ) => Promise<CostChart | Unchanged>;
+  /** `cursor` is the previous page's `next`, or null for the first page. */
+  getReviewSessions: (
+    project: string,
+    range: ReviewRange,
+    cursor: string | null,
+    etag: string | null,
+    signal?: AbortSignal,
+  ) => Promise<SessionList | Unchanged>;
+  getAgents: (
+    project: string,
+    range: ReviewRange,
+    etag: string | null,
+    signal?: AbortSignal,
+  ) => Promise<AgentList | Unchanged>;
+  getModels: (
+    project: string,
+    range: ReviewRange,
+    etag: string | null,
+    signal?: AbortSignal,
+  ) => Promise<ModelList | Unchanged>;
 }
 
 export interface ApiClientOptions {
@@ -133,6 +178,21 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     return body as T;
   }
 
+  /** The query string every Review read shares, with the extras before the etag. */
+  function reviewQuery(
+    project: string,
+    range: ReviewRange,
+    etag: string | null,
+    extra: Record<string, string | null> = {},
+  ): string {
+    const parts = [`project=${encodeURIComponent(project)}`, `range=${range}`];
+    for (const [name, value] of Object.entries(extra)) {
+      if (value !== null) parts.push(`${name}=${encodeURIComponent(value)}`);
+    }
+    if (etag !== null) parts.push(`etag=${encodeURIComponent(etag)}`);
+    return parts.join("&");
+  }
+
   return {
     access,
     connection,
@@ -162,6 +222,36 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         `/api/live/sessions?${query}`,
         signal,
         false,
+      );
+    },
+    getSummary(project, range, etag, signal) {
+      return request<Summary | Unchanged>(
+        `/api/summary?${reviewQuery(project, range, etag)}`,
+        signal,
+      );
+    },
+    getCostChart(project, range, end, etag, signal) {
+      return request<CostChart | Unchanged>(
+        `/api/cost-chart?${reviewQuery(project, range, etag, { end })}`,
+        signal,
+      );
+    },
+    getReviewSessions(project, range, cursor, etag, signal) {
+      return request<SessionList | Unchanged>(
+        `/api/sessions?${reviewQuery(project, range, etag, { cursor })}`,
+        signal,
+      );
+    },
+    getAgents(project, range, etag, signal) {
+      return request<AgentList | Unchanged>(
+        `/api/agents?${reviewQuery(project, range, etag)}`,
+        signal,
+      );
+    },
+    getModels(project, range, etag, signal) {
+      return request<ModelList | Unchanged>(
+        `/api/models?${reviewQuery(project, range, etag)}`,
+        signal,
       );
     },
   };

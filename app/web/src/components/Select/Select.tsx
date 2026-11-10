@@ -43,6 +43,11 @@ export interface SelectProps {
   emptyState?: React.ReactNode;
   /** Fills its container with the label above the value, and opens a 360px popover under the left edge. */
   stacked?: boolean;
+  /**
+   * Opens a fixed-width popover (340px) under the trigger's right edge, as the Review Range Select
+   * does on a wide screen. At 720px and below the tray is unchanged.
+   */
+  rangePopover?: boolean;
   /** Extra classes. The component sheet uses is-hover and is-focus to force a state. */
   className?: string;
 }
@@ -144,6 +149,7 @@ export function Select({
   heading,
   emptyState,
   stacked = false,
+  rangePopover = false,
   className,
 }: SelectProps) {
   const reasonId = useId();
@@ -195,8 +201,13 @@ export function Select({
         <span className="select-chevron" aria-hidden="true" />
       </AriaButton>
       <Popover
-        className={cx("select-popover", stacked && "select-popover-wide")}
+        className={cx(
+          "select-popover",
+          stacked && "select-popover-wide",
+          rangePopover && "select-popover-range",
+        )}
         {...(stacked ? { placement: "bottom start" as const, offset: 4 } : {})}
+        {...(rangePopover ? { placement: "bottom end" as const, offset: 4 } : {})}
       >
         {heading !== undefined && (
           <p className="select-heading" id={headingId}>

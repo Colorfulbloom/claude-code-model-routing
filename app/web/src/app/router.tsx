@@ -1,6 +1,6 @@
 /*
  * The hash router. Every route from plan-a section 2 renders inside the shell, with the
- * placeholder page for its id, except More and the picker, which have their own pages. The
+ * placeholder page for its id, except Live, the Review pages, More and the picker, which have their own pages. The
  * picker is a modal over an empty shell.
  * RouteLayout runs the route harness: title, focus on the h1, polite status.
  */
@@ -18,6 +18,11 @@ import { MorePage } from "@/pages/MorePage";
 import { PickerPage } from "@/pages/PickerPage";
 import type { RouteContext } from "@/pages/PickerPage";
 import { Placeholder } from "@/pages/Placeholder";
+import { AgentsPage } from "@/pages/review/AgentsPage";
+import { ModelsPage } from "@/pages/review/ModelsPage";
+import { SessionReviewPage } from "@/pages/review/SessionReviewPage";
+import { SessionsPage } from "@/pages/review/SessionsPage";
+import { SummaryPage } from "@/pages/review/SummaryPage";
 import { t } from "@/strings/t";
 
 interface RouteHandle {
@@ -76,6 +81,16 @@ function route(path: string, id: PageId): RouteObject {
         <PickerPage />
       ) : id === "live" ? (
         <LivePage />
+      ) : id === "summary" ? (
+        <SummaryPage />
+      ) : id === "sessions" ? (
+        <SessionsPage />
+      ) : id === "session" ? (
+        <SessionReviewPage />
+      ) : id === "agents" ? (
+        <AgentsPage />
+      ) : id === "models" ? (
+        <ModelsPage />
       ) : (
         <Placeholder page={id} />
       ),

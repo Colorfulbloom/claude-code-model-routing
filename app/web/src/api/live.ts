@@ -19,6 +19,7 @@ import type { LiveSessions, LiveSessionsUnchanged, Timeline, Unchanged } from "@
 
 export const TIMELINE_POLL_MS = 1_000;
 export const SESSIONS_POLL_MS = 5_000;
+export const REVIEW_TIMELINE_POLL_MS = 5_000;
 export const SLOW_POLL_MS = 10_000;
 export const FAILURES_TO_LOST = 3;
 
@@ -75,6 +76,8 @@ interface FeedOptions<R extends { unchanged: boolean; server_time: string; etag:
   intervalMs: number;
   /** Polls this slowly once the answer says the session is over. */
   slowWhen?: (answer: Extract<R, { unchanged: false }>) => boolean;
+  /** Stops polling once the answer says nothing more will change. */
+  stopWhen?: (answer: Extract<R, { unchanged: false }>) => boolean;
   fetchReply: (etag: string | null, signal: AbortSignal) => Promise<R>;
 }
 
@@ -82,7 +85,7 @@ function useFeed<R extends { unchanged: boolean; server_time: string; etag: stri
   options: FeedOptions<R>,
 ): FeedState<Extract<R, { unchanged: false }>> {
   type Full = Extract<R, { unchanged: false }>;
-  const { key, active, enabled, intervalMs, slowWhen, fetchReply } = options;
+  const { key, active, enabled, intervalMs, slowWhen, stopWhen, fetchReply } = options;
   const client = useQueryClient();
   const keyText = JSON.stringify(key);
   const [counted, setCounted] = useState<{ key: string; failures: number }>({
@@ -123,8 +126,9 @@ function useFeed<R extends { unchanged: boolean; server_time: string; etag: stri
       if (current.state.error instanceof ApiError && current.state.error.status === 404) {
         return false;
       }
-      if (lost) return SLOW_POLL_MS;
       const data = current.state.data;
+      if (data !== undefined && stopWhen?.(data.answer) === true) return false;
+      if (lost) return SLOW_POLL_MS;
       return data !== undefined && slowWhen?.(data.answer) === true ? SLOW_POLL_MS : intervalMs;
     },
     refetchIntervalInBackground: false,
@@ -169,6 +173,27 @@ export function useTimelineFeed(
     enabled: session !== null,
     intervalMs: TIMELINE_POLL_MS,
     slowWhen: (answer) => answer.session.state === "ended",
+    fetchReply: (etag, signal) => api.getTimeline(project, session ?? "", etag, signal),
+  });
+}
+
+/**
+ * The timeline of a session open in Session review. Same answer and same etag rule as Live, on
+ * its own query key, so Live's feed and this one never share a cache entry. It polls every 5
+ * seconds while the session runs and stops for good once the answer says it ended.
+ */
+export function useReviewTimelineFeed(
+  project: string,
+  session: string | null,
+  active: boolean,
+): FeedState<Timeline> {
+  const api = useApi();
+  return useFeed<Timeline | Unchanged>({
+    key: ["review-timeline", project, session],
+    active,
+    enabled: session !== null,
+    intervalMs: REVIEW_TIMELINE_POLL_MS,
+    stopWhen: (answer) => answer.session.state === "ended",
     fetchReply: (etag, signal) => api.getTimeline(project, session ?? "", etag, signal),
   });
 }

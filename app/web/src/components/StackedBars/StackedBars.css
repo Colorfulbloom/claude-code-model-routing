@@ -129,6 +129,165 @@
   stroke: var(--m-fable);
 }
 
+/* Kind patterns take their ink from the model colour (currentColor on the pattern tile). */
+.bars-ink-opus {
+  color: var(--m-opus);
+}
+
+.bars-ink-sonnet {
+  color: var(--m-sonnet);
+}
+
+.bars-ink-haiku {
+  color: var(--m-haiku);
+}
+
+.bars-ink-fable {
+  color: var(--m-fable);
+}
+
+.bars-ink-neutral {
+  color: var(--text-muted);
+}
+
+.bars-outline {
+  fill: none;
+  stroke-width: 1.5;
+}
+
+/* A part with no price: the dashed stub the Live sparks use. */
+.bars-stub {
+  fill: none;
+  stroke: var(--border-strong);
+  stroke-dasharray: 3 2;
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+}
+
+/* A bucket cut short by the window or by the start of the records. */
+.bars-partial {
+  fill: none;
+  stroke: var(--text);
+  stroke-dasharray: 3 2;
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+}
+
+/* Buckets before the records start: no bars, a dashed divider where the records begin and the caller's words. */
+.bars-none-line {
+  stroke: var(--border-strong);
+  stroke-dasharray: 3 2;
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+}
+
+.bars-none-label {
+  position: absolute;
+  bottom: var(--space-2);
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bars-none-label > span {
+  background: var(--inset-bg);
+}
+
+/* A run too narrow for its words: one line at the top of the plot, past the divider. */
+.bars-none-edge {
+  inset-block: 0 auto;
+}
+
+/* A wide run centres its words inside the run and lets them wrap, as the board draws it. */
+.bars-none-wide {
+  inset-block: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--space-2);
+  box-sizing: border-box;
+  text-align: center;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.bars-none-wide > span {
+  padding: 2px 4px;
+}
+
+/* The open bucket's marker: a line where the bucket has got to and its word at the top. */
+.bars-now {
+  position: absolute;
+  inset-block: -4px 0;
+  z-index: 2;
+  border-left: 2px solid var(--now-line);
+  pointer-events: none;
+}
+
+.bars-now > span {
+  position: absolute;
+  top: -2px;
+  left: 4px;
+  padding: 0 3px;
+  background: var(--inset-bg);
+  color: var(--text);
+  font-size: var(--text-xs);
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+/* The y labels get their own column left of the plot. They centre on their grid lines. */
+.bars-guttered {
+  --bars-gutter: 40px;
+}
+
+.bars-guttered .bars-chart {
+  padding-left: var(--bars-gutter);
+}
+
+.bars-guttered .bars-tick {
+  left: calc(var(--bars-gutter) * -1);
+  width: var(--bars-gutter);
+  padding: 0 var(--space-1) 0 0;
+  background: none;
+  box-sizing: border-box;
+  text-align: right;
+  transform: translateY(50%);
+}
+
+/* The kinds line: one pattern swatch, the kind and its total, under the chart. */
+.bars-kinds {
+  display: flex;
+  flex-wrap: wrap;
+  grid-column: 1 / -1;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+  padding: var(--space-2) 0 0;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  list-style: none;
+}
+
+.bars-kinds li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.bars-kinds b {
+  color: var(--text);
+  font-weight: var(--weight-medium);
+}
+
+.bars-kind-swatch {
+  flex: none;
+  border: 1px solid var(--border-strong);
+  border-radius: 2px;
+}
+
 .bars-x {
   position: relative;
   color: var(--text-muted);
@@ -158,6 +317,14 @@
 
   .bars-side {
     padding-bottom: var(--space-2);
+  }
+
+  .bars-kinds {
+    padding-top: var(--space-1);
+  }
+
+  .bars-guttered {
+    --bars-gutter: 34px;
   }
 
   .bars-legend {

@@ -57,6 +57,32 @@ describe("sidebar at 1440", () => {
     expect(document.querySelector(".top-bar")).toBeNull();
   });
 
+  it("carries the current range on the Review links, as the phone's pages do", async () => {
+    await mount("#/p/builder/review/models?range=7d");
+    await screen.findByRole("link", { name: "To fix, 4 items" });
+    const links: [string, string][] = [
+      ["Summary", "summary"],
+      ["Sessions", "sessions"],
+      ["Agents", "agents"],
+      ["Models", "models"],
+    ];
+    for (const [name, page] of links) {
+      expect(screen.getByRole("link", { name })).toHaveAttribute(
+        "href",
+        `#/p/builder/review/${page}?range=7d`,
+      );
+    }
+  });
+
+  it("leaves the Review links plain on a page that is not Review", async () => {
+    await mount("#/p/builder/live?range=7d");
+    await screen.findByRole("link", { name: "To fix, 4 items" });
+    expect(screen.getByRole("link", { name: "Models" })).toHaveAttribute(
+      "href",
+      "#/p/builder/review/models",
+    );
+  });
+
   it.each(sidebarCases)("%s marks only %s as current", async (hash, name) => {
     await mount(hash);
     await screen.findByRole("link", { name: "To fix, 4 items" });
@@ -210,7 +236,9 @@ describe("top bar and tab bar at 375", () => {
   it.each(tabCases)("%s marks only %s as current", async (hash, name) => {
     await mount(hash, { width: 375 });
     await screen.findByRole("link", { name: "To fix, 4 items" });
-    const current = screen.getAllByRole("link", { current: "page" });
+    // The Review pages carry their own Segmented pages in the content, so look in the tab bar only.
+    const bar = screen.getByRole("navigation", { name: "Main" });
+    const current = within(bar).getAllByRole("link", { current: "page" });
     expect(current).toHaveLength(1);
     expect(current[0]).toHaveAccessibleName(name);
   });

@@ -199,7 +199,7 @@ describe("rows", () => {
     expect(rows.map((r) => r.cost)).toEqual([
       { kind: "cost", text: "$3.10" },
       { kind: "least", text: "at least $0.97" },
-      { kind: "none", text: "No price for Fable 5.1" },
+      { kind: "none", text: "No price", full: "No price for Fable 5.1" },
       { kind: "cost", text: "$1,235" },
     ]);
   });

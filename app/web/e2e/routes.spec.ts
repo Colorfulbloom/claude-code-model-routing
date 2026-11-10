@@ -23,6 +23,8 @@ interface RouteCase {
   path: string;
   /** The page name, which is the h1, the title head and the status line. */
   name: string;
+  /** The h1 when it differs from the page name, such as the gone state of an unknown session. */
+  heading?: string;
   hasProject: boolean;
   /** The current link in the tab bar (phone) and the sidebar (desktop). */
   tab: Tab;
@@ -50,6 +52,8 @@ const routes: RouteCase[] = [
   {
     path: `${base}/review/sessions/s-1`,
     name: en.pg_session,
+    // The demo has no session s-1, so Session review shows its gone state.
+    heading: en.gone_title,
     hasProject: true,
     tab: "review",
     side: en.nav_sessions,
@@ -178,12 +182,13 @@ async function checkRoute(
   phone: boolean,
 ): Promise<string[]> {
   const problems: string[] = [];
+  const heading = route.heading ?? route.name;
   const bad = (what: string): number => problems.push(`${route.path} ${what}`);
   await visit(page, route.path, phone);
   try {
-    await expect(page.locator("main h1").first()).toHaveText(route.name);
+    await expect(page.locator("main h1").first()).toHaveText(heading);
   } catch {
-    bad(`h1 is not "${route.name}"`);
+    bad(`h1 is not "${heading}"`);
     return problems;
   }
   try {
@@ -195,7 +200,7 @@ async function checkRoute(
     tag: document.activeElement?.tagName ?? "",
     text: document.activeElement?.textContent ?? "",
   }));
-  if (focus.tag !== "H1" || focus.text !== route.name) {
+  if (focus.tag !== "H1" || focus.text !== heading) {
     bad(`focus is on ${focus.tag} "${focus.text}", wanted the h1`);
   }
   const statuses = await page.locator('[role="status"]').allTextContents();

@@ -244,8 +244,12 @@ class _Pricer:
             found = self.labels[raw] = (known or raw or UNKNOWN_MODEL, known)
         return found
 
-    def cost(self, cell: _Cell, tier: int) -> float | None:
-        """Return the cell's USD cost, or None when it has no price."""
+    def parts(self, cell: _Cell, tier: int) -> dict[str, float] | None:
+        """Return the cell's USD cost by kind, or None when it has no price.
+
+        The keys are those of ``prices.price_parts``: input, output, cache_read and
+        cache_write.
+        """
         _label, known = self.label(cell.model_raw)
         if known is None:
             return None
@@ -255,13 +259,26 @@ class _Pricer:
         flat = self.docs[key]
         if flat is None:
             return None
-        parts = prices.price_parts(cell, flat, self.catalog)
+        return prices.price_parts(cell, flat, self.catalog)
+
+    def cost(self, cell: _Cell, tier: int) -> float | None:
+        """Return the cell's USD cost, or None when it has no price."""
+        parts = self.parts(cell, tier)
         return None if parts is None else sum(parts.values())
 
 
-# Public names for callers that price one request or one cell (the timeline).
+# Public names for callers that price one request or one cell (the timeline, Review).
 Pricer = _Pricer
 Cell = _Cell
+
+
+def minute_bounds(start: datetime, end: datetime) -> tuple[str, str]:
+    """Return ``(low, high)`` minute texts for a window, ``low <= minute < high``.
+
+    The start is floored to its minute. An end on a whole minute excludes that
+    minute, and an end with seconds includes it. See the module docstring.
+    """
+    return _bounds(start, end)
 
 
 def totals(  # noqa: PLR0913 - the query's own inputs, keyword-only after the doc

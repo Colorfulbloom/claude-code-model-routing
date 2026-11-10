@@ -4,1332 +4,2317 @@
  */
 
 export interface paths {
-  "/api/access/mint": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/api/access/mint": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mint Code */
+        post: operations["mint_code"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** Mint Code */
-    post: operations["mint_code"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/access/swap": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/api/access/swap": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Swap Code */
+        post: operations["swap_code"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** Swap Code */
-    post: operations["swap_code"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/app": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/api/agents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Agents */
+        get: operations["get_agents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** Get App */
-    get: operations["get_app"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/live/sessions": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/api/app": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get App */
+        get: operations["get_app"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** Get Live Sessions */
-    get: operations["get_live_sessions"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/prices": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/api/cost-chart": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Cost Chart */
+        get: operations["get_cost_chart"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** Get Prices */
-    get: operations["get_prices"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/projects": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/api/live/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Live Sessions */
+        get: operations["get_live_sessions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** Get Projects */
-    get: operations["get_projects"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/sessions/{session_id}/timeline": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/api/models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Models */
+        get: operations["get_models"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** Get Timeline */
-    get: operations["get_timeline"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
+    "/api/prices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Prices */
+        get: operations["get_prices"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Projects */
+        get: operations["get_projects"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Sessions */
+        get: operations["get_sessions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sessions/{session_id}/timeline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Timeline */
+        get: operations["get_timeline"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Summary */
+        get: operations["get_summary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
-  schemas: {
-    /**
-     * AppInfo
-     * @description Answer of ``GET /api/app``.
-     */
-    AppInfo: {
-      /** As Of */
-      as_of: string | null;
-      /** Claude Version */
-      claude_version: string;
-      clock: components["schemas"]["ClockInfo"];
-      /** Editable Projects */
-      editable_projects: string[];
-      /** Etag */
-      etag: string;
-      history: components["schemas"]["HistoryInfo"];
-      ingest: components["schemas"]["Ingest"];
-      /** Instance */
-      instance: string;
-      /**
-       * Mode
-       * @enum {string}
-       */
-      mode: "demo" | "fixture" | "flow" | "real";
-      /** Pass Running Since */
-      pass_running_since: string | null;
-      /** Running */
-      running: components["schemas"]["RunningItem"][];
-      /**
-       * Server Time
-       * Format: date-time
-       */
-      server_time: string;
-      /** To Fix Count */
-      to_fix_count: number | null;
+    schemas: {
+        /**
+         * AgentList
+         * @description Answer of ``GET /api/agents``. ``ran`` adds up to the Cost tile.
+         */
+        AgentList: {
+            /** As Of */
+            as_of: string | null;
+            /** Errors */
+            errors: components["schemas"]["CardError"][];
+            /** Etag */
+            etag: string;
+            /** Never Ran */
+            never_ran: components["schemas"]["AgentNoRuns"][];
+            prices: components["schemas"]["TimelinePrices"];
+            /** Project */
+            project: string;
+            /** Ran */
+            ran: components["schemas"]["AgentRow"][];
+            /**
+             * Range
+             * @enum {string}
+             */
+            range: "today" | "7d" | "30d" | "90d" | "12m" | "all";
+            /**
+             * Server Time
+             * Format: date-time
+             */
+            server_time: string;
+            /**
+             * Unchanged
+             * @constant
+             */
+            unchanged: false;
+            window: components["schemas"]["ReviewWindow"];
+        };
+        /**
+         * AgentMoney
+         * @description One agent's part of the range's cost. ``agent`` is an agent key.
+         *
+         *     The rows add up to the Cost tile, so a plugin agent with no file still has one.
+         */
+        AgentMoney: {
+            /** Agent */
+            agent: string;
+            /** Cost */
+            cost: number | null;
+            /** Model */
+            model: string | null;
+            /** Requests */
+            requests: number;
+            /** Share */
+            share: number | null;
+            unpriced: components["schemas"]["Unpriced"];
+        };
+        /**
+         * AgentNoRuns
+         * @description An agent file with no run in the range.
+         */
+        AgentNoRuns: {
+            /** Agent */
+            agent: string;
+            /**
+             * Scope
+             * @enum {string}
+             */
+            scope: "user" | "project";
+            set: components["schemas"]["SetPair"] | null;
+            /** Set Reason */
+            set_reason: ("no_file" | "sets_nothing" | "read_failed") | null;
+        };
+        /**
+         * AgentRow
+         * @description An agent that ran in the range, with its setup and its model check status.
+         *
+         *     ``set_reason`` says why ``set`` holds no value. ``ran_pairs`` lists every pair
+         *     the runs used, most runs first. ``runs_as_set`` and ``runs_not_as_set`` come
+         *     from the model check and are None when nothing is set.
+         */
+        AgentRow: {
+            /** Agent */
+            agent: string;
+            /** Cost */
+            cost: number | null;
+            /** Params */
+            params: {
+                [key: string]: string;
+            };
+            ran: components["schemas"]["RanPair"];
+            /** Ran Pairs */
+            ran_pairs: components["schemas"]["PairRuns"][];
+            /** Reason Code */
+            reason_code: string | null;
+            /** Requests */
+            requests: number;
+            /** Runs */
+            runs: number;
+            /** Runs As Set */
+            runs_as_set: number | null;
+            /** Runs Not As Set */
+            runs_not_as_set: number | null;
+            /**
+             * Scope
+             * @enum {string}
+             */
+            scope: "user" | "project" | "main" | "unnamed" | "no_file";
+            /** Sessions */
+            sessions: number;
+            set: components["schemas"]["SetPair"] | null;
+            /** Set Reason */
+            set_reason: ("no_file" | "sets_nothing" | "read_failed") | null;
+            /** Share */
+            share: number | null;
+            /** Status */
+            status: ("in_effect" | "overridden" | "ignored" | "lowered" | "invalid" | "default" | "unknown") | null;
+            unpriced: components["schemas"]["Unpriced"];
+        };
+        /**
+         * AppInfo
+         * @description Answer of ``GET /api/app``.
+         */
+        AppInfo: {
+            /** As Of */
+            as_of: string | null;
+            /** Claude Version */
+            claude_version: string;
+            clock: components["schemas"]["ClockInfo"];
+            /** Editable Projects */
+            editable_projects: string[];
+            /** Etag */
+            etag: string;
+            history: components["schemas"]["HistoryInfo"];
+            ingest: components["schemas"]["Ingest"];
+            /** Instance */
+            instance: string;
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "demo" | "fixture" | "flow" | "real";
+            /** Pass Running Since */
+            pass_running_since: string | null;
+            /** Running */
+            running: components["schemas"]["RunningItem"][];
+            /**
+             * Server Time
+             * Format: date-time
+             */
+            server_time: string;
+            /** To Fix Count */
+            to_fix_count: number | null;
+        };
+        /**
+         * BackupFailure
+         * @description A daily backup that did not finish. A later good copy clears it.
+         */
+        BackupFailure: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /**
+             * Reason Code
+             * @enum {string}
+             */
+            reason_code: "no_space" | "unwritable" | "check_failed" | "copy_failed";
+        };
+        /**
+         * CardError
+         * @description A card the server could not build. Its field in the answer is None.
+         */
+        CardError: {
+            /**
+             * Card
+             * @enum {string}
+             */
+            card: "model_check" | "agent_setup";
+            /**
+             * Code
+             * @enum {string}
+             */
+            code: "setup_unreadable" | "unexpected";
+        };
+        /**
+         * ChartBar
+         * @description One bar of the cost chart.
+         *
+         *     ``start`` and ``end`` are clipped to the chart window and to T, so the first and
+         *     last bars may be shorter than one ``unit``. ``open`` marks the bar that holds T.
+         *     ``holds_oldest`` marks the bar that holds ``window.oldest``. ``no_records`` marks
+         *     a bar that ends before ``oldest``, which the page shows as no records, not $0.
+         */
+        ChartBar: {
+            /** By Model */
+            by_model: {
+                [key: string]: components["schemas"]["ModelBarCost"];
+            };
+            /**
+             * End
+             * Format: date-time
+             */
+            end: string;
+            /** Holds Oldest */
+            holds_oldest: boolean;
+            /** No Records */
+            no_records: boolean;
+            /** Open */
+            open: boolean;
+            /**
+             * Start
+             * Format: date-time
+             */
+            start: string;
+            unpriced: components["schemas"]["Unpriced"];
+        };
+        /**
+         * ChartWindow
+         * @description The chart's own window, and why a pager end is reached.
+         *
+         *     On the newest page the window is the range's window, so the legend total equals
+         *     the Cost tile. Earlier pages are whole windows of the same length. ``all`` is one
+         *     page from ``oldest`` to T, with both ends reached, in days, weeks or months by span.
+         */
+        ChartWindow: {
+            /** Earlier Reason */
+            earlier_reason: ("no_earlier_data" | "newest") | null;
+            /**
+             * End
+             * Format: date-time
+             */
+            end: string;
+            /** Has Earlier */
+            has_earlier: boolean;
+            /** Has Later */
+            has_later: boolean;
+            /** Later Reason */
+            later_reason: ("no_earlier_data" | "newest") | null;
+            /** Newest */
+            newest: boolean;
+            /**
+             * Start
+             * Format: date-time
+             */
+            start: string;
+            /**
+             * Unit
+             * @enum {string}
+             */
+            unit: "hour" | "day" | "week" | "month";
+        };
+        /**
+         * ClockInfo
+         * @description Which clock the server answers with. ``rate_n`` is set only for ``rate``.
+         */
+        ClockInfo: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "real" | "fixed" | "rate" | "test";
+            /** Rate N */
+            rate_n: number | null;
+        };
+        /**
+         * CostChart
+         * @description Answer of ``GET /api/cost-chart``. It never changes the tiles.
+         */
+        CostChart: {
+            /** As Of */
+            as_of: string | null;
+            /** Bars */
+            bars: components["schemas"]["ChartBar"][];
+            chart: components["schemas"]["ChartWindow"];
+            /** Errors */
+            errors: components["schemas"]["CardError"][];
+            /** Etag */
+            etag: string;
+            kinds: components["schemas"]["KindCosts"];
+            /** Legend */
+            legend: components["schemas"]["ModelCost"][];
+            prices: components["schemas"]["TimelinePrices"];
+            /** Project */
+            project: string;
+            /**
+             * Range
+             * @enum {string}
+             */
+            range: "today" | "7d" | "30d" | "90d" | "12m" | "all";
+            /**
+             * Server Time
+             * Format: date-time
+             */
+            server_time: string;
+            /**
+             * Unchanged
+             * @constant
+             */
+            unchanged: false;
+            unpriced: components["schemas"]["Unpriced"];
+            window: components["schemas"]["ReviewWindow"];
+            /** Y Ticks */
+            y_ticks: number[];
+        };
+        /**
+         * CostTile
+         * @description The cost tile, with the unpriced requests of the range and of the prior.
+         */
+        CostTile: {
+            /** Change Abs */
+            change_abs: number | null;
+            /** Change Pct */
+            change_pct: number | null;
+            /** Prior */
+            prior: number | null;
+            prior_unpriced: components["schemas"]["Unpriced"] | null;
+            unpriced: components["schemas"]["Unpriced"];
+            /** Value */
+            value: number | null;
+        };
+        /**
+         * CountTile
+         * @description A whole-number tile. ``change_pct`` is relative, ``change_abs`` the difference.
+         *
+         *     Both changes are None when there is no prior window or ``window.prior_partial``.
+         *     ``change_pct`` is also None when the prior value is 0.
+         */
+        CountTile: {
+            /** Change Abs */
+            change_abs: number | null;
+            /** Change Pct */
+            change_pct: number | null;
+            /** Prior */
+            prior: number | null;
+            /** Value */
+            value: number;
+        };
+        /**
+         * CrossCheck
+         * @description Result of comparing the active table with a second public list.
+         */
+        CrossCheck: {
+            /** Models */
+            models: string[];
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "agree" | "disagree" | "not_checked";
+        };
+        /**
+         * Cum
+         * @description Cumulative values at the end of one bucket.
+         */
+        Cum: {
+            /** Cache Read */
+            cache_read: number;
+            /** Cost */
+            cost: number | null;
+            /** Tokens */
+            tokens: number;
+        };
+        /**
+         * EndedSession
+         * @description The newest session in a project that is no longer running.
+         */
+        EndedSession: {
+            /** Branch */
+            branch: string | null;
+            /** Id */
+            id: string;
+            /**
+             * Last Request
+             * Format: date-time
+             */
+            last_request: string;
+            /** Requests */
+            requests: number;
+            /**
+             * Started
+             * Format: date-time
+             */
+            started: string;
+        };
+        /**
+         * ErrorEnvelope
+         * @description The one error body. It never carries input or file paths.
+         */
+        ErrorEnvelope: {
+            /** Code */
+            code: string;
+            /** Path */
+            path: (string | number)[] | null;
+        };
+        /**
+         * HistoryInfo
+         * @description What the store holds and how well it is kept.
+         */
+        HistoryInfo: {
+            backup_failed: components["schemas"]["BackupFailure"] | null;
+            /** First Ingest */
+            first_ingest: string | null;
+            /** Kept Files */
+            kept_files: number;
+            /** Last Backup */
+            last_backup: string | null;
+            /** No Usage Rows */
+            no_usage_rows: number;
+            /** Oldest */
+            oldest: string | null;
+            pass_error: components["schemas"]["PassError"] | null;
+            /** Unreadable Files */
+            unreadable_files: number;
+        };
+        /**
+         * Ingest
+         * @description Progress of the first read of the usage history.
+         */
+        Ingest: {
+            /** Bytes Done */
+            bytes_done: number;
+            /** Bytes Total */
+            bytes_total: number | null;
+            error: components["schemas"]["IngestError"] | null;
+            /** Files Done */
+            files_done: number;
+            /** Files Total */
+            files_total: number | null;
+            /** Retry At */
+            retry_at: string | null;
+            /** Retrying */
+            retrying: boolean;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "waiting" | "running" | "done" | "failed";
+        };
+        /**
+         * IngestError
+         * @description Why a first-run ingest failed. ``file`` is None when the contract names none.
+         */
+        IngestError: {
+            /**
+             * Code
+             * @enum {string}
+             */
+            code: "config_dir_missing" | "config_dir_unreadable" | "store_unwritable" | "store_damaged" | "store_newer" | "unexpected";
+            /** File */
+            file: string | null;
+        };
+        /**
+         * KindCosts
+         * @description Dollars per kind of cost, over priced requests only.
+         */
+        KindCosts: {
+            /** Cache Read */
+            cache_read: number;
+            /** Cache Write */
+            cache_write: number;
+            /** Input */
+            input: number;
+            /** Output */
+            output: number;
+        };
+        /**
+         * LatestRequest
+         * @description One of the eight newest requests at or before T.
+         */
+        LatestRequest: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Cache Read */
+            cache_read: number;
+            /** Cost */
+            cost: number | null;
+            /** Effort */
+            effort: string | null;
+            /** Id */
+            id: string;
+            /** Model */
+            model: string | null;
+            /** New Tokens */
+            new_tokens: number;
+            /** Output */
+            output: number;
+            /** Run Id */
+            run_id: string;
+            /** Tokens */
+            tokens: number;
+        };
+        /**
+         * LiveSession
+         * @description A running session in the Session Select.
+         */
+        LiveSession: {
+            /** Active */
+            active: boolean;
+            /** Branch */
+            branch: string | null;
+            /** Id */
+            id: string;
+            /**
+             * Last Request
+             * Format: date-time
+             */
+            last_request: string;
+            /** Project */
+            project: string;
+            /** Project Name */
+            project_name: string;
+            /** Requests */
+            requests: number;
+            /** Runs Working */
+            runs_working: number;
+            /**
+             * Started
+             * Format: date-time
+             */
+            started: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "working" | "idle";
+        };
+        /**
+         * LiveSessions
+         * @description Answer of ``GET /api/live/sessions``.
+         */
+        LiveSessions: {
+            /** As Of */
+            as_of: string | null;
+            /** Etag */
+            etag: string;
+            latest_ended: components["schemas"]["EndedSession"] | null;
+            /**
+             * Server Time
+             * Format: date-time
+             */
+            server_time: string;
+            /** Sessions */
+            sessions: components["schemas"]["LiveSession"][];
+            /**
+             * Unchanged
+             * @constant
+             */
+            unchanged: false;
+        };
+        /**
+         * LiveSessionsUnchanged
+         * @description The short session-list answer when the asked etag still matches.
+         */
+        LiveSessionsUnchanged: {
+            /** Etag */
+            etag: string;
+            /**
+             * Server Time
+             * Format: date-time
+             */
+            server_time: string;
+            /**
+             * Unchanged
+             * @constant
+             */
+            unchanged: true;
+        };
+        /**
+         * MintRequest
+         * @description Body of ``POST /api/access/mint``.
+         */
+        MintRequest: {
+            /** Project */
+            project?: string | null;
+        };
+        /**
+         * MintResponse
+         * @description A fresh single-use code.
+         */
+        MintResponse: {
+            /** Code */
+            code: string;
+        };
+        /**
+         * ModelBarCost
+         * @description One model's part of a chart bar. ``cost`` is None when none of it is priced.
+         */
+        ModelBarCost: {
+            /** Cost */
+            cost: number | null;
+            kinds: components["schemas"]["KindCosts"];
+            /** Requests */
+            requests: number;
+            unpriced: components["schemas"]["Unpriced"];
+        };
+        /**
+         * ModelCheck
+         * @description Every agent's model check, plus how many are in effect.
+         */
+        ModelCheck: {
+            /** In Effect Count */
+            in_effect_count: number;
+            /** Rows */
+            rows: components["schemas"]["ModelCheckRow"][];
+        };
+        /**
+         * ModelCheckRow
+         * @description The model check for one agent type in the session.
+         */
+        ModelCheckRow: {
+            /** Agent */
+            agent: string | null;
+            /** Mismatched Runs */
+            mismatched_runs: number;
+            /** Params */
+            params: {
+                [key: string]: string;
+            };
+            ran: components["schemas"]["RanPair"];
+            /** Reason Code */
+            reason_code: string | null;
+            /** Runs */
+            runs: number;
+            set: components["schemas"]["SetPair"];
+            /** Status */
+            status: ("in_effect" | "overridden" | "ignored" | "lowered" | "invalid" | "default" | "unknown") | null;
+        };
+        /**
+         * ModelCost
+         * @description A legend entry over the chart window. A model with no price keeps its entry.
+         */
+        ModelCost: {
+            /** Cost */
+            cost: number | null;
+            /** Model */
+            model: string;
+            /** Requests */
+            requests: number;
+            unpriced: components["schemas"]["Unpriced"];
+        };
+        /**
+         * ModelKinds
+         * @description One model's dollars per kind of cost, over its priced requests.
+         */
+        ModelKinds: {
+            /** Cache Read */
+            cache_read: number;
+            /** Cache Write */
+            cache_write: number;
+            /** Input */
+            input: number;
+            /** Model */
+            model: string;
+            /** Output */
+            output: number;
+            unpriced: components["schemas"]["Unpriced"];
+        };
+        /**
+         * ModelList
+         * @description Answer of ``GET /api/models``. ``unpriced`` covers the whole legend.
+         */
+        ModelList: {
+            /** As Of */
+            as_of: string | null;
+            /** Errors */
+            errors: components["schemas"]["CardError"][];
+            /** Etag */
+            etag: string;
+            /** Kinds */
+            kinds: components["schemas"]["ModelKinds"][];
+            legend: components["schemas"]["KindCosts"];
+            prices: components["schemas"]["TimelinePrices"];
+            /** Project */
+            project: string;
+            /**
+             * Range
+             * @enum {string}
+             */
+            range: "today" | "7d" | "30d" | "90d" | "12m" | "all";
+            /** Rows */
+            rows: components["schemas"]["ModelRow"][];
+            /**
+             * Server Time
+             * Format: date-time
+             */
+            server_time: string;
+            /**
+             * Unchanged
+             * @constant
+             */
+            unchanged: false;
+            unpriced: components["schemas"]["Unpriced"];
+            window: components["schemas"]["ReviewWindow"];
+        };
+        /**
+         * ModelPrice
+         * @description One model's rates in USD per million tokens.
+         */
+        ModelPrice: {
+            /** Cache Read */
+            cache_read: number;
+            /** Cache Write 1H */
+            cache_write_1h: number;
+            /** Cache Write 5M */
+            cache_write_5m: number;
+            /** Input */
+            input: number;
+            /** Model */
+            model: string;
+            /** Modifiers */
+            modifiers: {
+                [key: string]: number;
+            };
+            /** Output */
+            output: number;
+            /** Relative */
+            relative: number | null;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "model_pricing" | "litellm" | "last_good" | "bundled";
+            /** Tiers */
+            tiers: components["schemas"]["PriceTier"][];
+        };
+        /**
+         * ModelRow
+         * @description One model over the range. ``used_by`` holds agent keys.
+         */
+        ModelRow: {
+            /** Cache Share */
+            cache_share: number | null;
+            /** Cost */
+            cost: number | null;
+            /** Model */
+            model: string;
+            /** Requests */
+            requests: number;
+            /** Share */
+            share: number | null;
+            /** Tokens */
+            tokens: number;
+            unpriced: components["schemas"]["Unpriced"];
+            /** Used By */
+            used_by: string[];
+        };
+        /**
+         * ModelTokens
+         * @description A legend entry, new tokens over the axis.
+         */
+        ModelTokens: {
+            /** Model */
+            model: string;
+            /** Tokens */
+            tokens: number;
+        };
+        /**
+         * PairRuns
+         * @description One model and effort pair the runs used, with its run count.
+         */
+        PairRuns: {
+            /** Effort */
+            effort: string | null;
+            /** Model */
+            model: string | null;
+            /** Runs */
+            runs: number;
+        };
+        /**
+         * PassError
+         * @description A whole-pass failure after the first ingest. The next good pass clears it.
+         */
+        PassError: {
+            /**
+             * Code
+             * @enum {string}
+             */
+            code: "config_dir_missing" | "config_dir_unreadable" | "store_unwritable" | "store_damaged" | "store_newer" | "unexpected";
+            /** File */
+            file: string | null;
+            /**
+             * Since
+             * Format: date-time
+             */
+            since: string;
+        };
+        /**
+         * PriceTier
+         * @description Rates that apply once a prompt passes a size, in USD per million tokens.
+         */
+        PriceTier: {
+            /** Cache Read */
+            cache_read: number;
+            /** Cache Write 1H */
+            cache_write_1h: number;
+            /** Cache Write 5M */
+            cache_write_5m: number;
+            /** Input */
+            input: number;
+            /** Output */
+            output: number;
+            /** Prompt Tokens Over */
+            prompt_tokens_over: number;
+        };
+        /**
+         * PricesInfo
+         * @description Answer of ``GET /api/prices``.
+         */
+        PricesInfo: {
+            /**
+             * As Of
+             * Format: date
+             */
+            as_of: string;
+            cross_check: components["schemas"]["CrossCheck"];
+            /** Etag */
+            etag: string;
+            /** Models */
+            models: components["schemas"]["ModelPrice"][];
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "model_pricing" | "litellm" | "last_good" | "bundled";
+        };
+        /**
+         * Project
+         * @description One project in the picker.
+         */
+        Project: {
+            /** Display Path */
+            display_path: string;
+            /** Key */
+            key: string;
+            /** Name */
+            name: string;
+            /** Running */
+            running: boolean;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "ok" | "no_claude_folder" | "folder_not_found";
+        };
+        /**
+         * ProjectList
+         * @description Answer of ``GET /api/projects``.
+         */
+        ProjectList: {
+            /** Projects */
+            projects: components["schemas"]["Project"][];
+        };
+        /**
+         * RanPair
+         * @description What the runs used, most common first. ``mixed`` when runs differ.
+         */
+        RanPair: {
+            /** Effort */
+            effort: string | null;
+            /** Mixed */
+            mixed: boolean;
+            /** Model */
+            model: string | null;
+        };
+        /**
+         * ReviewSession
+         * @description One session in a Review list. ``agents`` are agent keys, biggest cost first.
+         *
+         *     ``tokens``, ``cost`` and ``runs`` count the range only. ``started_before_range``
+         *     marks a session whose first request is before ``window.start``, and ``whole``
+         *     then holds its numbers over its whole life, so the page can show either.
+         */
+        ReviewSession: {
+            /** Agents */
+            agents: string[];
+            /** Branch */
+            branch: string | null;
+            /** Cost */
+            cost: number | null;
+            /** Id */
+            id: string;
+            /**
+             * Last Request
+             * Format: date-time
+             */
+            last_request: string;
+            /** Runs */
+            runs: number;
+            /**
+             * Started
+             * Format: date-time
+             */
+            started: string;
+            /** Started Before Range */
+            started_before_range: boolean;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "working" | "idle" | "ended";
+            /** Tokens */
+            tokens: number;
+            unpriced: components["schemas"]["Unpriced"];
+            whole: components["schemas"]["SessionWhole"] | null;
+        };
+        /**
+         * ReviewWindow
+         * @description The range's window and the one it compares with, in the answer's zone.
+         *
+         *     ``end`` is the clock T. ``prior_start`` and ``prior_end`` are None for ``all``.
+         *     ``oldest`` is the oldest stored request in the project, or None when there is
+         *     none. ``partial`` is True when ``oldest`` falls after ``start``, so the range
+         *     holds less history than its name. ``prior_partial`` is True when ``oldest`` falls
+         *     after ``prior_start``, so a change against the prior would mislead.
+         */
+        ReviewWindow: {
+            /**
+             * End
+             * Format: date-time
+             */
+            end: string;
+            /** Oldest */
+            oldest: string | null;
+            /** Partial */
+            partial: boolean;
+            /** Prior End */
+            prior_end: string | null;
+            /** Prior Partial */
+            prior_partial: boolean;
+            /** Prior Start */
+            prior_start: string | null;
+            /**
+             * Start
+             * Format: date-time
+             */
+            start: string;
+            /** Tz */
+            tz: string;
+        };
+        /**
+         * Round
+         * @description One round of a run. ``by`` is ``main``, a run id, or None.
+         */
+        Round: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** By */
+            by: string | null;
+            /** By Kind */
+            by_kind: ("coordinator" | "peer" | "human") | null;
+            /**
+             * Last Request
+             * Format: date-time
+             */
+            last_request: string;
+            /** N */
+            n: number;
+        };
+        /**
+         * RunningItem
+         * @description One session that is running now.
+         */
+        RunningItem: {
+            /** Project */
+            project: string;
+            /** Session */
+            session: string;
+        };
+        /**
+         * Segment
+         * @description A drawn stretch of a lane, one per round.
+         */
+        Segment: {
+            /**
+             * End
+             * Format: date-time
+             */
+            end: string;
+            /**
+             * Start
+             * Format: date-time
+             */
+            start: string;
+        };
+        /**
+         * SessionDay
+         * @description The sessions of one local day.
+         *
+         *     A session sits under the local day of its first request inside the range, so a
+         *     session that started before the range sits under the range's first day. A day
+         *     can continue on the next page, and the page joins it under one header. The field
+         *     is ``day``, not ``date``, because a field named like its type breaks the
+         *     annotation in a Pydantic class body.
+         */
+        SessionDay: {
+            /**
+             * Day
+             * Format: date
+             */
+            day: string;
+            /** Sessions */
+            sessions: components["schemas"]["ReviewSession"][];
+        };
+        /**
+         * SessionList
+         * @description Answer of ``GET /api/sessions``.
+         *
+         *     Newest first by (first request in range, id). ``next`` is an opaque cursor that
+         *     anchors on the last row's sort key, so a refetch never repeats or moves loaded
+         *     rows, and None at the end of the list.
+         */
+        SessionList: {
+            /** As Of */
+            as_of: string | null;
+            /** Count */
+            count: number;
+            /** Days */
+            days: components["schemas"]["SessionDay"][];
+            /** Errors */
+            errors: components["schemas"]["CardError"][];
+            /** Etag */
+            etag: string;
+            /** Next */
+            next: string | null;
+            prices: components["schemas"]["TimelinePrices"];
+            /** Project */
+            project: string;
+            /**
+             * Range
+             * @enum {string}
+             */
+            range: "today" | "7d" | "30d" | "90d" | "12m" | "all";
+            /**
+             * Server Time
+             * Format: date-time
+             */
+            server_time: string;
+            /**
+             * Unchanged
+             * @constant
+             */
+            unchanged: false;
+            window: components["schemas"]["ReviewWindow"];
+        };
+        /**
+         * SessionWhole
+         * @description A session's whole numbers, for a session that started before the range.
+         */
+        SessionWhole: {
+            /** Cost */
+            cost: number | null;
+            /** Tokens */
+            tokens: number;
+            unpriced: components["schemas"]["Unpriced"];
+        };
+        /**
+         * SetPair
+         * @description The model and effort an agent's setup asks for.
+         */
+        SetPair: {
+            effort: components["schemas"]["SetValue"] | null;
+            model: components["schemas"]["SetValue"] | null;
+        };
+        /**
+         * SetValue
+         * @description What a file or setting sets, with its display path and line.
+         */
+        SetValue: {
+            /** File */
+            file: string | null;
+            /** Line */
+            line: number | null;
+            /** Scope */
+            scope: string | null;
+            /** Value */
+            value: string;
+        };
+        /**
+         * ShareTile
+         * @description A share from 0 to 1, such as the cache share. ``change_abs`` is in shares.
+         */
+        ShareTile: {
+            /** Change Abs */
+            change_abs: number | null;
+            /** Prior */
+            prior: number | null;
+            /** Value */
+            value: number | null;
+        };
+        /**
+         * StateAt
+         * @description A state that starts at ``at`` and holds until the next entry.
+         */
+        StateAt: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** State */
+            state: string;
+        };
+        /**
+         * Summary
+         * @description Answer of ``GET /api/summary``. ``model_check`` is None when its card failed.
+         */
+        Summary: {
+            /** As Of */
+            as_of: string | null;
+            /** Errors */
+            errors: components["schemas"]["CardError"][];
+            /** Etag */
+            etag: string;
+            model_check: components["schemas"]["ModelCheck"] | null;
+            /** Money */
+            money: components["schemas"]["AgentMoney"][];
+            /** No Usage Sessions */
+            no_usage_sessions: number;
+            prices: components["schemas"]["TimelinePrices"];
+            /** Project */
+            project: string;
+            /**
+             * Range
+             * @enum {string}
+             */
+            range: "today" | "7d" | "30d" | "90d" | "12m" | "all";
+            /**
+             * Server Time
+             * Format: date-time
+             */
+            server_time: string;
+            /** Session Count */
+            session_count: number;
+            tiles: components["schemas"]["SummaryTiles"];
+            /** Top Sessions */
+            top_sessions: components["schemas"]["ReviewSession"][];
+            /**
+             * Unchanged
+             * @constant
+             */
+            unchanged: false;
+            window: components["schemas"]["ReviewWindow"];
+        };
+        /**
+         * SummaryTiles
+         * @description The four Summary tiles.
+         */
+        SummaryTiles: {
+            cache_share: components["schemas"]["ShareTile"];
+            cost: components["schemas"]["CostTile"];
+            sessions: components["schemas"]["CountTile"];
+            tokens: components["schemas"]["CountTile"];
+        };
+        /**
+         * SwapRequest
+         * @description Body of ``POST /api/access/swap``.
+         */
+        SwapRequest: {
+            /** Code */
+            code: string;
+        };
+        /**
+         * SwapResponse
+         * @description Keys handed out after a code swap.
+         */
+        SwapResponse: {
+            /** Edit Keys */
+            edit_keys: {
+                [key: string]: string;
+            };
+            /** Instance */
+            instance: string;
+            /** Project */
+            project: string | null;
+            /** Read Key */
+            read_key: string;
+        };
+        /**
+         * Timeline
+         * @description Answer of ``GET /api/sessions/{id}/timeline``.
+         */
+        Timeline: {
+            /** As Of */
+            as_of: string | null;
+            axis: components["schemas"]["TimelineAxis"];
+            /** Buckets */
+            buckets: components["schemas"]["TimelineBucket"][];
+            /** Etag */
+            etag: string;
+            last_minute: components["schemas"]["Window"] | null;
+            model_check: components["schemas"]["ModelCheck"];
+            /** Models */
+            models: components["schemas"]["ModelTokens"][];
+            prices: components["schemas"]["TimelinePrices"];
+            /** Project */
+            project: string;
+            /** Requests */
+            requests: components["schemas"]["LatestRequest"][];
+            /** Runs */
+            runs: components["schemas"]["TimelineRun"][];
+            /**
+             * Server Time
+             * Format: date-time
+             */
+            server_time: string;
+            session: components["schemas"]["TimelineSession"];
+            totals: components["schemas"]["TimelineTotals"];
+            /**
+             * Unchanged
+             * @constant
+             */
+            unchanged: false;
+        };
+        /**
+         * TimelineAxis
+         * @description The x axis over the whole session, and the y ticks for new tokens.
+         */
+        TimelineAxis: {
+            /** Bucket Seconds */
+            bucket_seconds: number;
+            /**
+             * End
+             * Format: date-time
+             */
+            end: string;
+            /**
+             * Start
+             * Format: date-time
+             */
+            start: string;
+            /** Ticks */
+            ticks: string[];
+            /** Token Ticks */
+            token_ticks: number[];
+        };
+        /**
+         * TimelineBucket
+         * @description One bar. ``by_model`` holds new tokens and leaves out models with none.
+         */
+        TimelineBucket: {
+            /** By Model */
+            by_model: {
+                [key: string]: number;
+            };
+            /** Cache Read */
+            cache_read: number;
+            /** Cost */
+            cost: number | null;
+            /** Requests */
+            requests: number;
+            /**
+             * Start
+             * Format: date-time
+             */
+            start: string;
+            unpriced: components["schemas"]["Unpriced"];
+        };
+        /**
+         * TimelinePrices
+         * @description The price facts a cost label needs.
+         */
+        TimelinePrices: {
+            /**
+             * As Of
+             * Format: date
+             */
+            as_of: string;
+            /**
+             * Cross Check State
+             * @enum {string}
+             */
+            cross_check_state: "agree" | "disagree" | "not_checked";
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "model_pricing" | "litellm" | "last_good" | "bundled";
+        };
+        /**
+         * TimelineRun
+         * @description One agent run, or the main session (``agent`` None, ``parent`` None).
+         */
+        TimelineRun: {
+            /** Agent */
+            agent: string | null;
+            /** Cost */
+            cost: number | null;
+            /** Cum */
+            cum: components["schemas"]["Cum"][];
+            /** Depth */
+            depth: number;
+            /** Dispatch Order */
+            dispatch_order: number;
+            /** Effort */
+            effort: string | null;
+            /**
+             * First Request
+             * Format: date-time
+             */
+            first_request: string;
+            /** Label N */
+            label_n: number;
+            /**
+             * Last Request
+             * Format: date-time
+             */
+            last_request: string;
+            /** Model */
+            model: string | null;
+            /** Parent */
+            parent: string | null;
+            /** Parent At */
+            parent_at: string | null;
+            /** Parent Known */
+            parent_known: boolean;
+            /**
+             * Parent State
+             * @enum {string}
+             */
+            parent_state: "known" | "waiting" | "unknown";
+            /** Rounds */
+            rounds: components["schemas"]["Round"][];
+            /** Run Id */
+            run_id: string;
+            /** Segments */
+            segments: components["schemas"]["Segment"][];
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "working" | "idle" | "finished";
+            /** States */
+            states: components["schemas"]["StateAt"][];
+            together: components["schemas"]["Together"] | null;
+            /** Tokens */
+            tokens: number;
+            unpriced: components["schemas"]["Unpriced"];
+        };
+        /**
+         * TimelineSession
+         * @description The session a timeline describes.
+         */
+        TimelineSession: {
+            /** Active */
+            active: boolean;
+            /** Branch */
+            branch: string | null;
+            /** Ended At */
+            ended_at: string | null;
+            /** Id */
+            id: string;
+            /**
+             * Last Request
+             * Format: date-time
+             */
+            last_request: string;
+            /** Project */
+            project: string;
+            /** Requests */
+            requests: number;
+            /** Running */
+            running: boolean;
+            /**
+             * Started
+             * Format: date-time
+             */
+            started: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "working" | "idle" | "ended";
+            /** States */
+            states: components["schemas"]["StateAt"][];
+            unpriced: components["schemas"]["Unpriced"];
+        };
+        /**
+         * TimelineTotals
+         * @description Session totals at T.
+         */
+        TimelineTotals: {
+            /** Cache Read */
+            cache_read: number;
+            /** Cache Write */
+            cache_write: number;
+            /** Cost */
+            cost: number | null;
+            /** Hit Rate */
+            hit_rate: number | null;
+            /** Input */
+            input: number;
+            /** Output */
+            output: number;
+            /** Requests */
+            requests: number;
+            /** Runs */
+            runs: number;
+            /** Runs Finished */
+            runs_finished: number;
+            /** Runs Working */
+            runs_working: number;
+            /** Tokens */
+            tokens: number;
+            unpriced: components["schemas"]["Unpriced"];
+        };
+        /**
+         * Together
+         * @description Siblings launched within 5 s of each other share a key.
+         */
+        Together: {
+            /** Key */
+            key: string;
+            /** N */
+            n: number;
+        };
+        /**
+         * Unchanged
+         * @description The short answer when the asked etag still matches.
+         */
+        Unchanged: {
+            /** Etag */
+            etag: string;
+            /** Project */
+            project: string;
+            /**
+             * Server Time
+             * Format: date-time
+             */
+            server_time: string;
+            /**
+             * Unchanged
+             * @constant
+             */
+            unchanged: true;
+        };
+        /**
+         * Unpriced
+         * @description Requests with no price, and the models they ran on, in catalog order.
+         */
+        Unpriced: {
+            /** Models */
+            models: string[];
+            /** Requests */
+            requests: number;
+        };
+        /**
+         * Window
+         * @description Numbers over a stretch of time, such as the 60 s before T.
+         */
+        Window: {
+            /** Cache Read */
+            cache_read: number;
+            /** Cost */
+            cost: number | null;
+            /** Hit Rate */
+            hit_rate: number | null;
+            /** Requests */
+            requests: number;
+            /** Tokens */
+            tokens: number;
+            unpriced: components["schemas"]["Unpriced"];
+        };
     };
-    /**
-     * BackupFailure
-     * @description A daily backup that did not finish. A later good copy clears it.
-     */
-    BackupFailure: {
-      /**
-       * At
-       * Format: date-time
-       */
-      at: string;
-      /**
-       * Reason Code
-       * @enum {string}
-       */
-      reason_code: "no_space" | "unwritable" | "check_failed" | "copy_failed";
-    };
-    /**
-     * ClockInfo
-     * @description Which clock the server answers with. ``rate_n`` is set only for ``rate``.
-     */
-    ClockInfo: {
-      /**
-       * Kind
-       * @enum {string}
-       */
-      kind: "real" | "fixed" | "rate" | "test";
-      /** Rate N */
-      rate_n: number | null;
-    };
-    /**
-     * CrossCheck
-     * @description Result of comparing the active table with a second public list.
-     */
-    CrossCheck: {
-      /** Models */
-      models: string[];
-      /**
-       * State
-       * @enum {string}
-       */
-      state: "agree" | "disagree" | "not_checked";
-    };
-    /**
-     * Cum
-     * @description Cumulative values at the end of one bucket.
-     */
-    Cum: {
-      /** Cache Read */
-      cache_read: number;
-      /** Cost */
-      cost: number | null;
-      /** Tokens */
-      tokens: number;
-    };
-    /**
-     * EndedSession
-     * @description The newest session in a project that is no longer running.
-     */
-    EndedSession: {
-      /** Branch */
-      branch: string | null;
-      /** Id */
-      id: string;
-      /**
-       * Last Request
-       * Format: date-time
-       */
-      last_request: string;
-      /** Requests */
-      requests: number;
-      /**
-       * Started
-       * Format: date-time
-       */
-      started: string;
-    };
-    /**
-     * ErrorEnvelope
-     * @description The one error body. It never carries input or file paths.
-     */
-    ErrorEnvelope: {
-      /** Code */
-      code: string;
-      /** Path */
-      path: (string | number)[] | null;
-    };
-    /**
-     * HistoryInfo
-     * @description What the store holds and how well it is kept.
-     */
-    HistoryInfo: {
-      backup_failed: components["schemas"]["BackupFailure"] | null;
-      /** First Ingest */
-      first_ingest: string | null;
-      /** Kept Files */
-      kept_files: number;
-      /** Last Backup */
-      last_backup: string | null;
-      /** No Usage Rows */
-      no_usage_rows: number;
-      /** Oldest */
-      oldest: string | null;
-      pass_error: components["schemas"]["PassError"] | null;
-      /** Unreadable Files */
-      unreadable_files: number;
-    };
-    /**
-     * Ingest
-     * @description Progress of the first read of the usage history.
-     */
-    Ingest: {
-      /** Bytes Done */
-      bytes_done: number;
-      /** Bytes Total */
-      bytes_total: number | null;
-      error: components["schemas"]["IngestError"] | null;
-      /** Files Done */
-      files_done: number;
-      /** Files Total */
-      files_total: number | null;
-      /** Retry At */
-      retry_at: string | null;
-      /** Retrying */
-      retrying: boolean;
-      /**
-       * State
-       * @enum {string}
-       */
-      state: "waiting" | "running" | "done" | "failed";
-    };
-    /**
-     * IngestError
-     * @description Why a first-run ingest failed. ``file`` is None when the contract names none.
-     */
-    IngestError: {
-      /**
-       * Code
-       * @enum {string}
-       */
-      code:
-        | "config_dir_missing"
-        | "config_dir_unreadable"
-        | "store_unwritable"
-        | "store_damaged"
-        | "store_newer"
-        | "unexpected";
-      /** File */
-      file: string | null;
-    };
-    /**
-     * LatestRequest
-     * @description One of the eight newest requests at or before T.
-     */
-    LatestRequest: {
-      /**
-       * At
-       * Format: date-time
-       */
-      at: string;
-      /** Cache Read */
-      cache_read: number;
-      /** Cost */
-      cost: number | null;
-      /** Effort */
-      effort: string | null;
-      /** Id */
-      id: string;
-      /** Model */
-      model: string | null;
-      /** New Tokens */
-      new_tokens: number;
-      /** Output */
-      output: number;
-      /** Run Id */
-      run_id: string;
-      /** Tokens */
-      tokens: number;
-    };
-    /**
-     * LiveSession
-     * @description A running session in the Session Select.
-     */
-    LiveSession: {
-      /** Active */
-      active: boolean;
-      /** Branch */
-      branch: string | null;
-      /** Id */
-      id: string;
-      /**
-       * Last Request
-       * Format: date-time
-       */
-      last_request: string;
-      /** Project */
-      project: string;
-      /** Project Name */
-      project_name: string;
-      /** Requests */
-      requests: number;
-      /** Runs Working */
-      runs_working: number;
-      /**
-       * Started
-       * Format: date-time
-       */
-      started: string;
-      /**
-       * State
-       * @enum {string}
-       */
-      state: "working" | "idle";
-    };
-    /**
-     * LiveSessions
-     * @description Answer of ``GET /api/live/sessions``.
-     */
-    LiveSessions: {
-      /** As Of */
-      as_of: string | null;
-      /** Etag */
-      etag: string;
-      latest_ended: components["schemas"]["EndedSession"] | null;
-      /**
-       * Server Time
-       * Format: date-time
-       */
-      server_time: string;
-      /** Sessions */
-      sessions: components["schemas"]["LiveSession"][];
-      /**
-       * Unchanged
-       * @constant
-       */
-      unchanged: false;
-    };
-    /**
-     * LiveSessionsUnchanged
-     * @description The short session-list answer when the asked etag still matches.
-     */
-    LiveSessionsUnchanged: {
-      /** Etag */
-      etag: string;
-      /**
-       * Server Time
-       * Format: date-time
-       */
-      server_time: string;
-      /**
-       * Unchanged
-       * @constant
-       */
-      unchanged: true;
-    };
-    /**
-     * MintRequest
-     * @description Body of ``POST /api/access/mint``.
-     */
-    MintRequest: {
-      /** Project */
-      project?: string | null;
-    };
-    /**
-     * MintResponse
-     * @description A fresh single-use code.
-     */
-    MintResponse: {
-      /** Code */
-      code: string;
-    };
-    /**
-     * ModelCheck
-     * @description Every agent's model check, plus how many are in effect.
-     */
-    ModelCheck: {
-      /** In Effect Count */
-      in_effect_count: number;
-      /** Rows */
-      rows: components["schemas"]["ModelCheckRow"][];
-    };
-    /**
-     * ModelCheckRow
-     * @description The model check for one agent type in the session.
-     */
-    ModelCheckRow: {
-      /** Agent */
-      agent: string | null;
-      /** Mismatched Runs */
-      mismatched_runs: number;
-      /** Params */
-      params: {
-        [key: string]: string;
-      };
-      ran: components["schemas"]["RanPair"];
-      /** Reason Code */
-      reason_code: string | null;
-      /** Runs */
-      runs: number;
-      set: components["schemas"]["SetPair"];
-      /** Status */
-      status:
-        | ("in_effect" | "overridden" | "ignored" | "lowered" | "invalid" | "default" | "unknown")
-        | null;
-    };
-    /**
-     * ModelPrice
-     * @description One model's rates in USD per million tokens.
-     */
-    ModelPrice: {
-      /** Cache Read */
-      cache_read: number;
-      /** Cache Write 1H */
-      cache_write_1h: number;
-      /** Cache Write 5M */
-      cache_write_5m: number;
-      /** Input */
-      input: number;
-      /** Model */
-      model: string;
-      /** Modifiers */
-      modifiers: {
-        [key: string]: number;
-      };
-      /** Output */
-      output: number;
-      /** Relative */
-      relative: number | null;
-      /**
-       * Source
-       * @enum {string}
-       */
-      source: "model_pricing" | "litellm" | "last_good" | "bundled";
-      /** Tiers */
-      tiers: components["schemas"]["PriceTier"][];
-    };
-    /**
-     * ModelTokens
-     * @description A legend entry, new tokens over the axis.
-     */
-    ModelTokens: {
-      /** Model */
-      model: string;
-      /** Tokens */
-      tokens: number;
-    };
-    /**
-     * PassError
-     * @description A whole-pass failure after the first ingest. The next good pass clears it.
-     */
-    PassError: {
-      /**
-       * Code
-       * @enum {string}
-       */
-      code:
-        | "config_dir_missing"
-        | "config_dir_unreadable"
-        | "store_unwritable"
-        | "store_damaged"
-        | "store_newer"
-        | "unexpected";
-      /** File */
-      file: string | null;
-      /**
-       * Since
-       * Format: date-time
-       */
-      since: string;
-    };
-    /**
-     * PriceTier
-     * @description Rates that apply once a prompt passes a size, in USD per million tokens.
-     */
-    PriceTier: {
-      /** Cache Read */
-      cache_read: number;
-      /** Cache Write 1H */
-      cache_write_1h: number;
-      /** Cache Write 5M */
-      cache_write_5m: number;
-      /** Input */
-      input: number;
-      /** Output */
-      output: number;
-      /** Prompt Tokens Over */
-      prompt_tokens_over: number;
-    };
-    /**
-     * PricesInfo
-     * @description Answer of ``GET /api/prices``.
-     */
-    PricesInfo: {
-      /**
-       * As Of
-       * Format: date
-       */
-      as_of: string;
-      cross_check: components["schemas"]["CrossCheck"];
-      /** Etag */
-      etag: string;
-      /** Models */
-      models: components["schemas"]["ModelPrice"][];
-      /**
-       * Source
-       * @enum {string}
-       */
-      source: "model_pricing" | "litellm" | "last_good" | "bundled";
-    };
-    /**
-     * Project
-     * @description One project in the picker.
-     */
-    Project: {
-      /** Display Path */
-      display_path: string;
-      /** Key */
-      key: string;
-      /** Name */
-      name: string;
-      /** Running */
-      running: boolean;
-      /**
-       * State
-       * @enum {string}
-       */
-      state: "ok" | "no_claude_folder" | "folder_not_found";
-    };
-    /**
-     * ProjectList
-     * @description Answer of ``GET /api/projects``.
-     */
-    ProjectList: {
-      /** Projects */
-      projects: components["schemas"]["Project"][];
-    };
-    /**
-     * RanPair
-     * @description What the runs used, most common first. ``mixed`` when runs differ.
-     */
-    RanPair: {
-      /** Effort */
-      effort: string | null;
-      /** Mixed */
-      mixed: boolean;
-      /** Model */
-      model: string | null;
-    };
-    /**
-     * Round
-     * @description One round of a run. ``by`` is ``main``, a run id, or None.
-     */
-    Round: {
-      /**
-       * At
-       * Format: date-time
-       */
-      at: string;
-      /** By */
-      by: string | null;
-      /** By Kind */
-      by_kind: ("coordinator" | "peer" | "human") | null;
-      /**
-       * Last Request
-       * Format: date-time
-       */
-      last_request: string;
-      /** N */
-      n: number;
-    };
-    /**
-     * RunningItem
-     * @description One session that is running now.
-     */
-    RunningItem: {
-      /** Project */
-      project: string;
-      /** Session */
-      session: string;
-    };
-    /**
-     * Segment
-     * @description A drawn stretch of a lane, one per round.
-     */
-    Segment: {
-      /**
-       * End
-       * Format: date-time
-       */
-      end: string;
-      /**
-       * Start
-       * Format: date-time
-       */
-      start: string;
-    };
-    /**
-     * SetPair
-     * @description The model and effort an agent's setup asks for.
-     */
-    SetPair: {
-      effort: components["schemas"]["SetValue"] | null;
-      model: components["schemas"]["SetValue"] | null;
-    };
-    /**
-     * SetValue
-     * @description What a file or setting sets, with its display path and line.
-     */
-    SetValue: {
-      /** File */
-      file: string | null;
-      /** Line */
-      line: number | null;
-      /** Scope */
-      scope: string | null;
-      /** Value */
-      value: string;
-    };
-    /**
-     * StateAt
-     * @description A state that starts at ``at`` and holds until the next entry.
-     */
-    StateAt: {
-      /**
-       * At
-       * Format: date-time
-       */
-      at: string;
-      /** State */
-      state: string;
-    };
-    /**
-     * SwapRequest
-     * @description Body of ``POST /api/access/swap``.
-     */
-    SwapRequest: {
-      /** Code */
-      code: string;
-    };
-    /**
-     * SwapResponse
-     * @description Keys handed out after a code swap.
-     */
-    SwapResponse: {
-      /** Edit Keys */
-      edit_keys: {
-        [key: string]: string;
-      };
-      /** Instance */
-      instance: string;
-      /** Project */
-      project: string | null;
-      /** Read Key */
-      read_key: string;
-    };
-    /**
-     * Timeline
-     * @description Answer of ``GET /api/sessions/{id}/timeline``.
-     */
-    Timeline: {
-      /** As Of */
-      as_of: string | null;
-      axis: components["schemas"]["TimelineAxis"];
-      /** Buckets */
-      buckets: components["schemas"]["TimelineBucket"][];
-      /** Etag */
-      etag: string;
-      last_minute: components["schemas"]["Window"] | null;
-      model_check: components["schemas"]["ModelCheck"];
-      /** Models */
-      models: components["schemas"]["ModelTokens"][];
-      prices: components["schemas"]["TimelinePrices"];
-      /** Project */
-      project: string;
-      /** Requests */
-      requests: components["schemas"]["LatestRequest"][];
-      /** Runs */
-      runs: components["schemas"]["TimelineRun"][];
-      /**
-       * Server Time
-       * Format: date-time
-       */
-      server_time: string;
-      session: components["schemas"]["TimelineSession"];
-      totals: components["schemas"]["TimelineTotals"];
-      /**
-       * Unchanged
-       * @constant
-       */
-      unchanged: false;
-    };
-    /**
-     * TimelineAxis
-     * @description The x axis over the whole session, and the y ticks for new tokens.
-     */
-    TimelineAxis: {
-      /** Bucket Seconds */
-      bucket_seconds: number;
-      /**
-       * End
-       * Format: date-time
-       */
-      end: string;
-      /**
-       * Start
-       * Format: date-time
-       */
-      start: string;
-      /** Ticks */
-      ticks: string[];
-      /** Token Ticks */
-      token_ticks: number[];
-    };
-    /**
-     * TimelineBucket
-     * @description One bar. ``by_model`` holds new tokens and leaves out models with none.
-     */
-    TimelineBucket: {
-      /** By Model */
-      by_model: {
-        [key: string]: number;
-      };
-      /** Cache Read */
-      cache_read: number;
-      /** Cost */
-      cost: number | null;
-      /** Requests */
-      requests: number;
-      /**
-       * Start
-       * Format: date-time
-       */
-      start: string;
-      unpriced: components["schemas"]["Unpriced"];
-    };
-    /**
-     * TimelinePrices
-     * @description The price facts a cost label needs.
-     */
-    TimelinePrices: {
-      /**
-       * As Of
-       * Format: date
-       */
-      as_of: string;
-      /**
-       * Cross Check State
-       * @enum {string}
-       */
-      cross_check_state: "agree" | "disagree" | "not_checked";
-      /**
-       * Source
-       * @enum {string}
-       */
-      source: "model_pricing" | "litellm" | "last_good" | "bundled";
-    };
-    /**
-     * TimelineRun
-     * @description One agent run, or the main session (``agent`` None, ``parent`` None).
-     */
-    TimelineRun: {
-      /** Agent */
-      agent: string | null;
-      /** Cost */
-      cost: number | null;
-      /** Cum */
-      cum: components["schemas"]["Cum"][];
-      /** Depth */
-      depth: number;
-      /** Dispatch Order */
-      dispatch_order: number;
-      /** Effort */
-      effort: string | null;
-      /**
-       * First Request
-       * Format: date-time
-       */
-      first_request: string;
-      /** Label N */
-      label_n: number;
-      /**
-       * Last Request
-       * Format: date-time
-       */
-      last_request: string;
-      /** Model */
-      model: string | null;
-      /** Parent */
-      parent: string | null;
-      /** Parent At */
-      parent_at: string | null;
-      /** Parent Known */
-      parent_known: boolean;
-      /**
-       * Parent State
-       * @enum {string}
-       */
-      parent_state: "known" | "waiting" | "unknown";
-      /** Rounds */
-      rounds: components["schemas"]["Round"][];
-      /** Run Id */
-      run_id: string;
-      /** Segments */
-      segments: components["schemas"]["Segment"][];
-      /**
-       * State
-       * @enum {string}
-       */
-      state: "working" | "idle" | "finished";
-      /** States */
-      states: components["schemas"]["StateAt"][];
-      together: components["schemas"]["Together"] | null;
-      /** Tokens */
-      tokens: number;
-      unpriced: components["schemas"]["Unpriced"];
-    };
-    /**
-     * TimelineSession
-     * @description The session a timeline describes.
-     */
-    TimelineSession: {
-      /** Active */
-      active: boolean;
-      /** Branch */
-      branch: string | null;
-      /** Ended At */
-      ended_at: string | null;
-      /** Id */
-      id: string;
-      /**
-       * Last Request
-       * Format: date-time
-       */
-      last_request: string;
-      /** Project */
-      project: string;
-      /** Requests */
-      requests: number;
-      /** Running */
-      running: boolean;
-      /**
-       * Started
-       * Format: date-time
-       */
-      started: string;
-      /**
-       * State
-       * @enum {string}
-       */
-      state: "working" | "idle" | "ended";
-      /** States */
-      states: components["schemas"]["StateAt"][];
-      unpriced: components["schemas"]["Unpriced"];
-    };
-    /**
-     * TimelineTotals
-     * @description Session totals at T.
-     */
-    TimelineTotals: {
-      /** Cache Read */
-      cache_read: number;
-      /** Cache Write */
-      cache_write: number;
-      /** Cost */
-      cost: number | null;
-      /** Hit Rate */
-      hit_rate: number | null;
-      /** Input */
-      input: number;
-      /** Output */
-      output: number;
-      /** Requests */
-      requests: number;
-      /** Runs */
-      runs: number;
-      /** Runs Finished */
-      runs_finished: number;
-      /** Runs Working */
-      runs_working: number;
-      /** Tokens */
-      tokens: number;
-      unpriced: components["schemas"]["Unpriced"];
-    };
-    /**
-     * Together
-     * @description Siblings launched within 5 s of each other share a key.
-     */
-    Together: {
-      /** Key */
-      key: string;
-      /** N */
-      n: number;
-    };
-    /**
-     * Unchanged
-     * @description The short answer when the asked etag still matches.
-     */
-    Unchanged: {
-      /** Etag */
-      etag: string;
-      /** Project */
-      project: string;
-      /**
-       * Server Time
-       * Format: date-time
-       */
-      server_time: string;
-      /**
-       * Unchanged
-       * @constant
-       */
-      unchanged: true;
-    };
-    /**
-     * Unpriced
-     * @description Requests with no price, and the models they ran on, in catalog order.
-     */
-    Unpriced: {
-      /** Models */
-      models: string[];
-      /** Requests */
-      requests: number;
-    };
-    /**
-     * Window
-     * @description Numbers over a stretch of time, such as the 60 s before T.
-     */
-    Window: {
-      /** Cache Read */
-      cache_read: number;
-      /** Cost */
-      cost: number | null;
-      /** Hit Rate */
-      hit_rate: number | null;
-      /** Requests */
-      requests: number;
-      /** Tokens */
-      tokens: number;
-      unpriced: components["schemas"]["Unpriced"];
-    };
-  };
-  responses: never;
-  parameters: never;
-  requestBodies: never;
-  headers: never;
-  pathItems: never;
+    responses: never;
+    parameters: never;
+    requestBodies: never;
+    headers: never;
+    pathItems: never;
 }
 export type $defs = Record<string, never>;
 export interface operations {
-  mint_code: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    mint_code: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MintRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MintResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
     };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["MintRequest"];
-      };
+    swap_code: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SwapRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SwapResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
     };
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
+    get_agents: {
+        parameters: {
+            query?: {
+                project?: string | null;
+                /** @description One of today, 7d, 30d, 90d, 12m and all. Default 30d. */
+                range?: string | null;
+                etag?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
-        content: {
-          "application/json": components["schemas"]["MintResponse"];
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentList"] | components["schemas"]["Unchanged"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
         };
-      };
-      /** @description Unauthorized */
-      401: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ErrorEnvelope"];
-        };
-      };
-      /** @description Unprocessable Content */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ErrorEnvelope"];
-        };
-      };
     };
-  };
-  swap_code: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    get_app: {
+        parameters: {
+            query?: {
+                project?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppInfo"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
     };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["SwapRequest"];
-      };
+    get_cost_chart: {
+        parameters: {
+            query?: {
+                project?: string | null;
+                /** @description One of today, 7d, 30d, 90d, 12m and all. Default 30d. */
+                range?: string | null;
+                /** @description The chart's last local date, as YYYY-MM-DD. */
+                end?: string | null;
+                etag?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CostChart"] | components["schemas"]["Unchanged"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
     };
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
+    get_live_sessions: {
+        parameters: {
+            query?: {
+                project?: string | null;
+                etag?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
-        content: {
-          "application/json": components["schemas"]["SwapResponse"];
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiveSessions"] | components["schemas"]["LiveSessionsUnchanged"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
         };
-      };
-      /** @description Forbidden */
-      403: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ErrorEnvelope"];
-        };
-      };
-      /** @description Unprocessable Content */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ErrorEnvelope"];
-        };
-      };
     };
-  };
-  get_app: {
-    parameters: {
-      query?: {
-        project?: string | null;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
+    get_models: {
+        parameters: {
+            query?: {
+                project?: string | null;
+                /** @description One of today, 7d, 30d, 90d, 12m and all. Default 30d. */
+                range?: string | null;
+                etag?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelList"] | components["schemas"]["Unchanged"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
     };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
+    get_prices: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
-        content: {
-          "application/json": components["schemas"]["AppInfo"];
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PricesInfo"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
         };
-      };
-      /** @description Unauthorized */
-      401: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ErrorEnvelope"];
-        };
-      };
-      /** @description Unprocessable Content */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ErrorEnvelope"];
-        };
-      };
     };
-  };
-  get_live_sessions: {
-    parameters: {
-      query?: {
-        project?: string | null;
-        etag?: string | null;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
+    get_projects: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectList"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
     };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
+    get_sessions: {
+        parameters: {
+            query?: {
+                project?: string | null;
+                /** @description One of today, 7d, 30d, 90d, 12m and all. Default 30d. */
+                range?: string | null;
+                /** @description The opaque `next` of the previous page. */
+                cursor?: string | null;
+                etag?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
-        content: {
-          "application/json":
-            components["schemas"]["LiveSessions"] | components["schemas"]["LiveSessionsUnchanged"];
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionList"] | components["schemas"]["Unchanged"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
         };
-      };
-      /** @description Bad Request */
-      400: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ErrorEnvelope"];
-        };
-      };
-      /** @description Unauthorized */
-      401: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ErrorEnvelope"];
-        };
-      };
-      /** @description Not Found */
-      404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ErrorEnvelope"];
-        };
-      };
-      /** @description Unprocessable Content */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ErrorEnvelope"];
-        };
-      };
     };
-  };
-  get_prices: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    get_timeline: {
+        parameters: {
+            query?: {
+                project?: string | null;
+                etag?: string | null;
+            };
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Timeline"] | components["schemas"]["Unchanged"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
     };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
+    get_summary: {
+        parameters: {
+            query?: {
+                project?: string | null;
+                /** @description One of today, 7d, 30d, 90d, 12m and all. Default 30d. */
+                range?: string | null;
+                etag?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
-        content: {
-          "application/json": components["schemas"]["PricesInfo"];
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Summary"] | components["schemas"]["Unchanged"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
         };
-      };
-      /** @description Unauthorized */
-      401: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ErrorEnvelope"];
-        };
-      };
-      /** @description Unprocessable Content */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ErrorEnvelope"];
-        };
-      };
     };
-  };
-  get_projects: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ProjectList"];
-        };
-      };
-      /** @description Unauthorized */
-      401: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ErrorEnvelope"];
-        };
-      };
-      /** @description Unprocessable Content */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ErrorEnvelope"];
-        };
-      };
-    };
-  };
-  get_timeline: {
-    parameters: {
-      query?: {
-        project?: string | null;
-        etag?: string | null;
-      };
-      header?: never;
-      path: {
-        session_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json":
-            components["schemas"]["Timeline"] | components["schemas"]["Unchanged"];
-        };
-      };
-      /** @description Bad Request */
-      400: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ErrorEnvelope"];
-        };
-      };
-      /** @description Unauthorized */
-      401: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ErrorEnvelope"];
-        };
-      };
-      /** @description Not Found */
-      404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ErrorEnvelope"];
-        };
-      };
-      /** @description Unprocessable Content */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ErrorEnvelope"];
-        };
-      };
-    };
-  };
 }

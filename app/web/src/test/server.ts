@@ -3,6 +3,7 @@
  * /api/projects from the object it holds, so a test changes the answers by changing the object.
  */
 import type { AppInfo, LiveSessions, PricesAnswer, Project, Timeline } from "@/api/types";
+import { agentList, costChart, modelList, sessionList, summary } from "@/test/review";
 
 export const INSTANCE = "inst-1";
 
@@ -149,6 +150,25 @@ export function fakeServer(
             ? { etag, project: found.project, server_time: found.server_time, unchanged: true }
             : found;
         return Promise.resolve(new Response(JSON.stringify(body)));
+      }
+      // Summary and its chart, so a page test that is not about Review still mounts a working
+      // page. The Review page tests use review-server.ts for answers of their own.
+      if (path.startsWith("/api/summary?") || path.startsWith("/api/cost-chart?")) {
+        const range = new URL(path, "http://x").searchParams.get("range") as "30d";
+        const answer = path.startsWith("/api/summary?") ? summary({ range }) : costChart({ range });
+        return Promise.resolve(new Response(JSON.stringify(answer)));
+      }
+      // Agents and Models, empty, so their routes mount as the empty range card.
+      if (path.startsWith("/api/agents?") || path.startsWith("/api/models?")) {
+        const range = new URL(path, "http://x").searchParams.get("range") as "30d";
+        const answer = path.startsWith("/api/agents?")
+          ? agentList({ range })
+          : modelList({ range });
+        return Promise.resolve(new Response(JSON.stringify(answer)));
+      }
+      if (path.startsWith("/api/sessions?")) {
+        // The Session review Select list, empty, so a page that asks for it does not read app JSON.
+        return Promise.resolve(new Response(JSON.stringify(sessionList([]))));
       }
       const body = path.startsWith("/api/projects")
         ? { projects: server.projects }

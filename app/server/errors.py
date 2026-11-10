@@ -24,6 +24,19 @@ _STATUS_CODES = {
 _MAX_PATH = 6
 
 
+class FieldError(StarletteHTTPException):
+    """An HTTP error whose envelope names the request field that caused it.
+
+    ``path`` follows the 422 envelope, such as ``["query", "range"]``. It holds field
+    names the server chose, never what the client sent.
+    """
+
+    def __init__(self, status_code: int, detail: str, path: list[str | int]) -> None:
+        """Make the error. ``detail`` is the envelope's ``code``."""
+        super().__init__(status_code=status_code, detail=detail)
+        self.path = path
+
+
 def _envelope(
     status: int, code: str, path: list[str | int] | None = None
 ) -> JSONResponse:
@@ -57,14 +70,17 @@ async def _http_handler(request: Request, exc: Exception) -> JSONResponse:
     del request
     status = 500
     detail: object = None
+    path: list[str | int] | None = None
     if isinstance(exc, StarletteHTTPException):
         status = exc.status_code
         detail = exc.detail
+        if isinstance(exc, FieldError):
+            path = exc.path
     if isinstance(detail, str) and _CODE.match(detail):
         code = detail
     else:
         code = _STATUS_CODES.get(status, "error")
-    return _envelope(status, code)
+    return _envelope(status, code, path)
 
 
 async def _unexpected_handler(request: Request, exc: Exception) -> JSONResponse:

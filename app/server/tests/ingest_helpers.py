@@ -11,6 +11,7 @@ from collections import defaultdict
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import Any
 
 import ingest
 import store
@@ -187,8 +188,15 @@ class Store:
         return self.ingestor.run_pass(ingest.PassScope(kind))
 
     def close(self) -> None:
-        """Close the connection."""
-        self.conn.close()
+        """Check the hour rollup equals its minutes, then close the connection.
+
+        Every test that opens a ``Store`` ends here, so the rollup is held to
+        ``minute_usage`` after each scenario the ingest tests build.
+        """
+        try:
+            assert_hours_follow_minutes(self.conn)
+        finally:
+            self.conn.close()
 
     def one(self, sql: str, *args: object) -> object:
         """Return the first column of the first row."""
@@ -284,6 +292,45 @@ def actual_minutes(
     for r in conn.execute("SELECT * FROM minute_usage"):
         out[tuple(r[:9])] = tuple(r[9:])
     return out
+
+
+def hours_of_minutes(
+    conn: sqlite3.Connection,
+) -> dict[tuple[object, ...], tuple[object, ...]]:
+    """Group ``minute_usage`` by UTC hour in Python, the way ``hour_usage`` should be.
+
+    The key is the minute key with the hour (``YYYY-MM-DDTHH:00``) in the minute's
+    place. The value is the seven sums and the earliest minute of the group.
+    """
+    out: dict[tuple[object, ...], list[Any]] = {}
+    for key, sums in actual_minutes(conn).items():
+        minute = str(key[2])
+        group = (*key[:2], minute[:13] + ":00", *key[3:])
+        acc = out.setdefault(group, [0] * 7 + [minute])
+        for i, value in enumerate(sums):
+            acc[i] += value
+        acc[7] = min(acc[7], minute)
+    return {k: tuple(v) for k, v in out.items()}
+
+
+def actual_hours(
+    conn: sqlite3.Connection,
+) -> dict[tuple[object, ...], tuple[object, ...]]:
+    """Read ``hour_usage`` as the same shape ``hours_of_minutes`` returns."""
+    out: dict[tuple[object, ...], tuple[object, ...]] = {}
+    cursor = conn.execute(
+        "SELECT session_id, run_key, hour, model, effort, speed, service_tier,"
+        " inference_geo, tier, input, output, cache_read, cache_write_5m,"
+        " cache_write_1h, thinking, requests, first_minute FROM hour_usage"
+    )
+    for r in cursor:
+        out[tuple(r[:9])] = tuple(r[9:])
+    return out
+
+
+def assert_hours_follow_minutes(conn: sqlite3.Connection) -> None:
+    """Fail unless ``hour_usage`` is exactly ``minute_usage`` grouped by hour."""
+    assert actual_hours(conn) == hours_of_minutes(conn)
 
 
 def copy_tree(src: Path, dst: Path) -> None:

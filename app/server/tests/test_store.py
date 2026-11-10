@@ -14,7 +14,7 @@ import store_paths
 from store import StoreError
 from store_paths import StoreLayout
 
-LATEST = 6
+LATEST = 8
 MALFORMED = "database disk image is malformed"
 
 # Rows to insert per table, with the migration that creates the table. Files first,
@@ -59,6 +59,12 @@ ROWS: list[tuple[str, int, str]] = [
         "('s', 'r', '2026-01-01T00:00', 'm'), ('s', 'r', '2026-01-01T00:01', 'm')",
     ),
     (
+        "hour_usage",
+        8,
+        "INSERT INTO hour_usage (session_id, run_key, hour, model, first_minute)"
+        " VALUES ('s', 'r', '2026-01-01T00:00', 'm', '2026-01-01T00:00')",
+    ),
+    (
         "passes",
         4,
         "INSERT INTO passes (kind, started) VALUES ('full', '2026-01-01T00:00:00Z')",
@@ -97,10 +103,10 @@ def _count(conn: sqlite3.Connection, table: str) -> int:
 
 def test_latest_version_matches_files() -> None:
     assert store.latest_version() == LATEST
-    assert [n for n, _ in store.migration_files()] == [1, 2, 3, 4, 5, 6]
+    assert [n for n, _ in store.migration_files()] == [1, 2, 3, 4, 5, 6, 7, 8]
 
 
-@pytest.mark.parametrize("old", [1, 2, 3, 4, 5, 6])
+@pytest.mark.parametrize("old", [1, 2, 3, 4, 5, 6, 7, 8])
 def test_rows_survive_migration_from_each_version(
     layout: StoreLayout, old: int
 ) -> None:
@@ -120,6 +126,42 @@ def test_rows_survive_migration_from_each_version(
     # every table exists after the upgrade
     names = {r[0] for r in conn.execute("SELECT name FROM sqlite_master")}
     assert {t for t, _, _ in ROWS} <= names
+    conn.close()
+
+
+def test_migration_8_backfills_the_hour_rollup_from_minute_usage(
+    layout: StoreLayout,
+) -> None:
+    conn = store.open_writer(layout)
+    assert store.migrate(conn, target=7) == 7
+    conn.executemany(
+        "INSERT INTO minute_usage (session_id, run_key, minute, model, effort, input,"
+        " output, cache_read, cache_write_5m, cache_write_1h, thinking, requests)"
+        " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        [
+            ("s1", "main", "2026-01-01T10:05", "m", "high", 1, 2, 3, 4, 5, 6, 1),
+            ("s1", "main", "2026-01-01T10:59", "m", "high", 10, 20, 30, 40, 50, 60, 2),
+            ("s1", "main", "2026-01-01T10:30", "m", "low", 7, 7, 7, 7, 7, 7, 1),
+            ("s1", "main", "2026-01-01T11:00", "m", "high", 1, 1, 1, 1, 1, 1, 1),
+            ("s2", "r1", "2026-01-01T10:45", "m", "high", 2, 2, 2, 2, 2, 2, 1),
+        ],
+    )
+    assert store.migrate(conn) == LATEST
+    rows = conn.execute(
+        "SELECT session_id, run_key, hour, effort, input, output, cache_read,"
+        " cache_write_5m, cache_write_1h, thinking, requests, first_minute"
+        " FROM hour_usage ORDER BY session_id, run_key, hour, effort"
+    ).fetchall()
+    assert [tuple(r) for r in rows] == [
+        ("s1", "main", "2026-01-01T10:00", "high", 11, 22, 33, 44, 55, 66, 3,
+         "2026-01-01T10:05"),
+        ("s1", "main", "2026-01-01T10:00", "low", 7, 7, 7, 7, 7, 7, 1,
+         "2026-01-01T10:30"),
+        ("s1", "main", "2026-01-01T11:00", "high", 1, 1, 1, 1, 1, 1, 1,
+         "2026-01-01T11:00"),
+        ("s2", "r1", "2026-01-01T10:00", "high", 2, 2, 2, 2, 2, 2, 1,
+         "2026-01-01T10:45"),
+    ]  # fmt: skip
     conn.close()
 
 
@@ -302,6 +344,8 @@ TEXT_ALLOWLIST = {
     "first_seen",
     "last_seen",
     "minute",
+    "hour",
+    "first_minute",
     "at",
     "started",
     "finished",

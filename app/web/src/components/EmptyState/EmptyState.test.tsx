@@ -49,4 +49,25 @@ describe("EmptyState", () => {
     await user.click(screen.getByRole("button", { name: "Add a hook" }));
     expect(onPress).toHaveBeenCalledOnce();
   });
+
+  it("renders a primary action and a second button beside it on the page variant", async () => {
+    const user = userEvent.setup();
+    const onPress = vi.fn();
+    const onOther = vi.fn();
+    const { container } = render(
+      <EmptyState
+        variant="page"
+        title="No sessions"
+        action={{ label: "Show 7 days", onPress, primary: true }}
+        secondary={{ label: "Open Live", onPress: onOther }}
+      >
+        Nothing here.
+      </EmptyState>,
+    );
+    expect(screen.getByRole("button", { name: "Show 7 days" })).toHaveClass("button-primary");
+    expect(screen.getByRole("button", { name: "Open Live" })).not.toHaveClass("button-primary");
+    expect(container.querySelector(".empty-page-actions")).not.toBeNull();
+    await user.click(screen.getByRole("button", { name: "Open Live" }));
+    expect(onOther).toHaveBeenCalledOnce();
+  });
 });

@@ -21,7 +21,8 @@ describe("laneCost", () => {
   it("names the model when none is priced, and falls back to No price", () => {
     expect(laneCost(null, { requests: 3, models: ["Fable 5.1"] })).toEqual({
       kind: "none",
-      text: "No price for Fable 5.1",
+      text: "No price",
+      full: "No price for Fable 5.1",
     });
     expect(laneCost(null, none)).toEqual({ kind: "none", text: "No price" });
   });

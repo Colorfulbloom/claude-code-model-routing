@@ -153,6 +153,32 @@
   height: 8px;
 }
 
+/*
+ * Replay (Session review). A bar splits at the cut. The part after it is hollow, an outline in the
+ * strong border colour, drawn as a border so forced colours keep it. The solid part that goes on
+ * past the cut squares its end there. The cut line crosses the row, a little past the track so
+ * it joins the line above and below.
+ */
+.lane-seg-after {
+  box-sizing: border-box;
+  background: transparent;
+  border: 1px solid var(--border-strong);
+}
+
+.lane-seg-cut {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.lane-cut {
+  position: absolute;
+  top: -12px;
+  bottom: -12px;
+  z-index: 1;
+  border-left: 2px solid var(--now-line);
+  transform: translateX(-1px);
+}
+
 /* A segment that reaches Now squares its end and draws the Now line past it. */
 .lane-seg-open {
   border-top-right-radius: 0;
@@ -227,6 +253,7 @@
 .lane-cost-none {
   display: inline-block;
   line-height: 1.25;
+  white-space: nowrap;
 }
 
 /* Fold row: the label and its Show or Hide button share the name column. */
@@ -331,6 +358,11 @@
 
   .lane-round {
     top: 19px;
+  }
+
+  .lane-cut {
+    top: 0;
+    bottom: 0;
   }
 
   .lane-state {

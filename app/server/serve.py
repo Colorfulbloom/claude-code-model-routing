@@ -47,6 +47,7 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 
 import fixture_provider
 import platform_os
+import server_zone
 import store_paths
 import write_guard
 from access import AccessState
@@ -695,6 +696,9 @@ async def run(args: Args) -> int:
         test_clock=args.test_clock,
         ingest_pace_ms=args.ingest_pace_ms,
         price_fetch=not args.no_price_fetch,
+        # Review counts local days in the machine's zone on real data. A demo or flow
+        # build supplies its own (session.json), so it passes none.
+        tz=server_zone.machine_zone(os.environ) if args.real else None,
     )
     provider = make_provider(settings)
     project = provider.resolve_project(

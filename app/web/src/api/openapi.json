@@ -1,6 +1,383 @@
 {
   "components": {
     "schemas": {
+      "AgentList": {
+        "additionalProperties": false,
+        "description": "Answer of ``GET /api/agents``. ``ran`` adds up to the Cost tile.",
+        "properties": {
+          "as_of": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/CardError"
+            },
+            "title": "Errors",
+            "type": "array"
+          },
+          "etag": {
+            "title": "Etag",
+            "type": "string"
+          },
+          "never_ran": {
+            "items": {
+              "$ref": "#/components/schemas/AgentNoRuns"
+            },
+            "title": "Never Ran",
+            "type": "array"
+          },
+          "prices": {
+            "$ref": "#/components/schemas/TimelinePrices"
+          },
+          "project": {
+            "title": "Project",
+            "type": "string"
+          },
+          "ran": {
+            "items": {
+              "$ref": "#/components/schemas/AgentRow"
+            },
+            "title": "Ran",
+            "type": "array"
+          },
+          "range": {
+            "enum": [
+              "today",
+              "7d",
+              "30d",
+              "90d",
+              "12m",
+              "all"
+            ],
+            "title": "Range",
+            "type": "string"
+          },
+          "server_time": {
+            "format": "date-time",
+            "title": "Server Time",
+            "type": "string"
+          },
+          "unchanged": {
+            "const": false,
+            "title": "Unchanged",
+            "type": "boolean"
+          },
+          "window": {
+            "$ref": "#/components/schemas/ReviewWindow"
+          }
+        },
+        "required": [
+          "project",
+          "range",
+          "window",
+          "server_time",
+          "as_of",
+          "etag",
+          "unchanged",
+          "prices",
+          "errors",
+          "ran",
+          "never_ran"
+        ],
+        "title": "AgentList",
+        "type": "object"
+      },
+      "AgentMoney": {
+        "additionalProperties": false,
+        "description": "One agent's part of the range's cost. ``agent`` is an agent key.\n\nThe rows add up to the Cost tile, so a plugin agent with no file still has one.",
+        "properties": {
+          "agent": {
+            "title": "Agent",
+            "type": "string"
+          },
+          "cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "requests": {
+            "title": "Requests",
+            "type": "integer"
+          },
+          "share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Share"
+          },
+          "unpriced": {
+            "$ref": "#/components/schemas/Unpriced"
+          }
+        },
+        "required": [
+          "agent",
+          "model",
+          "cost",
+          "share",
+          "requests",
+          "unpriced"
+        ],
+        "title": "AgentMoney",
+        "type": "object"
+      },
+      "AgentNoRuns": {
+        "additionalProperties": false,
+        "description": "An agent file with no run in the range.",
+        "properties": {
+          "agent": {
+            "title": "Agent",
+            "type": "string"
+          },
+          "scope": {
+            "enum": [
+              "user",
+              "project"
+            ],
+            "title": "Scope",
+            "type": "string"
+          },
+          "set": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SetPair"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "set_reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "no_file",
+                  "sets_nothing",
+                  "read_failed"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Set Reason"
+          }
+        },
+        "required": [
+          "agent",
+          "scope",
+          "set",
+          "set_reason"
+        ],
+        "title": "AgentNoRuns",
+        "type": "object"
+      },
+      "AgentRow": {
+        "additionalProperties": false,
+        "description": "An agent that ran in the range, with its setup and its model check status.\n\n``set_reason`` says why ``set`` holds no value. ``ran_pairs`` lists every pair\nthe runs used, most runs first. ``runs_as_set`` and ``runs_not_as_set`` come\nfrom the model check and are None when nothing is set.",
+        "properties": {
+          "agent": {
+            "title": "Agent",
+            "type": "string"
+          },
+          "cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost"
+          },
+          "params": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Params",
+            "type": "object"
+          },
+          "ran": {
+            "$ref": "#/components/schemas/RanPair"
+          },
+          "ran_pairs": {
+            "items": {
+              "$ref": "#/components/schemas/PairRuns"
+            },
+            "title": "Ran Pairs",
+            "type": "array"
+          },
+          "reason_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Code"
+          },
+          "requests": {
+            "title": "Requests",
+            "type": "integer"
+          },
+          "runs": {
+            "title": "Runs",
+            "type": "integer"
+          },
+          "runs_as_set": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runs As Set"
+          },
+          "runs_not_as_set": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runs Not As Set"
+          },
+          "scope": {
+            "enum": [
+              "user",
+              "project",
+              "main",
+              "unnamed",
+              "no_file"
+            ],
+            "title": "Scope",
+            "type": "string"
+          },
+          "sessions": {
+            "title": "Sessions",
+            "type": "integer"
+          },
+          "set": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SetPair"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "set_reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "no_file",
+                  "sets_nothing",
+                  "read_failed"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Set Reason"
+          },
+          "share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Share"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "in_effect",
+                  "overridden",
+                  "ignored",
+                  "lowered",
+                  "invalid",
+                  "default",
+                  "unknown"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "unpriced": {
+            "$ref": "#/components/schemas/Unpriced"
+          }
+        },
+        "required": [
+          "agent",
+          "scope",
+          "set",
+          "set_reason",
+          "ran",
+          "ran_pairs",
+          "status",
+          "reason_code",
+          "params",
+          "runs",
+          "runs_as_set",
+          "runs_not_as_set",
+          "sessions",
+          "cost",
+          "share",
+          "requests",
+          "unpriced"
+        ],
+        "title": "AgentRow",
+        "type": "object"
+      },
       "AppInfo": {
         "additionalProperties": false,
         "description": "Answer of ``GET /api/app``.",
@@ -136,6 +513,163 @@
         "title": "BackupFailure",
         "type": "object"
       },
+      "CardError": {
+        "additionalProperties": false,
+        "description": "A card the server could not build. Its field in the answer is None.",
+        "properties": {
+          "card": {
+            "enum": [
+              "model_check",
+              "agent_setup"
+            ],
+            "title": "Card",
+            "type": "string"
+          },
+          "code": {
+            "enum": [
+              "setup_unreadable",
+              "unexpected"
+            ],
+            "title": "Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "card",
+          "code"
+        ],
+        "title": "CardError",
+        "type": "object"
+      },
+      "ChartBar": {
+        "additionalProperties": false,
+        "description": "One bar of the cost chart.\n\n``start`` and ``end`` are clipped to the chart window and to T, so the first and\nlast bars may be shorter than one ``unit``. ``open`` marks the bar that holds T.\n``holds_oldest`` marks the bar that holds ``window.oldest``. ``no_records`` marks\na bar that ends before ``oldest``, which the page shows as no records, not $0.",
+        "properties": {
+          "by_model": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ModelBarCost"
+            },
+            "title": "By Model",
+            "type": "object"
+          },
+          "end": {
+            "format": "date-time",
+            "title": "End",
+            "type": "string"
+          },
+          "holds_oldest": {
+            "title": "Holds Oldest",
+            "type": "boolean"
+          },
+          "no_records": {
+            "title": "No Records",
+            "type": "boolean"
+          },
+          "open": {
+            "title": "Open",
+            "type": "boolean"
+          },
+          "start": {
+            "format": "date-time",
+            "title": "Start",
+            "type": "string"
+          },
+          "unpriced": {
+            "$ref": "#/components/schemas/Unpriced"
+          }
+        },
+        "required": [
+          "start",
+          "end",
+          "by_model",
+          "unpriced",
+          "open",
+          "holds_oldest",
+          "no_records"
+        ],
+        "title": "ChartBar",
+        "type": "object"
+      },
+      "ChartWindow": {
+        "additionalProperties": false,
+        "description": "The chart's own window, and why a pager end is reached.\n\nOn the newest page the window is the range's window, so the legend total equals\nthe Cost tile. Earlier pages are whole windows of the same length. ``all`` is one\npage from ``oldest`` to T, with both ends reached, in days, weeks or months by span.",
+        "properties": {
+          "earlier_reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "no_earlier_data",
+                  "newest"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Earlier Reason"
+          },
+          "end": {
+            "format": "date-time",
+            "title": "End",
+            "type": "string"
+          },
+          "has_earlier": {
+            "title": "Has Earlier",
+            "type": "boolean"
+          },
+          "has_later": {
+            "title": "Has Later",
+            "type": "boolean"
+          },
+          "later_reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "no_earlier_data",
+                  "newest"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Later Reason"
+          },
+          "newest": {
+            "title": "Newest",
+            "type": "boolean"
+          },
+          "start": {
+            "format": "date-time",
+            "title": "Start",
+            "type": "string"
+          },
+          "unit": {
+            "enum": [
+              "hour",
+              "day",
+              "week",
+              "month"
+            ],
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start",
+          "end",
+          "unit",
+          "has_earlier",
+          "has_later",
+          "earlier_reason",
+          "later_reason",
+          "newest"
+        ],
+        "title": "ChartWindow",
+        "type": "object"
+      },
       "ClockInfo": {
         "additionalProperties": false,
         "description": "Which clock the server answers with. ``rate_n`` is set only for ``rate``.",
@@ -167,6 +701,240 @@
           "rate_n"
         ],
         "title": "ClockInfo",
+        "type": "object"
+      },
+      "CostChart": {
+        "additionalProperties": false,
+        "description": "Answer of ``GET /api/cost-chart``. It never changes the tiles.",
+        "properties": {
+          "as_of": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "bars": {
+            "items": {
+              "$ref": "#/components/schemas/ChartBar"
+            },
+            "title": "Bars",
+            "type": "array"
+          },
+          "chart": {
+            "$ref": "#/components/schemas/ChartWindow"
+          },
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/CardError"
+            },
+            "title": "Errors",
+            "type": "array"
+          },
+          "etag": {
+            "title": "Etag",
+            "type": "string"
+          },
+          "kinds": {
+            "$ref": "#/components/schemas/KindCosts"
+          },
+          "legend": {
+            "items": {
+              "$ref": "#/components/schemas/ModelCost"
+            },
+            "title": "Legend",
+            "type": "array"
+          },
+          "prices": {
+            "$ref": "#/components/schemas/TimelinePrices"
+          },
+          "project": {
+            "title": "Project",
+            "type": "string"
+          },
+          "range": {
+            "enum": [
+              "today",
+              "7d",
+              "30d",
+              "90d",
+              "12m",
+              "all"
+            ],
+            "title": "Range",
+            "type": "string"
+          },
+          "server_time": {
+            "format": "date-time",
+            "title": "Server Time",
+            "type": "string"
+          },
+          "unchanged": {
+            "const": false,
+            "title": "Unchanged",
+            "type": "boolean"
+          },
+          "unpriced": {
+            "$ref": "#/components/schemas/Unpriced"
+          },
+          "window": {
+            "$ref": "#/components/schemas/ReviewWindow"
+          },
+          "y_ticks": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Y Ticks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "project",
+          "range",
+          "window",
+          "server_time",
+          "as_of",
+          "etag",
+          "unchanged",
+          "prices",
+          "errors",
+          "chart",
+          "bars",
+          "legend",
+          "kinds",
+          "unpriced",
+          "y_ticks"
+        ],
+        "title": "CostChart",
+        "type": "object"
+      },
+      "CostTile": {
+        "additionalProperties": false,
+        "description": "The cost tile, with the unpriced requests of the range and of the prior.",
+        "properties": {
+          "change_abs": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Abs"
+          },
+          "change_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Pct"
+          },
+          "prior": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prior"
+          },
+          "prior_unpriced": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Unpriced"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "unpriced": {
+            "$ref": "#/components/schemas/Unpriced"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "value",
+          "prior",
+          "change_pct",
+          "change_abs",
+          "unpriced",
+          "prior_unpriced"
+        ],
+        "title": "CostTile",
+        "type": "object"
+      },
+      "CountTile": {
+        "additionalProperties": false,
+        "description": "A whole-number tile. ``change_pct`` is relative, ``change_abs`` the difference.\n\nBoth changes are None when there is no prior window or ``window.prior_partial``.\n``change_pct`` is also None when the prior value is 0.",
+        "properties": {
+          "change_abs": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Abs"
+          },
+          "change_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Pct"
+          },
+          "prior": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prior"
+          },
+          "value": {
+            "title": "Value",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "value",
+          "prior",
+          "change_pct",
+          "change_abs"
+        ],
+        "title": "CountTile",
         "type": "object"
       },
       "CrossCheck": {
@@ -515,6 +1283,36 @@
         "title": "IngestError",
         "type": "object"
       },
+      "KindCosts": {
+        "additionalProperties": false,
+        "description": "Dollars per kind of cost, over priced requests only.",
+        "properties": {
+          "cache_read": {
+            "title": "Cache Read",
+            "type": "number"
+          },
+          "cache_write": {
+            "title": "Cache Write",
+            "type": "number"
+          },
+          "input": {
+            "title": "Input",
+            "type": "number"
+          },
+          "output": {
+            "title": "Output",
+            "type": "number"
+          }
+        },
+        "required": [
+          "input",
+          "output",
+          "cache_read",
+          "cache_write"
+        ],
+        "title": "KindCosts",
+        "type": "object"
+      },
       "LatestRequest": {
         "additionalProperties": false,
         "description": "One of the eight newest requests at or before T.",
@@ -791,6 +1589,41 @@
         "title": "MintResponse",
         "type": "object"
       },
+      "ModelBarCost": {
+        "additionalProperties": false,
+        "description": "One model's part of a chart bar. ``cost`` is None when none of it is priced.",
+        "properties": {
+          "cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost"
+          },
+          "kinds": {
+            "$ref": "#/components/schemas/KindCosts"
+          },
+          "requests": {
+            "title": "Requests",
+            "type": "integer"
+          },
+          "unpriced": {
+            "$ref": "#/components/schemas/Unpriced"
+          }
+        },
+        "required": [
+          "cost",
+          "kinds",
+          "requests",
+          "unpriced"
+        ],
+        "title": "ModelBarCost",
+        "type": "object"
+      },
       "ModelCheck": {
         "additionalProperties": false,
         "description": "Every agent's model check, plus how many are in effect.",
@@ -895,6 +1728,179 @@
         "title": "ModelCheckRow",
         "type": "object"
       },
+      "ModelCost": {
+        "additionalProperties": false,
+        "description": "A legend entry over the chart window. A model with no price keeps its entry.",
+        "properties": {
+          "cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "requests": {
+            "title": "Requests",
+            "type": "integer"
+          },
+          "unpriced": {
+            "$ref": "#/components/schemas/Unpriced"
+          }
+        },
+        "required": [
+          "model",
+          "cost",
+          "requests",
+          "unpriced"
+        ],
+        "title": "ModelCost",
+        "type": "object"
+      },
+      "ModelKinds": {
+        "additionalProperties": false,
+        "description": "One model's dollars per kind of cost, over its priced requests.",
+        "properties": {
+          "cache_read": {
+            "title": "Cache Read",
+            "type": "number"
+          },
+          "cache_write": {
+            "title": "Cache Write",
+            "type": "number"
+          },
+          "input": {
+            "title": "Input",
+            "type": "number"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "output": {
+            "title": "Output",
+            "type": "number"
+          },
+          "unpriced": {
+            "$ref": "#/components/schemas/Unpriced"
+          }
+        },
+        "required": [
+          "model",
+          "input",
+          "output",
+          "cache_read",
+          "cache_write",
+          "unpriced"
+        ],
+        "title": "ModelKinds",
+        "type": "object"
+      },
+      "ModelList": {
+        "additionalProperties": false,
+        "description": "Answer of ``GET /api/models``. ``unpriced`` covers the whole legend.",
+        "properties": {
+          "as_of": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/CardError"
+            },
+            "title": "Errors",
+            "type": "array"
+          },
+          "etag": {
+            "title": "Etag",
+            "type": "string"
+          },
+          "kinds": {
+            "items": {
+              "$ref": "#/components/schemas/ModelKinds"
+            },
+            "title": "Kinds",
+            "type": "array"
+          },
+          "legend": {
+            "$ref": "#/components/schemas/KindCosts"
+          },
+          "prices": {
+            "$ref": "#/components/schemas/TimelinePrices"
+          },
+          "project": {
+            "title": "Project",
+            "type": "string"
+          },
+          "range": {
+            "enum": [
+              "today",
+              "7d",
+              "30d",
+              "90d",
+              "12m",
+              "all"
+            ],
+            "title": "Range",
+            "type": "string"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/ModelRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "server_time": {
+            "format": "date-time",
+            "title": "Server Time",
+            "type": "string"
+          },
+          "unchanged": {
+            "const": false,
+            "title": "Unchanged",
+            "type": "boolean"
+          },
+          "unpriced": {
+            "$ref": "#/components/schemas/Unpriced"
+          },
+          "window": {
+            "$ref": "#/components/schemas/ReviewWindow"
+          }
+        },
+        "required": [
+          "project",
+          "range",
+          "window",
+          "server_time",
+          "as_of",
+          "etag",
+          "unchanged",
+          "prices",
+          "errors",
+          "rows",
+          "kinds",
+          "legend",
+          "unpriced"
+        ],
+        "title": "ModelList",
+        "type": "object"
+      },
       "ModelPrice": {
         "additionalProperties": false,
         "description": "One model's rates in USD per million tokens.",
@@ -974,6 +1980,79 @@
         "title": "ModelPrice",
         "type": "object"
       },
+      "ModelRow": {
+        "additionalProperties": false,
+        "description": "One model over the range. ``used_by`` holds agent keys.",
+        "properties": {
+          "cache_share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cache Share"
+          },
+          "cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "requests": {
+            "title": "Requests",
+            "type": "integer"
+          },
+          "share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Share"
+          },
+          "tokens": {
+            "title": "Tokens",
+            "type": "integer"
+          },
+          "unpriced": {
+            "$ref": "#/components/schemas/Unpriced"
+          },
+          "used_by": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Used By",
+            "type": "array"
+          }
+        },
+        "required": [
+          "model",
+          "cost",
+          "share",
+          "tokens",
+          "requests",
+          "cache_share",
+          "used_by",
+          "unpriced"
+        ],
+        "title": "ModelRow",
+        "type": "object"
+      },
       "ModelTokens": {
         "additionalProperties": false,
         "description": "A legend entry, new tokens over the axis.",
@@ -992,6 +2071,45 @@
           "tokens"
         ],
         "title": "ModelTokens",
+        "type": "object"
+      },
+      "PairRuns": {
+        "additionalProperties": false,
+        "description": "One model and effort pair the runs used, with its run count.",
+        "properties": {
+          "effort": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effort"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "runs": {
+            "title": "Runs",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "model",
+          "effort",
+          "runs"
+        ],
+        "title": "PairRuns",
         "type": "object"
       },
       "PassError": {
@@ -1216,6 +2334,181 @@
         "title": "RanPair",
         "type": "object"
       },
+      "ReviewSession": {
+        "additionalProperties": false,
+        "description": "One session in a Review list. ``agents`` are agent keys, biggest cost first.\n\n``tokens``, ``cost`` and ``runs`` count the range only. ``started_before_range``\nmarks a session whose first request is before ``window.start``, and ``whole``\nthen holds its numbers over its whole life, so the page can show either.",
+        "properties": {
+          "agents": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Agents",
+            "type": "array"
+          },
+          "branch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch"
+          },
+          "cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "last_request": {
+            "format": "date-time",
+            "title": "Last Request",
+            "type": "string"
+          },
+          "runs": {
+            "title": "Runs",
+            "type": "integer"
+          },
+          "started": {
+            "format": "date-time",
+            "title": "Started",
+            "type": "string"
+          },
+          "started_before_range": {
+            "title": "Started Before Range",
+            "type": "boolean"
+          },
+          "state": {
+            "enum": [
+              "working",
+              "idle",
+              "ended"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "tokens": {
+            "title": "Tokens",
+            "type": "integer"
+          },
+          "unpriced": {
+            "$ref": "#/components/schemas/Unpriced"
+          },
+          "whole": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SessionWhole"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "started",
+          "last_request",
+          "branch",
+          "state",
+          "agents",
+          "runs",
+          "tokens",
+          "cost",
+          "unpriced",
+          "started_before_range",
+          "whole"
+        ],
+        "title": "ReviewSession",
+        "type": "object"
+      },
+      "ReviewWindow": {
+        "additionalProperties": false,
+        "description": "The range's window and the one it compares with, in the answer's zone.\n\n``end`` is the clock T. ``prior_start`` and ``prior_end`` are None for ``all``.\n``oldest`` is the oldest stored request in the project, or None when there is\nnone. ``partial`` is True when ``oldest`` falls after ``start``, so the range\nholds less history than its name. ``prior_partial`` is True when ``oldest`` falls\nafter ``prior_start``, so a change against the prior would mislead.",
+        "properties": {
+          "end": {
+            "format": "date-time",
+            "title": "End",
+            "type": "string"
+          },
+          "oldest": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Oldest"
+          },
+          "partial": {
+            "title": "Partial",
+            "type": "boolean"
+          },
+          "prior_end": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prior End"
+          },
+          "prior_partial": {
+            "title": "Prior Partial",
+            "type": "boolean"
+          },
+          "prior_start": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prior Start"
+          },
+          "start": {
+            "format": "date-time",
+            "title": "Start",
+            "type": "string"
+          },
+          "tz": {
+            "title": "Tz",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start",
+          "end",
+          "prior_start",
+          "prior_end",
+          "tz",
+          "oldest",
+          "partial",
+          "prior_partial"
+        ],
+        "title": "ReviewWindow",
+        "type": "object"
+      },
       "Round": {
         "additionalProperties": false,
         "description": "One round of a run. ``by`` is ``main``, a run id, or None.",
@@ -1314,6 +2607,160 @@
         "title": "Segment",
         "type": "object"
       },
+      "SessionDay": {
+        "additionalProperties": false,
+        "description": "The sessions of one local day.\n\nA session sits under the local day of its first request inside the range, so a\nsession that started before the range sits under the range's first day. A day\ncan continue on the next page, and the page joins it under one header. The field\nis ``day``, not ``date``, because a field named like its type breaks the\nannotation in a Pydantic class body.",
+        "properties": {
+          "day": {
+            "format": "date",
+            "title": "Day",
+            "type": "string"
+          },
+          "sessions": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewSession"
+            },
+            "title": "Sessions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "day",
+          "sessions"
+        ],
+        "title": "SessionDay",
+        "type": "object"
+      },
+      "SessionList": {
+        "additionalProperties": false,
+        "description": "Answer of ``GET /api/sessions``.\n\nNewest first by (first request in range, id). ``next`` is an opaque cursor that\nanchors on the last row's sort key, so a refetch never repeats or moves loaded\nrows, and None at the end of the list.",
+        "properties": {
+          "as_of": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/SessionDay"
+            },
+            "title": "Days",
+            "type": "array"
+          },
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/CardError"
+            },
+            "title": "Errors",
+            "type": "array"
+          },
+          "etag": {
+            "title": "Etag",
+            "type": "string"
+          },
+          "next": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next"
+          },
+          "prices": {
+            "$ref": "#/components/schemas/TimelinePrices"
+          },
+          "project": {
+            "title": "Project",
+            "type": "string"
+          },
+          "range": {
+            "enum": [
+              "today",
+              "7d",
+              "30d",
+              "90d",
+              "12m",
+              "all"
+            ],
+            "title": "Range",
+            "type": "string"
+          },
+          "server_time": {
+            "format": "date-time",
+            "title": "Server Time",
+            "type": "string"
+          },
+          "unchanged": {
+            "const": false,
+            "title": "Unchanged",
+            "type": "boolean"
+          },
+          "window": {
+            "$ref": "#/components/schemas/ReviewWindow"
+          }
+        },
+        "required": [
+          "project",
+          "range",
+          "window",
+          "server_time",
+          "as_of",
+          "etag",
+          "unchanged",
+          "prices",
+          "errors",
+          "count",
+          "days",
+          "next"
+        ],
+        "title": "SessionList",
+        "type": "object"
+      },
+      "SessionWhole": {
+        "additionalProperties": false,
+        "description": "A session's whole numbers, for a session that started before the range.",
+        "properties": {
+          "cost": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost"
+          },
+          "tokens": {
+            "title": "Tokens",
+            "type": "integer"
+          },
+          "unpriced": {
+            "$ref": "#/components/schemas/Unpriced"
+          }
+        },
+        "required": [
+          "tokens",
+          "cost",
+          "unpriced"
+        ],
+        "title": "SessionWhole",
+        "type": "object"
+      },
       "SetPair": {
         "additionalProperties": false,
         "description": "The model and effort an agent's setup asks for.",
@@ -1397,6 +2844,52 @@
         "title": "SetValue",
         "type": "object"
       },
+      "ShareTile": {
+        "additionalProperties": false,
+        "description": "A share from 0 to 1, such as the cache share. ``change_abs`` is in shares.",
+        "properties": {
+          "change_abs": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Abs"
+          },
+          "prior": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prior"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "value",
+          "prior",
+          "change_abs"
+        ],
+        "title": "ShareTile",
+        "type": "object"
+      },
       "StateAt": {
         "additionalProperties": false,
         "description": "A state that starts at ``at`` and holds until the next entry.",
@@ -1416,6 +2909,147 @@
           "state"
         ],
         "title": "StateAt",
+        "type": "object"
+      },
+      "Summary": {
+        "additionalProperties": false,
+        "description": "Answer of ``GET /api/summary``. ``model_check`` is None when its card failed.",
+        "properties": {
+          "as_of": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/CardError"
+            },
+            "title": "Errors",
+            "type": "array"
+          },
+          "etag": {
+            "title": "Etag",
+            "type": "string"
+          },
+          "model_check": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ModelCheck"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "money": {
+            "items": {
+              "$ref": "#/components/schemas/AgentMoney"
+            },
+            "title": "Money",
+            "type": "array"
+          },
+          "no_usage_sessions": {
+            "title": "No Usage Sessions",
+            "type": "integer"
+          },
+          "prices": {
+            "$ref": "#/components/schemas/TimelinePrices"
+          },
+          "project": {
+            "title": "Project",
+            "type": "string"
+          },
+          "range": {
+            "enum": [
+              "today",
+              "7d",
+              "30d",
+              "90d",
+              "12m",
+              "all"
+            ],
+            "title": "Range",
+            "type": "string"
+          },
+          "server_time": {
+            "format": "date-time",
+            "title": "Server Time",
+            "type": "string"
+          },
+          "session_count": {
+            "title": "Session Count",
+            "type": "integer"
+          },
+          "tiles": {
+            "$ref": "#/components/schemas/SummaryTiles"
+          },
+          "top_sessions": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewSession"
+            },
+            "title": "Top Sessions",
+            "type": "array"
+          },
+          "unchanged": {
+            "const": false,
+            "title": "Unchanged",
+            "type": "boolean"
+          },
+          "window": {
+            "$ref": "#/components/schemas/ReviewWindow"
+          }
+        },
+        "required": [
+          "project",
+          "range",
+          "window",
+          "server_time",
+          "as_of",
+          "etag",
+          "unchanged",
+          "prices",
+          "errors",
+          "tiles",
+          "money",
+          "model_check",
+          "top_sessions",
+          "session_count",
+          "no_usage_sessions"
+        ],
+        "title": "Summary",
+        "type": "object"
+      },
+      "SummaryTiles": {
+        "additionalProperties": false,
+        "description": "The four Summary tiles.",
+        "properties": {
+          "cache_share": {
+            "$ref": "#/components/schemas/ShareTile"
+          },
+          "cost": {
+            "$ref": "#/components/schemas/CostTile"
+          },
+          "sessions": {
+            "$ref": "#/components/schemas/CountTile"
+          },
+          "tokens": {
+            "$ref": "#/components/schemas/CountTile"
+          }
+        },
+        "required": [
+          "cost",
+          "sessions",
+          "tokens",
+          "cache_share"
+        ],
+        "title": "SummaryTiles",
         "type": "object"
       },
       "SwapRequest": {
@@ -2321,6 +3955,132 @@
         ]
       }
     },
+    "/api/agents": {
+      "get": {
+        "operationId": "get_agents",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "project",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 63,
+                  "pattern": "^[a-z0-9][a-z0-9-]{0,62}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project"
+            }
+          },
+          {
+            "description": "One of today, 7d, 30d, 90d, 12m and all. Default 30d.",
+            "in": "query",
+            "name": "range",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "One of today, 7d, 30d, 90d, 12m and all. Default 30d.",
+              "title": "Range"
+            }
+          },
+          {
+            "in": "query",
+            "name": "etag",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "pattern": "^[A-Za-z0-9_.-]{0,64}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Etag"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AgentList"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Unchanged"
+                    }
+                  ],
+                  "title": "Response Get Agents"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "summary": "Get Agents",
+        "tags": [
+          "review"
+        ]
+      }
+    },
     "/api/app": {
       "get": {
         "operationId": "get_app",
@@ -2379,6 +4139,151 @@
         "summary": "Get App",
         "tags": [
           "app"
+        ]
+      }
+    },
+    "/api/cost-chart": {
+      "get": {
+        "operationId": "get_cost_chart",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "project",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 63,
+                  "pattern": "^[a-z0-9][a-z0-9-]{0,62}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project"
+            }
+          },
+          {
+            "description": "One of today, 7d, 30d, 90d, 12m and all. Default 30d.",
+            "in": "query",
+            "name": "range",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "One of today, 7d, 30d, 90d, 12m and all. Default 30d.",
+              "title": "Range"
+            }
+          },
+          {
+            "description": "The chart's last local date, as YYYY-MM-DD.",
+            "in": "query",
+            "name": "end",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 10,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The chart's last local date, as YYYY-MM-DD.",
+              "title": "End"
+            }
+          },
+          {
+            "in": "query",
+            "name": "etag",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "pattern": "^[A-Za-z0-9_.-]{0,64}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Etag"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/CostChart"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Unchanged"
+                    }
+                  ],
+                  "title": "Response Get Cost Chart"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "summary": "Get Cost Chart",
+        "tags": [
+          "review"
         ]
       }
     },
@@ -2489,6 +4394,132 @@
         ]
       }
     },
+    "/api/models": {
+      "get": {
+        "operationId": "get_models",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "project",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 63,
+                  "pattern": "^[a-z0-9][a-z0-9-]{0,62}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project"
+            }
+          },
+          {
+            "description": "One of today, 7d, 30d, 90d, 12m and all. Default 30d.",
+            "in": "query",
+            "name": "range",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "One of today, 7d, 30d, 90d, 12m and all. Default 30d.",
+              "title": "Range"
+            }
+          },
+          {
+            "in": "query",
+            "name": "etag",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "pattern": "^[A-Za-z0-9_.-]{0,64}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Etag"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ModelList"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Unchanged"
+                    }
+                  ],
+                  "title": "Response Get Models"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "summary": "Get Models",
+        "tags": [
+          "review"
+        ]
+      }
+    },
     "/api/prices": {
       "get": {
         "operationId": "get_prices",
@@ -2568,6 +4599,151 @@
         "summary": "Get Projects",
         "tags": [
           "app"
+        ]
+      }
+    },
+    "/api/sessions": {
+      "get": {
+        "operationId": "get_sessions",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "project",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 63,
+                  "pattern": "^[a-z0-9][a-z0-9-]{0,62}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project"
+            }
+          },
+          {
+            "description": "One of today, 7d, 30d, 90d, 12m and all. Default 30d.",
+            "in": "query",
+            "name": "range",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "One of today, 7d, 30d, 90d, 12m and all. Default 30d.",
+              "title": "Range"
+            }
+          },
+          {
+            "description": "The opaque `next` of the previous page.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 512,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The opaque `next` of the previous page.",
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "etag",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "pattern": "^[A-Za-z0-9_.-]{0,64}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Etag"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/SessionList"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Unchanged"
+                    }
+                  ],
+                  "title": "Response Get Sessions"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "summary": "Get Sessions",
+        "tags": [
+          "review"
         ]
       }
     },
@@ -2686,6 +4862,132 @@
         "summary": "Get Timeline",
         "tags": [
           "live"
+        ]
+      }
+    },
+    "/api/summary": {
+      "get": {
+        "operationId": "get_summary",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "project",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 63,
+                  "pattern": "^[a-z0-9][a-z0-9-]{0,62}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project"
+            }
+          },
+          {
+            "description": "One of today, 7d, 30d, 90d, 12m and all. Default 30d.",
+            "in": "query",
+            "name": "range",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "One of today, 7d, 30d, 90d, 12m and all. Default 30d.",
+              "title": "Range"
+            }
+          },
+          {
+            "in": "query",
+            "name": "etag",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "pattern": "^[A-Za-z0-9_.-]{0,64}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Etag"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/Summary"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Unchanged"
+                    }
+                  ],
+                  "title": "Response Get Summary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "summary": "Get Summary",
+        "tags": [
+          "review"
         ]
       }
     }

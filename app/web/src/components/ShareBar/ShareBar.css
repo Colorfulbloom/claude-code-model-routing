@@ -1,0 +1,111 @@
+/*
+ * Share bar (components.md entry 19). The track is --chart-track at 12 px in a list and 8 px in a
+ * table, both with --radius-sm (Differences resolved, item 9). The fill takes the model colour and
+ * starts with a 2 px --border-strong edge, so a tiny share still shows where the bar begins.
+ */
+.share-bar {
+  display: grid;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.share-bar-list {
+  grid-template-columns: minmax(0, 200px) minmax(0, 1fr) 72px 48px;
+  grid-template-areas: "name track value percent";
+  min-height: 32px;
+  padding: var(--space-1) 0;
+  list-style: none;
+}
+
+.share-bar-table {
+  grid-template-columns: minmax(48px, 1fr) auto auto;
+  gap: var(--space-2);
+}
+
+.share-bar-name {
+  grid-area: name;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.share-bar-track {
+  grid-area: track;
+  display: block;
+  height: 12px;
+  overflow: hidden;
+  background: var(--chart-track);
+  border-radius: var(--radius-sm);
+}
+
+.share-bar-table .share-bar-track {
+  grid-area: auto;
+  height: 8px;
+}
+
+.share-bar-fill {
+  display: block;
+  height: 100%;
+  box-sizing: border-box;
+  background: var(--text-muted);
+  border-inline-start: 2px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+}
+
+.share-bar-fill-opus {
+  background: var(--m-opus);
+}
+
+.share-bar-fill-sonnet {
+  background: var(--m-sonnet);
+}
+
+.share-bar-fill-haiku {
+  background: var(--m-haiku);
+}
+
+.share-bar-fill-fable {
+  background: var(--m-fable);
+}
+
+.share-bar-value {
+  grid-area: value;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.share-bar-percent {
+  grid-area: percent;
+  color: var(--text-muted);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.share-bar-table .share-bar-value,
+.share-bar-table .share-bar-percent {
+  grid-area: auto;
+}
+
+/* No share: the caller's words take the value and percent columns, so a longer text fits. */
+.share-bar-list .share-bar-value-wide {
+  grid-area: auto;
+  grid-column: 3 / 5;
+  grid-row: 1;
+}
+
+/* Phone: the bar drops under the name, and the value and percent stay on the right. */
+@media (width <= 720px) {
+  .share-bar-list {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "name value percent"
+      "track track track";
+    gap: var(--space-1) var(--space-3);
+    padding: var(--space-2) 0;
+  }
+
+  .share-bar-list .share-bar-value-wide {
+    grid-column: 2 / 4;
+  }
+}

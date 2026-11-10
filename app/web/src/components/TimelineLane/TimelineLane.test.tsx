@@ -176,6 +176,19 @@ describe("TimelineLane", () => {
     expect(screen.getByText("No price for Fable 5.1")).toBeInTheDocument();
   });
 
+  it("shows No price in the cell and keeps the model in the full text for readers", () => {
+    lane([
+      run({
+        id: "b",
+        cost: { kind: "none", text: "No price", full: "No price for Fable 5.1" },
+      }),
+    ]);
+    const full = screen.getByText("No price for Fable 5.1");
+    expect(full).toHaveClass("sr-only");
+    expect(full.parentElement).toHaveAttribute("title", "No price for Fable 5.1");
+    expect(screen.getByText("No price")).toHaveAttribute("aria-hidden", "true");
+  });
+
   it("gives a moved row the ring class, and none under reduced motion", () => {
     reduceMotion(false);
     const { container, unmount } = lane([run({ moved: true })]);

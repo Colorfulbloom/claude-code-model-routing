@@ -195,9 +195,7 @@ describe("a working session", () => {
     const check = screen.getByRole("region", { name: "Model check" });
     expect(within(check).getByText("Lowered")).toBeInTheDocument();
     expect(within(check).getByText("judge ran at medium")).toBeInTheDocument();
-    expect(
-      within(check).getByText("The other 2 agents ran as their files set."),
-    ).toBeInTheDocument();
+    expect(within(check).getByText("The other 2 agents ran as set.")).toBeInTheDocument();
     expect(within(check).queryByRole("link")).toBeNull();
     // Latest requests
     const requests = screen.getByRole("region", { name: "Latest requests" });

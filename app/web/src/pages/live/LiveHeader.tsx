@@ -24,6 +24,8 @@ export interface LiveHeaderProps {
   select: React.ReactNode;
   /** Absent once the session has ended. */
   pause: { label: string; onPress: () => void } | null;
+  /** A link above the title, such as Session review's way back to Sessions. */
+  back?: React.ReactNode;
 }
 
 export function LiveHeader({
@@ -34,6 +36,7 @@ export function LiveHeader({
   when,
   select,
   pause,
+  back,
 }: LiveHeaderProps) {
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
@@ -43,6 +46,7 @@ export function LiveHeader({
   return (
     <header className="live-head">
       <div className="live-title">
+        {back}
         <div className="live-state">
           {state !== null && <RunStateGlyph state={state.kind}>{state.word}</RunStateGlyph>}
           <h1

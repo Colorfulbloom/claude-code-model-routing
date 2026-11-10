@@ -14,7 +14,9 @@ export interface EmptyStateProps {
   title?: string;
   /** Says what will appear. */
   children: React.ReactNode;
-  action?: { label: string; href?: string; onPress?: () => void };
+  action?: { label: string; href?: string; onPress?: () => void; primary?: boolean };
+  /** A second button after the action, such as a quiet way out. */
+  secondary?: { label: string; href?: string; onPress?: () => void };
   className?: string;
 }
 
@@ -25,11 +27,13 @@ export function EmptyState({
   title,
   children,
   action,
+  secondary,
   className,
 }: EmptyStateProps) {
   const button =
     action !== undefined ? (
       <Button
+        {...(action.primary === true ? { variant: "primary" as const } : {})}
         {...(action.href !== undefined ? { href: action.href } : {})}
         {...(action.onPress !== undefined ? { onPress: action.onPress } : {})}
       >
@@ -43,7 +47,19 @@ export function EmptyState({
         <span className={cx("empty-page-mark", `is-${mark}`)} aria-hidden="true" />
         {title !== undefined && <h2 className="empty-page-title">{title}</h2>}
         <p className="muted">{children}</p>
-        {button}
+        {(button !== null || secondary !== undefined) && (
+          <div className="empty-page-actions">
+            {button}
+            {secondary !== undefined && (
+              <Button
+                {...(secondary.href !== undefined ? { href: secondary.href } : {})}
+                {...(secondary.onPress !== undefined ? { onPress: secondary.onPress } : {})}
+              >
+                {secondary.label}
+              </Button>
+            )}
+          </div>
+        )}
       </section>
     );
   }

@@ -516,10 +516,12 @@ class TestMinuteUsage:
         st.run()
         before = h.actual_minutes(st.conn)
         assert before == h.expected_minutes(st.conn, st.ingestor.tier)
+        h.assert_hours_follow_minutes(st.conn)
         config.write(config.main(h.S2), [h.assistant(130, "dup", out=40, sid=h.S2)])
         st.run()
         after = h.actual_minutes(st.conn)
         assert after == h.expected_minutes(st.conn, st.ingestor.tier)
+        h.assert_hours_follow_minutes(st.conn)
         # the first session's minute lost its winner: that cell is gone
         sessions = {k[0] for k in after}
         assert sessions == {h.S1, h.S2}
@@ -566,6 +568,8 @@ class TestMinuteUsage:
                 == "changed-hash"
             )
             assert h.actual_minutes(s.conn) == h.expected_minutes(s.conn, moved)
+            h.assert_hours_follow_minutes(s.conn)
+            assert s.one("SELECT tier FROM hour_usage") == "1"
         finally:
             s.close()
 
@@ -578,6 +582,111 @@ class TestMinuteUsage:
         assert policy.tier_for("not-a-model", 900_000) == 0
         assert policy.tier_for("", 5) == 0
         assert len(policy.hash) == 64
+
+
+class TestHourUsage:
+    """``hour_usage`` equals ``minute_usage`` grouped by UTC hour after every pass.
+
+    ``Store.close`` checks it at the end of every ingest test as well. These cases
+    check it after each step of the scenarios that change cells: a file that grows
+    within an hour and into new ones, a rescan that improves a snapshot, a cell that
+    loses its winner, a run that learns its type late and a rebuild at a new tier.
+    """
+
+    def _hours(self, st: Store) -> list[tuple[object, ...]]:
+        h.assert_hours_follow_minutes(st.conn)
+        return st.rows(
+            "SELECT session_id, run_key, hour, requests, first_minute"
+            " FROM hour_usage ORDER BY session_id, run_key, hour"
+        )
+
+    def test_a_growing_file_fills_its_hour_then_opens_new_ones(
+        self, config: Config, st: Store
+    ) -> None:
+        config.write(config.main(), [h.assistant(310, "a"), h.assistant(370, "b")])
+        st.run()  # 12:05 and 12:06
+        assert self._hours(st) == [
+            (h.S1, "main", "2026-11-01T12:00", 2, "2026-11-01T12:05")
+        ]
+        config.append(config.main(), [h.assistant(130, "c")])  # 12:02, same hour
+        st.run()
+        assert [row[3:5] for row in self._hours(st)] == [(3, "2026-11-01T12:02")]
+        config.append(
+            config.main(), [h.assistant(3700, "d"), h.assistant(7300, "e")]
+        )  # 13:01 and 14:01
+        st.run()
+        assert [row[2:4] for row in self._hours(st)] == [
+            ("2026-11-01T12:00", 3),
+            ("2026-11-01T13:00", 1),
+            ("2026-11-01T14:00", 1),
+        ]
+        config.append(config.main(), [h.assistant(-100, "f")])  # 11:58, an earlier hour
+        st.run()
+        assert [row[2:5] for row in self._hours(st)][:2] == [
+            ("2026-11-01T11:00", 1, "2026-11-01T11:58"),
+            ("2026-11-01T12:00", 3, "2026-11-01T12:02"),
+        ]
+
+    def test_a_rescan_that_improves_a_snapshot_changes_the_hour_sums(
+        self, config: Config, st: Store
+    ) -> None:
+        config.write(
+            config.main(), [h.assistant(0, "m0", out=10), h.assistant(30, "m1", out=5)]
+        )
+        st.run()
+        before = st.one("SELECT output FROM hour_usage")
+        assert before == 15
+        tmp = config.main().with_name("replacement")
+        config.write(tmp, [h.assistant(0, "m0", out=70)])
+        tmp.replace(config.main())  # a new inode, read again from byte 0
+        st.run()
+        assert st.one("SELECT output FROM hour_usage") == 75
+        assert self._hours(st)[0][3] == 2
+
+    def test_a_cell_that_loses_its_winner_leaves_the_hour_with_the_rest(
+        self, config: Config, st: Store
+    ) -> None:
+        config.write(
+            config.main(h.S1),
+            [h.assistant(5, "dup", out=10), h.assistant(70, "solo", out=4)],
+        )
+        st.run()
+        assert self._hours(st)[0][3] == 2
+        # a better copy of "dup" in another session takes the winner away
+        config.write(config.main(h.S2), [h.assistant(130, "dup", out=40, sid=h.S2)])
+        st.run()
+        rows = self._hours(st)
+        assert [(r[0], r[3]) for r in rows] == [(h.S1, 1), (h.S2, 1)]
+
+    def test_a_late_agent_type_and_a_late_link_leave_the_hours_alone(
+        self, config: Config, st: Store
+    ) -> None:
+        config.write(config.main(), [h.assistant(0, "a"), h.link_row(1, "agent-1")])
+        st.run()
+        before = self._hours(st)
+        config.write(config.agent("agent-1"), [h.assistant(2, "w1")])
+        st.run()  # the link resolves, the run appears
+        during = self._hours(st)
+        assert [r[:3] for r in during] == [
+            (h.S1, "agent-1", "2026-11-01T12:00"),
+            (h.S1, "main", "2026-11-01T12:00"),
+        ]
+        assert [r for r in during if r[1] == "main"] == before
+        config.meta("agent-1", "scribe")
+        st.run()  # the type arrives: only runs changes, never the hours
+        assert self._hours(st) == during
+        assert (
+            st.one("SELECT agent_type FROM runs WHERE run_id = 'agent-1'") == "scribe"
+        )
+
+    def test_a_pass_with_no_change_keeps_the_hours(
+        self, config: Config, st: Store
+    ) -> None:
+        config.write(config.main(), [h.assistant(0, "a"), h.assistant(3600, "b")])
+        st.run()
+        before = h.actual_hours(st.conn)
+        assert st.run().files_read == 0
+        assert h.actual_hours(st.conn) == before
 
 
 class TestProgress:
@@ -670,6 +779,8 @@ class TestBatches:
             assert h.actual_minutes(many.conn) == h.expected_minutes(
                 many.conn, many.ingestor.tier
             )
+            assert h.actual_hours(one.conn) == h.actual_hours(many.conn)
+            h.assert_hours_follow_minutes(many.conn)
         finally:
             one.close()
             many.close()

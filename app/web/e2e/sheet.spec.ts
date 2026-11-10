@@ -189,6 +189,71 @@ for (const width of widths) {
   }
 }
 
+/*
+ * Cost charts tell kinds apart by pattern and never use the --rk ramp (project CLAUDE.md,
+ * Accessibility floor; m3-build.md section 12, need 16). A computed style holds only the resolved
+ * colour, so the check reads the sheet's own rules: every style rule that matches an element in a
+ * cost chart, the inline styles and the attributes. None may reference an --rk custom property.
+ */
+for (const theme of themes) {
+  test(`no cost chart reads an --rk custom property (${theme})`, async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    const cells = await openSheet(page, theme);
+    const cost = cells.filter((c) => c.component === "StackedBars" && c.state.startsWith("cost-"));
+    expect(cost.length).toBeGreaterThanOrEqual(5);
+    const found: Finding[] = [];
+    for (const cell of cost) {
+      found.push(
+        ...(await page.evaluate(
+          ({ selector, label }) => {
+            const hits: Finding[] = [];
+            const root = document.querySelector(selector);
+            if (root === null) return [{ kind: "missing-cell", cell: label }];
+            const nodes = [root, ...Array.from(root.querySelectorAll("*"))];
+            const refersToRk = (text: string) => /var\(\s*--rk/.test(text);
+            const visit = (rules: CSSRuleList) => {
+              for (const rule of Array.from(rules)) {
+                if (rule instanceof CSSStyleRule) {
+                  if (!refersToRk(rule.style.cssText)) continue;
+                  const matched = nodes.filter((el) => {
+                    try {
+                      return el.matches(rule.selectorText);
+                    } catch {
+                      return false;
+                    }
+                  });
+                  if (matched.length > 0) {
+                    hits.push({ kind: "rk-rule", cell: label, rule: rule.cssText.slice(0, 120) });
+                  }
+                } else if ("cssRules" in rule) {
+                  visit((rule as CSSGroupingRule).cssRules);
+                }
+              }
+            };
+            for (const sheet of Array.from(document.styleSheets)) {
+              try {
+                visit(sheet.cssRules);
+              } catch {
+                hits.push({ kind: "unreadable-sheet", cell: label, href: sheet.href });
+              }
+            }
+            for (const el of nodes) {
+              for (const attr of Array.from(el.attributes)) {
+                if (attr.value.includes("--rk")) {
+                  hits.push({ kind: "rk-attribute", cell: label, name: attr.name });
+                }
+              }
+            }
+            return hits;
+          },
+          { selector: cellSelector(cell), label: `${cell.component}/${cell.state}` },
+        )),
+      );
+    }
+    expect(summarise(found)).toEqual([]);
+  });
+}
+
 test("sheet under forced colors keeps passing axe", async ({ page }) => {
   // One axe scan per cell, so it needs the longer limit the per-cell tests above get.
   test.setTimeout(240_000);
@@ -267,13 +332,16 @@ for (const width of widths) {
           Math.round((k * (count - 1)) / Math.max(1, Math.min(count, 5) - 1)),
         ),
       );
-      await page.mouse.move(0, 0);
-      const before = await snapshot(sel);
       for (const i of picks) {
         const target = targets.nth(i);
         if (!(await target.isVisible())) continue;
         if ((await target.evaluate((el) => el.closest('[aria-hidden="true"]'))) !== null) continue;
         await target.scrollIntoViewIfNeeded();
+        // The baseline comes after the scroll. A target inside a sideways scroll container (the
+        // segmented pages at 375) moves the whole row when it scrolls into view, and that is the
+        // scroll, not the hover.
+        await page.mouse.move(0, 0);
+        const before = await snapshot(sel);
         const box = await target.boundingBox();
         if (box === null) continue;
         await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);

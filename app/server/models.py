@@ -517,3 +517,351 @@ class LiveSessionsUnchanged(_Response):
     server_time: datetime
     etag: str
     unchanged: Literal[True]
+
+
+# Review (M3). The contract is docs/rebuild/planning/m3-build.md section 4, with the
+# designer's plan review folded in (section 12 there). A Review answer whose asked
+# etag still matches is the shared ``Unchanged`` model.
+#
+# Unpriced rule. A cost sums the priced requests only. Every cost that may miss some
+# requests carries an ``Unpriced`` beside it, so the page can say "at least {cost}",
+# or "No price for {model}" when ``cost`` is None. A share is None when its own cost
+# is None, never 0.
+
+ReviewRange = Literal["today", "7d", "30d", "90d", "12m", "all"]
+REVIEW_RANGES: tuple[ReviewRange, ...] = ("today", "7d", "30d", "90d", "12m", "all")
+DEFAULT_REVIEW_RANGE: ReviewRange = "30d"
+ChartUnit = Literal["hour", "day", "week", "month"]
+PagerReason = Literal["no_earlier_data", "newest"]
+# ``no_file`` is an agent type that ran with no user or project agent file, such as a
+# plugin or built-in agent. The page calls it an unknown source until M4.
+AgentScope = Literal["user", "project", "main", "unnamed", "no_file"]
+AgentFileScope = Literal["user", "project"]
+# Why ``set`` holds no value. ``no_file``: no agent file was found. ``sets_nothing``:
+# the file exists and sets neither model nor effort. ``read_failed``: the setup could
+# not be read, and the answer's ``errors`` names the card.
+SetReason = Literal["no_file", "sets_nothing", "read_failed"]
+ReviewCard = Literal["model_check", "agent_setup"]
+CardErrorCode = Literal["setup_unreadable", "unexpected"]
+
+
+class ReviewWindow(_Response):
+    """The range's window and the one it compares with, in the answer's zone.
+
+    ``end`` is the clock T. ``prior_start`` and ``prior_end`` are None for ``all``.
+    ``oldest`` is the oldest stored request in the project, or None when there is
+    none. ``partial`` is True when ``oldest`` falls after ``start``, so the range
+    holds less history than its name. ``prior_partial`` is True when ``oldest`` falls
+    after ``prior_start``, so a change against the prior would mislead.
+    """
+
+    start: datetime
+    end: datetime
+    prior_start: datetime | None
+    prior_end: datetime | None
+    tz: str
+    oldest: datetime | None
+    partial: bool
+    prior_partial: bool
+
+
+class CardError(_Response):
+    """A card the server could not build. Its field in the answer is None."""
+
+    card: ReviewCard
+    code: CardErrorCode
+
+
+class _ReviewAnswer(_Response):
+    """Fields every full Review answer carries."""
+
+    project: str
+    range: ReviewRange
+    window: ReviewWindow
+    server_time: datetime
+    as_of: datetime | None
+    etag: str
+    unchanged: Literal[False]
+    prices: TimelinePrices
+    errors: list[CardError]
+
+
+class CountTile(_Response):
+    """A whole-number tile. ``change_pct`` is relative, ``change_abs`` the difference.
+
+    Both changes are None when there is no prior window or ``window.prior_partial``.
+    ``change_pct`` is also None when the prior value is 0.
+    """
+
+    value: int
+    prior: int | None
+    change_pct: float | None
+    change_abs: int | None
+
+
+class CostTile(_Response):
+    """The cost tile, with the unpriced requests of the range and of the prior."""
+
+    value: float | None
+    prior: float | None
+    change_pct: float | None
+    change_abs: float | None
+    unpriced: Unpriced
+    prior_unpriced: Unpriced | None
+
+
+class ShareTile(_Response):
+    """A share from 0 to 1, such as the cache share. ``change_abs`` is in shares."""
+
+    value: float | None
+    prior: float | None
+    change_abs: float | None
+
+
+class SummaryTiles(_Response):
+    """The four Summary tiles."""
+
+    cost: CostTile
+    sessions: CountTile
+    tokens: CountTile
+    cache_share: ShareTile
+
+
+class AgentMoney(_Response):
+    """One agent's part of the range's cost. ``agent`` is an agent key.
+
+    The rows add up to the Cost tile, so a plugin agent with no file still has one.
+    """
+
+    agent: str
+    model: str | None
+    cost: float | None
+    share: float | None
+    requests: int
+    unpriced: Unpriced
+
+
+class SessionWhole(_Response):
+    """A session's whole numbers, for a session that started before the range."""
+
+    tokens: int
+    cost: float | None
+    unpriced: Unpriced
+
+
+class ReviewSession(_Response):
+    """One session in a Review list. ``agents`` are agent keys, biggest cost first.
+
+    ``tokens``, ``cost`` and ``runs`` count the range only. ``started_before_range``
+    marks a session whose first request is before ``window.start``, and ``whole``
+    then holds its numbers over its whole life, so the page can show either.
+    """
+
+    id: str
+    started: datetime
+    last_request: datetime
+    branch: str | None
+    state: SessionState
+    agents: list[str]
+    runs: int
+    tokens: int
+    cost: float | None
+    unpriced: Unpriced
+    started_before_range: bool
+    whole: SessionWhole | None
+
+
+class Summary(_ReviewAnswer):
+    """Answer of ``GET /api/summary``. ``model_check`` is None when its card failed."""
+
+    tiles: SummaryTiles
+    money: list[AgentMoney]
+    model_check: ModelCheck | None
+    top_sessions: list[ReviewSession]
+    session_count: int
+    no_usage_sessions: int
+
+
+class KindCosts(_Response):
+    """Dollars per kind of cost, over priced requests only."""
+
+    input: float
+    output: float
+    cache_read: float
+    cache_write: float
+
+
+class ModelBarCost(_Response):
+    """One model's part of a chart bar. ``cost`` is None when none of it is priced."""
+
+    cost: float | None
+    kinds: KindCosts
+    requests: int
+    unpriced: Unpriced
+
+
+class ChartBar(_Response):
+    """One bar of the cost chart.
+
+    ``start`` and ``end`` are clipped to the chart window and to T, so the first and
+    last bars may be shorter than one ``unit``. ``open`` marks the bar that holds T.
+    ``holds_oldest`` marks the bar that holds ``window.oldest``. ``no_records`` marks
+    a bar that ends before ``oldest``, which the page shows as no records, not $0.
+    """
+
+    start: datetime
+    end: datetime
+    by_model: dict[str, ModelBarCost]
+    unpriced: Unpriced
+    open: bool
+    holds_oldest: bool
+    no_records: bool
+
+
+class ChartWindow(_Response):
+    """The chart's own window, and why a pager end is reached.
+
+    On the newest page the window is the range's window, so the legend total equals
+    the Cost tile. Earlier pages are whole windows of the same length. ``all`` is one
+    page from ``oldest`` to T, with both ends reached, in days, weeks or months by span.
+    """
+
+    start: datetime
+    end: datetime
+    unit: ChartUnit
+    has_earlier: bool
+    has_later: bool
+    earlier_reason: PagerReason | None
+    later_reason: PagerReason | None
+    newest: bool
+
+
+class ModelCost(_Response):
+    """A legend entry over the chart window. A model with no price keeps its entry."""
+
+    model: str
+    cost: float | None
+    requests: int
+    unpriced: Unpriced
+
+
+class CostChart(_ReviewAnswer):
+    """Answer of ``GET /api/cost-chart``. It never changes the tiles."""
+
+    chart: ChartWindow
+    bars: list[ChartBar]
+    legend: list[ModelCost]
+    kinds: KindCosts
+    unpriced: Unpriced
+    y_ticks: list[float]
+
+
+class SessionDay(_Response):
+    """The sessions of one local day.
+
+    A session sits under the local day of its first request inside the range, so a
+    session that started before the range sits under the range's first day. A day
+    can continue on the next page, and the page joins it under one header. The field
+    is ``day``, not ``date``, because a field named like its type breaks the
+    annotation in a Pydantic class body.
+    """
+
+    day: date
+    sessions: list[ReviewSession]
+
+
+class SessionList(_ReviewAnswer):
+    """Answer of ``GET /api/sessions``.
+
+    Newest first by (first request in range, id). ``next`` is an opaque cursor that
+    anchors on the last row's sort key, so a refetch never repeats or moves loaded
+    rows, and None at the end of the list.
+    """
+
+    count: int
+    days: list[SessionDay]
+    next: str | None
+
+
+class PairRuns(_Response):
+    """One model and effort pair the runs used, with its run count."""
+
+    model: str | None
+    effort: str | None
+    runs: int
+
+
+class AgentRow(_Response):
+    """An agent that ran in the range, with its setup and its model check status.
+
+    ``set_reason`` says why ``set`` holds no value. ``ran_pairs`` lists every pair
+    the runs used, most runs first. ``runs_as_set`` and ``runs_not_as_set`` come
+    from the model check and are None when nothing is set.
+    """
+
+    agent: str
+    scope: AgentScope
+    set: SetPair | None
+    set_reason: SetReason | None
+    ran: RanPair
+    ran_pairs: list[PairRuns]
+    status: ModelCheckStatus | None
+    reason_code: str | None
+    params: dict[str, str]
+    runs: int
+    runs_as_set: int | None
+    runs_not_as_set: int | None
+    sessions: int
+    cost: float | None
+    share: float | None
+    requests: int
+    unpriced: Unpriced
+
+
+class AgentNoRuns(_Response):
+    """An agent file with no run in the range."""
+
+    agent: str
+    scope: AgentFileScope
+    set: SetPair | None
+    set_reason: SetReason | None
+
+
+class AgentList(_ReviewAnswer):
+    """Answer of ``GET /api/agents``. ``ran`` adds up to the Cost tile."""
+
+    ran: list[AgentRow]
+    never_ran: list[AgentNoRuns]
+
+
+class ModelRow(_Response):
+    """One model over the range. ``used_by`` holds agent keys."""
+
+    model: str
+    cost: float | None
+    share: float | None
+    tokens: int
+    requests: int
+    cache_share: float | None
+    used_by: list[str]
+    unpriced: Unpriced
+
+
+class ModelKinds(_Response):
+    """One model's dollars per kind of cost, over its priced requests."""
+
+    model: str
+    input: float
+    output: float
+    cache_read: float
+    cache_write: float
+    unpriced: Unpriced
+
+
+class ModelList(_ReviewAnswer):
+    """Answer of ``GET /api/models``. ``unpriced`` covers the whole legend."""
+
+    rows: list[ModelRow]
+    kinds: list[ModelKinds]
+    legend: KindCosts
+    unpriced: Unpriced

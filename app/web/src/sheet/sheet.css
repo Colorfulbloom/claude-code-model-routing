@@ -98,6 +98,16 @@
   width: min(100%, 560px);
 }
 
+.sheet-cell[data-component="ShareBar"],
+.sheet-cell[data-component="Pager"],
+.sheet-cell[data-component="Segmented"] {
+  width: min(100%, 560px);
+}
+
+.sheet-cell[data-component="ScopeBar"] {
+  width: min(100%, 720px);
+}
+
 .sheet-cell[data-component="Tile"] {
   width: min(100%, 280px);
 }
@@ -106,7 +116,14 @@
   height: 100%;
 }
 
+.sheet-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
 .sheet-cell[data-component="StackedBars"],
+.sheet-cell[data-component="ReplayLine"],
 .sheet-cell[data-component="TimelineLane"] {
   width: 100%;
 }

@@ -9,7 +9,7 @@
  */
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { RefObject } from "react";
-import { Navigate, useNavigate } from "react-router";
+import { Navigate, useNavigate, useSearchParams } from "react-router";
 import { useApi, useAppInfo, usePrices, useProjects } from "@/api/client";
 import { useActiveProject } from "@/app/active-project";
 import { hidesTabBar, livePath, projectHref, sidebarCurrent, tabCurrent } from "@/app/nav";
@@ -35,6 +35,7 @@ import { footerLines } from "@/lib/history";
 import { stoppedSentence } from "@/lib/stopped";
 import { useIsDesktop } from "@/lib/media";
 import { projectItem } from "@/lib/projects";
+import { DEFAULT_RANGE, parseRange, readLastRange, reviewPath } from "@/lib/range";
 import { t, tn } from "@/strings/t";
 
 interface ShellProps {
@@ -56,6 +57,7 @@ const reviewLinks = [
 export function Shell({ page, routeProject, pathname, mainRef, children }: ShellProps) {
   const { access, connection } = useApi();
   const navigate = useNavigate();
+  const [search] = useSearchParams();
   const desktop = useIsDesktop();
   const projects = useProjects();
   const projectList = projects.data?.projects;
@@ -123,6 +125,16 @@ export function Shell({ page, routeProject, pathname, mainRef, children }: Shell
   };
 
   const sidebarCurrentId = sidebarCurrent(page);
+  // On a Review page the sidebar's Review links keep the range, as the phone's segmented pages do.
+  const onReview =
+    page === "summary" ||
+    page === "sessions" ||
+    page === "session" ||
+    page === "agents" ||
+    page === "models";
+  const reviewRange = onReview
+    ? parseRange(search.get("range"), readLastRange() ?? DEFAULT_RANGE).range
+    : null;
   const groups: SidebarGroup[] = [
     {
       id: "live",
@@ -144,7 +156,10 @@ export function Shell({ page, routeProject, pathname, mainRef, children }: Shell
       heading: t("nav_review"),
       items: reviewLinks.map(({ id, rest, label }) => ({
         id,
-        href: projectHref(activeProject, rest),
+        href:
+          reviewRange === null || activeProject === null
+            ? projectHref(activeProject, rest)
+            : `#${reviewPath(activeProject, id, reviewRange)}`,
         label: label(),
         icon: id,
         current: sidebarCurrentId === id,

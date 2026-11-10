@@ -79,9 +79,9 @@ uses: 0
 promote: approved
 
 ### I-376d Bar Tab checks run from app/
-fact: `app/scripts/uvw run --frozen --directory app` runs from app/, so name test files relative to app/. Pyright is npm's: `app/scripts/npmw --prefix app/web run pyright`. Run test_launcher.py alone (port 47000).
+fact: `uvw run --frozen --directory app` runs from app/, so name tests relative to app/. Pyright: `npmw --prefix app/web run pyright`; `exec` runs in the caller's cwd, so exec from app/web as ../scripts/npmw. Run test_launcher.py alone (port 47000).
 check: app/scripts/uvw run --frozen --directory app pytest -q --no-cov server/tests/test_network_guard.py
-evidence: app/scripts/uvw, app/pyproject.toml, app/server/tests/test_launcher.py
+evidence: app/scripts/uvw, app/pyproject.toml
 fp: 0f51925faa8b
 as_of: ad32428 2026-11-08
 author: deep-reasoner

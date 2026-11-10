@@ -1,0 +1,190 @@
+/*
+ * Replay line (components.md entry 23). One row on the lane grid: the time, the track, the key hint.
+ * The columns copy TimelineLane's, so the track sits over the lane tracks. The input is transparent
+ * and reaches 12 px past the track on both sides, so a 24 px thumb centre meets 0 and 100 percent.
+ * The handle, rail and cut line are drawn by CSS from --replay-x. Nothing here moves, so there is
+ * no motion to turn off.
+ */
+.replay {
+  position: sticky;
+  top: var(--replay-sticky-top, 0);
+  z-index: 3;
+  display: grid;
+  grid-template-columns:
+    var(--lane-lab, 240px) minmax(0, 1fr)
+    calc(
+      var(--lane-state, 150px) + var(--lane-tok, 56px) + var(--lane-cost, 94px) + 2 * var(--space-4)
+    );
+  gap: var(--space-4);
+  align-items: center;
+  padding: var(--space-2) calc(var(--lane-pad, 12px) + 1px);
+  margin-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border);
+  background: var(--card-bg);
+}
+
+.replay-info {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.replay-showing {
+  font-size: var(--text-md);
+}
+
+.replay-showing .replay-word {
+  color: var(--text-muted);
+}
+
+.replay-showing b {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+}
+
+.replay-precision {
+  max-width: 32ch;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.replay-hint {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.replay-track {
+  position: relative;
+  height: 28px;
+}
+
+.replay-rail {
+  position: absolute;
+  inset: 11px 0 auto;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--chart-track);
+  overflow: hidden;
+}
+
+.replay-fill {
+  display: block;
+  width: var(--replay-x);
+  height: 100%;
+  background: var(--now-line);
+}
+
+.replay-cut {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--replay-x);
+  border-left: 2px solid var(--now-line);
+  transform: translateX(-1px);
+}
+
+.replay-handle {
+  position: absolute;
+  top: 2px;
+  left: var(--replay-x);
+  width: 24px;
+  height: 24px;
+  box-sizing: border-box;
+  margin-left: -12px;
+  border: 2px solid var(--now-line);
+  border-radius: 50%;
+  background: var(--card-bg);
+  pointer-events: none;
+}
+
+.replay-input {
+  position: absolute;
+  inset: 0 -12px;
+  width: calc(100% + 24px);
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+  appearance: none;
+  background: transparent;
+  cursor: ew-resize;
+}
+
+.replay-input::-webkit-slider-thumb {
+  width: 24px;
+  height: 24px;
+  appearance: none;
+  background: transparent;
+  border: 0;
+}
+
+.replay-input::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+  background: transparent;
+  border: 0;
+}
+
+/* The ring is on the visible handle. The input's own outline is transparent, so forced colours draw it. */
+.replay-input:focus-visible {
+  outline: var(--focus-width) solid transparent;
+  outline-offset: var(--focus-offset);
+}
+
+.replay:where(.is-focus, :has(.replay-input:focus-visible)) .replay-handle {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.replay:where(.is-hover, :has(.replay-input:hover)) .replay-handle {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--now-line) 18%, transparent);
+}
+
+.replay:where(.is-drag, :has(.replay-input:active)) .replay-handle {
+  background: var(--now-line);
+}
+
+@media (width <= 720px) {
+  .replay {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-1);
+  }
+
+  .replay-hint {
+    display: none;
+  }
+}
+
+/* Forced colours drop box shadows and most backgrounds, so state rides on system colours and widths. */
+@media (forced-colors: active) {
+  .replay-rail {
+    border: 1px solid CanvasText;
+    background: Canvas;
+  }
+
+  .replay-fill {
+    background: CanvasText;
+  }
+
+  .replay-cut {
+    border-left-color: CanvasText;
+  }
+
+  .replay-handle {
+    border-color: CanvasText;
+    background: Canvas;
+  }
+
+  .replay:where(.is-hover, :has(.replay-input:hover)) .replay-handle {
+    border-width: 4px;
+    box-shadow: none;
+  }
+
+  .replay:where(.is-drag, :has(.replay-input:active)) .replay-handle {
+    background: Highlight;
+  }
+
+  .replay:where(.is-focus, :has(.replay-input:focus-visible)) .replay-handle {
+    outline-color: Highlight;
+  }
+}

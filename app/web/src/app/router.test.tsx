@@ -16,13 +16,8 @@ beforeEach(() => {
 
 /** Routes with no screen yet. Live has its own tests in LivePage.test.tsx. */
 const routes: [string, string][] = [
-  ["#/p/builder/review/summary?range=30d", "Summary"],
-  ["#/p/builder/review/sessions", "Sessions"],
-  ["#/p/builder/review/sessions/s1", "Session"],
-  ["#/p/builder/review/agents", "Agents"],
   ["#/p/builder/review/agents/new", "New agent"],
   ["#/p/builder/review/agents/reviewer/edit", "Edit agent"],
-  ["#/p/builder/review/models", "Models"],
   ["#/p/builder/setup", "Your setup"],
   ["#/p/builder/setup/settings/effort", "Setup item"],
   ["#/p/builder/setup/settings/effort/edit", "Edit setup item"],
@@ -41,6 +36,32 @@ describe("routes", () => {
     const withProject = hash.startsWith("#/p/");
     await waitFor(() => {
       expect(document.title).toBe(withProject ? `${name}, Builder, Bar Tab` : `${name}, Bar Tab`);
+    });
+  });
+
+  it.each([
+    ["#/p/builder/review/summary?range=30d", "Summary"],
+    ["#/p/builder/review/sessions", "Sessions"],
+    ["#/p/builder/review/agents?range=30d", "Agents"],
+    ["#/p/builder/review/models?range=30d", "Models"],
+  ])("%s renders its own page, focused and announced", async (hash, name) => {
+    await mount(hash);
+    const heading = await screen.findByRole("heading", { level: 1, name });
+    expect(heading).toHaveFocus();
+    expect(screen.getByRole("status")).toHaveTextContent(name);
+    expect(screen.queryByText("This page comes in a later release.")).toBeNull();
+    await waitFor(() => {
+      expect(document.title).toBe(`${name}, Builder, Bar Tab`);
+    });
+  });
+
+  it("renders Session review for an unknown session as its gone state, focused and announced", async () => {
+    await mount("#/p/builder/review/sessions/s1");
+    const heading = await screen.findByRole("heading", { level: 1, name: "Session not found" });
+    expect(heading).toHaveFocus();
+    expect(screen.getByRole("status")).toHaveTextContent("Session");
+    await waitFor(() => {
+      expect(document.title).toBe("Session, Builder, Bar Tab");
     });
   });
 

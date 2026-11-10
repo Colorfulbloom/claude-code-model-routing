@@ -1,0 +1,19 @@
+{
+  "build_args": {
+    "history_days": 400,
+    "now": "2026-10-30T18:00",
+    "script": "tests/fixtures/demo/build_demo.py",
+    "seed": 39,
+    "seed_note": "build_demo.SEED is fixed, so the same build repeats",
+    "tz": "America/New_York",
+    "via": "app/oracle/long_demo.py build_long"
+  },
+  "files": [
+    "manifest.json",
+    "truth-30d.json",
+    "truth-long.json"
+  ],
+  "old_commit": "e9ff175dc63a60cdbaa8c64466e50a28e04ce664",
+  "python": "3.9.6",
+  "requests": 44438
+}

@@ -1,0 +1,76 @@
+/*
+ * Session review (a-m3-p9 boards, m3.css). Tokens only. The header, tiles, cards and lane bring
+ * their own rules and LivePage.css holds the shared header, so this file holds the back link, the
+ * chart's cut line and fade, and the sticky replay line.
+ */
+.sreview-back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 26px;
+  margin-bottom: 2px;
+  font-size: var(--text-sm);
+}
+
+.sreview-tiles + .sreview-who {
+  margin-top: var(--space-4);
+}
+
+/*
+ * The cut line crosses the chart at the replay time. Bars after the last bucket that counts fade
+ * under a card-coloured veil, so the work that has not happened yet at the line reads as unmade.
+ * Both sit on the plot, which shares its x scale with the lane tracks and the replay line.
+ */
+.sreview-chart .bars-plot::before,
+.sreview-chart .bars-plot::after {
+  position: absolute;
+  top: -4px;
+  bottom: 0;
+  z-index: 2;
+  content: "";
+  pointer-events: none;
+}
+
+.sreview-chart .bars-plot::before {
+  left: calc(var(--cut, 1) * 100%);
+  border-left: 2px solid var(--now-line);
+  transform: translateX(-1px);
+}
+
+.sreview-chart .bars-plot::after {
+  top: 0;
+  right: 0;
+  left: calc(var(--fade, 1) * 100%);
+  background: color-mix(in srgb, var(--card-bg) 72%, transparent);
+}
+
+.sreview-chart:not([data-faded]) .bars-plot::after {
+  display: none;
+}
+
+.sreview-replay {
+  --replay-sticky-top: 0;
+}
+
+@media (width <= 720px) {
+  /* The 52px top bar is sticky, so the line sits under it. */
+  .sreview-replay {
+    --replay-sticky-top: 52px;
+  }
+
+  /* The legend stacks over the chart here, so it keeps clear of the top axis label. */
+  .sreview-chart .bars-side {
+    padding-bottom: var(--space-4);
+  }
+}
+
+@media (forced-colors: active) {
+  .sreview-chart .bars-plot::before {
+    border-left-color: CanvasText;
+  }
+
+  .sreview-chart .bars-plot::after {
+    background: transparent;
+    box-shadow: inset 0 0 0 1px GrayText;
+  }
+}

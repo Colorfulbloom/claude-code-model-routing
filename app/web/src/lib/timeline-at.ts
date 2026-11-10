@@ -19,6 +19,9 @@ export type ParentState = "known" | "waiting" | "unknown";
 /** The wait before an unlinked finished run's starter reads as unknown for good (5 minutes). */
 export const SETTLE_MS = 5 * 60_000;
 
+/** A run reads working for 60 seconds after a request, then idle (the server's ACTIVE_WINDOW). */
+export const ACTIVE_MS = 60_000;
+
 export interface CumAt {
   tokens: number;
   cache_read: number;

@@ -1,5 +1,5 @@
 {
-  "_doc": "Each entry is {path, reason, plan_ref}. path names a payload field, for example usage-30d-all.json:views.30d.totals.cost. reason says why the new answer may differ from the old one. plan_ref points to the plan section that allows it.",
+  "_doc": "Each entry is {path, reason, plan_ref}. path names a payload field, for example usage-30d-all.json:views.30d.totals.cost. reason says why the new answer may differ from the old one. plan_ref points to the plan section that allows it. A path may hold *, which matches any run of characters, so one entry covers a rule that holds in every file. The Review differential (test_differential_review.py) reads the same file.",
   "differences": [
     {
       "path": "projects.json:projects.lantern.state",
@@ -20,6 +20,11 @@
       "path": "projects.json:projects.quarry-notes.state",
       "plan_ref": "docs/rebuild/planning/m1-build.md section 4, GET /api/projects",
       "reason": "A transcript folder that no listed project claims becomes an unlisted project. The old /api/projects listed only routing-dashboard.json entries and counted quarry-notes in All projects without naming it. Its name is the cwd basename and its state follows its cwd (the demo has no quarry-notes folder on disk)."
+    },
+    {
+      "path": "usage-*.json:views.*.previous",
+      "plan_ref": "docs/rebuild/planning/m3-build.md section 12, need 3 (partial prior)",
+      "reason": "The old app drops the previous window when the oldest request falls after its start, and reports previous as null with null deltas. The new window keeps the prior sums and sets prior_partial, so the page can say what the partial prior was. The tile changes are null in both. The test requires the two to agree on when the prior is partial (previous.available) and on the deltas."
     }
   ]
 }

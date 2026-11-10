@@ -271,6 +271,29 @@ def test_default_status_comes_from_the_pin() -> None:
     assert (row.status, row.reason_code) == ("default", "default")
 
 
+def test_a_default_with_no_value_sets_nothing_on_that_side() -> None:
+    """The resolver's default has the value None when no file sets it.
+
+    The row shows no value for that side, never the string "None".
+    """
+    entries = [
+        _entry(
+            key=key,
+            scope="main",
+            agent=None,
+            layer="default",
+            status="default",
+            value=None,
+            file="default",
+            line=None,
+        )
+        for key in ("model", "effortLevel")
+    ]
+    row = _one(entries, [_run(None, "claude-opus-5-5", "high")])
+    assert (row.set.model, row.set.effort) == (None, None)
+    assert row.status is not None  # the runs are still judged
+
+
 def test_lowered_by_a_cap_names_the_cap() -> None:
     entries = [
         _entry(

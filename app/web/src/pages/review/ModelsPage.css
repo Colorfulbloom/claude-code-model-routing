@@ -1,0 +1,197 @@
+/*
+ * The Models table and the kinds chart (a-m3 boards, m3.css). Tokens only. The table, its Well and
+ * its clip-hide come from ReviewPage.css. The kind patterns draw in the model's colour through
+ * currentColor, so a kind is told apart by pattern and never by colour alone.
+ */
+.review > .review-models-kinds {
+  margin-top: var(--space-4);
+  scroll-margin-top: var(--space-4);
+}
+
+.review-models-kinds .card-title:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.review-models-name,
+.review-models-kname {
+  font-weight: var(--weight-medium);
+}
+
+.review-models-phone {
+  display: none;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-regular);
+}
+
+/* A right-aligned column that is not the last keeps its gap to the next one. */
+.review-models-table .review-cell.review-end:not(:last-child),
+.review-models-table .review-th.review-end:not(:last-child) {
+  padding-right: var(--space-4);
+}
+
+/* The share bar reads track first, then the percent, as the board draws it. */
+.review-table .review-models-share .share-bar-table {
+  justify-content: start;
+  grid-template-columns: minmax(48px, 120px) auto;
+  grid-template-areas: "track value";
+}
+
+/* Kind patterns */
+.review-models-kp {
+  display: inline-block;
+  min-width: 3px;
+  color: var(--text);
+  border-radius: 2px;
+  box-shadow: inset 0 0 0 1.5px currentcolor;
+}
+
+.review-models-kp1 {
+  background: repeating-linear-gradient(90deg, currentcolor 0 1.5px, transparent 1.5px 4px);
+}
+
+.review-models-kp2 {
+  background: radial-gradient(currentcolor 1.3px, transparent 1.7px) 0 0 / 5px 5px;
+}
+
+.review-models-kp3 {
+  background: currentcolor;
+}
+
+.review-models-kp4 {
+  background: repeating-linear-gradient(45deg, currentcolor 0 2.5px, transparent 2.5px 6px);
+}
+
+.review-models-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+  padding: 0;
+  font-size: var(--text-sm);
+  list-style: none;
+}
+
+.review-models-legend li {
+  display: inline-flex;
+  align-items: center;
+}
+
+.review-models-legend b {
+  margin-left: var(--space-1);
+  font-weight: var(--weight-medium);
+}
+
+.review-models-legend .review-models-kp {
+  width: 18px;
+  height: 12px;
+  margin-right: 6px;
+}
+
+.review-models-note {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+/* One row per model: name, the stack, the cost, then the amounts as text under the stack. */
+.review-models-rows {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.review-models-rows li {
+  display: grid;
+  grid-template-columns: 130px minmax(0, 1fr) 80px;
+  grid-template-areas:
+    "name stack value"
+    ". parts .";
+  gap: 2px var(--space-3);
+  align-items: center;
+}
+
+.review-models-kname {
+  grid-area: name;
+}
+
+.review-models-stack {
+  --ink: var(--text);
+
+  display: flex;
+  grid-area: stack;
+  gap: 2px;
+  height: 20px;
+  color: var(--ink);
+}
+
+.review-models-stack .review-models-kp {
+  color: inherit;
+}
+
+.review-models-ink-opus {
+  --ink: var(--m-opus);
+}
+
+.review-models-ink-sonnet {
+  --ink: var(--m-sonnet);
+}
+
+.review-models-ink-haiku {
+  --ink: var(--m-haiku);
+}
+
+.review-models-ink-fable {
+  --ink: var(--m-fable);
+}
+
+.review-models-kvalue {
+  grid-area: value;
+  font-weight: var(--weight-medium);
+  text-align: right;
+}
+
+.review-models-kparts {
+  grid-area: parts;
+  font-size: var(--text-sm);
+}
+
+@media (width <= 720px) {
+  .review-models-phone {
+    display: block;
+  }
+
+  /* Cost is the last visible column here, so it sits on the edge. */
+  .review-models-table .review-cell.review-end:not(.review-hp),
+  .review-models-table .review-th.review-end:not(.review-hp) {
+    padding-right: 0;
+  }
+
+  /* The board draws the four kinds in two columns. */
+  .review-models-legend {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* The kind total starts at the middle of the row, as the board draws it. */
+  .review-models-rows li {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+      "name value"
+      "stack stack"
+      "parts parts";
+  }
+
+  .review-models-kvalue {
+    text-align: left;
+  }
+}
+
+@media (forced-colors: active) {
+  .review-models-kp {
+    border: 1px solid CanvasText;
+    box-shadow: none;
+  }
+}

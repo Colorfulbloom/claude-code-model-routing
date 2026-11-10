@@ -1,0 +1,32 @@
+/*
+ * Scope bar (components.md entry 4). The page header already wraps its controls under the title at
+ * 720px and below. Here the pages under the bar take over the header's bottom margin.
+ */
+.scope-bar {
+  margin-bottom: var(--space-4);
+}
+
+.scope-bar .page-header {
+  margin-bottom: 0;
+}
+
+.scope-bar-pages {
+  margin-top: var(--space-3);
+}
+
+/* Phone: the Range trigger fills the line under the title, as the board draws it. */
+@media (width <= 720px) {
+  .scope-bar-range {
+    display: grid;
+    width: 100%;
+  }
+
+  .scope-bar-range .select-btn {
+    width: 100%;
+  }
+}
+
+/* Session form: back link, Session Select and Open in Live in one row, wrapping when short. */
+.scope-bar[data-form="session"] .page-header-controls {
+  gap: var(--space-2) var(--space-3);
+}

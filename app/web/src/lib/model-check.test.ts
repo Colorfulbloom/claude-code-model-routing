@@ -35,7 +35,8 @@ describe("findingFor, by reason code and the params present", () => {
   it("reads the lowered effort the board shows", () => {
     expect(findingFor(lowered)).toEqual({
       title: "judge ran at medium",
-      body: "Its file sets high in .claude/agents/judge.md line 5, but the effort cap in Project local line 3 lowers it to medium.",
+      body: ".claude/agents/judge.md line 5 sets high, but the effort cap in Project local line 3 lowers it to medium.",
+      oneLine: "judge ran at medium, because the effort cap lowers the high it's set to.",
     });
   });
 
@@ -60,17 +61,17 @@ describe("findingFor, by reason code and the params present", () => {
   it("picks the no-file and no-cap-file variants", () => {
     const noFile = findingFor(row({ ...lowered, set: { effort: null, model: null } }));
     expect(noFile?.body).toBe(
-      "Its file sets high, but the effort cap in Project local line 3 lowers it to medium.",
+      "It's set to high, but the effort cap in Project local line 3 lowers it to medium.",
     );
     const noCapFile = findingFor(row({ params: { ...lowered.params, cap_file: "" } }));
     expect(noCapFile?.body).toBe(
-      "Its file sets high in .claude/agents/judge.md line 5, but the maxEffortLevel cap of medium lowers it to medium.",
+      ".claude/agents/judge.md line 5 sets high, but the maxEffortLevel cap of medium lowers it to medium.",
     );
     const neither = findingFor(
       row({ set: { effort: null, model: null }, params: { ...lowered.params, cap_file: "" } }),
     );
     expect(neither?.body).toBe(
-      "Its file sets high, but the maxEffortLevel cap of medium lowers it to medium.",
+      "It's set to high, but the maxEffortLevel cap of medium lowers it to medium.",
     );
   });
 
@@ -140,8 +141,16 @@ describe("findingFor, by reason code and the params present", () => {
     );
     expect(differs).toEqual({
       title: "judge ran at low, not high",
-      body: "Its file and settings point to high, but its runs used low.",
+      body: "It's set to high, but its runs used low.",
+      oneLine: "judge ran at low, but it's set to high.",
     });
+    expect(findingFor(row({ status: null, reason_code: "no_pin", params: {} }))?.body).toBe(
+      "Its file sets neither model nor effort, so there's nothing to check.",
+    );
+    expect(
+      findingFor({ ...row({ status: null, reason_code: "no_pin", params: {} }), agent: null })
+        ?.body,
+    ).toBe("Your settings set neither model nor effort, so there's nothing to check.");
     expect(
       findingFor(
         row({
@@ -203,7 +212,7 @@ describe("buildModelCheck", () => {
     const view = buildModelCheck(check);
     expect(view.findings).toHaveLength(1);
     expect(view.findings[0]).toMatchObject({ status: "lowered", statusWord: "Lowered" });
-    expect(view.okLine).toBe("The other 5 agents ran as their files set.");
+    expect(view.okLine).toBe("The other 5 agents ran as set.");
     expect(view.noFileLine).toBeNull();
   });
 
@@ -213,13 +222,13 @@ describe("buildModelCheck", () => {
         row({ agent: `a${String(i)}`, status: "in_effect", reason_code: "in_effect", params: {} }),
       );
     expect(buildModelCheck({ in_effect_count: 1, rows: [lowered, ...inEffect(1)] }).okLine).toBe(
-      "The other agent ran as its file sets.",
+      "The other agent ran as set.",
     );
     expect(buildModelCheck({ in_effect_count: 3, rows: inEffect(3) }).okLine).toBe(
-      "All 3 agents ran as their files set.",
+      "All 3 agents ran as set.",
     );
     expect(buildModelCheck({ in_effect_count: 1, rows: inEffect(1) }).okLine).toBe(
-      "The agent ran as its file sets.",
+      "The agent ran as set.",
     );
   });
 

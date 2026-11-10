@@ -31,6 +31,12 @@ touched, takes the old winners of those keys before the upsert and the new winne
 after it, and marks their ``(session_id, minute)`` cells dirty. Each dirty cell is
 deleted and rebuilt from the winners. Keys cross sessions (a resumed session copies
 message ids), so a cell is never assumed to hold one session's keys only.
+
+``hour_usage`` is the hourly rollup of ``minute_usage`` (migration 0008). Every place
+that rebuilds minute cells (``_rebuild_cells``, which the tier-table rebuild also
+calls) then rebuilds the ``(session_id, hour)`` groups that hold those cells, from
+the minute cells just written, in the same transaction. No other code writes either
+table, so the two stay equal by construction.
 """
 
 import hashlib
@@ -442,6 +448,7 @@ class Ingestor:
         self.conn.execute("BEGIN IMMEDIATE")
         try:
             self.conn.execute("DELETE FROM minute_usage")
+            self.conn.execute("DELETE FROM hour_usage")
             cells = {
                 (str(r[0]), str(r[1]))
                 for r in self.conn.execute(
@@ -1091,6 +1098,33 @@ class Ingestor:
                 " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 [(*cell, *acc) for cell, acc in sums.items()],
             )
+            self._rebuild_hours(session_id, minutes)
+
+    def _rebuild_hours(self, session_id: str, minutes: set[str]) -> None:
+        """Rebuild the hour rows of one session that hold the given minute cells.
+
+        Each ``(session, hour)`` group is deleted and summed again from the session's
+        ``minute_usage`` cells of that hour, including the minutes this batch did not
+        touch. Call it after the minute cells are written.
+        """
+        hours = sorted({m[:13] + ":00" for m in minutes})
+        self.conn.executemany(
+            "DELETE FROM hour_usage WHERE session_id = ? AND hour = ?",
+            [(session_id, hour) for hour in hours],
+        )
+        self.conn.executemany(
+            "INSERT INTO hour_usage (session_id, run_key, hour, model, effort, speed,"
+            " service_tier, inference_geo, tier, input, output, cache_read,"
+            " cache_write_5m, cache_write_1h, thinking, requests, first_minute)"
+            " SELECT session_id, run_key, ?, model, effort, speed, service_tier,"
+            " inference_geo, tier, SUM(input), SUM(output), SUM(cache_read),"
+            " SUM(cache_write_5m), SUM(cache_write_1h), SUM(thinking), SUM(requests),"
+            " MIN(minute)"
+            " FROM minute_usage WHERE session_id = ? AND minute >= ? AND minute <= ?"
+            " GROUP BY run_key, model, effort, speed, service_tier, inference_geo,"
+            " tier",
+            [(hour, session_id, hour, hour[:13] + ":59") for hour in hours],
+        )
 
     # ------------------------------------------------------------ bookkeeping
 

@@ -1,0 +1,38 @@
+/*
+ * The compact Model check (Review, a-m3 p7 summary). One grey row per finding, a status chip in a
+ * fixed column and one sentence beside it. The rows sit on the raised surface with its hairline
+ * and no coloured edge, because the chip already carries the status.
+ */
+.live-mc-rows {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.live-mc-row {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: var(--space-1) var(--space-3);
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  background: var(--raised-bg);
+  border: 1px solid var(--raised-border);
+  border-radius: var(--radius-lg);
+}
+
+.live-mc-row .status-chip {
+  justify-self: start;
+}
+
+/* A row with no chip lets its sentence take the whole width. */
+.live-mc-row[data-chip="false"] > span {
+  grid-column: 1 / -1;
+}
+
+@media (width <= 720px) {
+  .live-mc-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -70,7 +70,7 @@ last_used: 2026-10-31
 uses: 1
 
 ### D-3ca7 Worktree agents: git -C, computed command names, busy heredocs
-fact: The worktree guard refuses git -C <dir>, a command named by a variable or a quoted path with a space, any command that sets HOME, a script path built from $HOME or ${VAR:-x}, and a heredoc that mentions git. Heredocs, for loops and a pipe into diff failed in some runs, so use one plain command per call with literal paths and write scripts with Write; compare with a ref through git archive <ref> <path> | tar -x -C <scratch>. A new isolation worktree starts at origin/main, not development.
+fact: The worktree guard refuses git -C <dir>, a command named by a variable or a quoted path with a space, a command that sets HOME, a script path built from $HOME or ${VAR:-x}, and a heredoc naming git; heredocs, for loops and a pipe into diff failed in some runs. Use one plain command per call with literal paths, write scripts with Write, and compare a ref via git archive <ref> <path> | tar -x -C <scratch>. New isolation worktrees start at origin/main. The Bar Tab guard refuses every heredoc.
 check: in a worktree-isolated agent run: git -C . log -1 --oneline
 evidence: .gitignore
 fp: 2e3aab966fe0

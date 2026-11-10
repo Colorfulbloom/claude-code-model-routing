@@ -27,6 +27,15 @@ export interface McFinding {
   statusWord: string | null;
   title: string;
   body: string;
+  /** The board's one-line sentence for the compact Review card, where a key covers the reason. */
+  oneLine?: string;
+}
+
+/** What findingFor gives a row: the title, the reason and, for some reasons, one line. */
+interface Found {
+  title: string;
+  body: string;
+  oneLine?: string;
 }
 
 export interface McView {
@@ -50,7 +59,7 @@ function agentName(row: ModelCheckRow): string {
 const present = (value: string | undefined): value is string => value !== undefined && value !== "";
 
 /** The title and reason for a row that is not in effect. Null for the rows that need none. */
-export function findingFor(row: ModelCheckRow): { title: string; body: string } | null {
+export function findingFor(row: ModelCheckRow): Found | null {
   const p = row.params;
   const agent = agentName(row);
   const setting = p.setting ?? "effort";
@@ -102,7 +111,10 @@ export function findingFor(row: ModelCheckRow): { title: string; body: string } 
         : capFile
           ? t("mc_r_lowered_by_cap_nofile", { ...base, ...cap })
           : t("mc_r_lowered_by_cap_nofile_nocapfile", { ...base, ...capKey });
-      return { title, body };
+      const oneLine = isModel
+        ? t("mc_l_lowered_by_cap_model", { agent, expected, setting, value })
+        : t("mc_l_lowered_by_cap", { agent, expected, setting, value });
+      return { title, body, oneLine };
     }
     case "lowered_ran_at_pin": {
       const title = isModel
@@ -164,7 +176,10 @@ export function findingFor(row: ModelCheckRow): { title: string; body: string } 
         // Nothing names a file on either side, so the nearest reason is the one that says so.
         body = t("mc_r_expected_unknown_nofile", { setting, ran });
       }
-      return { title, body };
+      const oneLine = isModel
+        ? t("mc_l_pin_overridden_model", { agent, ran, value })
+        : t("mc_l_pin_overridden", { agent, ran, value });
+      return { title, body, oneLine };
     }
     case "pin_ignored": {
       const body = hasFile
@@ -203,6 +218,9 @@ export function findingFor(row: ModelCheckRow): { title: string; body: string } 
           ? t("mc_t_ran_differs_model", { agent, ran: ranList, expected })
           : t("mc_t_ran_differs", { agent, ran: ranList, expected }),
         body: t("mc_r_ran_differs", { expected, ran: ranList }),
+        oneLine: isModel
+          ? t("mc_l_ran_differs_model", { agent, ran: ranList, expected })
+          : t("mc_l_ran_differs", { agent, ran: ranList, expected }),
       };
     }
     case "ran_mixed": {
@@ -213,12 +231,18 @@ export function findingFor(row: ModelCheckRow): { title: string; body: string } 
       return {
         title: t("mc_t_ran_mixed", { agent, setting }),
         body: t("mc_r_ran_mixed", { expected, ran: ranList }),
+        oneLine: isModel
+          ? t("mc_l_ran_differs_model", { agent, ran: ranList, expected })
+          : t("mc_l_ran_differs", { agent, ran: ranList, expected }),
       };
     }
     case "unnamed_agent":
       return { title: t("mc_t_unnamed_agent"), body: t("mc_r_unnamed_agent") };
     case "no_pin":
-      return { title: t("mc_t_no_pin", { agent }), body: t("mc_r_no_pin") };
+      return {
+        title: t("mc_t_no_pin", { agent }),
+        body: row.agent === null ? t("mc_r_no_pin_main") : t("mc_r_no_pin"),
+      };
     case "no_agent_file":
       return { title: t("mc_t_no_agent_file", { agent }), body: t("mc_r_no_agent_file") };
     default:

@@ -1,0 +1,48 @@
+/*
+ * The Agents table (a-m3 boards, m3.css). Tokens only. The table, its group row and its clip-hide
+ * come from ReviewPage.css, so this file holds the name and source lines, the Ran with cell and the
+ * muted look of the agent files that did not run.
+ */
+.review-agents-name {
+  font-weight: var(--weight-medium);
+}
+
+.review-agents-src {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-regular);
+}
+
+/* A right-aligned column that is not the last keeps its gap to the next one. */
+.review-agents-table .review-cell.review-end:not(:last-child),
+.review-agents-table .review-th.review-end:not(:last-child) {
+  padding-right: var(--space-4);
+}
+
+.review-agents-ran {
+  display: inline-flex;
+  align-items: center;
+}
+
+.review-agents-also {
+  font-size: var(--text-sm);
+}
+
+.review-agents-none > .review-cell {
+  color: var(--text-muted);
+}
+
+.review-agents-none .review-agents-name {
+  color: var(--text);
+}
+
+/* At 320 an unpriced cost ("at least ...") must wrap, or the table scrolls sideways. */
+@media (width <= 720px) {
+  .review-agents-table .share-bar-value {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .review-agents-ran {
+    flex-wrap: wrap;
+  }
+}

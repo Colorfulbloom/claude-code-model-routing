@@ -10,17 +10,19 @@ they hold still while the clock runs. Price tables are JSON files in ``prices/``
 import re
 import time
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
 
 import timeline
 from models import (
+    AgentList,
     AppInfo,
     BackupFailure,
     BackupReasonCode,
     ClockInfo,
+    CostChart,
     HistoryInfo,
     Ingest,
     IngestError,
@@ -28,12 +30,16 @@ from models import (
     IngestState,
     LiveSessions,
     LiveSessionsUnchanged,
+    ModelList,
     PassError,
     PricesInfo,
     Project,
     ProjectList,
     ProjectState,
+    ReviewRange,
     RunningItem,
+    SessionList,
+    Summary,
     Timeline,
     Unchanged,
 )
@@ -301,6 +307,69 @@ class FixtureProvider:
             sessions=[],
             latest_ended=None,
         )
+
+    def summary(
+        self, project: str, review_range: ReviewRange, etag: str | None
+    ) -> Summary | Unchanged:
+        """Answer ``unknown_project``, because the fixture scenarios have no usage.
+
+        Raises:
+            UnknownProjectError: Always. The fixture has no Review data.
+        """
+        del project, review_range, etag
+        raise UnknownProjectError
+
+    def cost_chart(
+        self,
+        project: str,
+        review_range: ReviewRange,
+        end: date | None,
+        etag: str | None,
+    ) -> CostChart | Unchanged:
+        """Answer ``unknown_project``, because the fixture scenarios have no usage.
+
+        Raises:
+            UnknownProjectError: Always. The fixture has no Review data.
+        """
+        del project, review_range, end, etag
+        raise UnknownProjectError
+
+    def sessions(
+        self,
+        project: str,
+        review_range: ReviewRange,
+        cursor: str | None,
+        etag: str | None,
+    ) -> SessionList | Unchanged:
+        """Answer ``unknown_project``, because the fixture scenarios have no usage.
+
+        Raises:
+            UnknownProjectError: Always. The fixture has no Review data.
+        """
+        del project, review_range, cursor, etag
+        raise UnknownProjectError
+
+    def agents(
+        self, project: str, review_range: ReviewRange, etag: str | None
+    ) -> AgentList | Unchanged:
+        """Answer ``unknown_project``, because the fixture scenarios have no usage.
+
+        Raises:
+            UnknownProjectError: Always. The fixture has no Review data.
+        """
+        del project, review_range, etag
+        raise UnknownProjectError
+
+    def models(
+        self, project: str, review_range: ReviewRange, etag: str | None
+    ) -> ModelList | Unchanged:
+        """Answer ``unknown_project``, because the fixture scenarios have no usage.
+
+        Raises:
+            UnknownProjectError: Always. The fixture has no Review data.
+        """
+        del project, review_range, etag
+        raise UnknownProjectError
 
     def resolve_project(
         self, project_dir: Path | None, *, first_if_none: bool = False

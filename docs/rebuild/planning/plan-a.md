@@ -256,7 +256,7 @@ One lead per working tree, one PR per milestone, on a feature branch. The lead c
 - Goal. The owner moves from Live to Summary, Sessions, Agents and Models, pages Cost per day back a month, opens a past session and drags the replay line minute by minute.
 - Lands. Summary, Sessions, Session review, Agents (usage half), Models, the Range Select with Today and the scope bar, wave 3 components.
 - Tests. Differential totals per agent, model and day against the old `/api/usage` for today, 7 and 30 days, and against `truth.json` from a longer demo build for wider ranges. Replay Slider keys (component 23). Pager ends with their reason. Chart text alternatives.
-- Exit. Totals match. Keyboard-only walkthroughs pass for "read the 30-day cost by agent" and "replay a past session" at 375 and 1440. First VoiceOver pass (owner or designer).
+- Exit. Totals match. Keyboard-only walkthroughs pass for "read the 30-day cost by agent" and "replay a past session" at 375 and 1440. Axe, Playwright accessibility snapshots and the forced-colors checks pass. VoiceOver waits for the one pass in M9 (owner, November 9).
 
 ### M4. Setup read side and To fix
 
@@ -277,7 +277,7 @@ One lead per working tree, one PR per milestone, on a feature branch. The lead c
 - Goal. The owner changes effort on a project, reviews the effect and diff, saves, sees "Saved." at once and undoes it. Then the owner adds an agent from a role preset and edits an existing agent on the same full page.
 - Lands. Registry of writable fields, server preview, the edit rail and phone sheet, backup and undo with the changed-file refusal, the recheck and the overwritten state, the writable allowlist, agent front matter through ruamel with the byte-equality check, writes through a symlink to its target with the real path shown (research 20, round 3), wave 5 components. The full-page agent form for new and edit, from the Agents page. Role presets Lead, Worker and Reviewer fill real fields only, Custom shows after a change, and the role is never saved. The model list shows relative price words from `/api/prices` in both new and edit. The name check applies the rule that a project agent beats a user agent. Save in is User or This project. Fields follow `dashboard/agent_fields.json`, and "Can start other agents" off leaves `Agent` out of `tools` when tools are limited, or adds it to `disallowedTools` when `tools` is omitted (N2). `hooks`, `mcpServers` and `permissionMode` show read-only with their reason until M8, because they run commands or loosen permissions. Plugin agents are read-only, and the form flags the fields Claude Code ignores for them.
 - Tests. Ported `edit_store` and `json_edit` tests plus hypothesis, the 26-08 write-race test, old and new apps reading each other's ledgers (`edit_store.py:796-799` per plan.md section 7), a real double-click on every swapped button, and aria snapshots for saved, undo and overwritten. Create then Undo leaves no file. Name clashes in both scopes. A preset then a change shows Custom. Each field round-trips with front matter bytes unchanged outside the edited key.
-- Exit. Verifier pass (Opus). Second VoiceOver pass. The owner decides whether M8 stays in release 1.
+- Exit. Verifier pass (Opus). Axe, keyboard walkthroughs at 375 and 1440, Playwright accessibility snapshots and the forced-colors checks pass. The owner decides whether M8 stays in release 1.
 
 ### M7. Text bodies and MCP
 
@@ -297,7 +297,7 @@ One lead per working tree, one PR per milestone, on a feature branch. The lead c
 
 - Goal. The owner's `/bartab` command opens the new app, and the old app is gone from the payload.
 - Lands. Payload swap, the rename to Bar Tab, README rewrites, a git tag for the last old release (section 7). A USPTO search for the name runs before any public launch (research 20, "name").
-- Exit. Differential suite green, axe and Playwright matrix green, a week of owner use on real data, verifier pass (Opus), third VoiceOver pass.
+- Exit. Differential suite green, axe and Playwright matrix green, a week of owner use on real data, verifier pass (Opus), the one VoiceOver pass for the whole product.
 
 ## 6. Testing strategy
 
@@ -334,7 +334,7 @@ Each milestone captures every touched screen at 375 and 1440, light and dark, on
 
 ### Manual passes
 
-VoiceOver at M3, M6 and M9, charts and the replay Slider included. Help and error text read by the owner with tech-writer each milestone.
+VoiceOver once, at M9, over the whole product, charts and the replay control included (owner, November 9). Every milestone keeps axe, keyboard walkthroughs at 375 and 1440, Playwright accessibility snapshots and the forced-colors checks. Help and error text read by the owner with tech-writer each milestone.
 
 ## 7. Coexistence and cutover
 

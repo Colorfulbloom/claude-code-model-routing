@@ -11,10 +11,10 @@ import { t } from "@/strings/t";
 export function laneCost(cost: number | null, unpriced: Unpriced): LaneCost {
   if (cost === null) {
     const model = unpriced.models.join(", ");
-    return {
-      kind: "none",
-      text: model === "" ? t("c_none_short") : t("c_none", { model }),
-    };
+    // The cell shows the short words, so a narrow cost column never wraps. The model goes in `full`.
+    return model === ""
+      ? { kind: "none", text: t("c_none_short") }
+      : { kind: "none", text: t("c_none_short"), full: t("c_none", { model }) };
   }
   if (unpriced.requests > 0) return { kind: "least", text: formatCostAtLeast(cost) };
   return { kind: "cost", text: formatCost(cost) };

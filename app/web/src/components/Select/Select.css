@@ -133,6 +133,11 @@
   width: 360px;
 }
 
+/* The Review Range Select: the board's 340px list under the trigger's right edge. */
+.select-popover-range {
+  width: 340px;
+}
+
 .select-list {
   display: grid;
   gap: 2px;

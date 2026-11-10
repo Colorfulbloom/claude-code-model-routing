@@ -5,16 +5,22 @@ store provider that replaces it both satisfy this protocol. The models in
 ``models.py`` are the shape of what they return.
 """
 
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 from typing import Protocol
 
 from models import (
+    AgentList,
     AppInfo,
+    CostChart,
     LiveSessions,
     LiveSessionsUnchanged,
+    ModelList,
     PricesInfo,
     ProjectList,
+    ReviewRange,
+    SessionList,
+    Summary,
     Timeline,
     Unchanged,
 )
@@ -71,6 +77,68 @@ class Provider(Protocol):
         self, project: str, etag: str | None
     ) -> LiveSessions | LiveSessionsUnchanged:
         """Return the running sessions, or the short answer when ``etag`` matches.
+
+        Raises:
+            UnknownProjectError: When ``project`` is not a project key.
+        """
+        ...
+
+    def summary(
+        self, project: str, review_range: ReviewRange, etag: str | None
+    ) -> Summary | Unchanged:
+        """Return Review's Summary, or the short answer when ``etag`` matches.
+
+        Raises:
+            UnknownProjectError: When ``project`` is not a project key.
+        """
+        ...
+
+    def cost_chart(
+        self,
+        project: str,
+        review_range: ReviewRange,
+        end: date | None,
+        etag: str | None,
+    ) -> CostChart | Unchanged:
+        """Return the cost chart page that holds the local date ``end``.
+
+        ``end`` None means the newest page. The short answer comes back when ``etag``
+        matches.
+
+        Raises:
+            UnknownProjectError: When ``project`` is not a project key.
+        """
+        ...
+
+    def sessions(
+        self,
+        project: str,
+        review_range: ReviewRange,
+        cursor: str | None,
+        etag: str | None,
+    ) -> SessionList | Unchanged:
+        """Return one page of the range's sessions, after ``cursor`` when it is set.
+
+        Raises:
+            UnknownProjectError: When ``project`` is not a project key.
+            ValueError: When ``cursor`` is not a cursor this provider made.
+        """
+        ...
+
+    def agents(
+        self, project: str, review_range: ReviewRange, etag: str | None
+    ) -> AgentList | Unchanged:
+        """Return the agents that ran in the range and the agent files that did not.
+
+        Raises:
+            UnknownProjectError: When ``project`` is not a project key.
+        """
+        ...
+
+    def models(
+        self, project: str, review_range: ReviewRange, etag: str | None
+    ) -> ModelList | Unchanged:
+        """Return the range's models with their kinds of cost.
 
         Raises:
             UnknownProjectError: When ``project`` is not a project key.

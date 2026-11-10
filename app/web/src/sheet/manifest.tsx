@@ -34,8 +34,18 @@ import { FirstRunContent, LockedContent } from "@/pages/GatePages";
 import { formatCost, formatTokens } from "@/lib/format";
 import { projectItem } from "@/lib/projects";
 import { t, tn } from "@/strings/t";
+import { Pager } from "@/components/Pager/Pager";
+import { Segmented } from "@/components/Segmented/Segmented";
+import { ShareBar } from "@/components/ShareBar/ShareBar";
 import { StackedBars } from "@/components/StackedBars/StackedBars";
 import { barsSample, LaneDemo, type BarsState, type LaneState } from "./live-samples";
+import { costBarsSample, pageItems, ScopeBarDemo, type CostBarsState } from "./review-samples";
+import {
+  ReplayLaneDemo,
+  ReplayLineDemo,
+  type ReplayLaneState,
+  type ReplayLineState,
+} from "./replay-samples";
 import { SelectDemo } from "./SelectDemo";
 import { W } from "./words";
 
@@ -351,6 +361,34 @@ const tableRows = (hover: boolean): TableRowData[] =>
       cost: formatCost(row.cost),
     },
     ...(hover && index === 1 ? { className: "is-hover" } : {}),
+  }));
+
+const shareColumns: TableColumn[] = [
+  { id: "model", name: W.rq_model, rowHeader: true },
+  { id: "share", name: W.sheet_share_head },
+];
+
+/** Rows of [name, model, share, value, percent]. The share cell is the in-table share bar. */
+const shareRows = (rows: [string, Model, number | null, string, string][]): TableRowData[] =>
+  rows.map(([name, model, share, value, percent]) => ({
+    id: model,
+    cells: {
+      model: (
+        <span className="sheet-model">
+          <ModelSwatch model={model} />
+          {name}
+        </span>
+      ),
+      share: (
+        <ShareBar
+          variant="table"
+          model={model}
+          share={share}
+          value={value}
+          {...(percent !== "" ? { percent } : {})}
+        />
+      ),
+    },
   }));
 
 const models: { model: Model; name: string }[] = [
@@ -974,6 +1012,200 @@ export const manifest: ManifestEntry[] = [
     state,
     render: () => <StackedBars {...barsSample(state)} />,
   })),
+  // StackedBars as a cost chart: kind patterns, open, partial, unpriced and no-records buckets
+  ...(
+    [
+      "cost-kinds",
+      "cost-open",
+      "cost-partial",
+      "cost-unpriced",
+      "cost-no-records",
+    ] as CostBarsState[]
+  ).map((state) => ({
+    component: "StackedBars",
+    state,
+    render: () => <StackedBars {...costBarsSample(state)} />,
+  })),
+  // ShareBar
+  {
+    component: "ShareBar",
+    state: "list",
+    render: () => (
+      <Well variant="list">
+        <ul className="sheet-list">
+          <ShareBar
+            model="opus"
+            name={W.m_opus}
+            share={0.64}
+            value={W.sheet_share_a}
+            percent={W.sheet_pct_a}
+          />
+          <ShareBar
+            model="sonnet"
+            name={W.m_sonnet}
+            share={0.32}
+            value={W.sheet_share_b}
+            percent={W.sheet_pct_b}
+          />
+          <ShareBar
+            model="haiku"
+            name={W.m_haiku}
+            share={0.03}
+            value={W.sheet_share_c}
+            percent={W.sheet_pct_c}
+          />
+        </ul>
+      </Well>
+    ),
+  },
+  {
+    component: "ShareBar",
+    state: "table",
+    render: () => (
+      <TableWell
+        label={W.nav_models}
+        columns={shareColumns}
+        rows={shareRows([
+          [W.m_opus, "opus", 0.64, W.sheet_share_a, W.sheet_pct_a],
+          [W.m_sonnet, "sonnet", 0.32, W.sheet_share_b, W.sheet_pct_b],
+        ])}
+      />
+    ),
+  },
+  {
+    component: "ShareBar",
+    state: "empty",
+    render: () => (
+      <Well variant="list">
+        <ul className="sheet-list">
+          <ShareBar
+            model="haiku"
+            name={W.m_haiku}
+            share={0}
+            value="$0.00"
+            percent={W.sheet_pct_zero}
+          />
+        </ul>
+      </Well>
+    ),
+  },
+  {
+    component: "ShareBar",
+    state: "unpriced",
+    render: () => (
+      <Well variant="list">
+        <ul className="sheet-list">
+          <ShareBar model="opus" name={W.m_opus} share={1} value={W.sheet_share_a} percent="100%" />
+          <ShareBar model="fable" name={W.m_fable} share={null} value={W.sheet_no_price} />
+        </ul>
+      </Well>
+    ),
+  },
+  {
+    component: "ShareBar",
+    state: "table-unpriced",
+    render: () => (
+      <TableWell
+        label={W.nav_models}
+        columns={shareColumns}
+        rows={shareRows([
+          [W.m_opus, "opus", 1, W.sheet_share_a, "100%"],
+          [W.m_fable, "fable", null, W.sheet_no_price, ""],
+        ])}
+      />
+    ),
+  },
+  // Pager
+  ...(
+    ["default", "hover", "focus", "earlier-disabled", "later-disabled", "both-disabled"] as const
+  ).map((state) => ({
+    component: "Pager",
+    state,
+    render: () => (
+      <Pager
+        label={W.sheet_pager_label}
+        earlierLabel={W.sheet_earlier}
+        laterLabel={W.sheet_later}
+        windowLabel={W.sheet_window}
+        scopeNote={W.sheet_pager_note}
+        earlierDisabled={state === "earlier-disabled" || state === "both-disabled"}
+        earlierReason={W.sheet_no_earlier}
+        laterDisabled={state === "later-disabled" || state === "both-disabled"}
+        laterReason={W.sheet_no_later}
+        {...(state === "hover"
+          ? { buttonClassName: "is-hover" }
+          : state === "focus"
+            ? { buttonClassName: "is-focus" }
+            : {})}
+      />
+    ),
+  })),
+  // Segmented (pages)
+  ...(["default", "hover", "focus", "selected"] as const).map((state) => ({
+    component: "Segmented",
+    state,
+    render: () => (
+      <Segmented
+        label={W.sheet_pages_label}
+        items={pageItems(state === "selected" ? "sessions" : "").map((item) =>
+          state === "hover" && item.id === "agents"
+            ? { ...item, className: "is-hover" }
+            : state === "focus" && item.id === "agents"
+              ? { ...item, className: "is-focus" }
+              : item,
+        )}
+      />
+    ),
+  })),
+  {
+    component: "Segmented",
+    state: "overflow",
+    render: () => (
+      <div className="sheet-phone">
+        <Segmented
+          label={W.sheet_pages_label}
+          items={[
+            ...pageItems("summary"),
+            { id: "decides", href: "#decides", label: W.nav_decides },
+            { id: "glossary", href: "#glossary", label: W.nav_glossary },
+          ]}
+        />
+      </div>
+    ),
+  },
+  // ScopeBar
+  { component: "ScopeBar", state: "range", render: () => <ScopeBarDemo form="range" /> },
+  {
+    component: "ScopeBar",
+    state: "range-hover",
+    render: () => <ScopeBarDemo form="range" force="hover" />,
+  },
+  {
+    component: "ScopeBar",
+    state: "range-focus",
+    render: () => <ScopeBarDemo form="range" force="focus" />,
+  },
+  { component: "ScopeBar", state: "session", render: () => <ScopeBarDemo form="session" /> },
+  {
+    component: "ScopeBar",
+    state: "session-hover",
+    render: () => <ScopeBarDemo form="session" force="hover" />,
+  },
+  {
+    component: "ScopeBar",
+    state: "session-focus",
+    render: () => <ScopeBarDemo form="session" force="focus" />,
+  },
+  {
+    component: "ScopeBar",
+    state: "session-no-live",
+    render: () => <ScopeBarDemo form="session" openLive={false} />,
+  },
+  {
+    component: "ScopeBar",
+    state: "with-pages",
+    render: () => <ScopeBarDemo form="range" pages />,
+  },
   // TimelineLane
   ...(
     [
@@ -993,6 +1225,19 @@ export const manifest: ManifestEntry[] = [
     component: "TimelineLane",
     state,
     render: () => <LaneDemo state={state} />,
+  })),
+  ...(["hollow", "not-yet", "later-folded", "later-open"] as ReplayLaneState[]).map((state) => ({
+    component: "TimelineLane",
+    state,
+    render: () => <ReplayLaneDemo state={state} />,
+  })),
+  // ReplayLine
+  ...(
+    ["default", "hover", "focus", "dragging", "at-start", "at-end", "long"] as ReplayLineState[]
+  ).map((state) => ({
+    component: "ReplayLine",
+    state,
+    render: () => <ReplayLineDemo state={state} />,
   })),
   // Chosen state (a shared standard in shared.css, not a component folder)
   {

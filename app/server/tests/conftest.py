@@ -27,6 +27,7 @@ DEMO_BUILDER = REPO_ROOT / "tests" / "fixtures" / "demo" / "build_demo.py"
 # oracle recorder in app/oracle uses the same pair.
 DEMO_NOW = "2026-10-30T18:00"
 DEMO_TZ = "America/New_York"
+LONG_DEMO_BUILDER = REPO_ROOT / "app" / "oracle" / "long_demo.py"
 FLOW_BUILDER = REPO_ROOT / "tests" / "fixtures" / "live_flow" / "build_flow.py"
 FLOW_SCENARIOS = ("busy", "many", "unlinked", "empty")
 
@@ -223,6 +224,27 @@ def demo_build(tmp_path_factory: pytest.TempPathFactory) -> Path:
         ],
         check=True,
         timeout=120,
+        capture_output=True,
+    )
+    return out
+
+
+@pytest.fixture(scope="session")
+def long_demo_build(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """Build the long demo (400 days of history) once per test process.
+
+    ``app/oracle/long_demo.py`` runs the demo builder with a longer history at the
+    standard clock and zone, for Review's 90-day, 12-month and All ranges. It takes
+    about 2 s and 93 MB (November 9). The folder has the same layout as
+    ``demo_build``, and its ``truth.json`` covers the standard 30-day window. The
+    wide-range oracle is ``app/fixtures/oracle/demo-long/truth-long.json``. Treat
+    the folder as read only.
+    """
+    out = tmp_path_factory.mktemp("demo-long") / "demo"
+    subprocess.run(  # noqa: S603
+        [sys.executable, str(LONG_DEMO_BUILDER), str(out)],
+        check=True,
+        timeout=180,
         capture_output=True,
     )
     return out

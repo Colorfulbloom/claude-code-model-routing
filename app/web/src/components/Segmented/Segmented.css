@@ -1,0 +1,60 @@
+/*
+ * Segmented control, pages variant (components.md entry 13). The track is --surface-2 with a 3 px
+ * inset. The nav pads and pulls back by 6 px, so the focus ring of an edge segment isn't clipped
+ * by the sideways scroll.
+ */
+.segmented {
+  margin: -6px;
+  padding: 6px;
+  overflow-x: auto;
+}
+
+.segmented-track {
+  display: flex;
+  gap: 2px;
+  width: max-content;
+  min-width: 100%;
+  margin: 0;
+  padding: 3px;
+  background: var(--surface-2);
+  border-radius: var(--radius-md);
+  list-style: none;
+}
+
+.segmented-item {
+  display: flex;
+  flex: 1 0 auto;
+}
+
+.segmented-link {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: var(--text-sm);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.segmented-link:hover,
+.segmented-link.is-hover {
+  background: var(--nav-hover-bg);
+}
+
+.segmented-link[data-focus-visible],
+.segmented-link:focus-visible,
+.segmented-link.is-focus {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: 3px;
+}
+
+/* Chosen state: fill, 2px inset accent edge, semibold. The edge stays under hover. */
+.segmented-link[aria-current="page"] {
+  background: var(--select-bg);
+  box-shadow: inset 0 0 0 2px var(--accent);
+  font-weight: var(--weight-semibold);
+}

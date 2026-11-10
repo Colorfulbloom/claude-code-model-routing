@@ -66,3 +66,16 @@ export type LiveSessions = Schemas["LiveSessions"];
 export type LiveSessionsUnchanged = Schemas["LiveSessionsUnchanged"];
 export type LiveSession = Schemas["LiveSession"];
 export type EndedSession = Schemas["EndedSession"];
+
+/** The Review reads. Every one takes a range, and every answer carries the same window. */
+export type Summary = Schemas["Summary"];
+export type CostChart = Schemas["CostChart"];
+export type SessionList = Schemas["SessionList"];
+export type AgentList = Schemas["AgentList"];
+export type ModelList = Schemas["ModelList"];
+export type ReviewRange = Summary["range"];
+export type ReviewWindow = Schemas["ReviewWindow"];
+export type ReviewSession = Schemas["ReviewSession"];
+export type SessionDay = Schemas["SessionDay"];
+export type ChartWindow = Schemas["ChartWindow"];
+export type CardError = Schemas["CardError"];
