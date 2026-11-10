@@ -106,6 +106,15 @@ async function measureCell(page: Page, cell: Cell): Promise<Finding[]> {
         if (document.activeElement !== el) continue;
         // React Aria sets its focus attributes after a state update, so give it a moment.
         await new Promise((done) => setTimeout(done, 25));
+        if (document.activeElement !== el) {
+          // A grid that keeps focus on one row (the table well) can pull it back to that row
+          // after the update, when the key press before this cell left focus there. The link is
+          // then not focused, so :focus-visible is false for a reason that is not a defect. Ask
+          // again, now that the grid has settled, and skip the element if it still won't hold.
+          el.focus({ focusVisible: true });
+          await new Promise((done) => setTimeout(done, 25));
+          if (document.activeElement !== el) continue;
+        }
         const style = getComputedStyle(el);
         const width = parseFloat(style.outlineWidth);
         const visible = el.matches(":focus-visible");
@@ -144,32 +153,60 @@ function save(name: string, data: unknown): void {
 const widths = [375, 1440] as const;
 const themes = ["light", "dark"] as const;
 
+/*
+ * One test scanned the whole sheet per width and theme, and it outgrew its limit on the 2-vCPU
+ * Linux runner as the sheet grew. Each test now takes a bounded group of sections instead. A
+ * section is every cell of one component. Section number i goes to group i modulo SECTION_GROUPS,
+ * so a new section always lands in exactly one group and no coverage is lost when the sheet grows.
+ * The whole-page axe scan and the full-page screenshot are a test of their own.
+ */
+const SECTION_GROUPS = 24;
+
+/** The cells of the sections that belong to one group, in sheet order. */
+function cellsOfGroup(cells: Cell[], group: number): { cells: Cell[]; sections: string[] } {
+  const order = [...new Set(cells.map((c) => c.component))];
+  const sections = order.filter((_, i) => i % SECTION_GROUPS === group);
+  return { cells: cells.filter((c) => sections.includes(c.component)), sections };
+}
+
 for (const width of widths) {
   for (const theme of themes) {
-    test(`sheet at ${String(width)} ${theme}: axe, focus ring and target size`, async ({
-      page,
-    }) => {
-      // The per-cell loop (axe, Tab, measure, screenshot) runs past 60 s on the 2-vCPU Linux
-      // runner, as the hover tests below do, so it gets the same longer limit.
-      test.setTimeout(240_000);
-      await page.setViewportSize({ width, height: 900 });
-      const cells = await openSheet(page, theme);
-      expect(cells.length).toBeGreaterThan(40);
-      const shots = join(outDir, `${String(width)}-${theme}`);
-      mkdirSync(shots, { recursive: true });
+    for (let group = 0; group < SECTION_GROUPS; group += 1) {
+      const label = `${String(width)} ${theme} group ${String(group + 1)} of ${String(SECTION_GROUPS)}`;
+      test(`sheet at ${label}: axe, focus ring and target size`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 900 });
+        const all = await openSheet(page, theme);
+        expect(all.length).toBeGreaterThan(40);
+        const mine = cellsOfGroup(all, group);
+        expect(mine.cells.length, "every group holds at least one section").toBeGreaterThan(0);
+        const shots = join(outDir, `${String(width)}-${theme}`);
+        mkdirSync(shots, { recursive: true });
 
-      const axe: Finding[] = [];
-      const measured: Finding[] = [];
-      for (const cell of cells) {
-        axe.push(...(await axeCell(page, cell)));
-        // A key press first, so React Aria's focus tracking is in keyboard mode and sets its
-        // data-focus-visible attribute when the check moves focus by script.
-        await page.keyboard.press("Tab");
-        measured.push(...(await measureCell(page, cell)));
-        await page
-          .locator(cellSelector(cell))
-          .screenshot({ path: join(shots, `${cell.component}-${cell.state}.png`) });
-      }
+        const axe: Finding[] = [];
+        const measured: Finding[] = [];
+        for (const cell of mine.cells) {
+          axe.push(...(await axeCell(page, cell)));
+          // A key press first, so React Aria's focus tracking is in keyboard mode and sets its
+          // data-focus-visible attribute when the check moves focus by script.
+          await page.keyboard.press("Tab");
+          measured.push(...(await measureCell(page, cell)));
+          await page
+            .locator(cellSelector(cell))
+            .screenshot({ path: join(shots, `${cell.component}-${cell.state}.png`) });
+        }
+        save(`findings-${String(width)}-${theme}-group-${String(group + 1)}`, {
+          sections: mine.sections,
+          axe,
+          measured,
+        });
+        expect.soft(summarise(axe), "axe violations per cell").toEqual([]);
+        expect.soft(summarise(measured), "focus ring and target size").toEqual([]);
+      });
+    }
+
+    test(`sheet at ${String(width)} ${theme}: axe on the whole page`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 });
+      await openSheet(page, theme);
       const wholePage = await newAxe(page).withTags(TAGS).analyze();
       const pageLevel = wholePage.violations.map((v) => ({
         kind: "axe-page",
@@ -181,10 +218,8 @@ for (const width of widths) {
         path: join(outDir, `page-${String(width)}-${theme}.png`),
         fullPage: true,
       });
-      save(`findings-${String(width)}-${theme}`, { axe, pageLevel, measured });
-      expect.soft(summarise(axe), "axe violations per cell").toEqual([]);
+      save(`findings-${String(width)}-${theme}-page`, { pageLevel });
       expect.soft(summarise(pageLevel), "axe violations on the whole page").toEqual([]);
-      expect.soft(summarise(measured), "focus ring and target size").toEqual([]);
     });
   }
 }
@@ -254,31 +289,43 @@ for (const theme of themes) {
   });
 }
 
-test("sheet under forced colors keeps passing axe", async ({ page }) => {
-  // One axe scan per cell, so it needs the longer limit the per-cell tests above get.
-  test.setTimeout(240_000);
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await page.emulateMedia({ forcedColors: "active" });
-  const cells = await openSheet(page, "light");
-  await page.emulateMedia({ forcedColors: "active" });
-  const found: Finding[] = [];
-  for (const cell of cells) found.push(...(await axeCell(page, cell)));
-  await page.screenshot({ path: join(outDir, "page-forced-colors.png"), fullPage: true });
-  save("findings-forced-colors", found);
-  expect.soft(summarise(found)).toEqual([]);
-});
+/*
+ * Forced colors and reduced motion scan every cell once, so they split into the same section
+ * groups as the per-cell tests above. The forced colors page screenshot is a test of its own.
+ */
+const media = [
+  { name: "forced colors", file: "forced-colors", emulate: { forcedColors: "active" } },
+  { name: "reduced motion", file: "reduced-motion", emulate: { reducedMotion: "reduce" } },
+] as const;
 
-test("sheet under reduced motion keeps passing axe", async ({ page }) => {
-  // One axe scan per cell, so it needs the longer limit the per-cell tests above get.
-  test.setTimeout(240_000);
+for (const mode of media) {
+  for (let group = 0; group < SECTION_GROUPS; group += 1) {
+    test(`sheet under ${mode.name} group ${String(group + 1)} of ${String(SECTION_GROUPS)} keeps passing axe`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await page.emulateMedia(mode.emulate);
+      const all = await openSheet(page, "light");
+      await page.emulateMedia(mode.emulate);
+      const mine = cellsOfGroup(all, group);
+      expect(mine.cells.length, "every group holds at least one section").toBeGreaterThan(0);
+      const found: Finding[] = [];
+      for (const cell of mine.cells) found.push(...(await axeCell(page, cell)));
+      save(`findings-${mode.file}-group-${String(group + 1)}`, {
+        sections: mine.sections,
+        found,
+      });
+      expect.soft(summarise(found)).toEqual([]);
+    });
+  }
+}
+
+test("sheet under forced colors: full page screenshot", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.emulateMedia({ reducedMotion: "reduce" });
-  const cells = await openSheet(page, "light");
-  await page.emulateMedia({ reducedMotion: "reduce" });
-  const found: Finding[] = [];
-  for (const cell of cells) found.push(...(await axeCell(page, cell)));
-  save("findings-reduced-motion", found);
-  expect.soft(summarise(found)).toEqual([]);
+  await page.emulateMedia({ forcedColors: "active" });
+  await openSheet(page, "light");
+  await page.emulateMedia({ forcedColors: "active" });
+  await page.screenshot({ path: join(outDir, "page-forced-colors.png"), fullPage: true });
 });
 
 for (const width of widths) {
