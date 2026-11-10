@@ -111,13 +111,22 @@
   grid-column: 1;
 }
 
+/* The pill stays inline with the title, and a long title wraps beside it (a-m4 boards). */
 .live-mc-title {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: var(--space-2);
-  align-items: center;
+  align-items: baseline;
   font-size: var(--text-md);
   font-weight: var(--weight-semibold);
+}
+
+.live-mc-title > .status-chip {
+  flex: none;
+}
+
+.live-mc-title > span:not(.status-chip) {
+  min-width: 0;
 }
 
 .live-mc-body {

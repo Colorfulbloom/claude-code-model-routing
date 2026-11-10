@@ -1,0 +1,21 @@
+{
+  "case": "broken-hooks",
+  "note": "disableAllHooks and allowManagedHooksOnly are items of the hooks part. With either on, the user's valid Stop hook is ignored. An unknown event and a handler that is not an object give a row but no item. Hook ids are hooks:<event>:<matcher or *>:<index among handlers of that event and matcher in scope order>.",
+  "project": {"name": "Proj", "dir": "work/parent/proj"},
+  "parts": {
+    "hooks": {
+      "items": [
+        {"id": "hooks:allowManagedHooksOnly", "key": "allowManagedHooksOnly", "scope": "managed", "status": "in_effect", "effective": {"value": "true", "origin": "set"}, "sources": [{"scope": "managed", "key": "allowManagedHooksOnly", "file": "managed/managed-settings.json", "line": 2, "status": "in_effect"}]},
+        {"id": "hooks:disableAllHooks", "key": "disableAllHooks", "scope": "user", "status": "in_effect", "effective": {"value": "true", "origin": "set"}, "sources": [{"scope": "user", "key": "disableAllHooks", "file": "~/.claude/settings.json", "line": 2, "status": "in_effect"}]},
+        {"id": "hooks:Stop:*:0", "key": "Stop", "scope": "user", "status": "ignored", "group": "Stop", "sources": [{"scope": "user", "key": "hooks.Stop", "file": "~/.claude/settings.json", "line": 11, "line_has": "command", "status": "ignored"}]}
+      ],
+      "unreadable": []
+    }
+  },
+  "problems": [
+    {"id": "hook_bad_event:~/.claude/settings.json:4", "group": "wont_load", "code": "hook_bad_event", "part": "hooks", "item_id": null, "file": "~/.claude/settings.json", "line": 4},
+    {"id": "hook_bad_handler:~/.claude/settings.json:8", "group": "wont_load", "code": "hook_bad_handler", "part": "hooks", "item_id": null, "file": "~/.claude/settings.json", "line": 8},
+    {"id": "hooks_disabled:hooks:allowManagedHooksOnly:2", "group": "not_as_set", "code": "hooks_disabled", "part": "hooks", "item_id": "hooks:allowManagedHooksOnly", "file": "managed/managed-settings.json", "line": 2},
+    {"id": "hooks_disabled:hooks:disableAllHooks:2", "group": "not_as_set", "code": "hooks_disabled", "part": "hooks", "item_id": "hooks:disableAllHooks", "file": "~/.claude/settings.json", "line": 2}
+  ]
+}

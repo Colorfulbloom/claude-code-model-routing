@@ -1,0 +1,16 @@
+{
+  "model": "claude-sonnet-5-5",
+  "env": {
+    "ORG_POLICY": "strict"
+  },
+  "permissions": {
+    "deny": [
+      "Bash(curl:*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {"matcher": "Bash", "hooks": [{"type": "command", "command": "bash /opt/policy/audit.sh"}]}
+    ]
+  }
+}

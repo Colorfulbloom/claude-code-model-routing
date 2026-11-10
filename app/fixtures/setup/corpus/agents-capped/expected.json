@@ -1,0 +1,25 @@
+{
+  "case": "agents-capped",
+  "note": "maxEffortLevel medium caps every agent's effort. The force variable CLAUDE_CODE_SUBAGENT_MODEL_FORCE makes CLAUDE_CODE_SUBAGENT_MODEL win over a file's model, so mixed.md's model is ignored and its pill says Ignored, the worse cause. Its effort is still lowered from high to medium, so the agent keeps its own Not as set row, agent_lowered, one per lowered setting, on the effort line. The model is ignored, not lowered, so it makes no row of that code. plain.md pins nothing, so no cap lowers it and it makes no row. Both agents run the variable's model.",
+  "project": {"name": "Proj", "dir": "work/parent/proj"},
+  "parts": {
+    "agents": {
+      "items": [
+        {"id": "agents:mixed", "key": "mixed", "scope": "user", "status": "ignored", "effective": {"value": "claude-haiku-5-5 / medium", "origin": "cap"}, "sources": [{"scope": "user", "key": "name", "file": "~/.claude/agents/mixed.md", "line": 2, "status": "in_effect"}]},
+        {"id": "agents:plain", "key": "plain", "scope": "user", "status": "in_effect", "effective": {"value": "claude-haiku-5-5 / medium", "origin": "set"}, "sources": [{"scope": "user", "key": "name", "file": "~/.claude/agents/plain.md", "line": 2, "status": "in_effect"}]}
+      ],
+      "unreadable": []
+    },
+    "settings": {
+      "items": [
+        {"id": "settings:env.CLAUDE_CODE_SUBAGENT_MODEL", "key": "env.CLAUDE_CODE_SUBAGENT_MODEL", "scope": "user", "status": "in_effect", "effective": {"value": "claude-haiku-5-5", "origin": "set"}, "sources": [{"scope": "user", "key": "env.CLAUDE_CODE_SUBAGENT_MODEL", "file": "~/.claude/settings.json", "line": 4, "status": "in_effect"}]},
+        {"id": "settings:env.CLAUDE_CODE_SUBAGENT_MODEL_FORCE", "key": "env.CLAUDE_CODE_SUBAGENT_MODEL_FORCE", "scope": "user", "status": "in_effect", "effective": {"value": "1", "origin": "set"}, "sources": [{"scope": "user", "key": "env.CLAUDE_CODE_SUBAGENT_MODEL_FORCE", "file": "~/.claude/settings.json", "line": 5, "status": "in_effect"}]},
+        {"id": "settings:maxEffortLevel", "key": "maxEffortLevel", "scope": "user", "status": "in_effect", "effective": {"value": "medium", "origin": "set"}, "sources": [{"scope": "user", "key": "maxEffortLevel", "file": "~/.claude/settings.json", "line": 2, "status": "in_effect"}]}
+      ],
+      "unreadable": []
+    }
+  },
+  "problems": [
+    {"id": "agent_lowered:agents:mixed:5", "group": "not_as_set", "code": "agent_lowered", "part": "agents", "item_id": "agents:mixed", "file": "~/.claude/agents/mixed.md", "line": 5}
+  ]
+}

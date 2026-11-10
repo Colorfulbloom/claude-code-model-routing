@@ -1,0 +1,15 @@
+{
+  "attention": [],
+  "attention_equal": 0,
+  "config_dir_display": "config",
+  "config_file_display": "config/routing-dashboard.json",
+  "entries": [],
+  "files": [],
+  "installed": "2.1.310",
+  "local_file_display": null,
+  "path_display": "projects/lantern",
+  "project": "lantern",
+  "rows": [],
+  "shell_label": "session.json:shell_env",
+  "state": "missing_folder"
+}

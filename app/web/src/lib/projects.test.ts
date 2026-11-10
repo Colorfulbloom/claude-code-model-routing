@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { projectItem } from "@/lib/projects";
 
-const base = { key: "k", name: "Name", display_path: "/work/k", running: false } as const;
+const base = {
+  key: "k",
+  name: "Name",
+  display_path: "/work/k",
+  running: false,
+  listed: true,
+} as const;
 
 describe("projectItem", () => {
   it("reads a ready project", () => {

@@ -1,0 +1,20 @@
+{
+  "case": "broken-skills",
+  "note": "Two skill folders with one front matter name in one scope follow the agents rule: the first folder in sorted order loads. A folder with no SKILL.md has no item. For bad front matter the row's line is the line where the bad construct starts.",
+  "project": {"name": "Proj", "dir": "work/parent/proj"},
+  "parts": {
+    "skills": {
+      "items": [
+        {"id": "skills:badfm", "key": "badfm", "scope": "user", "status": "invalid", "sources": [{"scope": "user", "key": "name", "file": "~/.claude/skills/badfm/SKILL.md", "line": 2, "status": "invalid"}]},
+        {"id": "skills:good", "key": "good", "scope": "user", "status": "in_effect", "sources": [{"scope": "user", "key": "name", "file": "~/.claude/skills/good/SKILL.md", "line": 2, "status": "in_effect"}]},
+        {"id": "skills:shared", "key": "shared", "scope": "user", "status": "in_effect", "sources": [{"scope": "user", "key": "name", "file": "~/.claude/skills/dup1/SKILL.md", "line": 2, "status": "in_effect"}, {"scope": "user", "key": "name", "file": "~/.claude/skills/dup2/SKILL.md", "line": 2, "status": "invalid"}]}
+      ],
+      "unreadable": []
+    }
+  },
+  "problems": [
+    {"id": "frontmatter_invalid:skills:badfm:3", "group": "wont_load", "code": "frontmatter_invalid", "part": "skills", "item_id": "skills:badfm", "file": "~/.claude/skills/badfm/SKILL.md", "line": 3},
+    {"id": "same_name_in_folder:skills:shared:2", "group": "wont_load", "code": "same_name_in_folder", "part": "skills", "item_id": "skills:shared", "file": "~/.claude/skills/dup2/SKILL.md", "line": 2},
+    {"id": "skill_no_md:~/.claude/skills/emptydir", "group": "wont_load", "code": "skill_no_md", "part": "skills", "item_id": null, "file": "~/.claude/skills/emptydir", "line": null}
+  ]
+}

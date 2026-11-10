@@ -6,6 +6,7 @@ import { FakeChannel } from "@/app/test-channel";
 import { resetViewport } from "@/test/media";
 import { mount } from "@/test/mount";
 import { appInfo, fakeServer, historyInfo, pricesInfo } from "@/test/server";
+import { setupServer } from "@/test/setup-server";
 
 afterEach(() => {
   cleanup();
@@ -84,7 +85,7 @@ describe("sidebar at 1440", () => {
   });
 
   it.each(sidebarCases)("%s marks only %s as current", async (hash, name) => {
-    await mount(hash);
+    await mount(hash, { server: setupServer() });
     await screen.findByRole("link", { name: "To fix, 4 items" });
     const current = screen.getAllByRole("link", { current: "page" });
     expect(current).toHaveLength(1);
@@ -105,6 +106,49 @@ describe("sidebar at 1440", () => {
       server: fakeServer({ app: appInfo({ to_fix_count: 1 }) }),
     });
     expect(await screen.findByRole("link", { name: "To fix, 1 item" })).toBeInTheDocument();
+  });
+
+  it("reads the count from to_fix when the state is ok", async () => {
+    await mount("#/p/builder/live", {
+      server: fakeServer({
+        app: appInfo({ to_fix: { state: "ok", count: 7, etag: "p-1" }, to_fix_count: 4 }),
+      }),
+    });
+    const link = await screen.findByRole("link", { name: "To fix, 7 items" });
+    expect(within(link).getByText("7")).toBeInTheDocument();
+  });
+
+  it("names an unchecked count and shows no number", async () => {
+    await mount("#/p/builder/live", {
+      server: fakeServer({
+        app: appInfo({ to_fix: { state: "unchecked", count: null, etag: null }, to_fix_count: 4 }),
+      }),
+    });
+    const link = await screen.findByRole("link", { name: "To fix, not checked yet" });
+    expect(link).toHaveTextContent(/^To fix$/);
+    expect(within(link).queryByText("4")).toBeNull();
+  });
+
+  it("names a failed check and shows no number", async () => {
+    await mount("#/p/builder/live", {
+      server: fakeServer({
+        app: appInfo({ to_fix: { state: "failed", count: null, etag: null }, to_fix_count: 4 }),
+      }),
+    });
+    const link = await screen.findByRole("link", { name: "To fix, couldn't check" });
+    expect(link).toHaveTextContent(/^To fix$/);
+    expect(within(link).queryByText("4")).toBeNull();
+  });
+
+  it("gives the phone tab bar the same name for a failed check", async () => {
+    await mount("#/p/builder/live", {
+      width: 375,
+      server: fakeServer({
+        app: appInfo({ to_fix: { state: "failed", count: null, etag: null } }),
+      }),
+    });
+    const link = await screen.findByRole("link", { name: "To fix, couldn't check" });
+    expect(link).not.toHaveTextContent(/\d/);
   });
 
   it("asks /api/app for the project in the route", async () => {
@@ -234,7 +278,7 @@ describe("top bar and tab bar at 375", () => {
   });
 
   it.each(tabCases)("%s marks only %s as current", async (hash, name) => {
-    await mount(hash, { width: 375 });
+    await mount(hash, { width: 375, server: setupServer() });
     await screen.findByRole("link", { name: "To fix, 4 items" });
     // The Review pages carry their own Segmented pages in the content, so look in the tab bar only.
     const bar = screen.getByRole("navigation", { name: "Main" });

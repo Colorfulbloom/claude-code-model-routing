@@ -211,18 +211,42 @@
   vertical-align: middle;
 }
 
+/* Rows run the well's full width. The well's side padding moves onto the first and last cell (the
+   gutter), so dividers, the hover fill and the picked fill and bar all share the well's edges, and
+   the well clips the last row to its rounded corners. The text keeps its x position. */
+.review-table-well {
+  --review-gutter: var(--space-4);
+
+  padding-inline: 0;
+  overflow: clip;
+}
+
+.review-th:first-child,
+.review-cell:first-child {
+  padding-left: var(--review-gutter);
+}
+
+.review-th:last-child,
+.review-cell:last-child {
+  padding-right: var(--review-gutter);
+}
+
 .review-row:last-child > .review-cell {
   border-bottom: 0;
 }
 
 .review-th.review-end,
 .review-cell.review-end {
-  padding-right: 0;
   text-align: right;
 }
 
+.review-th.review-end:not(:last-child),
+.review-cell.review-end:not(:last-child) {
+  padding-right: 0;
+}
+
 .review-group th {
-  padding: var(--space-3) 0 var(--space-1);
+  padding: var(--space-3) var(--review-gutter) var(--space-1);
   border-bottom: 1px solid var(--border-strong);
   color: var(--text);
   font-size: var(--text-sm);
@@ -232,6 +256,11 @@
 
 .review-row:hover > .review-cell {
   background: var(--nav-hover-bg);
+}
+
+/* A row with a link opens it from anywhere on the row (useRowLink). The name stays the real link. */
+.review-row[data-row-link] {
+  cursor: pointer;
 }
 
 .review-link {
@@ -300,6 +329,16 @@
     border: 0;
     clip-path: inset(50%);
     white-space: nowrap;
+  }
+
+  /* A hidden last column keeps no gutter. The last visible cell carries it (see the Models rule). */
+  .review-hp.review-th:last-child,
+  .review-hp.review-cell:last-child {
+    padding: 0;
+  }
+
+  .review-table-well {
+    --review-gutter: var(--space-3);
   }
 
   /* The pager takes the full line, with the label between the buttons and the reason under them. */

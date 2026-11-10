@@ -11,7 +11,7 @@ import { ShareBar } from "@/components/ShareBar/ShareBar";
 import { Well } from "@/components/Well/Well";
 import { reviewPath } from "@/lib/range";
 import { buildMoney, buildTopSessions } from "@/lib/review-cards";
-import { buildModelCheck } from "@/lib/model-check";
+import { buildModelCheck, checkCounts } from "@/lib/model-check";
 import { t, tn } from "@/strings/t";
 import "../LivePage.css";
 import { ModelCheckCard, ModelCheckLoading } from "../live/ModelCheckCard";
@@ -68,8 +68,7 @@ function checkWords(answer: Summary): {
   const check = answer.model_check;
   if (check === null) return null;
   const base = buildModelCheck(check);
-  const checked = check.rows.filter((row) => row.status !== null).length;
-  const found = base.findings.length;
+  const { checked, notAsSet: found } = checkCounts(check);
   const rest = checked - found;
   const view = {
     ...base,

@@ -18,9 +18,13 @@ import type {
   LiveSessionsUnchanged,
   ModelList,
   PricesAnswer,
+  ProblemList,
   ProjectsAnswer,
   ReviewRange,
   SessionList,
+  SetupMap,
+  SetupPart,
+  SetupPartAnswer,
   Summary,
   Timeline,
   Unchanged,
@@ -113,6 +117,27 @@ export interface ApiClient {
     etag: string | null,
     signal?: AbortSignal,
   ) => Promise<ModelList | Unchanged>;
+  /**
+   * The Setup reads and the To fix feed. Each takes the project and the last answer's etag, and
+   * a matching etag gets the short `unchanged` body. They count into the connection like any
+   * page call.
+   */
+  getSetup: (
+    project: string,
+    etag: string | null,
+    signal?: AbortSignal,
+  ) => Promise<SetupMap | Unchanged>;
+  getSetupPart: (
+    project: string,
+    part: SetupPart,
+    etag: string | null,
+    signal?: AbortSignal,
+  ) => Promise<SetupPartAnswer | Unchanged>;
+  getProblems: (
+    project: string,
+    etag: string | null,
+    signal?: AbortSignal,
+  ) => Promise<ProblemList | Unchanged>;
 }
 
 export interface ApiClientOptions {
@@ -193,6 +218,12 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     return parts.join("&");
   }
 
+  /** The query string the Setup reads share: the project, then the etag when there is one. */
+  function setupQuery(project: string, etag: string | null): string {
+    const etagPart = etag === null ? "" : `&etag=${encodeURIComponent(etag)}`;
+    return `project=${encodeURIComponent(project)}${etagPart}`;
+  }
+
   return {
     access,
     connection,
@@ -253,6 +284,18 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         `/api/models?${reviewQuery(project, range, etag)}`,
         signal,
       );
+    },
+    getSetup(project, etag, signal) {
+      return request<SetupMap | Unchanged>(`/api/setup?${setupQuery(project, etag)}`, signal);
+    },
+    getSetupPart(project, part, etag, signal) {
+      return request<SetupPartAnswer | Unchanged>(
+        `/api/setup/${encodeURIComponent(part)}?${setupQuery(project, etag)}`,
+        signal,
+      );
+    },
+    getProblems(project, etag, signal) {
+      return request<ProblemList | Unchanged>(`/api/problems?${setupQuery(project, etag)}`, signal);
     },
   };
 }

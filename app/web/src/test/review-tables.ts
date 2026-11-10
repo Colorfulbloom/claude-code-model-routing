@@ -72,7 +72,7 @@ export function agentsAnswer(over: Partial<AgentList> = {}): AgentList {
         ran: { model: IDS.opus, effort: "high", mixed: false },
         ran_pairs: [{ model: IDS.opus, effort: "high", runs: 53 }],
         status: "lowered",
-        runs: 0,
+        runs: 53,
         sessions: 53,
         cost: 8,
         share: 0.16,

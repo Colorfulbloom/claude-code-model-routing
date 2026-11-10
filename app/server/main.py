@@ -2,7 +2,8 @@
 
 ``create_app`` returns the ASGI app the server runs: the gate, then the security
 headers, then FastAPI. ``build_app`` returns the FastAPI app alone, which tests and the
-OpenAPI export use. Both read ``dist/index.html`` once and rewrite it per request.
+OpenAPI export use. Both rewrite ``dist/index.html`` per request and re-read it when
+the file changes.
 """
 
 import asyncio
@@ -26,6 +27,7 @@ import api_app
 import api_dev
 import api_live
 import api_review
+import api_setup
 import csp
 import errors
 import fixture_provider
@@ -135,12 +137,13 @@ def _operation_id(route: APIRoute) -> str:
     return route.name
 
 
-def _static_router(dist_dir: Path, index: csp.IndexPage, instance: str) -> APIRouter:
+def _static_router(dist_dir: Path, source: csp.IndexSource, instance: str) -> APIRouter:
     """Serve the built files, and the rewritten index for `/` and unknown paths."""
     router = APIRouter()
     root = dist_dir.resolve()
 
     def page() -> Response:
+        index = source.page
         nonce = csp.new_nonce()
         return Response(
             content=index.render(nonce, instance),
@@ -180,7 +183,7 @@ def build_app(settings: Settings) -> FastAPI:
     state = settings.access_state or AccessState(clock=settings.clock)
     provider = make_provider(settings)
     live = provider if isinstance(provider, store_provider.StoreProvider) else None
-    index = csp.load_index(settings.dist_dir)
+    index = csp.IndexSource(settings.dist_dir)
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncGenerator[None]:
@@ -211,6 +214,7 @@ def build_app(settings: Settings) -> FastAPI:
     app.include_router(api_app.build_router(provider, state.instance))
     app.include_router(api_live.build_router(provider))
     app.include_router(api_review.build_router(provider))
+    app.include_router(api_setup.build_router(provider))
     app.add_middleware(api_live.ApiGzipMiddleware)
     if settings.test_clock:
         if settings.data_clock is None or settings.data_clock.kind != "test":

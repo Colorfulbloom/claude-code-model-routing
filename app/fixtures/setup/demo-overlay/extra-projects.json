@@ -1,0 +1,16 @@
+{
+  "projects": [
+    {
+      "dir": "projects/setup-empty",
+      "name": "Setup empty"
+    },
+    {
+      "dir": "projects/setup-broken",
+      "name": "Setup broken"
+    },
+    {
+      "dir": "projects/setup-large",
+      "name": "Setup large"
+    }
+  ]
+}

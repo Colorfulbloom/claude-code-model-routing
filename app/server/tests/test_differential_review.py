@@ -452,6 +452,46 @@ def test_review_numbers_equal_the_recorded_usage_answer(
     _fail_on(_compare(world, query), query["file"])
 
 
+@pytest.mark.parametrize(
+    "query", USAGE_QUERIES, ids=[q["file"].removesuffix(".json") for q in USAGE_QUERIES]
+)
+def test_runs_differ_from_the_old_app_by_the_main_sessions(
+    world: World, query: dict[str, Any]
+) -> None:
+    """Task 21 item 10. The allowed ``runs`` differences are one per main session.
+
+    The old ``@main`` row showed 0 runs and its own session count. Every new run count
+    is the old one plus the sessions that had a main request in that group.
+    """
+    view = _json(DEMO, query["file"])["views"][query["range"]]
+    name: ReviewRange = query["range"]
+    folders = _folders(world, query["query"]["project"][0])
+    now = _utc(view["end"])
+    window = rw.review_window(name, now, TZ, rq.oldest_request(world.conn, folders))
+    cur = rq.scan(
+        world.conn,
+        world.prices,
+        folders=folders,
+        start=window.start,
+        end=window.end,
+        tz=TZ,
+        now=now,
+        sessions=True,
+    )
+    old_main = next((r for r in view["by_agent"] if r["route_key"] == "@main"), None)
+    main_sessions = 0 if old_main is None else old_main["sessions"]
+    assert cur.total.runs == view["totals"]["runs"] + main_sessions
+    if main_sessions:
+        assert cur.by_agent["@main"].sums.runs == main_sessions
+        assert cur.by_agent["@main"].sums.runs == cur.by_agent["@main"].sums.sessions
+    for row in view["sessions"]:
+        (session,) = (s for s in cur.sessions if s.id == row["session_id"])
+        has_main = any(a["agent"] is None for a in row["by_agent"])
+        assert session.runs == row["runs"] + (1 if has_main else 0), row["session_id"]
+    for model, row in ((r["model"], r) for r in view["by_model"]):
+        assert cur.by_model[model].sums.runs >= row["runs"]
+
+
 def test_the_demo_has_review_numbers_to_compare(world: World) -> None:
     """A guard against a comparison that passes because both sides are empty."""
     query = next(q for q in USAGE_QUERIES if q["file"] == "usage-30d-all.json")
@@ -473,7 +513,8 @@ def test_the_demo_has_review_numbers_to_compare(world: World) -> None:
         sessions=True,
     )
     assert got.total.requests == 3913
-    assert got.total.runs == 220
+    # The old 220 skipped main. Each of the 71 sessions has a main run, so 220 + 71.
+    assert got.total.runs == 220 + 71
     assert got.total.sessions == 71
     assert len(got.sessions) == 71
     assert got.total.unpriced.requests == 150
@@ -689,6 +730,44 @@ def test_long_ranges_equal_the_long_truth(
 ) -> None:
     truth = _json(LONG, "truth-long.json")["projects"][name][rng]
     _fail_on(_long_lines(long_world, name, rng, truth), f"{name} {rng}")
+
+
+@pytest.mark.parametrize(
+    ("name", "rng"), _long_cases(), ids=[f"{n}-{r}" for n, r in _long_cases()]
+)
+def test_long_runs_differ_from_the_truth_by_the_main_sessions(
+    long_world: World, name: str, rng: ReviewRange
+) -> None:
+    """Task 21 item 10. The truth has no main runs, so runs add its @main sessions."""
+    truth = _json(LONG, "truth-long.json")["projects"][name][rng]
+    window_truth = _json(LONG, "truth-long.json")["windows"][rng]
+    (found,) = (p for p in long_world.mapped if p.name == name)
+    now = _utc(window_truth["end"])
+    oldest = rq.oldest_request(long_world.conn, found.folders)
+    window = rw.review_window(rng, now, TZ, oldest)
+    cur = rq.scan(
+        long_world.conn,
+        long_world.prices,
+        folders=found.folders,
+        start=window.start,
+        end=window.end,
+        tz=TZ,
+    )
+    main = truth["by_agent"]["@main"]
+    assert main["runs"] == 0
+    assert cur.by_agent["@main"].sums.runs == main["sessions"]
+    assert cur.total.runs == truth["current"]["runs"] + main["sessions"]
+    if window.prior_start is not None and window.prior_end is not None:
+        prior = rq.scan(
+            long_world.conn,
+            long_world.prices,
+            folders=found.folders,
+            start=window.prior_start,
+            end=window.prior_end,
+            tz=TZ,
+        )
+        prior_main = prior.by_agent["@main"].sums.sessions if prior.by_agent else 0
+        assert prior.total.runs == truth["prior"]["runs"] + prior_main
 
 
 def test_the_long_truth_holds_what_the_demo_lacks(long_world: World) -> None:

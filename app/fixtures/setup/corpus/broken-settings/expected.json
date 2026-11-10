@@ -1,0 +1,33 @@
+{
+  "case": "broken-settings",
+  "note": "Problem ids are code:subject[:line], where subject is the item id when the row has one and the file otherwise. Rows sort by group, part order, file, line.",
+  "project": {"name": "Proj", "dir": "work/parent/proj"},
+  "parts": {
+    "settings": {
+      "items": [
+        {"id": "settings:effortLevel", "key": "effortLevel", "scope": null, "status": "unknown", "effective": {"value": null, "origin": "default"}, "sources": []},
+        {"id": "settings:model", "key": "model", "scope": "user", "status": "unknown", "effective": {"value": "claude-opus-5-5", "origin": "unknown"}, "sources": [{"scope": "user", "key": "model", "file": "~/.claude/settings.json", "line": 2, "status": "unknown"}]}
+      ],
+      "unreadable": []
+    },
+    "permissions": {
+      "items": [
+        {"id": "permissions:allow:Bash(git status", "key": "Bash(git status", "scope": "user", "status": "invalid", "group": "allow", "sources": [{"scope": "user", "key": "permissions.allow", "file": "~/.claude/settings.json", "line": 5, "line_has": "Bash(git status", "status": "invalid"}]}
+      ],
+      "unreadable": []
+    },
+    "output_style": {
+      "items": [
+        {"id": "output_style:outputStyle", "key": "outputStyle", "scope": "user", "status": "invalid", "effective": {"value": "ghost", "origin": "unknown"}, "sources": [{"scope": "user", "key": "outputStyle", "file": "~/.claude/settings.json", "line": 8, "status": "invalid"}]}
+      ],
+      "unreadable": []
+    }
+  },
+  "problems": [
+    {"id": "not_object:.claude/settings.json", "group": "wont_load", "code": "not_object", "part": "settings", "item_id": null, "file": ".claude/settings.json", "line": null},
+    {"id": "json_invalid:.claude/settings.local.json:3", "group": "wont_load", "code": "json_invalid", "part": "settings", "item_id": null, "file": ".claude/settings.local.json", "line": 3},
+    {"id": "managed_invalid:managed/managed-settings.json:1", "group": "wont_load", "code": "managed_invalid", "part": "settings", "item_id": null, "file": "managed/managed-settings.json", "line": 1},
+    {"id": "permission_rule_invalid:permissions:allow:Bash(git status:5", "group": "wont_load", "code": "permission_rule_invalid", "part": "permissions", "item_id": "permissions:allow:Bash(git status", "file": "~/.claude/settings.json", "line": 5},
+    {"id": "output_style_missing:output_style:outputStyle:8", "group": "wont_load", "code": "output_style_missing", "part": "output_style", "item_id": "output_style:outputStyle", "file": "~/.claude/settings.json", "line": 8}
+  ]
+}

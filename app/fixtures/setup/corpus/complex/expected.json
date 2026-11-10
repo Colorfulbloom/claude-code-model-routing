@@ -1,0 +1,1038 @@
+{
+  "case": "complex",
+  "generated": true,
+  "parts": {
+    "agents": {
+      "items": [
+        {
+          "id": "agents:builder",
+          "key": "builder",
+          "scope": "project",
+          "sources": [
+            {
+              "file": ".claude/agents/builder.md",
+              "key": "name",
+              "line": 2,
+              "scope": "project",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:policy",
+          "key": "policy",
+          "scope": "managed",
+          "sources": [
+            {
+              "file": "managed/.claude/agents/policy.md",
+              "key": "name",
+              "line": 2,
+              "scope": "managed",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:reviewer",
+          "key": "reviewer",
+          "scope": "project",
+          "sources": [
+            {
+              "file": ".claude/agents/reviewer.md",
+              "key": "name",
+              "line": 2,
+              "scope": "project",
+              "status": "in_effect"
+            },
+            {
+              "file": "~/.claude/agents/reviewer.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "overridden"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "facts": {
+            "ignored_fields": [
+              "hooks",
+              "permissionMode"
+            ]
+          },
+          "id": "agents:routing-dashboard:scout",
+          "key": "scout",
+          "scope": "plugin",
+          "sources": [
+            {
+              "file": "~/.claude/plugins/cache/bartab-demo/routing-dashboard/0.1.7/agents/scout.md",
+              "key": "name",
+              "line": 2,
+              "plugin": "routing-dashboard",
+              "scope": "plugin",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:scout",
+          "key": "scout",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/scout.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        }
+      ],
+      "unreadable": []
+    },
+    "hooks": {
+      "items": [
+        {
+          "group": "SessionStart",
+          "id": "hooks:SessionStart:*:0",
+          "key": "SessionStart",
+          "scope": "project_local",
+          "sources": [
+            {
+              "file": ".claude/settings.local.json",
+              "key": "hooks.SessionStart",
+              "line": 11,
+              "line_has": "command",
+              "scope": "project_local",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "PreToolUse",
+          "id": "hooks:PreToolUse:Bash:0",
+          "key": "PreToolUse",
+          "scope": "managed",
+          "sources": [
+            {
+              "file": "managed/managed-settings.json",
+              "key": "hooks.PreToolUse",
+              "line": 13,
+              "line_has": "command",
+              "scope": "managed",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "PreToolUse",
+          "id": "hooks:PreToolUse:Bash:1",
+          "key": "PreToolUse",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "hooks.PreToolUse",
+              "line": 24,
+              "line_has": "command",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "PreToolUse",
+          "id": "hooks:PreToolUse:Bash:2",
+          "key": "PreToolUse",
+          "scope": "plugin",
+          "sources": [
+            {
+              "file": "~/.claude/plugins/cache/bartab-demo/hivemind/0.1.3/hooks/hooks.json",
+              "key": "hooks.PreToolUse",
+              "line": 4,
+              "line_has": "command",
+              "plugin": "hivemind",
+              "scope": "plugin",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "PostToolUse",
+          "id": "hooks:PostToolUse:Edit|Write:0",
+          "key": "PostToolUse",
+          "scope": "project",
+          "sources": [
+            {
+              "file": ".claude/settings.json",
+              "key": "hooks.PostToolUse",
+              "line": 13,
+              "line_has": "command",
+              "scope": "project",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        }
+      ],
+      "unreadable": []
+    },
+    "instructions": {
+      "items": [
+        {
+          "id": "instructions:managed/CLAUDE.md",
+          "key": "managed/CLAUDE.md",
+          "loads": {
+            "globs": [],
+            "kind": "always"
+          },
+          "scope": "managed",
+          "sources": [
+            {
+              "file": "managed/CLAUDE.md",
+              "key": "file",
+              "line": null,
+              "scope": "managed",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "instructions:~/.claude/CLAUDE.md",
+          "key": "~/.claude/CLAUDE.md",
+          "loads": {
+            "globs": [],
+            "kind": "always"
+          },
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/CLAUDE.md",
+              "key": "file",
+              "line": null,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "instructions:../CLAUDE.md",
+          "key": "../CLAUDE.md",
+          "loads": {
+            "globs": [],
+            "kind": "always"
+          },
+          "location": "parent",
+          "scope": "project",
+          "sources": [
+            {
+              "file": "../CLAUDE.md",
+              "key": "file",
+              "line": null,
+              "location": "parent",
+              "scope": "project",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "instructions:../CLAUDE.local.md",
+          "key": "../CLAUDE.local.md",
+          "loads": {
+            "globs": [],
+            "kind": "always"
+          },
+          "location": "parent",
+          "scope": "project_local",
+          "sources": [
+            {
+              "file": "../CLAUDE.local.md",
+              "key": "file",
+              "line": null,
+              "location": "parent",
+              "scope": "project_local",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "instructions:CLAUDE.md",
+          "imports": [
+            {
+              "depth": 1,
+              "line": 3,
+              "state": "read",
+              "target": "docs/guide.md",
+              "target_item": "instructions:docs/guide.md"
+            }
+          ],
+          "key": "CLAUDE.md",
+          "loads": {
+            "globs": [],
+            "kind": "always"
+          },
+          "scope": "project",
+          "sources": [
+            {
+              "file": "CLAUDE.md",
+              "key": "file",
+              "line": null,
+              "scope": "project",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "instructions:docs/guide.md",
+          "key": "docs/guide.md",
+          "loads": {
+            "globs": [],
+            "kind": "always"
+          },
+          "scope": "project",
+          "sources": [
+            {
+              "file": "docs/guide.md",
+              "key": "file",
+              "line": null,
+              "scope": "project",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "instructions:.claude/CLAUDE.md",
+          "key": ".claude/CLAUDE.md",
+          "loads": {
+            "globs": [],
+            "kind": "always"
+          },
+          "scope": "project",
+          "sources": [
+            {
+              "file": ".claude/CLAUDE.md",
+              "key": "file",
+              "line": null,
+              "scope": "project",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "instructions:CLAUDE.local.md",
+          "key": "CLAUDE.local.md",
+          "loads": {
+            "globs": [],
+            "kind": "always"
+          },
+          "scope": "project_local",
+          "sources": [
+            {
+              "file": "CLAUDE.local.md",
+              "key": "file",
+              "line": null,
+              "scope": "project_local",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "instructions:packages/web/CLAUDE.md",
+          "key": "packages/web/CLAUDE.md",
+          "loads": {
+            "globs": [],
+            "kind": "on_demand"
+          },
+          "scope": "project",
+          "sources": [
+            {
+              "file": "packages/web/CLAUDE.md",
+              "key": "file",
+              "line": null,
+              "scope": "project",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        }
+      ],
+      "unreadable": []
+    },
+    "mcp": {
+      "items": [
+        {
+          "id": "mcp:corp-wiki",
+          "key": "corp-wiki",
+          "scope": "managed",
+          "sources": [
+            {
+              "file": "managed/managed-mcp.json",
+              "key": "mcpServers.corp-wiki",
+              "line": 3,
+              "scope": "managed",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "mcp:docs",
+          "key": "docs",
+          "scope": "project",
+          "sources": [
+            {
+              "file": ".mcp.json",
+              "key": "mcpServers.docs",
+              "line": 3,
+              "scope": "project",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "mcp:notes",
+          "key": "notes",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude.json",
+              "key": "mcpServers.notes",
+              "line": 4,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "mcp:routing-dashboard:dash-metrics",
+          "key": "dash-metrics",
+          "scope": "plugin",
+          "sources": [
+            {
+              "file": "~/.claude/plugins/cache/bartab-demo/routing-dashboard/0.1.7/.mcp.json",
+              "key": "mcpServers.dash-metrics",
+              "line": 3,
+              "plugin": "routing-dashboard",
+              "scope": "plugin",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "mcp:scratch",
+          "key": "scratch",
+          "scope": "project_local",
+          "sources": [
+            {
+              "file": "~/.claude.json",
+              "key": "mcpServers.scratch",
+              "line": 13,
+              "scope": "project_local",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        }
+      ],
+      "unreadable": []
+    },
+    "output_style": {
+      "items": [
+        {
+          "effective": {
+            "origin": "set",
+            "value": "review-voice"
+          },
+          "id": "output_style:outputStyle",
+          "key": "outputStyle",
+          "scope": "project_local",
+          "sources": [
+            {
+              "file": ".claude/settings.local.json",
+              "key": "outputStyle",
+              "line": 2,
+              "scope": "project_local",
+              "status": "in_effect"
+            },
+            {
+              "file": "~/.claude/settings.json",
+              "key": "outputStyle",
+              "line": 17,
+              "scope": "user",
+              "status": "overridden"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "output_style:house",
+          "key": "house",
+          "scope": "managed",
+          "sources": [
+            {
+              "file": "managed/.claude/output-styles/house.md",
+              "key": "name",
+              "line": 2,
+              "scope": "managed",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "output_style:review-voice",
+          "key": "review-voice",
+          "scope": "project",
+          "sources": [
+            {
+              "file": ".claude/output-styles/review-voice.md",
+              "key": "name",
+              "line": 2,
+              "scope": "project",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "output_style:terse",
+          "key": "terse",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/output-styles/terse.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        }
+      ],
+      "unreadable": []
+    },
+    "permissions": {
+      "items": [
+        {
+          "group": "deny",
+          "id": "permissions:deny:Bash(curl:*)",
+          "key": "Bash(curl:*)",
+          "scope": "managed",
+          "sources": [
+            {
+              "file": "managed/managed-settings.json",
+              "key": "permissions.deny",
+              "line": 8,
+              "line_has": "Bash(curl:*)",
+              "scope": "managed",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./.env.local)",
+          "key": "Read(./.env.local)",
+          "scope": "project_local",
+          "sources": [
+            {
+              "file": ".claude/settings.local.json",
+              "key": "permissions.deny",
+              "line": 6,
+              "line_has": "Read(./.env.local)",
+              "scope": "project_local",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Bash(git push:*)",
+          "key": "Bash(git push:*)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 12,
+              "line_has": "Bash(git push:*)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(npm test)",
+          "key": "Bash(npm test)",
+          "scope": "project",
+          "sources": [
+            {
+              "file": ".claude/settings.json",
+              "key": "permissions.allow",
+              "line": 5,
+              "line_has": "Bash(npm test)",
+              "scope": "project",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(git status)",
+          "key": "Bash(git status)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 9,
+              "line_has": "Bash(git status)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "effective": {
+            "origin": "set",
+            "value": "acceptEdits"
+          },
+          "group": "default_mode",
+          "id": "permissions:defaultMode",
+          "key": "defaultMode",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.defaultMode",
+              "line": 14,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "directory",
+          "id": "permissions:directory:../shared-notes",
+          "key": "../shared-notes",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.additionalDirectories",
+              "line": 15,
+              "line_has": "../shared-notes",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        }
+      ],
+      "unreadable": []
+    },
+    "plugins": {
+      "items": [
+        {
+          "effective": {
+            "origin": "set",
+            "value": "enabled"
+          },
+          "id": "plugins:hivemind@bartab-demo",
+          "key": "hivemind@bartab-demo",
+          "scope": "project",
+          "sources": [
+            {
+              "file": ".claude/settings.json",
+              "key": "enabledPlugins.hivemind@bartab-demo",
+              "line": 9,
+              "scope": "project",
+              "status": "in_effect"
+            },
+            {
+              "file": "~/.claude/settings.json",
+              "key": "enabledPlugins.hivemind@bartab-demo",
+              "line": 20,
+              "scope": "user",
+              "status": "overridden"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "effective": {
+            "origin": "set",
+            "value": "enabled"
+          },
+          "id": "plugins:routing-dashboard@bartab-demo",
+          "key": "routing-dashboard@bartab-demo",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "enabledPlugins.routing-dashboard@bartab-demo",
+              "line": 19,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        }
+      ],
+      "unreadable": []
+    },
+    "rules": {
+      "items": [
+        {
+          "id": "rules:~/.claude/rules/style.md",
+          "key": "~/.claude/rules/style.md",
+          "loads": {
+            "globs": [],
+            "kind": "always"
+          },
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/rules/style.md",
+              "key": "file",
+              "line": null,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "rules:.claude/rules/always.md",
+          "key": ".claude/rules/always.md",
+          "loads": {
+            "globs": [],
+            "kind": "always"
+          },
+          "scope": "project",
+          "sources": [
+            {
+              "file": ".claude/rules/always.md",
+              "key": "file",
+              "line": null,
+              "scope": "project",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "rules:.claude/rules/review.md",
+          "key": ".claude/rules/review.md",
+          "loads": {
+            "globs": [
+              "src/**/*.ts"
+            ],
+            "kind": "on_demand"
+          },
+          "scope": "project",
+          "sources": [
+            {
+              "file": ".claude/rules/review.md",
+              "key": "paths",
+              "line": 2,
+              "scope": "project",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        }
+      ],
+      "unreadable": []
+    },
+    "settings": {
+      "items": [
+        {
+          "effective": {
+            "origin": "set",
+            "value": "medium"
+          },
+          "id": "settings:effortLevel",
+          "key": "effortLevel",
+          "scope": "project",
+          "sources": [
+            {
+              "file": ".claude/settings.json",
+              "key": "effortLevel",
+              "line": 2,
+              "scope": "project",
+              "status": "in_effect"
+            },
+            {
+              "file": "~/.claude/settings.json",
+              "key": "effortLevel",
+              "line": 3,
+              "scope": "user",
+              "status": "overridden"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "effective": {
+            "origin": "set",
+            "value": "60000"
+          },
+          "id": "settings:env.BASH_DEFAULT_TIMEOUT_MS",
+          "key": "env.BASH_DEFAULT_TIMEOUT_MS",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "env.BASH_DEFAULT_TIMEOUT_MS",
+              "line": 5,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "effective": {
+            "origin": "set",
+            "value": "strict"
+          },
+          "id": "settings:env.ORG_POLICY",
+          "key": "env.ORG_POLICY",
+          "scope": "managed",
+          "sources": [
+            {
+              "file": "managed/managed-settings.json",
+              "key": "env.ORG_POLICY",
+              "line": 4,
+              "scope": "managed",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "effective": {
+            "origin": "set",
+            "value": "eu"
+          },
+          "id": "settings:env.ORG_REGION",
+          "key": "env.ORG_REGION",
+          "scope": "managed",
+          "sources": [
+            {
+              "file": "managed/managed-settings.d/10-extra.json",
+              "key": "env.ORG_REGION",
+              "line": 3,
+              "scope": "managed",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "effective": {
+            "origin": "set",
+            "value": "1"
+          },
+          "id": "settings:env.REPO_FLAG",
+          "key": "env.REPO_FLAG",
+          "scope": "project_local",
+          "sources": [
+            {
+              "file": "../.claude/settings.local.json",
+              "key": "env.REPO_FLAG",
+              "line": 3,
+              "scope": "project_local",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "effective": {
+            "origin": "set",
+            "value": "claude-sonnet-5-5"
+          },
+          "id": "settings:model",
+          "key": "model",
+          "scope": "managed",
+          "sources": [
+            {
+              "file": "managed/managed-settings.json",
+              "key": "model",
+              "line": 2,
+              "scope": "managed",
+              "status": "in_effect"
+            },
+            {
+              "file": "~/.claude/settings.json",
+              "key": "model",
+              "line": 2,
+              "scope": "user",
+              "status": "overridden"
+            }
+          ],
+          "status": "in_effect"
+        }
+      ],
+      "unreadable": []
+    },
+    "skills": {
+      "items": [
+        {
+          "id": "skills:audit",
+          "key": "audit",
+          "scope": "managed",
+          "sources": [
+            {
+              "file": "managed/.claude/skills/audit/SKILL.md",
+              "key": "name",
+              "line": 2,
+              "scope": "managed",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "skills:lint",
+          "key": "lint",
+          "scope": "project",
+          "sources": [
+            {
+              "file": "packages/web/.claude/skills/lint/SKILL.md",
+              "key": "name",
+              "line": 2,
+              "scope": "project",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "skills:release-check",
+          "key": "release-check",
+          "scope": "project",
+          "sources": [
+            {
+              "file": ".claude/skills/release-check/SKILL.md",
+              "key": "name",
+              "line": 2,
+              "scope": "project",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "skills:routing-dashboard:dashboard",
+          "key": "dashboard",
+          "scope": "plugin",
+          "sources": [
+            {
+              "file": "~/.claude/plugins/cache/bartab-demo/routing-dashboard/0.1.7/skills/dashboard/SKILL.md",
+              "key": "name",
+              "line": 2,
+              "plugin": "routing-dashboard",
+              "scope": "plugin",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "skills:ship",
+          "key": "ship",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/commands/ship.md",
+              "key": "description",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "skills:tidy",
+          "key": "tidy",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/skills/tidy/SKILL.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            },
+            {
+              "file": ".claude/commands/tidy.md",
+              "key": "description",
+              "line": 2,
+              "scope": "project",
+              "status": "overridden"
+            }
+          ],
+          "status": "in_effect"
+        }
+      ],
+      "unreadable": []
+    }
+  },
+  "problems": [
+    {
+      "code": "plugin_field_ignored",
+      "file": "~/.claude/plugins/cache/bartab-demo/routing-dashboard/0.1.7/agents/scout.md",
+      "group": "not_as_set",
+      "id": "plugin_field_ignored:agents:routing-dashboard:scout:6",
+      "item_id": "agents:routing-dashboard:scout",
+      "line": 6,
+      "part": "agents"
+    },
+    {
+      "code": "plugin_field_ignored",
+      "file": "~/.claude/plugins/cache/bartab-demo/routing-dashboard/0.1.7/agents/scout.md",
+      "group": "not_as_set",
+      "id": "plugin_field_ignored:agents:routing-dashboard:scout:7",
+      "item_id": "agents:routing-dashboard:scout",
+      "line": 7,
+      "part": "agents"
+    }
+  ],
+  "project": {
+    "dir": "work/parent/proj",
+    "name": "Proj"
+  }
+}

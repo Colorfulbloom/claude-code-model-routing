@@ -163,10 +163,10 @@
     display: block;
   }
 
-  /* Cost is the last visible column here, so it sits on the edge. */
+  /* Cost is the last visible column here, so it carries the well's end gutter. */
   .review-models-table .review-cell.review-end:not(.review-hp),
   .review-models-table .review-th.review-end:not(.review-hp) {
-    padding-right: 0;
+    padding-right: var(--review-gutter);
   }
 
   /* The board draws the four kinds in two columns. */

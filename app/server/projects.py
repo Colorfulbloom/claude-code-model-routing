@@ -202,6 +202,18 @@ def _assign_keys(projects: list[Project]) -> None:
         project.key = key
 
 
+def load_plan(ctx: ProjectsContext) -> str | None:
+    """Return the plan word from routing-dashboard.json, or None. Warns of nothing.
+
+    ``load`` is the full reader and warns on a bad file. A caller that only needs the
+    plan on a timer (the model check) uses this one, so a bad file is not reported
+    again on every pass.
+    """
+    data = _read_object(os.path.join(ctx.config_dir, CONFIG_FILE), False)
+    given = data.get("plan") if data is not None else None
+    return given if isinstance(given, str) and given in PLANS else None
+
+
 def load(ctx: ProjectsContext) -> ProjectList:
     """Read routing-dashboard.json now and return the ``ProjectList`` for ``ctx``.
 

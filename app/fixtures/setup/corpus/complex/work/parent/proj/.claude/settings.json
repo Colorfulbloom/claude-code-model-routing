@@ -1,0 +1,16 @@
+{
+  "effortLevel": "medium",
+  "permissions": {
+    "allow": [
+      "Bash(npm test)"
+    ]
+  },
+  "enabledPlugins": {
+    "hivemind@bartab-demo": true
+  },
+  "hooks": {
+    "PostToolUse": [
+      {"matcher": "Edit|Write", "hooks": [{"type": "command", "command": "bash ./scripts/format.sh"}]}
+    ]
+  }
+}

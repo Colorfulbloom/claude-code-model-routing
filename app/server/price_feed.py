@@ -621,13 +621,33 @@ def model_pricing_layer(
     """
     if managed_settings_path is None:
         return ModelPricingLayer()
-    models_catalog = catalog if catalog is not None else model_catalog.load_catalog()
     try:
         if managed_settings_path.stat().st_size > MANAGED_SETTINGS_MAX_BYTES:
             return ModelPricingLayer()
         settings = _as_obj(_loads(managed_settings_path.read_bytes()))
     except (OSError, ValueError):
         return ModelPricingLayer()
+    return model_pricing_from(settings, catalog)
+
+
+def model_pricing_from(
+    settings: Mapping[str, object] | None,
+    catalog: model_catalog.Catalog | None = None,
+) -> ModelPricingLayer:
+    """Read ``modelPricing`` from managed settings that are already parsed.
+
+    The setup read side reads the managed files through ``read_scope`` and hands the
+    merged document here (``PriceSettings.managed_pricing``). The rules are those of
+    ``model_pricing_layer``.
+
+    Args:
+        settings: The managed settings document, or None for none.
+        catalog: The model catalog that maps override keys to ids.
+
+    Returns:
+        The layer, empty when the document has no usable ``modelPricing``.
+    """
+    models_catalog = catalog if catalog is not None else model_catalog.load_catalog()
     block = _as_obj(settings.get("modelPricing")) if settings is not None else None
     if block is None:
         return ModelPricingLayer()
@@ -705,12 +725,18 @@ def _apply_override(
 
 @dataclass(frozen=True)
 class PriceSettings:
-    """Where the price sources are. ``managed_settings_path`` is None in M1."""
+    """Where the price sources are.
+
+    ``managed_pricing`` returns the parsed managed settings (the setup read side's
+    ``collect_settings.ManagedPricing``, which reads through ``read_scope``). When it
+    is set it wins over ``managed_settings_path``, which tests still use.
+    """
 
     layout: StoreLayout
     managed_settings_path: Path | None = None
     catalog: model_catalog.Catalog | None = None
     bundled_dir: Path = BUNDLED_DIR
+    managed_pricing: Callable[[], Mapping[str, object] | None] | None = None
 
     def models(self) -> model_catalog.Catalog:
         """Return the catalog, loading the bundled rules file when none was given."""
@@ -885,7 +911,10 @@ def _effective(
     conn: sqlite3.Connection, settings: PriceSettings, now: float
 ) -> _Effective:
     base = _resolve_base(conn, settings, now)
-    layer = model_pricing_layer(settings.managed_settings_path, settings.catalog)
+    if settings.managed_pricing is not None:
+        layer = model_pricing_from(settings.managed_pricing(), settings.catalog)
+    else:
+        layer = model_pricing_layer(settings.managed_settings_path, settings.catalog)
     document, touched = apply_layer(base.document, layer)
     return _Effective(document, table_hash(document), base, frozenset(touched))
 

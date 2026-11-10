@@ -1,0 +1,14 @@
+{
+  "disableAllHooks": true,
+  "hooks": {
+    "NotAnEvent": [
+      {"hooks": [{"type": "command", "command": "echo unknown"}]}
+    ],
+    "PreToolUse": [
+      {"matcher": "Bash", "hooks": ["just a string"]}
+    ],
+    "Stop": [
+      {"hooks": [{"type": "command", "command": "echo done"}]}
+    ]
+  }
+}

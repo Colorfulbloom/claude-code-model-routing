@@ -9,6 +9,12 @@ Both use the standard library only. Nothing here binds port 8377.
 # <data>/serve-runs.log and its mint calls to <data>/mints.log.
 # FAKE_SERVE_MODE picks a failure: busy (cannot bind the port), silent (exits at once),
 # badline (a launch line that isn't JSON).
+# It never outlives its test. Like the real server it exits after --idle-exit-minutes
+# with no request (0 turns that off), and it also exits after a hard cap of 600 seconds
+# whatever else happens, so a pytest run that is killed before teardown leaves nothing
+# running. FAKE_SERVE_HARD_CAP_SECONDS can lower the cap, never raise it. Its pid goes
+# to fake-serve.pids two folders above serve.py (the temp checkout), so the test
+# teardown can stop it whether or not server.json exists.
 FAKE_SERVE = r"""
 import http.server
 import json
@@ -16,7 +22,19 @@ import os
 import secrets
 import signal
 import sys
+import threading
 import time
+
+started_at = time.monotonic()
+last_request = [started_at]
+HARD_CAP = min(600.0, float(os.environ.get("FAKE_SERVE_HARD_CAP_SECONDS") or 600))
+with open(
+    os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "..", "..", "fake-serve.pids"
+    ),
+    "a",
+) as pid_fh:
+    pid_fh.write("%d\n" % os.getpid())
 
 argv = sys.argv[1:]
 args = {}
@@ -67,12 +85,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
         pass
 
     def do_GET(self):
+        last_request[0] = time.monotonic()
         self.send_response(200)
         self.send_header("Content-Type", "text/html")
         self.end_headers()
         self.wfile.write(b"<html>ok</html>")
 
     def do_POST(self):
+        last_request[0] = time.monotonic()
         length = int(self.headers.get("Content-Length") or 0)
         body = self.rfile.read(length)
         good = (
@@ -108,7 +128,19 @@ def on_term(signum, frame):
         os._exit(0)
 
 
+def watch_limits():
+    idle_seconds = float(args.get("--idle-exit-minutes", "0")) * 60
+    while True:
+        time.sleep(0.1)
+        now = time.monotonic()
+        if idle_seconds > 0 and now - last_request[0] >= idle_seconds:
+            on_term(0, None)
+        if now - started_at >= HARD_CAP:
+            on_term(0, None)
+
+
 signal.signal(signal.SIGTERM, on_term)
+threading.Thread(target=watch_limits, daemon=True).start()
 record = {
     "port": port,
     "pid": os.getpid(),

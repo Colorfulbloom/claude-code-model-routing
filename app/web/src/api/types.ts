@@ -79,3 +79,13 @@ export type ReviewSession = Schemas["ReviewSession"];
 export type SessionDay = Schemas["SessionDay"];
 export type ChartWindow = Schemas["ChartWindow"];
 export type CardError = Schemas["CardError"];
+
+/** The Setup reads and To fix. Each takes the project and the last answer's etag. */
+export type SetupMap = Schemas["SetupMap"];
+export type SetupPartAnswer = Schemas["SetupPartAnswer"];
+export type SetupPartRow = Schemas["SetupPartRow"];
+export type SetupItem = Schemas["SetupItem"];
+export type SetupPart = SetupItem["part"];
+export type ProblemList = Schemas["ProblemList"];
+export type ProblemRow = Schemas["ProblemRow"];
+export type ToFix = Schemas["ToFix"];

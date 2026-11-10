@@ -5,9 +5,10 @@ Ported from tests/test_collect_overlay.py (ticket #80).
 ``collect.collect`` takes ``overlay={path: bytes}`` and ``reuse=<an earlier collect
 result>``. The old file also drove ``api_settings.resolved``, ``api_settings.answer``
 and ``api_usage._entries`` over the overlay. Those are old server modules that stay
-in the old app, so six tests of them did not come over. Two came over rewritten to
-call ``collect`` and ``resolve.resolve`` directly. Every run reads only its own
-throwaway folders.
+in the old app, so four tests of them did not come over (two in ``NoOverlay`` and two
+in ``Structure``, which test old ``api_settings`` paths the port does not have). Two
+came over rewritten to call ``collect`` and ``resolve.resolve`` directly. Every run
+reads only its own throwaway folders.
 """
 
 # ruff: noqa: PT009, PTH103, PTH118, PTH120, PTH123

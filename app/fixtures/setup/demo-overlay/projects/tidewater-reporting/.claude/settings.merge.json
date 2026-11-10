@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": ["Bash(npm test)"]
+  },
+  "enabledMcpjsonServers": ["ledger"],
+  "hooks": {
+    "PostToolUse": [
+      {"matcher": "Edit|Write", "hooks": [{"type": "command", "command": "bash ./scripts/format.sh"}]}
+    ]
+  }
+}

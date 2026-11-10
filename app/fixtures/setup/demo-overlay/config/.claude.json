@@ -1,0 +1,17 @@
+{
+  "numStartups": 7,
+  "mcpServers": {
+    "notes": {
+      "type": "sse",
+      "url": "https://notes.example.test/sse",
+      "headers": {"X-Api-Key": "fake-xapikey-DEMO0123456789"}
+    }
+  },
+  "projects": {
+    "@@DEMO@@/projects/tidewater-reporting": {
+      "mcpServers": {
+        "scratch": {"command": "node", "args": ["scratch.js", "--password=hunter2demo"]}
+      }
+    }
+  }
+}

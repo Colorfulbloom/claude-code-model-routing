@@ -1,9 +1,10 @@
 """Content security policy, security headers and the per-request index rewrite.
 
-``dist/index.html`` is read once. Each request gets a fresh nonce, which goes on every
-script and link tag, into a ``csp-nonce`` meta tag and into the CSP header. Two more
-meta tags carry the server instance id and the launch command. None of the three is a
-secret.
+``dist/index.html`` is read again when its mtime or size changes (see ``IndexSource``),
+so a rebuild shows without a restart. Each request gets a fresh nonce, which goes on
+every script and link tag, into a ``csp-nonce`` meta tag and into the CSP header. Two
+more meta tags carry the server instance id and the launch command. None of the three
+is a secret.
 """
 
 import html
@@ -152,6 +153,42 @@ def load_index(dist_dir: Path) -> IndexPage:
         logger.warning("web build not found, serving the built-in notice")
         return IndexPage(MISSING_BUILD_PAGE, found=False)
     return IndexPage(source, found=True)
+
+
+class IndexSource:
+    """The index document, re-read when ``dist/index.html`` changes on disk.
+
+    A rebuild writes new asset hashes. A server that kept the first read would serve an
+    index that points at deleted files, so each request checks the file's mtime and size
+    and re-reads it when either moved.
+    """
+
+    def __init__(self, dist_dir: Path) -> None:
+        """Read the index once.
+
+        Args:
+            dist_dir: The folder the web build wrote.
+        """
+        self._dist_dir = dist_dir
+        self._path = dist_dir / "index.html"
+        self._page = load_index(dist_dir)
+        self._stamp = self._stat()
+
+    def _stat(self) -> tuple[int, int] | None:
+        try:
+            info = self._path.stat()
+        except OSError:
+            return None
+        return (info.st_mtime_ns, info.st_size)
+
+    @property
+    def page(self) -> IndexPage:
+        """The current page, re-read first when the file changed."""
+        stamp = self._stat()
+        if stamp != self._stamp:
+            self._page = load_index(self._dist_dir)
+            self._stamp = stamp
+        return self._page
 
 
 class SecurityHeadersMiddleware:

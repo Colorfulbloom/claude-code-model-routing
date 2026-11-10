@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": ["Bash(git status)", "Read(./docs/**)"],
+    "deny": ["Read(./.env)"]
+  },
+  "enabledPlugins": {
+    "routing-dashboard@bartab-demo": true,
+    "hivemind@bartab-demo": true
+  },
+  "hooks": {
+    "PreToolUse": [
+      {"matcher": "Bash", "hooks": [{"type": "command", "command": "python3 ~/bin/check-bash.py --token sk-ant-api03-FAKEDEMOHOOK0000005"}]}
+    ]
+  }
+}

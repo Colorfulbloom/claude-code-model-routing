@@ -23,6 +23,11 @@ import { ModelsPage } from "@/pages/review/ModelsPage";
 import { SessionReviewPage } from "@/pages/review/SessionReviewPage";
 import { SessionsPage } from "@/pages/review/SessionsPage";
 import { SummaryPage } from "@/pages/review/SummaryPage";
+import { SurfacePage } from "@/pages/setup/SurfacePage";
+import { ToFixPage } from "@/pages/setup/ToFixPage";
+import { YourSetupPage } from "@/pages/setup/YourSetupPage";
+import { isSetupPart } from "@/lib/setup-routes";
+import { PART_NAMES } from "@/lib/setup-words";
 import { t } from "@/strings/t";
 
 interface RouteHandle {
@@ -43,7 +48,11 @@ function RouteLayout() {
 
   const projects = useProjects();
   const projectName = projects.data?.projects.find((p) => p.key === project)?.name ?? project;
-  const name = pageName(page);
+  // A surface page is named by its part, and picking an item is no route change for focus.
+  const part = matches.map((m) => m.params.part).find((p) => p !== undefined) ?? null;
+  const name =
+    page === "surface" && part !== null && isSetupPart(part) ? PART_NAMES[part]() : pageName(page);
+  const focusId = page === "surface" ? pathname.split("/").slice(0, 5).join("/") : pathname;
   const title =
     projectName === null
       ? t("title_bare", { page: name })
@@ -55,7 +64,7 @@ function RouteLayout() {
   // Live names its session in the query, so a session switch is a route change for focus too.
   const session = page === "live" ? new URLSearchParams(search).get("session") : null;
   useHarness(page === "picker" ? overlayRef : mainRef, {
-    id: session === null ? pathname : `${pathname}?session=${session}`,
+    id: session === null ? focusId : `${focusId}?session=${session}`,
     title,
     status: name,
   });
@@ -91,6 +100,12 @@ function route(path: string, id: PageId): RouteObject {
         <AgentsPage />
       ) : id === "models" ? (
         <ModelsPage />
+      ) : id === "setup" ? (
+        <YourSetupPage />
+      ) : id === "surface" ? (
+        <SurfacePage />
+      ) : id === "to_fix" ? (
+        <ToFixPage />
       ) : (
         <Placeholder page={id} />
       ),
@@ -120,6 +135,7 @@ export function appRoutes(access: Access): RouteObject[] {
         route("/p/:project/review/agents/:name/edit", "agent_edit"),
         route("/p/:project/review/models", "models"),
         route("/p/:project/setup", "setup"),
+        route("/p/:project/setup/:part", "surface"),
         route("/p/:project/setup/:part/:item", "surface"),
         route("/p/:project/setup/:part/:item/edit", "surface_edit"),
         route("/p/:project/to-fix", "to_fix"),

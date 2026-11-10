@@ -121,6 +121,9 @@ class AppInfo(_Response):
     history: HistoryInfo
     running: list[RunningItem]
     to_fix_count: int | None
+    to_fix: "ToFix" = Field(
+        default_factory=lambda: _unchecked_to_fix()  # noqa: PLW0108 - ToFix is defined below
+    )
     editable_projects: list[str]
     mode: "AppMode"
     clock: "ClockInfo"
@@ -177,6 +180,7 @@ class Project(_Response):
     display_path: str
     state: ProjectState
     running: bool
+    listed: bool
 
 
 class ProjectList(_Response):
@@ -438,6 +442,7 @@ class ModelCheckRow(_Response):
     params: dict[str, str]
     runs: int
     mismatched_runs: int
+    item_id: str | None = None
 
 
 class ModelCheck(_Response):
@@ -533,10 +538,13 @@ REVIEW_RANGES: tuple[ReviewRange, ...] = ("today", "7d", "30d", "90d", "12m", "a
 DEFAULT_REVIEW_RANGE: ReviewRange = "30d"
 ChartUnit = Literal["hour", "day", "week", "month"]
 PagerReason = Literal["no_earlier_data", "newest"]
-# ``no_file`` is an agent type that ran with no user or project agent file, such as a
-# plugin or built-in agent. The page calls it an unknown source until M4.
-AgentScope = Literal["user", "project", "main", "unnamed", "no_file"]
-AgentFileScope = Literal["user", "project"]
+# ``no_file`` is an agent type that ran with no agent file anywhere, such as a built-in
+# agent. ``plugin`` is an agent that a plugin adds and ``managed`` one from the managed
+# folder (M4): both are items of the setup, so their rows carry an ``item_id``.
+AgentScope = Literal[
+    "user", "project", "managed", "plugin", "main", "unnamed", "no_file"
+]
+AgentFileScope = Literal["user", "project", "managed", "plugin"]
 # Why ``set`` holds no value. ``no_file``: no agent file was found. ``sets_nothing``:
 # the file exists and sets neither model nor effort. ``read_failed``: the setup could
 # not be read, and the answer's ``errors`` names the card.
@@ -816,15 +824,23 @@ class AgentRow(_Response):
     share: float | None
     requests: int
     unpriced: Unpriced
+    item_id: str | None = None
+    plugin: str | None = None
 
 
 class AgentNoRuns(_Response):
-    """An agent file with no run in the range."""
+    """An agent file with no run in the range.
+
+    ``item_id`` is the setup item of the agent (``agents:<name>``, or
+    ``agents:<plugin>:<name>`` for a plugin agent), and ``plugin`` the plugin's name.
+    """
 
     agent: str
     scope: AgentFileScope
     set: SetPair | None
     set_reason: SetReason | None
+    item_id: str | None = None
+    plugin: str | None = None
 
 
 class AgentList(_ReviewAnswer):
@@ -865,3 +881,552 @@ class ModelList(_ReviewAnswer):
     kinds: list[ModelKinds]
     legend: KindCosts
     unpriced: Unpriced
+
+
+# Setup (M4). The contract is docs/rebuild/planning/m4-build.md section 5, with the
+# owner's answers in section 15 and the designer's plan review in section 16 there.
+# A Setup answer whose asked etag still matches is the shared ``Unchanged`` model.
+#
+# Paths. ``file`` is always a display path (``~/...`` under HOME, project-relative
+# inside a project, or the managed folder's name). ``full_path`` is the absolute path.
+# The page shows ``file`` and Copy path copies ``full_path`` (owner, November 9).
+#
+# Masking. Every value that can hold a secret is a ``MaskedText``, masked on the
+# server before it reaches these models, and says whether masking hid anything. No
+# model here carries a file body.
+#
+# Ids. An item id is readable and stable: ``<part>:<key path>`` with no scope in it,
+# so a value that moves between scopes keeps its id (``settings:effortLevel``,
+# ``agents:scout``, ``hooks:PreToolUse:Bash:0``). The page puts it in the URL with
+# ``encodeURIComponent``. ``agents:<name>`` is the id Review, Live and setup share.
+# A plugin agent is always its own item, ``agents:<plugin>:<name>``, even when a
+# user or project agent has the same name (owner, November 9), so the two never
+# share an id or a route. Names hold no colon, so the forms can't collide.
+#
+# Order. ``items`` come in the part's own order (load order for instructions,
+# top-wins order inside a name, hook event order, then name) and ``order`` repeats it,
+# so a refetch never reorders rows. ``group`` and ``groups`` split long parts.
+#
+# Task 9 widened ``AgentScope`` with ``plugin`` and ``managed``, gave the Agents rows
+# and the Model check rows an ``item_id``, and added ``to_fix`` to ``AppInfo`` and
+# ``listed`` to ``Project``, so the OpenAPI file changed once.
+
+SetupPart = Literal[
+    "settings",
+    "agents",
+    "instructions",
+    "rules",
+    "skills",
+    "hooks",
+    "permissions",
+    "mcp",
+    "plugins",
+    "output_style",
+]
+SETUP_PARTS: tuple[SetupPart, ...] = (
+    "settings",
+    "agents",
+    "instructions",
+    "rules",
+    "skills",
+    "hooks",
+    "permissions",
+    "mcp",
+    "plugins",
+    "output_style",
+)
+# Scopes in top-wins order. ``command_line`` is never visible to the server, and
+# ``shell`` is the server's own environment from when it started (owner answer 9).
+SetupScope = Literal[
+    "managed", "command_line", "project_local", "project", "user", "plugin", "shell"
+]
+# Where inside a scope a file sits. ``parent`` marks a CLAUDE.md or CLAUDE.local.md
+# in a folder above the project, read up to the filesystem root as Claude Code does;
+# the page shows it as "Parent folder" under Shared project (owner, November 9).
+SetupLocation = Literal["parent"]
+SETUP_SCOPES: tuple[SetupScope, ...] = (
+    "managed",
+    "command_line",
+    "project_local",
+    "project",
+    "user",
+    "plugin",
+    "shell",
+)
+ScopeState = Literal["set", "not_set", "not_visible", "unreadable"]
+ConfidenceLevel = Literal["tested", "documented", "assumed"]
+# Why a file was not read. ``outside_scope`` and ``plugin_outside_plugins`` are not
+# read failures: the file lies outside what the owner allowed (m4-build.md section 7),
+# and the page says "not read here".
+UnreadableReason = Literal[
+    "permission",
+    "not_utf8",
+    "too_large",
+    "vanished",
+    "folder_unlistable",
+    "outside_scope",
+    "plugin_outside_plugins",
+]
+NotReadCode = Literal["outside_scope", "plugin_outside_plugins"]
+EmptyReason = Literal["none_found", "not_visible"]
+EmptyAction = Literal["docs", "copy_path"]
+LoadsKind = Literal["always", "on_demand", "when_no_claude_md"]
+AppliesWhen = Literal["now", "new_session", "restart", "reload_plugins"]
+# Where the value that runs comes from. ``set``: a source wins as written. ``cap``:
+# a cap or limit changed it (see ``by_item``). ``default``: nothing sets it.
+# ``unknown``: the dashboard can't tell.
+EffectiveOrigin = Literal["set", "cap", "default", "unknown"]
+ReadOnlyCode = Literal[
+    "managed", "plugin", "claude_json_command", "command_line", "not_visible"
+]
+RiskTier = Literal["safe", "risky"]
+ProblemKind = Literal["read_failure", "problem", "cant_tell", "notice"]
+ProblemGroup = Literal["couldnt_read", "wont_load", "not_as_set", "cant_tell", "notice"]
+FixKind = Literal["open_item", "copy_command", "copy_path", "cant_fix_here"]
+ImportState = Literal["read", "missing", "cycle", "too_deep", "not_read"]
+PermissionKind = Literal["allow", "ask", "deny", "default_mode", "directory"]
+ToFixState = Literal["ok", "unchecked", "failed"]
+
+
+class Coded(_Response):
+    """A code the page turns into words, with its string parameters."""
+
+    code: str
+    params: dict[str, str]
+
+
+class MaskedText(_Response):
+    """A value that may hold a secret. ``masked`` is True when masking hid any part."""
+
+    text: str
+    masked: bool
+
+
+class Confidence(_Response):
+    """How sure the dashboard is, and the Claude Code version a test ran on."""
+
+    level: ConfidenceLevel
+    tested_on: str | None
+
+
+class ItemReason(_Response):
+    """Why the item resolves as it does.
+
+    Why the item resolves as it does. ``ref_item`` names another item the reason is
+    about (the cap that lowers it, the file that overrides it), or None.
+    """
+
+    code: str
+    params: dict[str, str]
+    rule_id: str | None
+    ref_item: str | None
+
+
+class ItemCheck(_Response):
+    """What the Model check says about an agent's own file, judged over no runs.
+
+    ``code`` and ``params`` are the Model check's reason code and params for the agent
+    (``model_check.judge_agent`` with an empty run list), so the Agents inspector says
+    what the Model check says. Set only for a project or user agent whose file loads
+    and sets a model or an effort.
+    """
+
+    code: str
+    params: dict[str, str]
+
+
+class Effective(_Response):
+    """The value that runs and where it comes from.
+
+    The value that runs and where it comes from, so the page never parses a reason.
+    ``value`` is None for a union part or when nothing runs.
+    """
+
+    value: MaskedText | None
+    origin: EffectiveOrigin
+    by_item: str | None
+
+
+class SetupSource(_Response):
+    """One place an item is set, in top-wins order.
+
+    ``key`` is what sets it there: a settings key path (``effortLevel``), an env
+    name (``env.CLAUDE_CODE_EFFORT_LEVEL``), a flag (``--effort``) or a front matter
+    key. ``value`` is None for a union part.
+    """
+
+    scope: SetupScope
+    key: str
+    file: str | None
+    full_path: str | None
+    line: int | None
+    value: MaskedText | None
+    status: ModelCheckStatus
+    plugin: str | None
+    location: SetupLocation | None = None
+
+
+class ScopeReach(_Response):
+    """A scope that could set this item.
+
+    A scope that could set this item, and whether the server can see it. A Command line
+    entry appears only for an item that has a flag.
+    """
+
+    scope: SetupScope
+    visible: bool
+
+
+class SetupLoads(_Response):
+    """When an instruction or rules file loads. ``globs`` only for ``on_demand``."""
+
+    kind: LoadsKind
+    globs: list[str]
+
+
+class ReadOnly(_Response):
+    """Why an item can't change here and who owns it.
+
+    ``command`` is the ``claude mcp`` command for a user or local MCP server, masked.
+    For a plugin item ``params`` names the plugin and the page words how to change
+    it (update or disable the plugin).
+    """
+
+    code: ReadOnlyCode
+    params: dict[str, str]
+    command: MaskedText | None
+
+
+class AgentField(_Response):
+    """One front matter field of an agent file.
+
+    One front matter field. ``ignored`` for fields Claude Code ignores on a plugin
+    agent, which still carry their value and line.
+    """
+
+    name: str
+    value: MaskedText | None
+    line: int | None
+    ignored: bool
+
+
+class AgentFacts(_Response):
+    """Inspector facts for an agent file."""
+
+    plugin: str | None
+    fields: list[AgentField]
+
+
+class ImportRef(_Response):
+    """One ``@import`` in an instruction file.
+
+    One ``@import`` in an instruction file. ``target_item`` is the target's item id when
+    the target is itself an item.
+    """
+
+    target: str
+    target_item: str | None
+    depth: int
+    state: ImportState
+    line: int | None
+
+
+class InstructionFacts(_Response):
+    """Inspector facts for a CLAUDE.md or rules file."""
+
+    lines: int
+    bytes: int
+    imports: list[ImportRef]
+
+
+class SkillFacts(_Response):
+    """Inspector facts for a skill or legacy command.
+
+    Inspector facts for a skill or legacy command. ``invoke`` is the slash form, with
+    the plugin namespace when there is one.
+    """
+
+    description: MaskedText | None
+    invoke: str
+    namespace: str | None
+    legacy_command: bool
+
+
+class HookFacts(_Response):
+    """Inspector facts for one hook handler."""
+
+    event: str
+    matcher: str | None
+    handler_type: str
+    command: MaskedText | None
+    timeout: int | None
+
+
+class McpFacts(_Response):
+    """Inspector facts for one MCP server.
+
+    Inspector facts for one MCP server. Env and headers show names and masked values.
+    ``approved`` is None when no approval applies.
+    """
+
+    transport: str
+    command: MaskedText | None
+    url: MaskedText | None
+    args: list[MaskedText]
+    env: dict[str, MaskedText]
+    headers: dict[str, MaskedText]
+    approved: bool | None
+
+
+class PermissionFacts(_Response):
+    """Inspector facts for one permission rule, ``defaultMode`` or an extra folder."""
+
+    kind: PermissionKind
+    tool: str | None
+    pattern: str | None
+
+
+class PluginScopeState(_Response):
+    """Whether one scope's ``enabledPlugins`` turns the plugin on or off."""
+
+    scope: SetupScope
+    enabled: bool
+
+
+class PluginFacts(_Response):
+    """Inspector facts for one plugin. ``contents`` lists the item ids it adds."""
+
+    version: str | None
+    marketplace: str | None
+    enabled: list[PluginScopeState]
+    orphaned_versions: list[str]
+    contents: list[str]
+
+
+class OutputStyleFacts(_Response):
+    """Inspector facts for the output style setting or one style file."""
+
+    active: str | None
+    builtin: bool
+
+
+class ItemFacts(_Response):
+    """The part's extra inspector lines.
+
+    The part's extra inspector lines. Exactly one field is set, for the item's kind, or
+    none for a plain setting.
+    """
+
+    agent: AgentFacts | None = None
+    instruction: InstructionFacts | None = None
+    skill: SkillFacts | None = None
+    hook: HookFacts | None = None
+    mcp: McpFacts | None = None
+    permission: PermissionFacts | None = None
+    plugin: PluginFacts | None = None
+    output_style: OutputStyleFacts | None = None
+
+
+class SetupItem(_Response):
+    """One item on a surface page. The inspector reads every field.
+
+    ``key`` is the raw key or name, and ``label_known`` says whether the page has a
+    label for it; when not, the page shows ``key`` (open-ended settings keys never
+    fail the closed-enum test). ``not_read`` is set when the item's file lies outside
+    the allowed roots, a state apart from Couldn't read and Unknown. ``may_change``
+    is True when a file the part couldn't read could change this item's answer.
+    ``usage`` is set for agents and model and effort settings, over the last 30 days.
+    ``real_path`` is the target's display path when the file is a symlink. For an
+    agent, ``status`` is the outcome of what runs (the Model check's word for the file's
+    model and effort over no runs), and the load status stays in ``reason``; ``check``
+    carries the Model check's code and params when that outcome was judged.
+    """
+
+    id: str
+    part: SetupPart
+    key: str
+    name: str
+    label_known: bool
+    order: int
+    group: str | None
+    scope: SetupScope | None
+    effective: Effective | None
+    sources: list[SetupSource]
+    winner: int | None
+    reach: list[ScopeReach]
+    status: ModelCheckStatus
+    reason: ItemReason | None
+    confidence: Confidence
+    loads: SetupLoads | None
+    applies: AppliesWhen | None
+    writable: bool
+    read_only_reason: ReadOnly | None
+    risk_tier: RiskTier | None
+    feature: Literal["core"]
+    facts: ItemFacts
+    usage: Coded | None
+    real_path: str | None
+    not_read: NotReadCode | None
+    may_change: bool
+    location: SetupLocation | None = None
+    check: ItemCheck | None = None
+
+
+class UnreadableFile(_Response):
+    """A file a collector could not read, or was not allowed to.
+
+    ``problem`` is the id of its To fix row, or None for a "not read here" file.
+    ``part`` is the setup part the file feeds; a collector that serves several parts
+    sets it so the setup map can split one ``Collected.unreadable`` list.
+    """
+
+    file: str
+    full_path: str | None
+    scope: SetupScope | None
+    reason: UnreadableReason
+    problem: str | None
+    part: SetupPart | None = None
+
+
+class EmptyInfo(_Response):
+    """Why a part is empty, and the target of its empty state's action.
+
+    Why a part is empty, and the target of the empty state's action: a docs anchor URL
+    for ``docs``, or a full folder path for ``copy_path``.
+    """
+
+    reason: EmptyReason
+    action: EmptyAction | None
+    target: str | None
+
+
+class GroupCount(_Response):
+    """One group of a long part, in order, with its item count."""
+
+    key: str
+    count: int
+
+
+class StatusCount(_Response):
+    """How many items of a part carry one status."""
+
+    status: ModelCheckStatus
+    count: int
+
+
+class SetupScopeCell(_Response):
+    """One part in one scope, for "Show where each comes from"."""
+
+    scope: SetupScope
+    state: ScopeState
+    summary: Coded | None
+
+
+class SetupPartRow(_Response):
+    """One row of the setup map.
+
+    One row of the setup map. ``summary`` carries the facts the drawn summary uses in
+    ``params`` (effective model and effort, agents with no recent runs, on-demand
+    globs). ``scopes`` is always present, so the Switch flips with no fetch.
+    """
+
+    part: SetupPart
+    summary: Coded
+    statuses: list[StatusCount]
+    counted_problems: int
+    unreadable: bool
+    empty: EmptyInfo | None
+    scopes: list[SetupScopeCell]
+
+
+class _SetupAnswer(_Response):
+    """Fields every full Setup answer carries."""
+
+    project: str
+    server_time: datetime
+    as_of: datetime | None
+    etag: str
+    unchanged: Literal[False]
+
+
+class SetupMap(_SetupAnswer):
+    """Answer of ``GET /api/setup``.
+
+    ``server_started_at`` dates the shell scope. ``listed`` is False for a project
+    that is not on Bar Tab's list; its project scopes then read "Not read here" with
+    a notice (owner, November 9).
+    """
+
+    parts: list[SetupPartRow]
+    notices: list[Coded]
+    server_started_at: datetime
+    listed: bool = True
+
+
+class SetupPartAnswer(_SetupAnswer):
+    """Answer of ``GET /api/setup/{part}``."""
+
+    part: SetupPart
+    items: list[SetupItem]
+    groups: list[GroupCount]
+    unreadable: list[UnreadableFile]
+    empty: EmptyInfo | None
+
+
+class ProblemFix(_Response):
+    """The one action a To fix row offers.
+
+    The one action a To fix row offers. ``target`` is an item id, a masked command or a
+    full path, by ``kind``.
+    """
+
+    kind: FixKind
+    target: str | None
+    reason: str | None
+
+
+class ProblemRow(_Response):
+    """One row of the problems feed.
+
+    One row of the problems feed. ``id`` is stable across refetches. ``thing`` is the
+    display name the title names.
+    """
+
+    id: str
+    kind: ProblemKind
+    group: ProblemGroup
+    code: str
+    thing: str
+    part: SetupPart | None
+    item_id: str | None
+    file: str | None
+    full_path: str | None
+    line: int | None
+    params: dict[str, str]
+    confidence: Confidence
+    fix: ProblemFix
+
+
+class ToFix(_Response):
+    """The nav's To fix count.
+
+    The nav's To fix count. ``state`` is ``unchecked`` before the first problems pass
+    and ``failed`` when it couldn't run; ``count`` is None then. ``etag`` is the
+    problems answer's etag, so the nav and the To fix page agree.
+    """
+
+    state: ToFixState
+    count: int | None
+    etag: str | None
+
+
+def _unchecked_to_fix() -> ToFix:
+    """Return the To fix state before any problems pass (``AppInfo.to_fix`` default)."""
+    return ToFix(state="unchecked", count=None, etag=None)
+
+
+class ProblemList(_SetupAnswer):
+    """Answer of ``GET /api/problems``. ``counted`` equals ``to_fix.count``."""
+
+    rows: list[ProblemRow]
+    counted: int

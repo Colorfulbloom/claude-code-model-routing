@@ -1,0 +1,171 @@
+{
+  "_doc": "differences lists the kinds of difference the new Settings answer may have from the old /api/settings answer. Each entry is {id, kind, cases, count, reason, plan_ref}. kind is the label the comparison in test_differential_settings.py gives a difference, cases is '*' or the recorded payloads it applies to, and count is how many differences of that kind the 127 payloads hold (a pair [least, most] when it depends on the Python version). reason says why the new answer differs. plan_ref points to the plan section that allows it. Any difference outside these entries fails. mappings lists the rules the comparison applies before it compares, so they show no difference. The test fails when a count is off.",
+  "differences": [
+    {
+      "id": "unparsed-file",
+      "kind": "file-unparsed",
+      "cases": [
+        "demo/driftwood",
+        "resolution/settings-user-not-json-skipped"
+      ],
+      "count": 2,
+      "reason": "A settings file the old answer marks unparsed becomes a Won't load row with json_invalid or not_object (managed_invalid for a managed file), so the code names the cause the old status word hid.",
+      "plan_ref": "m4-build.md section 6, allowed difference 3"
+    },
+    {
+      "id": "json-error-line",
+      "kind": "json-error-line",
+      "cases": [
+        "demo/driftwood"
+      ],
+      "count": [0, 1],
+      "reason": "The old line for a file that does not parse comes from the recorder's Python (3.9), which reports a trailing comma on the line of the closing brace. Python 3.13 reports the comma's own line, one line earlier. The count is 1 on 3.13 and 0 on 3.11 and 3.12.",
+      "plan_ref": "m4-build.md section 6, allowed difference 3, as the line shows"
+    },
+    {
+      "id": "ignored-beaten-by-a-higher-scope",
+      "kind": "ignored-beaten",
+      "cases": [
+        "demo/tidewater-reporting"
+      ],
+      "count": 2,
+      "reason": "The resolver calls a user effortLevel ignored (Opus 5.5 skips it). When a higher file scope wins the key anyway, the new item shows that user value as overridden, and its Not as set row goes. Where nothing higher wins it stays ignored. One difference is the source status and one is the old attention row.",
+      "plan_ref": "m4-build.md section 6, allowed difference 2, and the task 4 decision in the build brief"
+    },
+    {
+      "id": "empty-variable-is-no-row",
+      "kind": "ignored-empty-variable",
+      "cases": [
+        "demo/driftwood",
+        "demo/harbor-light",
+        "demo/saltmarsh",
+        "resolution/agent-effort-env-empty-frontmatter-high",
+        "resolution/auto-compact-env-empty",
+        "resolution/effort-env-empty-project-high"
+      ],
+      "count": 6,
+      "reason": "The old attention list holds a Not as set row for an environment variable set to an empty string. Claude Code treats an empty value as not set (rule effort-env-empty-ignored, tested on 2.1.302), so there is nothing to fix. The new item keeps the source as ignored and makes no row for it. Any other source of the key keeps its own row.",
+      "plan_ref": "m4-build.md task 10 (the setup-empty demo showed two rows for one empty variable)"
+    },
+    {
+      "id": "default-unknown-is-no-row",
+      "kind": "default-unknown",
+      "cases": "*",
+      "count": 283,
+      "reason": "The old attention list holds an unknown row for a key nothing sets (the auto-compact window and the cache lifetime, on most cases). The new item reads origin unknown, and To fix makes a Can't tell row only for a value a file or the shell sets. There is nothing to fix.",
+      "plan_ref": "m4-build.md section 6, allowed difference 2, and section 5 (To fix never counts normal precedence)"
+    },
+    {
+      "id": "default-only-row-has-no-item",
+      "kind": "default-only-row",
+      "cases": "*",
+      "count": 685,
+      "reason": "The old answer has a row for every key the resolver knows, set or not. The new Settings part has one item per key set anywhere, plus model and effortLevel, which always have one because the setup map links to them (section 16, corpus decisions).",
+      "plan_ref": "m4-build.md section 16, build results (Settings always carries model and effortLevel)"
+    },
+    {
+      "id": "plain-key-has-no-old-row",
+      "kind": "plain-key",
+      "cases": "*",
+      "count": 21,
+      "reason": "The new Settings part shows any key a file sets, such as modelSettings, deniedModels or subagentPromptCacheTtl. The old answer has no main row for these (modelSettings and the cache lifetime reach it only through other rows and agent rows).",
+      "plan_ref": "m4-build.md section 6, allowed difference 5 (the old answer has no items beyond its resolver rows)"
+    },
+    {
+      "id": "missing-folder-project",
+      "kind": "missing-folder",
+      "cases": [
+        "demo/lantern"
+      ],
+      "count": 1,
+      "reason": "A listed project whose folder is missing has an old answer with no entries and no files, so it says nothing about the user and managed scopes. The new part still reads those two, and its project scopes stay empty (the comparison checks that). The plan does not say what a missing folder shows, so this is a build decision.",
+      "plan_ref": "not in the plan, a build decision reported to the lead"
+    },
+    {
+      "id": "agent-not-md-is-a-wont-load-row",
+      "kind": "agent-not-md",
+      "cases": [
+        "resolution/agent-bak-copy-skipped"
+      ],
+      "count": 1,
+      "reason": "The old answer gives a file in an agents folder that is not .md (a .bak copy) the status ignored. The new Agents part makes no item for it and shows a Won't load row with the code agent_not_md, so the row names the cause.",
+      "plan_ref": "m4-build.md section 5, first code list (agent_not_md under Won't load)"
+    },
+    {
+      "id": "agent-same-name-takes-the-first",
+      "kind": "agent-same-name",
+      "cases": [
+        "resolution/agent-same-name-one-tree"
+      ],
+      "count": 2,
+      "reason": "Two files with one name in one folder tree both read unknown in the old answer, because Claude Code picks one by filesystem read order (rule agent-file-same-name-one-tree, tested on 2.1.302). The new Agents part takes the first in sorted order as in effect, marks the item assumed, and makes a Won't load row (same_name_in_folder) for the other, which reads invalid. One difference per file.",
+      "plan_ref": "m4-build.md section 5, first code list (same_name_in_folder under Won't load), and section 18, task 6 results"
+    },
+    {
+      "id": "agent-unknown-field-is-no-row",
+      "kind": "agent-unknown-field",
+      "cases": [
+        "resolution/agent-unknown-field"
+      ],
+      "count": 1,
+      "reason": "The old answer gives an agent file that sets a field Claude Code does not read (foo) the status ignored. The agent still loads, so the new Agents part shows it in effect. Its Not as set list has no code for an unknown field of a user or project agent (only plugin_field_ignored for plugin agents), so the old warning has no new row. Open for the owner.",
+      "plan_ref": "m4-build.md section 5, first code list (Not as set codes), and section 18, task 6 results"
+    }
+  ],
+  "mappings": [
+    {
+      "id": "status-words",
+      "applies": "every source and item status",
+      "reason": "The old and new answers use the same seven status words, so nothing maps. The one exception is the ignored-beaten difference above.",
+      "plan_ref": "m4-build.md section 6, allowed difference 1"
+    },
+    {
+      "id": "attention-groups",
+      "applies": "the old attention rows of the main session",
+      "reason": "unknown maps to Can't tell, lowered and ignored to Not as set, and invalid to Won't load (value_invalid). Overridden leaves the list. A settingsFile row maps to the Won't load row of its file.",
+      "plan_ref": "m4-build.md section 6, allowed difference 2"
+    },
+    {
+      "id": "unreadable-file",
+      "applies": "settings files the old answer marks unreadable",
+      "reason": "A file the old answer marks unreadable becomes a Couldn't read entry. No recorded case has one, because git cannot hold a file with no read permission. test_collect_settings.py builds those states.",
+      "plan_ref": "m4-build.md section 6, allowed difference 3"
+    },
+    {
+      "id": "display-paths",
+      "applies": "every old file path",
+      "reason": "The old answer shows paths relative to the fixture folder (config/settings.json, project/.claude/settings.json). The new one shows ~/config/settings.json and .claude/settings.json, and a managed file under its folder's name. The comparison maps the old path before it compares.",
+      "plan_ref": "m4-build.md section 6, allowed difference 4"
+    },
+    {
+      "id": "other-parts",
+      "applies": "skills, instructions, hooks, MCP, plugins, output style and permissions",
+      "reason": "The old answer has no items for these parts, so the Permissions and Output style items the same collector makes have no old answer to compare.",
+      "plan_ref": "m4-build.md section 6, allowed difference 5"
+    },
+    {
+      "id": "command-line-scope",
+      "applies": "the 18 main flag entries and 3 cli_settings entries of the resolver folders",
+      "reason": "The server never sees a flag, so the Command line scope reads not visible in real mode. The test feeds the session's flags and cli_settings to the resolver through the seam the collector leaves open, so those entries compare as recorded.",
+      "plan_ref": "m4-build.md section 6, allowed difference 6"
+    },
+    {
+      "id": "plugin-agents",
+      "applies": "the Agents part",
+      "reason": "Plugin agents appear in the new Agents part and not in the old answer. This comparison leaves agent entries to the Agents collector, which test_agent_setup.py compares with the old pin check.",
+      "plan_ref": "m4-build.md section 6, allowed difference 7"
+    },
+    {
+      "id": "agent-entries",
+      "applies": "the 364 agent entries of the old answers (agentFile, model, effort, autoCompactWindow, subagentPromptCacheTtl)",
+      "reason": "The Settings collector makes no agent items, so the model, effort and other agent entries have nothing to compare with here. Two checks touch them. plain-key-beaten reads the old agent rows of a key the new side shows as a plain key. The agentFile entries (their load status) are compared with the Agents part's name sources and Won't load rows (the agent-* kinds above).",
+      "plan_ref": "m4-build.md section 4, rows 1 and 2 (the Agents collector owns them)"
+    },
+    {
+      "id": "hidden-values",
+      "applies": "every value the old answer hides",
+      "reason": "The old answer hides a value as the word hidden. The new answer masks under the 26-07 rules and says so with the masked flag. The comparison requires the new value to be masked where the old one is hidden, and requires equal text elsewhere.",
+      "plan_ref": "m4-build.md section 7 and section 16, need 13"
+    }
+  ]
+}

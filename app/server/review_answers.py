@@ -358,6 +358,7 @@ def build_summary(ctx: Context, setup: agent_setup.AgentSetup) -> Summary:
             entries=setup.entries,
             runs_by_agent=_check_runs(cur.runs),
             catalog=setup.catalog,
+            item_of=agent_setup.item_lookup(setup.entries, setup.refs),
         )
     return Summary(
         **_shared(ctx, _setup_errors(setup, "model_check")),  # pyright: ignore[reportArgumentType]
@@ -516,6 +517,8 @@ def build_agents(ctx: Context, setup: agent_setup.AgentSetup) -> AgentList:
                 share=agent.share,
                 requests=agent.sums.requests,
                 unpriced=_unpriced(agent.sums.unpriced),
+                item_id=check.item_id,
+                plugin=check.plugin,
             )
         )
     return AgentList(

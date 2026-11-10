@@ -1,6 +1,79 @@
 {
   "components": {
     "schemas": {
+      "AgentFacts": {
+        "additionalProperties": false,
+        "description": "Inspector facts for an agent file.",
+        "properties": {
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/AgentField"
+            },
+            "title": "Fields",
+            "type": "array"
+          },
+          "plugin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plugin"
+          }
+        },
+        "required": [
+          "plugin",
+          "fields"
+        ],
+        "title": "AgentFacts",
+        "type": "object"
+      },
+      "AgentField": {
+        "additionalProperties": false,
+        "description": "One front matter field of an agent file.\n\nOne front matter field. ``ignored`` for fields Claude Code ignores on a plugin\nagent, which still carry their value and line.",
+        "properties": {
+          "ignored": {
+            "title": "Ignored",
+            "type": "boolean"
+          },
+          "line": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MaskedText"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "value",
+          "line",
+          "ignored"
+        ],
+        "title": "AgentField",
+        "type": "object"
+      },
       "AgentList": {
         "additionalProperties": false,
         "description": "Answer of ``GET /api/agents``. ``ran`` adds up to the Cost tile.",
@@ -153,16 +226,40 @@
       },
       "AgentNoRuns": {
         "additionalProperties": false,
-        "description": "An agent file with no run in the range.",
+        "description": "An agent file with no run in the range.\n\n``item_id`` is the setup item of the agent (``agents:<name>``, or\n``agents:<plugin>:<name>`` for a plugin agent), and ``plugin`` the plugin's name.",
         "properties": {
           "agent": {
             "title": "Agent",
             "type": "string"
           },
+          "item_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Item Id"
+          },
+          "plugin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plugin"
+          },
           "scope": {
             "enum": [
               "user",
-              "project"
+              "project",
+              "managed",
+              "plugin"
             ],
             "title": "Scope",
             "type": "string"
@@ -222,12 +319,34 @@
             ],
             "title": "Cost"
           },
+          "item_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Item Id"
+          },
           "params": {
             "additionalProperties": {
               "type": "string"
             },
             "title": "Params",
             "type": "object"
+          },
+          "plugin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plugin"
           },
           "ran": {
             "$ref": "#/components/schemas/RanPair"
@@ -284,6 +403,8 @@
             "enum": [
               "user",
               "project",
+              "managed",
+              "plugin",
               "main",
               "unnamed",
               "no_file"
@@ -455,6 +576,9 @@
             "format": "date-time",
             "title": "Server Time",
             "type": "string"
+          },
+          "to_fix": {
+            "$ref": "#/components/schemas/ToFix"
           },
           "to_fix_count": {
             "anyOf": [
@@ -701,6 +825,61 @@
           "rate_n"
         ],
         "title": "ClockInfo",
+        "type": "object"
+      },
+      "Coded": {
+        "additionalProperties": false,
+        "description": "A code the page turns into words, with its string parameters.",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "params": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Params",
+            "type": "object"
+          }
+        },
+        "required": [
+          "code",
+          "params"
+        ],
+        "title": "Coded",
+        "type": "object"
+      },
+      "Confidence": {
+        "additionalProperties": false,
+        "description": "How sure the dashboard is, and the Claude Code version a test ran on.",
+        "properties": {
+          "level": {
+            "enum": [
+              "tested",
+              "documented",
+              "assumed"
+            ],
+            "title": "Level",
+            "type": "string"
+          },
+          "tested_on": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tested On"
+          }
+        },
+        "required": [
+          "level",
+          "tested_on"
+        ],
+        "title": "Confidence",
         "type": "object"
       },
       "CostChart": {
@@ -997,6 +1176,97 @@
         "title": "Cum",
         "type": "object"
       },
+      "Effective": {
+        "additionalProperties": false,
+        "description": "The value that runs and where it comes from.\n\nThe value that runs and where it comes from, so the page never parses a reason.\n``value`` is None for a union part or when nothing runs.",
+        "properties": {
+          "by_item": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "By Item"
+          },
+          "origin": {
+            "enum": [
+              "set",
+              "cap",
+              "default",
+              "unknown"
+            ],
+            "title": "Origin",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MaskedText"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "value",
+          "origin",
+          "by_item"
+        ],
+        "title": "Effective",
+        "type": "object"
+      },
+      "EmptyInfo": {
+        "additionalProperties": false,
+        "description": "Why a part is empty, and the target of its empty state's action.\n\nWhy a part is empty, and the target of the empty state's action: a docs anchor URL\nfor ``docs``, or a full folder path for ``copy_path``.",
+        "properties": {
+          "action": {
+            "anyOf": [
+              {
+                "enum": [
+                  "docs",
+                  "copy_path"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action"
+          },
+          "reason": {
+            "enum": [
+              "none_found",
+              "not_visible"
+            ],
+            "title": "Reason",
+            "type": "string"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target"
+          }
+        },
+        "required": [
+          "reason",
+          "action",
+          "target"
+        ],
+        "title": "EmptyInfo",
+        "type": "object"
+      },
       "EndedSession": {
         "additionalProperties": false,
         "description": "The newest session in a project that is no longer running.",
@@ -1076,6 +1346,26 @@
           "path"
         ],
         "title": "ErrorEnvelope",
+        "type": "object"
+      },
+      "GroupCount": {
+        "additionalProperties": false,
+        "description": "One group of a long part, in order, with its item count.",
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "count"
+        ],
+        "title": "GroupCount",
         "type": "object"
       },
       "HistoryInfo": {
@@ -1162,6 +1452,117 @@
           "no_usage_rows"
         ],
         "title": "HistoryInfo",
+        "type": "object"
+      },
+      "HookFacts": {
+        "additionalProperties": false,
+        "description": "Inspector facts for one hook handler.",
+        "properties": {
+          "command": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MaskedText"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "event": {
+            "title": "Event",
+            "type": "string"
+          },
+          "handler_type": {
+            "title": "Handler Type",
+            "type": "string"
+          },
+          "matcher": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matcher"
+          },
+          "timeout": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timeout"
+          }
+        },
+        "required": [
+          "event",
+          "matcher",
+          "handler_type",
+          "command",
+          "timeout"
+        ],
+        "title": "HookFacts",
+        "type": "object"
+      },
+      "ImportRef": {
+        "additionalProperties": false,
+        "description": "One ``@import`` in an instruction file.\n\nOne ``@import`` in an instruction file. ``target_item`` is the target's item id when\nthe target is itself an item.",
+        "properties": {
+          "depth": {
+            "title": "Depth",
+            "type": "integer"
+          },
+          "line": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line"
+          },
+          "state": {
+            "enum": [
+              "read",
+              "missing",
+              "cycle",
+              "too_deep",
+              "not_read"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "target": {
+            "title": "Target",
+            "type": "string"
+          },
+          "target_item": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Item"
+          }
+        },
+        "required": [
+          "target",
+          "target_item",
+          "depth",
+          "state",
+          "line"
+        ],
+        "title": "ImportRef",
         "type": "object"
       },
       "Ingest": {
@@ -1281,6 +1682,192 @@
           "file"
         ],
         "title": "IngestError",
+        "type": "object"
+      },
+      "InstructionFacts": {
+        "additionalProperties": false,
+        "description": "Inspector facts for a CLAUDE.md or rules file.",
+        "properties": {
+          "bytes": {
+            "title": "Bytes",
+            "type": "integer"
+          },
+          "imports": {
+            "items": {
+              "$ref": "#/components/schemas/ImportRef"
+            },
+            "title": "Imports",
+            "type": "array"
+          },
+          "lines": {
+            "title": "Lines",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "lines",
+          "bytes",
+          "imports"
+        ],
+        "title": "InstructionFacts",
+        "type": "object"
+      },
+      "ItemCheck": {
+        "additionalProperties": false,
+        "description": "What the Model check says about an agent's own file, judged over no runs.\n\n``code`` and ``params`` are the Model check's reason code and params for the agent\n(``model_check.judge_agent`` with an empty run list), so the Agents inspector says\nwhat the Model check says. Set only for a project or user agent whose file loads\nand sets a model or an effort.",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "params": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Params",
+            "type": "object"
+          }
+        },
+        "required": [
+          "code",
+          "params"
+        ],
+        "title": "ItemCheck",
+        "type": "object"
+      },
+      "ItemFacts": {
+        "additionalProperties": false,
+        "description": "The part's extra inspector lines.\n\nThe part's extra inspector lines. Exactly one field is set, for the item's kind, or\nnone for a plain setting.",
+        "properties": {
+          "agent": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AgentFacts"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "hook": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HookFacts"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "instruction": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InstructionFacts"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "mcp": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/McpFacts"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "output_style": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OutputStyleFacts"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "permission": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PermissionFacts"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "plugin": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PluginFacts"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "skill": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SkillFacts"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "ItemFacts",
+        "type": "object"
+      },
+      "ItemReason": {
+        "additionalProperties": false,
+        "description": "Why the item resolves as it does.\n\nWhy the item resolves as it does. ``ref_item`` names another item the reason is\nabout (the cap that lowers it, the file that overrides it), or None.",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "params": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Params",
+            "type": "object"
+          },
+          "ref_item": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ref Item"
+          },
+          "rule_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rule Id"
+          }
+        },
+        "required": [
+          "code",
+          "params",
+          "rule_id",
+          "ref_item"
+        ],
+        "title": "ItemReason",
         "type": "object"
       },
       "KindCosts": {
@@ -1554,6 +2141,99 @@
         "title": "LiveSessionsUnchanged",
         "type": "object"
       },
+      "MaskedText": {
+        "additionalProperties": false,
+        "description": "A value that may hold a secret. ``masked`` is True when masking hid any part.",
+        "properties": {
+          "masked": {
+            "title": "Masked",
+            "type": "boolean"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "masked"
+        ],
+        "title": "MaskedText",
+        "type": "object"
+      },
+      "McpFacts": {
+        "additionalProperties": false,
+        "description": "Inspector facts for one MCP server.\n\nInspector facts for one MCP server. Env and headers show names and masked values.\n``approved`` is None when no approval applies.",
+        "properties": {
+          "approved": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved"
+          },
+          "args": {
+            "items": {
+              "$ref": "#/components/schemas/MaskedText"
+            },
+            "title": "Args",
+            "type": "array"
+          },
+          "command": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MaskedText"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "env": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/MaskedText"
+            },
+            "title": "Env",
+            "type": "object"
+          },
+          "headers": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/MaskedText"
+            },
+            "title": "Headers",
+            "type": "object"
+          },
+          "transport": {
+            "title": "Transport",
+            "type": "string"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MaskedText"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "transport",
+          "command",
+          "url",
+          "args",
+          "env",
+          "headers",
+          "approved"
+        ],
+        "title": "McpFacts",
+        "type": "object"
+      },
       "MintRequest": {
         "additionalProperties": false,
         "description": "Body of ``POST /api/access/mint``.",
@@ -1661,6 +2341,17 @@
               }
             ],
             "title": "Agent"
+          },
+          "item_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Item Id"
           },
           "mismatched_runs": {
             "title": "Mismatched Runs",
@@ -2073,6 +2764,33 @@
         "title": "ModelTokens",
         "type": "object"
       },
+      "OutputStyleFacts": {
+        "additionalProperties": false,
+        "description": "Inspector facts for the output style setting or one style file.",
+        "properties": {
+          "active": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active"
+          },
+          "builtin": {
+            "title": "Builtin",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "active",
+          "builtin"
+        ],
+        "title": "OutputStyleFacts",
+        "type": "object"
+      },
       "PairRuns": {
         "additionalProperties": false,
         "description": "One model and effort pair the runs used, with its run count.",
@@ -2151,6 +2869,139 @@
           "since"
         ],
         "title": "PassError",
+        "type": "object"
+      },
+      "PermissionFacts": {
+        "additionalProperties": false,
+        "description": "Inspector facts for one permission rule, ``defaultMode`` or an extra folder.",
+        "properties": {
+          "kind": {
+            "enum": [
+              "allow",
+              "ask",
+              "deny",
+              "default_mode",
+              "directory"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "pattern": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pattern"
+          },
+          "tool": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool"
+          }
+        },
+        "required": [
+          "kind",
+          "tool",
+          "pattern"
+        ],
+        "title": "PermissionFacts",
+        "type": "object"
+      },
+      "PluginFacts": {
+        "additionalProperties": false,
+        "description": "Inspector facts for one plugin. ``contents`` lists the item ids it adds.",
+        "properties": {
+          "contents": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Contents",
+            "type": "array"
+          },
+          "enabled": {
+            "items": {
+              "$ref": "#/components/schemas/PluginScopeState"
+            },
+            "title": "Enabled",
+            "type": "array"
+          },
+          "marketplace": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Marketplace"
+          },
+          "orphaned_versions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Orphaned Versions",
+            "type": "array"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          }
+        },
+        "required": [
+          "version",
+          "marketplace",
+          "enabled",
+          "orphaned_versions",
+          "contents"
+        ],
+        "title": "PluginFacts",
+        "type": "object"
+      },
+      "PluginScopeState": {
+        "additionalProperties": false,
+        "description": "Whether one scope's ``enabledPlugins`` turns the plugin on or off.",
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "scope": {
+            "enum": [
+              "managed",
+              "command_line",
+              "project_local",
+              "project",
+              "user",
+              "plugin",
+              "shell"
+            ],
+            "title": "Scope",
+            "type": "string"
+          }
+        },
+        "required": [
+          "scope",
+          "enabled"
+        ],
+        "title": "PluginScopeState",
         "type": "object"
       },
       "PriceTier": {
@@ -2237,6 +3088,245 @@
         "title": "PricesInfo",
         "type": "object"
       },
+      "ProblemFix": {
+        "additionalProperties": false,
+        "description": "The one action a To fix row offers.\n\nThe one action a To fix row offers. ``target`` is an item id, a masked command or a\nfull path, by ``kind``.",
+        "properties": {
+          "kind": {
+            "enum": [
+              "open_item",
+              "copy_command",
+              "copy_path",
+              "cant_fix_here"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target"
+          }
+        },
+        "required": [
+          "kind",
+          "target",
+          "reason"
+        ],
+        "title": "ProblemFix",
+        "type": "object"
+      },
+      "ProblemList": {
+        "additionalProperties": false,
+        "description": "Answer of ``GET /api/problems``. ``counted`` equals ``to_fix.count``.",
+        "properties": {
+          "as_of": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "counted": {
+            "title": "Counted",
+            "type": "integer"
+          },
+          "etag": {
+            "title": "Etag",
+            "type": "string"
+          },
+          "project": {
+            "title": "Project",
+            "type": "string"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/ProblemRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "server_time": {
+            "format": "date-time",
+            "title": "Server Time",
+            "type": "string"
+          },
+          "unchanged": {
+            "const": false,
+            "title": "Unchanged",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "project",
+          "server_time",
+          "as_of",
+          "etag",
+          "unchanged",
+          "rows",
+          "counted"
+        ],
+        "title": "ProblemList",
+        "type": "object"
+      },
+      "ProblemRow": {
+        "additionalProperties": false,
+        "description": "One row of the problems feed.\n\nOne row of the problems feed. ``id`` is stable across refetches. ``thing`` is the\ndisplay name the title names.",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "confidence": {
+            "$ref": "#/components/schemas/Confidence"
+          },
+          "file": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File"
+          },
+          "fix": {
+            "$ref": "#/components/schemas/ProblemFix"
+          },
+          "full_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Path"
+          },
+          "group": {
+            "enum": [
+              "couldnt_read",
+              "wont_load",
+              "not_as_set",
+              "cant_tell",
+              "notice"
+            ],
+            "title": "Group",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "item_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Item Id"
+          },
+          "kind": {
+            "enum": [
+              "read_failure",
+              "problem",
+              "cant_tell",
+              "notice"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "line": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line"
+          },
+          "params": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Params",
+            "type": "object"
+          },
+          "part": {
+            "anyOf": [
+              {
+                "enum": [
+                  "settings",
+                  "agents",
+                  "instructions",
+                  "rules",
+                  "skills",
+                  "hooks",
+                  "permissions",
+                  "mcp",
+                  "plugins",
+                  "output_style"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Part"
+          },
+          "thing": {
+            "title": "Thing",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "group",
+          "code",
+          "thing",
+          "part",
+          "item_id",
+          "file",
+          "full_path",
+          "line",
+          "params",
+          "confidence",
+          "fix"
+        ],
+        "title": "ProblemRow",
+        "type": "object"
+      },
       "Project": {
         "additionalProperties": false,
         "description": "One project in the picker.",
@@ -2248,6 +3338,10 @@
           "key": {
             "title": "Key",
             "type": "string"
+          },
+          "listed": {
+            "title": "Listed",
+            "type": "boolean"
           },
           "name": {
             "title": "Name",
@@ -2272,7 +3366,8 @@
           "name",
           "display_path",
           "state",
-          "running"
+          "running",
+          "listed"
         ],
         "title": "Project",
         "type": "object"
@@ -2332,6 +3427,47 @@
           "mixed"
         ],
         "title": "RanPair",
+        "type": "object"
+      },
+      "ReadOnly": {
+        "additionalProperties": false,
+        "description": "Why an item can't change here and who owns it.\n\n``command`` is the ``claude mcp`` command for a user or local MCP server, masked.\nFor a plugin item ``params`` names the plugin and the page words how to change\nit (update or disable the plugin).",
+        "properties": {
+          "code": {
+            "enum": [
+              "managed",
+              "plugin",
+              "claude_json_command",
+              "command_line",
+              "not_visible"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "command": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MaskedText"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "params": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Params",
+            "type": "object"
+          }
+        },
+        "required": [
+          "code",
+          "params",
+          "command"
+        ],
+        "title": "ReadOnly",
         "type": "object"
       },
       "ReviewSession": {
@@ -2583,6 +3719,35 @@
           "session"
         ],
         "title": "RunningItem",
+        "type": "object"
+      },
+      "ScopeReach": {
+        "additionalProperties": false,
+        "description": "A scope that could set this item.\n\nA scope that could set this item, and whether the server can see it. A Command line\nentry appears only for an item that has a flag.",
+        "properties": {
+          "scope": {
+            "enum": [
+              "managed",
+              "command_line",
+              "project_local",
+              "project",
+              "user",
+              "plugin",
+              "shell"
+            ],
+            "title": "Scope",
+            "type": "string"
+          },
+          "visible": {
+            "title": "Visible",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "scope",
+          "visible"
+        ],
+        "title": "ScopeReach",
         "type": "object"
       },
       "Segment": {
@@ -2844,6 +4009,721 @@
         "title": "SetValue",
         "type": "object"
       },
+      "SetupItem": {
+        "additionalProperties": false,
+        "description": "One item on a surface page. The inspector reads every field.\n\n``key`` is the raw key or name, and ``label_known`` says whether the page has a\nlabel for it; when not, the page shows ``key`` (open-ended settings keys never\nfail the closed-enum test). ``not_read`` is set when the item's file lies outside\nthe allowed roots, a state apart from Couldn't read and Unknown. ``may_change``\nis True when a file the part couldn't read could change this item's answer.\n``usage`` is set for agents and model and effort settings, over the last 30 days.\n``real_path`` is the target's display path when the file is a symlink. For an\nagent, ``status`` is the outcome of what runs (the Model check's word for the file's\nmodel and effort over no runs), and the load status stays in ``reason``; ``check``\ncarries the Model check's code and params when that outcome was judged.",
+        "properties": {
+          "applies": {
+            "anyOf": [
+              {
+                "enum": [
+                  "now",
+                  "new_session",
+                  "restart",
+                  "reload_plugins"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Applies"
+          },
+          "check": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ItemCheck"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "confidence": {
+            "$ref": "#/components/schemas/Confidence"
+          },
+          "effective": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Effective"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "facts": {
+            "$ref": "#/components/schemas/ItemFacts"
+          },
+          "feature": {
+            "const": "core",
+            "title": "Feature",
+            "type": "string"
+          },
+          "group": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label_known": {
+            "title": "Label Known",
+            "type": "boolean"
+          },
+          "loads": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SetupLoads"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "location": {
+            "anyOf": [
+              {
+                "const": "parent",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "may_change": {
+            "title": "May Change",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "not_read": {
+            "anyOf": [
+              {
+                "enum": [
+                  "outside_scope",
+                  "plugin_outside_plugins"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Not Read"
+          },
+          "order": {
+            "title": "Order",
+            "type": "integer"
+          },
+          "part": {
+            "enum": [
+              "settings",
+              "agents",
+              "instructions",
+              "rules",
+              "skills",
+              "hooks",
+              "permissions",
+              "mcp",
+              "plugins",
+              "output_style"
+            ],
+            "title": "Part",
+            "type": "string"
+          },
+          "reach": {
+            "items": {
+              "$ref": "#/components/schemas/ScopeReach"
+            },
+            "title": "Reach",
+            "type": "array"
+          },
+          "read_only_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReadOnly"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "real_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Real Path"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ItemReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "risk_tier": {
+            "anyOf": [
+              {
+                "enum": [
+                  "safe",
+                  "risky"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Risk Tier"
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "enum": [
+                  "managed",
+                  "command_line",
+                  "project_local",
+                  "project",
+                  "user",
+                  "plugin",
+                  "shell"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/SetupSource"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "status": {
+            "enum": [
+              "in_effect",
+              "overridden",
+              "ignored",
+              "lowered",
+              "invalid",
+              "default",
+              "unknown"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "usage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Coded"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "winner": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Winner"
+          },
+          "writable": {
+            "title": "Writable",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "part",
+          "key",
+          "name",
+          "label_known",
+          "order",
+          "group",
+          "scope",
+          "effective",
+          "sources",
+          "winner",
+          "reach",
+          "status",
+          "reason",
+          "confidence",
+          "loads",
+          "applies",
+          "writable",
+          "read_only_reason",
+          "risk_tier",
+          "feature",
+          "facts",
+          "usage",
+          "real_path",
+          "not_read",
+          "may_change"
+        ],
+        "title": "SetupItem",
+        "type": "object"
+      },
+      "SetupLoads": {
+        "additionalProperties": false,
+        "description": "When an instruction or rules file loads. ``globs`` only for ``on_demand``.",
+        "properties": {
+          "globs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Globs",
+            "type": "array"
+          },
+          "kind": {
+            "enum": [
+              "always",
+              "on_demand",
+              "when_no_claude_md"
+            ],
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "globs"
+        ],
+        "title": "SetupLoads",
+        "type": "object"
+      },
+      "SetupMap": {
+        "additionalProperties": false,
+        "description": "Answer of ``GET /api/setup``.\n\n``server_started_at`` dates the shell scope. ``listed`` is False for a project\nthat is not on Bar Tab's list; its project scopes then read \"Not read here\" with\na notice (owner, November 9).",
+        "properties": {
+          "as_of": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "etag": {
+            "title": "Etag",
+            "type": "string"
+          },
+          "listed": {
+            "default": true,
+            "title": "Listed",
+            "type": "boolean"
+          },
+          "notices": {
+            "items": {
+              "$ref": "#/components/schemas/Coded"
+            },
+            "title": "Notices",
+            "type": "array"
+          },
+          "parts": {
+            "items": {
+              "$ref": "#/components/schemas/SetupPartRow"
+            },
+            "title": "Parts",
+            "type": "array"
+          },
+          "project": {
+            "title": "Project",
+            "type": "string"
+          },
+          "server_started_at": {
+            "format": "date-time",
+            "title": "Server Started At",
+            "type": "string"
+          },
+          "server_time": {
+            "format": "date-time",
+            "title": "Server Time",
+            "type": "string"
+          },
+          "unchanged": {
+            "const": false,
+            "title": "Unchanged",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "project",
+          "server_time",
+          "as_of",
+          "etag",
+          "unchanged",
+          "parts",
+          "notices",
+          "server_started_at"
+        ],
+        "title": "SetupMap",
+        "type": "object"
+      },
+      "SetupPartAnswer": {
+        "additionalProperties": false,
+        "description": "Answer of ``GET /api/setup/{part}``.",
+        "properties": {
+          "as_of": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "empty": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EmptyInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "etag": {
+            "title": "Etag",
+            "type": "string"
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/GroupCount"
+            },
+            "title": "Groups",
+            "type": "array"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SetupItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "part": {
+            "enum": [
+              "settings",
+              "agents",
+              "instructions",
+              "rules",
+              "skills",
+              "hooks",
+              "permissions",
+              "mcp",
+              "plugins",
+              "output_style"
+            ],
+            "title": "Part",
+            "type": "string"
+          },
+          "project": {
+            "title": "Project",
+            "type": "string"
+          },
+          "server_time": {
+            "format": "date-time",
+            "title": "Server Time",
+            "type": "string"
+          },
+          "unchanged": {
+            "const": false,
+            "title": "Unchanged",
+            "type": "boolean"
+          },
+          "unreadable": {
+            "items": {
+              "$ref": "#/components/schemas/UnreadableFile"
+            },
+            "title": "Unreadable",
+            "type": "array"
+          }
+        },
+        "required": [
+          "project",
+          "server_time",
+          "as_of",
+          "etag",
+          "unchanged",
+          "part",
+          "items",
+          "groups",
+          "unreadable",
+          "empty"
+        ],
+        "title": "SetupPartAnswer",
+        "type": "object"
+      },
+      "SetupPartRow": {
+        "additionalProperties": false,
+        "description": "One row of the setup map.\n\nOne row of the setup map. ``summary`` carries the facts the drawn summary uses in\n``params`` (effective model and effort, agents with no recent runs, on-demand\nglobs). ``scopes`` is always present, so the Switch flips with no fetch.",
+        "properties": {
+          "counted_problems": {
+            "title": "Counted Problems",
+            "type": "integer"
+          },
+          "empty": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EmptyInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "part": {
+            "enum": [
+              "settings",
+              "agents",
+              "instructions",
+              "rules",
+              "skills",
+              "hooks",
+              "permissions",
+              "mcp",
+              "plugins",
+              "output_style"
+            ],
+            "title": "Part",
+            "type": "string"
+          },
+          "scopes": {
+            "items": {
+              "$ref": "#/components/schemas/SetupScopeCell"
+            },
+            "title": "Scopes",
+            "type": "array"
+          },
+          "statuses": {
+            "items": {
+              "$ref": "#/components/schemas/StatusCount"
+            },
+            "title": "Statuses",
+            "type": "array"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/Coded"
+          },
+          "unreadable": {
+            "title": "Unreadable",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "part",
+          "summary",
+          "statuses",
+          "counted_problems",
+          "unreadable",
+          "empty",
+          "scopes"
+        ],
+        "title": "SetupPartRow",
+        "type": "object"
+      },
+      "SetupScopeCell": {
+        "additionalProperties": false,
+        "description": "One part in one scope, for \"Show where each comes from\".",
+        "properties": {
+          "scope": {
+            "enum": [
+              "managed",
+              "command_line",
+              "project_local",
+              "project",
+              "user",
+              "plugin",
+              "shell"
+            ],
+            "title": "Scope",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "set",
+              "not_set",
+              "not_visible",
+              "unreadable"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Coded"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "scope",
+          "state",
+          "summary"
+        ],
+        "title": "SetupScopeCell",
+        "type": "object"
+      },
+      "SetupSource": {
+        "additionalProperties": false,
+        "description": "One place an item is set, in top-wins order.\n\n``key`` is what sets it there: a settings key path (``effortLevel``), an env\nname (``env.CLAUDE_CODE_EFFORT_LEVEL``), a flag (``--effort``) or a front matter\nkey. ``value`` is None for a union part.",
+        "properties": {
+          "file": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File"
+          },
+          "full_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Path"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "line": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "const": "parent",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "plugin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plugin"
+          },
+          "scope": {
+            "enum": [
+              "managed",
+              "command_line",
+              "project_local",
+              "project",
+              "user",
+              "plugin",
+              "shell"
+            ],
+            "title": "Scope",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "in_effect",
+              "overridden",
+              "ignored",
+              "lowered",
+              "invalid",
+              "default",
+              "unknown"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MaskedText"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "scope",
+          "key",
+          "file",
+          "full_path",
+          "line",
+          "value",
+          "status",
+          "plugin"
+        ],
+        "title": "SetupSource",
+        "type": "object"
+      },
       "ShareTile": {
         "additionalProperties": false,
         "description": "A share from 0 to 1, such as the cache share. ``change_abs`` is in shares.",
@@ -2890,6 +4770,49 @@
         "title": "ShareTile",
         "type": "object"
       },
+      "SkillFacts": {
+        "additionalProperties": false,
+        "description": "Inspector facts for a skill or legacy command.\n\nInspector facts for a skill or legacy command. ``invoke`` is the slash form, with\nthe plugin namespace when there is one.",
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MaskedText"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "invoke": {
+            "title": "Invoke",
+            "type": "string"
+          },
+          "legacy_command": {
+            "title": "Legacy Command",
+            "type": "boolean"
+          },
+          "namespace": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Namespace"
+          }
+        },
+        "required": [
+          "description",
+          "invoke",
+          "namespace",
+          "legacy_command"
+        ],
+        "title": "SkillFacts",
+        "type": "object"
+      },
       "StateAt": {
         "additionalProperties": false,
         "description": "A state that starts at ``at`` and holds until the next entry.",
@@ -2909,6 +4832,35 @@
           "state"
         ],
         "title": "StateAt",
+        "type": "object"
+      },
+      "StatusCount": {
+        "additionalProperties": false,
+        "description": "How many items of a part carry one status.",
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "in_effect",
+              "overridden",
+              "ignored",
+              "lowered",
+              "invalid",
+              "default",
+              "unknown"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "count"
+        ],
+        "title": "StatusCount",
         "type": "object"
       },
       "Summary": {
@@ -3717,6 +5669,50 @@
         "title": "TimelineTotals",
         "type": "object"
       },
+      "ToFix": {
+        "additionalProperties": false,
+        "description": "The nav's To fix count.\n\nThe nav's To fix count. ``state`` is ``unchecked`` before the first problems pass\nand ``failed`` when it couldn't run; ``count`` is None then. ``etag`` is the\nproblems answer's etag, so the nav and the To fix page agree.",
+        "properties": {
+          "count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Count"
+          },
+          "etag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Etag"
+          },
+          "state": {
+            "enum": [
+              "ok",
+              "unchecked",
+              "failed"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "count",
+          "etag"
+        ],
+        "title": "ToFix",
+        "type": "object"
+      },
       "Together": {
         "additionalProperties": false,
         "description": "Siblings launched within 5 s of each other share a key.",
@@ -3790,6 +5786,103 @@
           "models"
         ],
         "title": "Unpriced",
+        "type": "object"
+      },
+      "UnreadableFile": {
+        "additionalProperties": false,
+        "description": "A file a collector could not read, or was not allowed to.\n\n``problem`` is the id of its To fix row, or None for a \"not read here\" file.\n``part`` is the setup part the file feeds; a collector that serves several parts\nsets it so the setup map can split one ``Collected.unreadable`` list.",
+        "properties": {
+          "file": {
+            "title": "File",
+            "type": "string"
+          },
+          "full_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Path"
+          },
+          "part": {
+            "anyOf": [
+              {
+                "enum": [
+                  "settings",
+                  "agents",
+                  "instructions",
+                  "rules",
+                  "skills",
+                  "hooks",
+                  "permissions",
+                  "mcp",
+                  "plugins",
+                  "output_style"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Part"
+          },
+          "problem": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Problem"
+          },
+          "reason": {
+            "enum": [
+              "permission",
+              "not_utf8",
+              "too_large",
+              "vanished",
+              "folder_unlistable",
+              "outside_scope",
+              "plugin_outside_plugins"
+            ],
+            "title": "Reason",
+            "type": "string"
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "enum": [
+                  "managed",
+                  "command_line",
+                  "project_local",
+                  "project",
+                  "user",
+                  "plugin",
+                  "shell"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope"
+          }
+        },
+        "required": [
+          "file",
+          "full_path",
+          "scope",
+          "reason",
+          "problem"
+        ],
+        "title": "UnreadableFile",
         "type": "object"
       },
       "Window": {
@@ -4561,6 +6654,113 @@
         ]
       }
     },
+    "/api/problems": {
+      "get": {
+        "operationId": "get_problems",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "project",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 63,
+                  "pattern": "^[a-z0-9][a-z0-9-]{0,62}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project"
+            }
+          },
+          {
+            "in": "query",
+            "name": "etag",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "pattern": "^[A-Za-z0-9_.-]{0,64}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Etag"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ProblemList"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Unchanged"
+                    }
+                  ],
+                  "title": "Response Get Problems"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "summary": "Get Problems",
+        "tags": [
+          "setup"
+        ]
+      }
+    },
     "/api/projects": {
       "get": {
         "operationId": "get_projects",
@@ -4862,6 +7062,232 @@
         "summary": "Get Timeline",
         "tags": [
           "live"
+        ]
+      }
+    },
+    "/api/setup": {
+      "get": {
+        "operationId": "get_setup",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "project",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 63,
+                  "pattern": "^[a-z0-9][a-z0-9-]{0,62}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project"
+            }
+          },
+          {
+            "in": "query",
+            "name": "etag",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "pattern": "^[A-Za-z0-9_.-]{0,64}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Etag"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/SetupMap"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Unchanged"
+                    }
+                  ],
+                  "title": "Response Get Setup"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "summary": "Get Setup",
+        "tags": [
+          "setup"
+        ]
+      }
+    },
+    "/api/setup/{part}": {
+      "get": {
+        "operationId": "get_setup_part",
+        "parameters": [
+          {
+            "description": "One of the ten setup parts.",
+            "in": "path",
+            "name": "part",
+            "required": true,
+            "schema": {
+              "description": "One of the ten setup parts.",
+              "maxLength": 32,
+              "title": "Part",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "project",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 63,
+                  "pattern": "^[a-z0-9][a-z0-9-]{0,62}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project"
+            }
+          },
+          {
+            "in": "query",
+            "name": "etag",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "pattern": "^[A-Za-z0-9_.-]{0,64}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Etag"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/SetupPartAnswer"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Unchanged"
+                    }
+                  ],
+                  "title": "Response Get Setup Part"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "summary": "Get Setup Part",
+        "tags": [
+          "setup"
         ]
       }
     },

@@ -1,0 +1,33 @@
+.scope-chip {
+  display: inline-block;
+  max-width: 100%;
+  padding: 1px var(--space-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.scope-chip-scope {
+  color: var(--text);
+  font-weight: var(--weight-medium);
+}
+
+/* One line with an ellipsis. The chip stays a flex row so the value can shrink inside the pill. */
+.scope-chip-truncate {
+  display: inline-flex;
+  gap: var(--space-1);
+  white-space: nowrap;
+}
+
+.scope-chip-truncate .scope-chip-scope {
+  flex: none;
+}
+
+.scope-chip-truncate .scope-chip-value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

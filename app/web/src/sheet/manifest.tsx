@@ -46,6 +46,21 @@ import {
   type ReplayLaneState,
   type ReplayLineState,
 } from "./replay-samples";
+import {
+  BreadcrumbDemo,
+  CopyPathDemo,
+  ListInspectorDemo,
+  ScopeChipDemo,
+  ScopeLabelDemo,
+  SwitchDemo,
+  ToFixGroupDemo,
+  ToFixRowDemo,
+  type BreadcrumbState,
+  type ListInspectorState,
+  type SwitchState,
+  type ToFixGroupState,
+  type ToFixRowState,
+} from "./setup-samples";
 import { SelectDemo } from "./SelectDemo";
 import { W } from "./words";
 
@@ -245,6 +260,7 @@ const projectRows: ProjectItem[] = [
     name: row.name,
     display_path: row.path,
     running: row.running,
+    listed: true,
     state: index === 2 ? "no_claude_folder" : index === 3 ? "folder_not_found" : "ok",
   }),
 );
@@ -1239,6 +1255,87 @@ export const manifest: ManifestEntry[] = [
     state,
     render: () => <ReplayLineDemo state={state} />,
   })),
+  // Breadcrumb
+  ...(["default", "hover", "focus", "long", "hidden"] as BreadcrumbState[]).map((state) => ({
+    component: "Breadcrumb",
+    state,
+    render: () => <BreadcrumbDemo state={state} />,
+  })),
+  // Switch
+  ...(["off", "on", "hover", "focus", "disabled-off", "disabled-on"] as SwitchState[]).map(
+    (state) => ({
+      component: "Switch",
+      state,
+      render: () => <SwitchDemo state={state} />,
+    }),
+  ),
+  // ScopeLabel
+  {
+    component: "ScopeLabel",
+    state: "default",
+    render: () => <ScopeLabelDemo long={false} />,
+  },
+  {
+    component: "ScopeLabel",
+    state: "long",
+    render: () => <ScopeLabelDemo long />,
+  },
+  // ScopeChip
+  ...(["default", "wrap", "truncated"] as const).map((state) => ({
+    component: "ScopeChip",
+    state,
+    render: () => <ScopeChipDemo state={state} />,
+  })),
+  // CopyPath
+  { component: "CopyPath", state: "default", render: () => <CopyPathDemo copied={false} /> },
+  { component: "CopyPath", state: "copied", render: () => <CopyPathDemo copied /> },
+  // ListInspector
+  ...(
+    [
+      "list",
+      "hover",
+      "focus",
+      "selected",
+      "selected-focus",
+      "read-only",
+      "not-read",
+      "unknown",
+      "couldnt-read",
+      "masked",
+      "empty",
+      "grouped",
+      "long-values",
+      "phone-list",
+      "phone-inspector",
+    ] as ListInspectorState[]
+  ).map((state) => ({
+    component: "ListInspector",
+    state,
+    render: () => <ListInspectorDemo state={state} />,
+  })),
+  // ToFixRow
+  ...(
+    [
+      "open-item",
+      "copy-command",
+      "copy-path",
+      "cant-fix-here",
+      "couldnt-read",
+      "long",
+    ] as ToFixRowState[]
+  ).map((state) => ({
+    component: "ToFixRow",
+    state,
+    render: () => <ToFixRowDemo state={state} />,
+  })),
+  // ToFixGroup
+  ...(["couldnt-read", "wont-load", "not-as-set", "cant-tell", "notices"] as ToFixGroupState[]).map(
+    (state) => ({
+      component: "ToFixGroup",
+      state,
+      render: () => <ToFixGroupDemo state={state} />,
+    }),
+  ),
   // Chosen state (a shared standard in shared.css, not a component folder)
   {
     component: "ChosenState",

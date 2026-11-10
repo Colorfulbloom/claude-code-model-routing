@@ -1,0 +1,20 @@
+/* The agent's check callout (m4.css .m4-chk): a 4px start edge in the lowered colour, the pill and
+   the sentence on the first line, the reason below in small muted text. */
+.agent-callout {
+  border-inline-start: 4px solid var(--status-lowered-fg);
+}
+
+.agent-callout p {
+  margin: 0;
+}
+
+.agent-callout-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  align-items: baseline;
+}
+
+.agent-callout-why {
+  font-size: var(--text-sm);
+}

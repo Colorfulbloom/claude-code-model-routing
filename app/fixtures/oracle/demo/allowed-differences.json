@@ -25,6 +25,61 @@
       "path": "usage-*.json:views.*.previous",
       "plan_ref": "docs/rebuild/planning/m3-build.md section 12, need 3 (partial prior)",
       "reason": "The old app drops the previous window when the oldest request falls after its start, and reports previous as null with null deltas. The new window keeps the prior sums and sets prior_partial, so the page can say what the partial prior was. The tile changes are null in both. The test requires the two to agree on when the prior is partial (previous.available) and on the deltas."
+    },
+    {
+      "path": "usage-*.json:views.*.totals.runs",
+      "plan_ref": "docs/rebuild/planning/m4-build.md Task 21 item 10 (one meaning of Runs)",
+      "reason": "A run is any agent run, the main session included, on every page. The old app skipped main in Agg.runs, so each session with a main request adds one run here. test_runs_differ_from_the_old_app_by_the_main_sessions pins the exact count per answer (the 30 day all projects answer goes from 220 to 291, one per session)."
+    },
+    {
+      "path": "truth-long.json:projects.*.current.runs",
+      "plan_ref": "docs/rebuild/planning/m4-build.md Task 21 item 10 (one meaning of Runs)",
+      "reason": "The long truth was recorded with the old rule, which skips main. The new count adds one run per session with a main request, and test_long_runs_differ_from_the_truth_by_the_main_sessions pins it as the truth's own @main sessions."
+    },
+    {
+      "path": "truth-long.json:projects.*.prior.runs",
+      "plan_ref": "docs/rebuild/planning/m4-build.md Task 21 item 10 (one meaning of Runs)",
+      "reason": "Same rule as current.runs, over the prior window."
+    },
+    {
+      "path": "truth-long.json:projects.*.by_agent.@main.runs",
+      "plan_ref": "docs/rebuild/planning/m4-build.md Task 21 item 10 (one meaning of Runs)",
+      "reason": "The truth's @main row has 0 runs. It now has one per session, equal to its sessions."
+    },
+    {
+      "path": "truth-long.json:projects.*.by_model.*.runs",
+      "plan_ref": "docs/rebuild/planning/m4-build.md Task 21 item 10 (one meaning of Runs)",
+      "reason": "A model's runs now include the main runs that used it, one per session."
+    },
+    {
+      "path": "truth-long.json:projects.*.by_day.*.runs",
+      "plan_ref": "docs/rebuild/planning/m4-build.md Task 21 item 10 (one meaning of Runs)",
+      "reason": "A day's runs now include the main runs of that day, one per session with a main request that day."
+    },
+    {
+      "path": "usage-*.json:views.*.previous.runs",
+      "plan_ref": "docs/rebuild/planning/m4-build.md Task 21 item 10 (one meaning of Runs)",
+      "reason": "Same rule as totals.runs, over the prior window. Each session with a main request in the prior window adds one run."
+    },
+    {
+      "path": "usage-*.json:views.*.deltas.runs_pct",
+      "plan_ref": "docs/rebuild/planning/m4-build.md Task 21 item 10 (one meaning of Runs)",
+      "reason": "The runs change is a ratio of two run counts that both gain the main runs, so the percent moves with them. The test recomputes it from the new counts."
+    },
+    {
+      "path": "usage-*.json:views.*.by_agent.@main.runs",
+      "plan_ref": "docs/rebuild/planning/m4-build.md Task 21 item 10 (one meaning of Runs)",
+      "reason": "The old @main row showed 0 runs. It now shows one run per session, so its runs equal its sessions."
+    },
+    {
+      "path": "usage-*.json:views.*.by_model.*.runs",
+      "plan_ref": "docs/rebuild/planning/m4-build.md Task 21 item 10 (one meaning of Runs)",
+      "reason": "A model's runs now include the main runs that used it, one per session."
+    },
+    {
+      "path": "usage-*.json:views.*.sessions.*.runs",
+      "plan_ref": "docs/rebuild/planning/m4-build.md Task 21 item 10 (one meaning of Runs)",
+      "reason": "A session row's runs now include its main run, so each session with a main request shows one more run than before."
     }
   ]
 }

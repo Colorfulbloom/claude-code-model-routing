@@ -1,0 +1,186 @@
+/*
+ * Your setup (a-m4 boards p10, m4.css). Tokens only. Every class carries the setup- prefix, because
+ * page CSS is global (fact J-0ba9).
+ */
+.setup-stale {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.setup-error {
+  margin: 0;
+}
+
+.setup-error .raised-finding-title {
+  font-size: var(--text-md);
+}
+
+/* The notice for a project that is not on Bar Tab's list. */
+.setup-notice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+  align-items: baseline;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+.setup-page > .setup-map-card,
+.setup-page > .setup-notice {
+  margin-top: var(--space-4);
+}
+
+.setup-notice-link {
+  flex-basis: 100%;
+  color: var(--accent);
+}
+
+/* The map table. */
+.setup-map {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-md);
+}
+
+.setup-map-th {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.setup-map-part,
+.setup-map-what,
+.setup-map-status {
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--border);
+  font-weight: var(--weight-regular);
+  text-align: left;
+  vertical-align: top;
+}
+
+.setup-map-row:last-child > td,
+.setup-map-row:last-child > th {
+  border-bottom: 0;
+}
+
+.setup-map-part {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.setup-map-link {
+  display: inline-block;
+  min-height: 26px;
+  padding: 2px 0;
+  color: var(--accent);
+  font-weight: var(--weight-semibold);
+}
+
+.setup-map-body {
+  display: grid;
+  gap: var(--space-2);
+  align-content: start;
+  min-width: 0;
+}
+
+.setup-map-summary {
+  overflow-wrap: anywhere;
+}
+
+.setup-map-unread {
+  display: flex;
+  gap: var(--space-2);
+  align-items: baseline;
+  color: var(--status-invalid-fg);
+  font-size: var(--text-sm);
+}
+
+.setup-map-x {
+  font-size: var(--text-sm);
+}
+
+.setup-map-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.setup-map-none {
+  font-size: var(--text-xs);
+}
+
+/* Wide enough for two pills side by side, as the a-m4 p10 board keeps them. A third wraps. */
+.setup-map-status {
+  width: 210px;
+}
+
+.setup-map-chips-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.setup-shell-line {
+  font-size: var(--text-sm);
+}
+
+/* At 720px and below a row stacks: the name and statuses first, then the summary and chips. */
+@media (width <= 720px) {
+  .setup-map thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .setup-map,
+  .setup-map tbody {
+    display: block;
+  }
+
+  .setup-map-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "part status"
+      "what what";
+    gap: 0 var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .setup-map-row:last-child {
+    border-bottom: 0;
+  }
+
+  .setup-map-part,
+  .setup-map-what,
+  .setup-map-status {
+    width: auto;
+    padding: var(--space-1) 0;
+    border-bottom: 0;
+  }
+
+  .setup-map-part {
+    grid-area: part;
+    white-space: normal;
+  }
+
+  .setup-map-what {
+    grid-area: what;
+  }
+
+  .setup-map-status {
+    grid-area: status;
+  }
+}

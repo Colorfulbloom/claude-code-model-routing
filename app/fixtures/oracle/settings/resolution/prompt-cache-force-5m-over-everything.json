@@ -1,0 +1,662 @@
+{
+  "attention": [
+    {
+      "rows": [
+        {
+          "entry": 7,
+          "route": {
+            "agent": "@main",
+            "setting": "autoCompactWindow"
+          }
+        },
+        {
+          "entry": 18,
+          "route": {
+            "agent": "probe",
+            "setting": "autoCompactWindow"
+          }
+        }
+      ],
+      "status": "unknown"
+    },
+    {
+      "rows": [
+        {
+          "entry": 9,
+          "route": {
+            "agent": "@main",
+            "setting": "promptCacheTtl"
+          }
+        },
+        {
+          "entry": 10,
+          "route": {
+            "agent": "@main",
+            "setting": "promptCacheTtl"
+          }
+        },
+        {
+          "entry": 11,
+          "route": {
+            "agent": "@main",
+            "setting": "promptCacheTtl"
+          }
+        },
+        {
+          "entry": 20,
+          "route": {
+            "agent": "probe",
+            "setting": "subagentPromptCacheTtl"
+          }
+        },
+        {
+          "entry": 21,
+          "route": {
+            "agent": "probe",
+            "setting": "subagentPromptCacheTtl"
+          }
+        },
+        {
+          "entry": 22,
+          "route": {
+            "agent": "probe",
+            "setting": "subagentPromptCacheTtl"
+          }
+        },
+        {
+          "entry": 23,
+          "route": {
+            "agent": "probe",
+            "setting": "subagentPromptCacheTtl"
+          }
+        }
+      ],
+      "status": "overridden"
+    }
+  ],
+  "attention_equal": 0,
+  "config_dir_display": "config",
+  "config_file_display": "config/routing-dashboard.json",
+  "entries": [
+    {
+      "file": "session.json:shell_env",
+      "key": "env.CLAUDE_CODE_PROMPT_CACHE_TTL",
+      "layer": "env",
+      "reason": "env.CLAUDE_CODE_PROMPT_CACHE_TTL comes from the shell. A settings env block overwrites the shell, and the higher file wins.",
+      "rule_id": "env-block-order",
+      "rule_ids": [
+        "env-block-order"
+      ],
+      "scope": "main",
+      "status": "in_effect",
+      "value": "1h"
+    },
+    {
+      "file": "session.json:shell_env",
+      "key": "env.CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL",
+      "layer": "env",
+      "reason": "env.CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL comes from the shell. A settings env block overwrites the shell, and the higher file wins.",
+      "rule_id": "env-block-order",
+      "rule_ids": [
+        "env-block-order"
+      ],
+      "scope": "main",
+      "status": "in_effect",
+      "value": "1h"
+    },
+    {
+      "file": "session.json:shell_env",
+      "key": "env.ENABLE_PROMPT_CACHING_1H",
+      "layer": "env",
+      "reason": "env.ENABLE_PROMPT_CACHING_1H comes from the shell. A settings env block overwrites the shell, and the higher file wins.",
+      "rule_id": "env-block-order",
+      "rule_ids": [
+        "env-block-order"
+      ],
+      "scope": "main",
+      "status": "in_effect",
+      "value": "1"
+    },
+    {
+      "file": "session.json:shell_env",
+      "key": "env.FORCE_PROMPT_CACHING_5M",
+      "layer": "env",
+      "reason": "env.FORCE_PROMPT_CACHING_5M comes from the shell. A settings env block overwrites the shell, and the higher file wins.",
+      "rule_id": "env-block-order",
+      "rule_ids": [
+        "env-block-order"
+      ],
+      "scope": "main",
+      "status": "in_effect",
+      "value": "1"
+    },
+    {
+      "file": "config/settings.json",
+      "key": "model",
+      "layer": "user",
+      "line": 2,
+      "reason": "config/settings.json sets the model. --model beats ANTHROPIC_MODEL, which beats the model key in any file, managed included.",
+      "rule_id": "model-main-session-order",
+      "rule_ids": [
+        "model-main-session-order"
+      ],
+      "scope": "main",
+      "status": "in_effect",
+      "value": "claude-sonnet-5-5"
+    },
+    {
+      "file": null,
+      "key": "maxEffortLevel",
+      "layer": "default",
+      "model": "claude-sonnet-5-5",
+      "reason": "No settings file sets maxEffortLevel, so the dashboard sees no cap on the effort level. On a Claude Enterprise plan, an admin can also cap effort per role, and the dashboard can't see that.",
+      "rule_id": "max-effort-level-default",
+      "rule_ids": [
+        "max-effort-level-default",
+        "max-effort-level-lowest-cap"
+      ],
+      "scope": "main",
+      "status": "default",
+      "value": null
+    },
+    {
+      "file": null,
+      "key": "effortLevel",
+      "layer": "default",
+      "model": "claude-sonnet-5-5",
+      "reason": "Nothing sets an effort level that counts for Sonnet 5.5, so it runs at its default, medium. /effort status shows this as auto (currently medium).",
+      "rule_id": "effort-default-by-model",
+      "rule_ids": [
+        "effort-default-by-model",
+        "effort-level-layer-order"
+      ],
+      "scope": "main",
+      "status": "default",
+      "value": "medium"
+    },
+    {
+      "file": null,
+      "key": "autoCompactWindow",
+      "layer": "default",
+      "model": "claude-sonnet-5-5",
+      "reason": "Nothing the dashboard reads sets the auto-compact window, so Claude Code uses the window tuned for the model. On Opus 5.5 that window is 1000000 tokens. Only Opus 5.5 was checked, so for any other model the dashboard can't say what the window is. To check, run /autocompact in a new session started in this project.",
+      "rule_id": "auto-compact-window-default",
+      "rule_ids": [
+        "auto-compact-window-default",
+        "auto-compact-window-order"
+      ],
+      "scope": "main",
+      "status": "unknown",
+      "value": null
+    },
+    {
+      "file": "session.json:shell_env",
+      "key": "promptCacheTtl",
+      "layer": "env",
+      "reason": "FORCE_PROMPT_CACHING_5M is on, so the main conversation's cache lifetime is five minutes, whatever the shell sets.",
+      "rule_id": "prompt-cache-force-5m",
+      "rule_ids": [
+        "prompt-cache-force-5m",
+        "prompt-cache-ttl-order"
+      ],
+      "scope": "main",
+      "status": "in_effect",
+      "value": "5m",
+      "via": "FORCE_PROMPT_CACHING_5M"
+    },
+    {
+      "file": "session.json:shell_env",
+      "key": "promptCacheTtl",
+      "layer": "env",
+      "reason": "FORCE_PROMPT_CACHING_5M sets the main conversation's cache lifetime. CLAUDE_CODE_PROMPT_CACHE_TTL beats the settings files, and the higher file wins. Only a lowercase 5m or 1h counts, so Claude Code skips any other value and the next source decides.",
+      "rule_id": "prompt-cache-ttl-order",
+      "rule_ids": [
+        "prompt-cache-ttl-order",
+        "prompt-cache-force-5m"
+      ],
+      "scope": "main",
+      "status": "overridden",
+      "value": "1h",
+      "via": "CLAUDE_CODE_PROMPT_CACHE_TTL"
+    },
+    {
+      "file": "config/settings.json",
+      "key": "promptCacheTtl",
+      "layer": "user",
+      "line": 3,
+      "reason": "FORCE_PROMPT_CACHING_5M sets the main conversation's cache lifetime. CLAUDE_CODE_PROMPT_CACHE_TTL beats the settings files, and the higher file wins. Only a lowercase 5m or 1h counts, so Claude Code skips any other value and the next source decides.",
+      "rule_id": "prompt-cache-ttl-order",
+      "rule_ids": [
+        "prompt-cache-ttl-order",
+        "prompt-cache-force-5m"
+      ],
+      "scope": "main",
+      "status": "overridden",
+      "value": "1h"
+    },
+    {
+      "file": null,
+      "key": "promptCacheTtl",
+      "layer": "default",
+      "reason": "FORCE_PROMPT_CACHING_5M sets the main conversation's cache lifetime. CLAUDE_CODE_PROMPT_CACHE_TTL beats the settings files, and the higher file wins. Only a lowercase 5m or 1h counts, so Claude Code skips any other value and the next source decides.",
+      "rule_id": "prompt-cache-ttl-order",
+      "rule_ids": [
+        "prompt-cache-ttl-order",
+        "prompt-cache-force-5m"
+      ],
+      "scope": "main",
+      "status": "overridden",
+      "value": "1h",
+      "via": "ENABLE_PROMPT_CACHING_1H"
+    },
+    {
+      "file": null,
+      "key": "availableModels",
+      "layer": "default",
+      "reason": "Nothing sets a list, so every model is available.",
+      "rule_id": "available-models-default",
+      "rule_ids": [
+        "available-models-default",
+        "available-models-order"
+      ],
+      "scope": "main",
+      "status": "default",
+      "value": null
+    },
+    {
+      "file": null,
+      "key": "alwaysThinkingEnabled",
+      "layer": "default",
+      "model": "claude-sonnet-5-5",
+      "reason": "Nothing can turn thinking off here, because Sonnet 5.5 always thinks.",
+      "rule_id": "always-thinking-default-always-on",
+      "rule_ids": [
+        "always-thinking-default-always-on",
+        "always-thinking-default",
+        "always-thinking-order"
+      ],
+      "scope": "main",
+      "status": "default",
+      "value": "on"
+    },
+    {
+      "file": null,
+      "key": "fallbackModel",
+      "layer": "default",
+      "reason": "Nothing sets a chain, so a failed request isn't retried on another model.",
+      "rule_id": "fallback-model-default",
+      "rule_ids": [
+        "fallback-model-default",
+        "fallback-model-order"
+      ],
+      "scope": "main",
+      "status": "default",
+      "value": null
+    },
+    {
+      "agent": "probe",
+      "file": "config/agents/probe.md",
+      "key": "agentFile",
+      "layer": "user",
+      "line": 2,
+      "reason": "config/agents/probe.md defines probe. When agents in different places share a name, Claude Code uses the one from the highest place. From highest to lowest, those are managed settings, the --agents flag, the project, the user folder and a plugin.",
+      "rule_id": "agent-file-location-order",
+      "rule_ids": [
+        "agent-file-location-order",
+        "agent-file-project-over-user"
+      ],
+      "scope": "agent",
+      "status": "in_effect",
+      "value": null
+    },
+    {
+      "agent": "probe",
+      "file": "config/agents/probe.md",
+      "key": "model",
+      "layer": "agent",
+      "line": 4,
+      "reason": "config/agents/probe.md sets the model for probe. The agent's frontmatter model, inherit included, beats CLAUDE_CODE_SUBAGENT_MODEL, which beats the main model, unless CLAUDE_CODE_SUBAGENT_MODEL_FORCE is on. A model passed at dispatch, or set by a mod's agent.spawn hook, beats the frontmatter, and the dashboard can't see either.",
+      "rule_id": "subagent-model-order",
+      "rule_ids": [
+        "subagent-model-order"
+      ],
+      "scope": "agent",
+      "status": "in_effect",
+      "value": "claude-haiku-5-5"
+    },
+    {
+      "agent": "probe",
+      "file": null,
+      "key": "effort",
+      "layer": "default",
+      "model": "claude-haiku-5-5",
+      "reason": "Nothing sets an effort level that counts for Haiku 5.5, so probe runs at that model's default, medium. A level that counts only for the main session's model doesn't carry over to probe.",
+      "rule_id": "agent-effort-default-by-model",
+      "rule_ids": [
+        "agent-effort-default-by-model",
+        "agent-effort-order"
+      ],
+      "scope": "agent",
+      "status": "default",
+      "value": "medium"
+    },
+    {
+      "agent": "probe",
+      "file": null,
+      "key": "autoCompactWindow",
+      "layer": "default",
+      "model": "claude-haiku-5-5",
+      "reason": "Nothing sets an auto-compact window for the session, so probe inherits the window tuned for the session's model. Its frontmatter can only lower that window. On Opus 5.5 that window is 1000000 tokens. Only Opus 5.5 was checked, so on any other model the dashboard can't say what the window is or whether the frontmatter lowers it. Run /autocompact in a session to see the session's window.",
+      "rule_id": "agent-auto-compact-window-default",
+      "rule_ids": [
+        "agent-auto-compact-window-default",
+        "agent-auto-compact-window"
+      ],
+      "scope": "agent",
+      "status": "unknown",
+      "value": null
+    },
+    {
+      "agent": "probe",
+      "file": "session.json:shell_env",
+      "key": "subagentPromptCacheTtl",
+      "layer": "env",
+      "reason": "FORCE_PROMPT_CACHING_5M is on, so the cache lifetime for probe is five minutes, whatever the shell sets.",
+      "rule_id": "subagent-prompt-cache-force-5m",
+      "rule_ids": [
+        "subagent-prompt-cache-force-5m",
+        "subagent-prompt-cache-ttl-order"
+      ],
+      "scope": "agent",
+      "status": "in_effect",
+      "value": "5m",
+      "via": "FORCE_PROMPT_CACHING_5M"
+    },
+    {
+      "agent": "probe",
+      "file": "session.json:shell_env",
+      "key": "subagentPromptCacheTtl",
+      "layer": "env",
+      "reason": "FORCE_PROMPT_CACHING_5M sets the cache lifetime for probe. CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL beats the settings files, which beat the agent's experimental.cacheTtl. Only a lowercase 5m or 1h counts, so Claude Code skips any other value and the next source decides. On a subscription, the agent's 1h gives one hour within plan usage, five minutes once usage credits start. With no plan in the dashboard config, the dashboard can't tell which applies.",
+      "rule_id": "subagent-prompt-cache-ttl-order",
+      "rule_ids": [
+        "subagent-prompt-cache-ttl-order",
+        "subagent-prompt-cache-force-5m"
+      ],
+      "scope": "agent",
+      "status": "overridden",
+      "value": "1h",
+      "via": "CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL"
+    },
+    {
+      "agent": "probe",
+      "file": "config/settings.json",
+      "key": "subagentPromptCacheTtl",
+      "layer": "user",
+      "line": 4,
+      "reason": "FORCE_PROMPT_CACHING_5M sets the cache lifetime for probe. CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL beats the settings files, which beat the agent's experimental.cacheTtl. Only a lowercase 5m or 1h counts, so Claude Code skips any other value and the next source decides. On a subscription, the agent's 1h gives one hour within plan usage, five minutes once usage credits start. With no plan in the dashboard config, the dashboard can't tell which applies.",
+      "rule_id": "subagent-prompt-cache-ttl-order",
+      "rule_ids": [
+        "subagent-prompt-cache-ttl-order",
+        "subagent-prompt-cache-force-5m"
+      ],
+      "scope": "agent",
+      "status": "overridden",
+      "value": "1h"
+    },
+    {
+      "agent": "probe",
+      "file": "config/agents/probe.md",
+      "key": "subagentPromptCacheTtl",
+      "layer": "agent",
+      "line": 6,
+      "reason": "FORCE_PROMPT_CACHING_5M sets the cache lifetime for probe. CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL beats the settings files, which beat the agent's experimental.cacheTtl. Only a lowercase 5m or 1h counts, so Claude Code skips any other value and the next source decides. On a subscription, the agent's 1h gives one hour within plan usage, five minutes once usage credits start. With no plan in the dashboard config, the dashboard can't tell which applies.",
+      "rule_id": "subagent-prompt-cache-ttl-order",
+      "rule_ids": [
+        "subagent-prompt-cache-ttl-order",
+        "subagent-prompt-cache-force-5m"
+      ],
+      "scope": "agent",
+      "status": "overridden",
+      "value": "1h"
+    },
+    {
+      "agent": "probe",
+      "file": null,
+      "key": "subagentPromptCacheTtl",
+      "layer": "default",
+      "reason": "FORCE_PROMPT_CACHING_5M sets the cache lifetime for probe. CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL beats the settings files, which beat the agent's experimental.cacheTtl. Only a lowercase 5m or 1h counts, so Claude Code skips any other value and the next source decides. On a subscription, the agent's 1h gives one hour within plan usage, five minutes once usage credits start. With no plan in the dashboard config, the dashboard can't tell which applies.",
+      "rule_id": "subagent-prompt-cache-ttl-order",
+      "rule_ids": [
+        "subagent-prompt-cache-ttl-order",
+        "subagent-prompt-cache-force-5m"
+      ],
+      "scope": "agent",
+      "status": "overridden",
+      "value": "1h",
+      "via": "ENABLE_PROMPT_CACHING_1H"
+    }
+  ],
+  "files": [
+    {
+      "layer": "user",
+      "path": "config/settings.json",
+      "status": "ok"
+    }
+  ],
+  "installed": null,
+  "local_file_display": null,
+  "no_user_settings": false,
+  "path_display": "project",
+  "project": "project",
+  "rows": [
+    {
+      "agent": "@main",
+      "entries": [
+        0
+      ],
+      "rule_ids": [
+        "env-block-order"
+      ],
+      "scope": "main",
+      "setting": "env.CLAUDE_CODE_PROMPT_CACHE_TTL"
+    },
+    {
+      "agent": "@main",
+      "entries": [
+        1
+      ],
+      "rule_ids": [
+        "env-block-order"
+      ],
+      "scope": "main",
+      "setting": "env.CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL"
+    },
+    {
+      "agent": "@main",
+      "entries": [
+        2
+      ],
+      "rule_ids": [
+        "env-block-order"
+      ],
+      "scope": "main",
+      "setting": "env.ENABLE_PROMPT_CACHING_1H"
+    },
+    {
+      "agent": "@main",
+      "entries": [
+        3
+      ],
+      "rule_ids": [
+        "env-block-order"
+      ],
+      "scope": "main",
+      "setting": "env.FORCE_PROMPT_CACHING_5M"
+    },
+    {
+      "agent": "@main",
+      "entries": [
+        4
+      ],
+      "rule_ids": [
+        "model-main-session-order"
+      ],
+      "scope": "main",
+      "setting": "model"
+    },
+    {
+      "agent": "@main",
+      "entries": [
+        5
+      ],
+      "rule_ids": [
+        "max-effort-level-default",
+        "max-effort-level-lowest-cap"
+      ],
+      "scope": "main",
+      "setting": "maxEffortLevel"
+    },
+    {
+      "agent": "@main",
+      "entries": [
+        6
+      ],
+      "rule_ids": [
+        "effort-default-by-model",
+        "effort-level-layer-order"
+      ],
+      "scope": "main",
+      "setting": "effortLevel"
+    },
+    {
+      "agent": "@main",
+      "entries": [
+        7
+      ],
+      "rule_ids": [
+        "auto-compact-window-default",
+        "auto-compact-window-order"
+      ],
+      "scope": "main",
+      "setting": "autoCompactWindow"
+    },
+    {
+      "agent": "@main",
+      "entries": [
+        8,
+        9,
+        10,
+        11
+      ],
+      "rule_ids": [
+        "prompt-cache-force-5m",
+        "prompt-cache-ttl-order"
+      ],
+      "scope": "main",
+      "setting": "promptCacheTtl"
+    },
+    {
+      "agent": "@main",
+      "entries": [
+        12
+      ],
+      "rule_ids": [
+        "available-models-default",
+        "available-models-order"
+      ],
+      "scope": "main",
+      "setting": "availableModels"
+    },
+    {
+      "agent": "@main",
+      "entries": [
+        13
+      ],
+      "rule_ids": [
+        "always-thinking-default-always-on",
+        "always-thinking-default",
+        "always-thinking-order"
+      ],
+      "scope": "main",
+      "setting": "alwaysThinkingEnabled"
+    },
+    {
+      "agent": "@main",
+      "entries": [
+        14
+      ],
+      "rule_ids": [
+        "fallback-model-default",
+        "fallback-model-order"
+      ],
+      "scope": "main",
+      "setting": "fallbackModel"
+    },
+    {
+      "agent": "probe",
+      "entries": [
+        15
+      ],
+      "rule_ids": [
+        "agent-file-location-order",
+        "agent-file-project-over-user"
+      ],
+      "scope": "agent",
+      "setting": "agentFile"
+    },
+    {
+      "agent": "probe",
+      "entries": [
+        16
+      ],
+      "rule_ids": [
+        "subagent-model-order"
+      ],
+      "scope": "agent",
+      "setting": "model"
+    },
+    {
+      "agent": "probe",
+      "entries": [
+        17
+      ],
+      "rule_ids": [
+        "agent-effort-default-by-model",
+        "agent-effort-order"
+      ],
+      "scope": "agent",
+      "setting": "effort"
+    },
+    {
+      "agent": "probe",
+      "entries": [
+        18
+      ],
+      "rule_ids": [
+        "agent-auto-compact-window-default",
+        "agent-auto-compact-window"
+      ],
+      "scope": "agent",
+      "setting": "autoCompactWindow"
+    },
+    {
+      "agent": "probe",
+      "entries": [
+        19,
+        20,
+        21,
+        22,
+        23
+      ],
+      "rule_ids": [
+        "subagent-prompt-cache-force-5m",
+        "subagent-prompt-cache-ttl-order"
+      ],
+      "scope": "agent",
+      "setting": "subagentPromptCacheTtl"
+    }
+  ],
+  "shell_label": "session.json:shell_env",
+  "state": "missing_folder"
+}

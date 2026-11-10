@@ -71,6 +71,8 @@ SESSION_JSON = "session.json"
 DEMO_NOW = "2026-10-30T18:00"
 DEMO_TZ = "America/New_York"
 DEMO_BUILD_SECONDS = 120
+# Written after the setup overlay is applied, so one demo build gets it once.
+SETUP_OVERLAY_MARKER = "setup-overlay.done"
 OFFLINE_ENV = "BARTAB_OFFLINE"
 SERVER_JSON = "server.json"
 RUN_FOLDER = "run"
@@ -297,7 +299,9 @@ def ensure_demo(data: Path) -> Path:
     """Build the demo set into ``data/demo`` unless it is built, and return its config.
 
     The builder writes ``truth.json`` last, so that file marks a finished build. A
-    folder left by an interrupted build is removed and built again.
+    folder left by an interrupted build is removed and built again. The setup overlay
+    (m4-build.md section 2, "Demo setup") is applied once per build, and
+    ``setup-overlay.done`` marks it.
 
     Args:
         data: The data folder.
@@ -324,6 +328,9 @@ def ensure_demo(data: Path) -> Path:
             stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
         )
+    if not (out / SETUP_OVERLAY_MARKER).is_file():
+        fixture_provider.apply_demo_setup_overlay(out)
+        (out / SETUP_OVERLAY_MARKER).write_text("applied\n", encoding="utf-8")
     return out / "config"
 
 

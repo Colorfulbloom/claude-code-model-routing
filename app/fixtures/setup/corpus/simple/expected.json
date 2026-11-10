@@ -1,0 +1,27 @@
+{
+  "case": "simple",
+  "note": "Written by hand. Settings items exist only for keys that are set somewhere.",
+  "project": {"name": "Proj", "dir": "work/parent/proj"},
+  "parts": {
+    "settings": {
+      "items": [
+        {"id": "settings:effortLevel", "key": "effortLevel", "scope": "project", "status": "in_effect", "effective": {"value": "low", "origin": "set"}, "sources": [{"scope": "project", "key": "effortLevel", "file": ".claude/settings.json", "line": 2, "status": "in_effect"}]},
+        {"id": "settings:model", "key": "model", "scope": "user", "status": "in_effect", "effective": {"value": "claude-sonnet-5-5", "origin": "set"}, "sources": [{"scope": "user", "key": "model", "file": "~/.claude/settings.json", "line": 2, "status": "in_effect"}]}
+      ],
+      "unreadable": []
+    },
+    "agents": {
+      "items": [
+        {"id": "agents:helper", "key": "helper", "scope": "user", "status": "in_effect", "sources": [{"scope": "user", "key": "name", "file": "~/.claude/agents/helper.md", "line": 2, "status": "in_effect"}]}
+      ],
+      "unreadable": []
+    },
+    "instructions": {
+      "items": [
+        {"id": "instructions:CLAUDE.md", "key": "CLAUDE.md", "scope": "project", "status": "in_effect", "loads": {"kind": "always", "globs": []}, "imports": [], "sources": [{"scope": "project", "key": "file", "file": "CLAUDE.md", "line": null, "status": "in_effect"}]}
+      ],
+      "unreadable": []
+    }
+  },
+  "problems": []
+}

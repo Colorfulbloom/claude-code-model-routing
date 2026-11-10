@@ -2520,8 +2520,10 @@ def do_stop(ctx: Ctx) -> None:
     rec = load_record(ctx)
     if rec is not None and stop_process(ctx, rec):
         say(f"Stopped Bar Tab (port {rec.port}).")
-    else:
+    elif ctx.real:
         say(f"No {ctx.label} is running.")
+    else:
+        say("No demo preview is running. A real-data preview stops with --real stop.")
     forget(ctx)
 
 

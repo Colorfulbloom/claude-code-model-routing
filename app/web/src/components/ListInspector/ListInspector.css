@@ -1,0 +1,363 @@
+/* List and inspector (components.md entry 26). 340 px and fluid, 280 px below 1100, one column at 720. */
+.list-inspector {
+  display: grid;
+  grid-template-columns: 340px minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.list-inspector-single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (width <= 1100px) {
+  .list-inspector {
+    grid-template-columns: 280px minmax(0, 1fr);
+  }
+}
+
+@media (width <= 720px) {
+  .list-inspector {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ---------- The list card ---------- */
+
+.item-group {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.item-group-title {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+
+.item-group-count {
+  font-weight: var(--weight-regular);
+}
+
+.item-ul {
+  margin: 0;
+  padding: var(--space-1) 0;
+  list-style: none;
+}
+
+.item-link {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0 var(--space-2);
+  align-items: center;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.item-name {
+  min-width: 0;
+  font-weight: var(--weight-medium);
+  overflow-wrap: anywhere;
+}
+
+/* The place in a load order, a small numbered circle beside the name. A long name wraps inside its
+   own column, so the circle stays on the first line. */
+.item-name-ordered {
+  display: flex;
+  gap: var(--space-2);
+  align-items: baseline;
+}
+
+.item-name-text {
+  min-width: 0;
+}
+
+.item-order {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-regular);
+  align-self: flex-start;
+  margin-top: 2px;
+}
+
+/* What the list leaves out, under the rows. */
+.item-foot {
+  margin: var(--space-3) 0 0;
+  font-size: var(--text-xs);
+}
+
+.item-state {
+  grid-row: 1 / 3;
+  grid-column: 2;
+  font-size: var(--text-xs);
+}
+
+.item-value {
+  grid-row: 2;
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+
+.item-link:not(.chosen-row):hover,
+.item-link.is-hover:not(.chosen-row) {
+  background: var(--nav-hover-bg);
+}
+
+/* The picked row keeps the chosen fill (shared.css, .chosen-row), and its value reads in full text colour. */
+.item-link.chosen-row .item-value {
+  color: var(--text);
+}
+
+.item-link:not(.chosen-row):focus-visible,
+.item-link.is-focus:not(.chosen-row) {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+/* On the picked row the ring sits just past the 3px start bar, so focus never reuses the edge. */
+.item-link.chosen-row:focus-visible,
+.item-link.chosen-row.is-focus {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: -5px;
+}
+
+.item-lock {
+  display: inline-flex;
+  color: var(--text-muted);
+  vertical-align: -1px;
+}
+
+/* A dotted ring for an item the server did not read. It is not the Unknown chip and not a failure. */
+.item-not-read {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.item-not-read-mark::before {
+  content: "\25CC" / "";
+}
+
+.value-masked::before {
+  content: "\2217" / "";
+  margin-inline-end: 3px;
+}
+
+/* ---------- The inspector card ---------- */
+
+.inspector {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.inspector-back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  justify-self: start;
+  min-height: 32px;
+  color: var(--accent);
+}
+
+.inspector-back:hover {
+  text-decoration: underline;
+}
+
+.inspector-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+.inspector-title {
+  min-width: 0;
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight);
+  overflow-wrap: anywhere;
+}
+
+.inspector-body {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.inspector-runs {
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight);
+  overflow-wrap: anywhere;
+}
+
+.inspector-set {
+  overflow-wrap: anywhere;
+}
+
+.inspector-h3 {
+  margin-bottom: var(--space-2);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+}
+
+.inspector-small {
+  font-size: var(--text-sm);
+}
+
+.inspector-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.inspector-readonly-reason {
+  display: flex;
+  gap: var(--space-2);
+  align-items: baseline;
+}
+
+.inspector-lock {
+  flex: none;
+  color: var(--text-muted);
+}
+
+/* The Unknown pill, then the sentence (m4.css .m4-nr). */
+.inspector-not-read-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  align-items: baseline;
+  margin: 0;
+}
+
+/* The where-set rows. Scope first, then key and value, then status and place. */
+.where-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.where-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  align-items: center;
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.where-row:last-child {
+  border-bottom: 0;
+}
+
+.where-row .scope-label {
+  flex: 0 0 150px;
+}
+
+.where-key,
+.where-value,
+.where-note {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.where-value {
+  font-weight: var(--weight-semibold);
+}
+
+.where-location {
+  flex-basis: 100%;
+  font-size: var(--text-xs);
+  overflow-wrap: anywhere;
+}
+
+/* Above 720px the key takes the free width, so the bold value and the status sit at the end of the
+   row, and the place lines up under the key (a-m4 boards, "Where it's set"). */
+@media (width > 720px) {
+  .where-row .where-key {
+    flex: 1 1 140px;
+    color: var(--text-muted);
+  }
+
+  .where-row .where-value,
+  .where-row .where-note {
+    margin-inline-start: auto;
+    text-align: end;
+  }
+
+  .where-row .where-location {
+    padding-inline-start: calc(150px + var(--space-3));
+  }
+}
+
+@media (width <= 720px) {
+  /* The scope fills the first line and the status pill sits at its end (a-m4 boards). */
+  .where-row .scope-label {
+    flex: 1 1 0;
+    order: -2;
+    min-width: 0;
+  }
+
+  .where-row .status-chip {
+    flex: none;
+    order: -1;
+  }
+
+  /* Key, value and note each take their own line under the scope line. */
+  .where-key,
+  .where-value,
+  .where-note {
+    flex-basis: 100%;
+  }
+}
+
+/* Show n more, at the foot of a group's well. */
+.item-more {
+  padding: var(--space-1) var(--space-3) var(--space-2);
+}
+
+/* Jump to chips above a long list. */
+.item-jump {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  font-size: var(--text-sm);
+}
+
+.item-jump-chip {
+  min-height: 32px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.item-jump-chip:hover {
+  background: var(--nav-hover-bg);
+}
+
+.item-jump-chip:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: 2px;
+}

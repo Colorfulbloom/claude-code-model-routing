@@ -103,6 +103,7 @@ function SessionsProject({ project }: { project: string }) {
           </p>
         )}
         <div className="review-foot">
+          <p>{t("runs_def")}</p>
           <p>{t("foot_est", { date: dateWords(head.prices.as_of) })}</p>
           {head.prices.cross_check_state === "disagree" && disagreed.length > 0 && (
             <p className="review-warn">

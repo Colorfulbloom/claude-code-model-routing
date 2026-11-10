@@ -395,6 +395,7 @@ def test_summary_model_check_has_the_timeline_row_shape(served: Served) -> None:
         "params",
         "runs",
         "mismatched_runs",
+        "item_id",
     }
     assert any(row["agent"] is None for row in check["rows"])  # the main session
 
@@ -677,7 +678,8 @@ def test_agents_ran_holds_every_agent_with_its_setup_and_its_runs(
     assert costs == sorted(costs, reverse=True)
     by_key = {row["agent"]: row for row in ran}
     assert by_key["@main"]["scope"] == "main"
-    assert by_key["@main"]["runs"] == 0
+    # Main is a run, once per session, so its runs equal its sessions.
+    assert by_key["@main"]["runs"] == by_key["@main"]["sessions"] > 0
     for key, row in by_key.items():
         assert row["scope"] in {"user", "project", "main", "unnamed", "no_file"}
         assert row["requests"] > 0
@@ -720,7 +722,12 @@ def test_agents_share_and_the_old_oracle_runs(served: Served) -> None:
     old = {row["route_key"]: row for row in oracle}
     assert {row["agent"] for row in ran} == set(old)
     for row in ran:
-        assert row["runs"] == old[row["agent"]]["runs"]
+        # The old app skipped main, so its @main row showed 0 runs. Main now counts
+        # once per session (Task 21 item 10).
+        old_runs = old[row["agent"]]["sessions"] if row["agent"] == "@main" else None
+        if old_runs is None:
+            old_runs = old[row["agent"]]["runs"]
+        assert row["runs"] == old_runs
         assert row["sessions"] == old[row["agent"]]["sessions"]
 
 

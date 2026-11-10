@@ -1,0 +1,21 @@
+{
+  "numStartups": 40,
+  "mcpServers": {
+    "notes": {
+      "type": "sse",
+      "url": "https://admin:hunter2complexpass@notes.example.test/sse",
+      "headers": {"X-Api-Key": "fake-xapikey-COMPLEX0123456789"}
+    }
+  },
+  "projects": {
+    "@@PROJECT@@": {
+      "mcpServers": {
+        "scratch": {
+          "command": "node",
+          "args": ["scratch.js"],
+          "env": {"SCRATCH_TOKEN": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJjb21wbGV4In0.FAKECOMPLEXSIGNATURE0123456789"}
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,788 @@
+{
+  "build_args": {
+    "demo_now": "2026-10-30T18:00",
+    "demo_script": "tests/fixtures/demo/build_demo.py",
+    "demo_tz": "America/New_York",
+    "resolution_folders": "tests/fixtures/resolution"
+  },
+  "cases": [
+    {
+      "file": "demo/tidewater-reporting.json",
+      "kind": "demo",
+      "project": "tidewater-reporting"
+    },
+    {
+      "file": "demo/driftwood.json",
+      "kind": "demo",
+      "project": "driftwood"
+    },
+    {
+      "file": "demo/harbor-light.json",
+      "kind": "demo",
+      "project": "harbor-light"
+    },
+    {
+      "file": "demo/saltmarsh.json",
+      "kind": "demo",
+      "project": "saltmarsh"
+    },
+    {
+      "file": "demo/lantern.json",
+      "kind": "demo",
+      "project": "lantern"
+    },
+    {
+      "file": "resolution/agent-bak-copy-skipped.json",
+      "folder": "agent-bak-copy-skipped",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/agent-effort-cap-model-unknown-invalid-lowers-nothing.json",
+      "folder": "agent-effort-cap-model-unknown-invalid-lowers-nothing",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/agent-effort-cap-model-unknown-max-lowers-nothing.json",
+      "folder": "agent-effort-cap-model-unknown-max-lowers-nothing",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/agent-effort-cap-model-unknown-per-model-cap-ignored.json",
+      "folder": "agent-effort-cap-model-unknown-per-model-cap-ignored",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/agent-effort-default-fable-5-1.json",
+      "folder": "agent-effort-default-fable-5-1",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/agent-effort-env-empty-frontmatter-high.json",
+      "folder": "agent-effort-env-empty-frontmatter-high",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/agent-effort-env-no-frontmatter-fable-5-1.json",
+      "folder": "agent-effort-env-no-frontmatter-fable-5-1",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/agent-effort-env-over-frontmatter.json",
+      "folder": "agent-effort-env-over-frontmatter",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/agent-effort-flag-no-frontmatter.json",
+      "folder": "agent-effort-flag-no-frontmatter",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/agent-effort-flag-no-frontmatter-fable-5-1.json",
+      "folder": "agent-effort-flag-no-frontmatter-fable-5-1",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/agent-effort-frontmatter-over-flag.json",
+      "folder": "agent-effort-frontmatter-over-flag",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/agent-effort-frontmatter-over-project.json",
+      "folder": "agent-effort-frontmatter-over-project",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/agent-effort-lowered-by-cap.json",
+      "folder": "agent-effort-lowered-by-cap",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/agent-effort-lowered-by-cap-model-unknown.json",
+      "folder": "agent-effort-lowered-by-cap-model-unknown",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/agent-effort-lowered-by-cap-model-unknown-frontmatter.json",
+      "folder": "agent-effort-lowered-by-cap-model-unknown-frontmatter",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/agent-effort-lowered-by-cap-model-unknown-settings.json",
+      "folder": "agent-effort-lowered-by-cap-model-unknown-settings",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/agent-effort-model-settings-main-model-only.json",
+      "folder": "agent-effort-model-settings-main-model-only",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/agent-effort-project-no-frontmatter.json",
+      "folder": "agent-effort-project-no-frontmatter",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/agent-effort-user-model-unknown-under-cap.json",
+      "folder": "agent-effort-user-model-unknown-under-cap",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/agent-effort-user-top-level-ignored-haiku-5-5.json",
+      "folder": "agent-effort-user-top-level-ignored-haiku-5-5",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/agent-effort-user-top-level-ignored-opus-5-5.json",
+      "folder": "agent-effort-user-top-level-ignored-opus-5-5",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/agent-effort-user-top-level-model-unknown-env.json",
+      "folder": "agent-effort-user-top-level-model-unknown-env",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/agent-effort-user-top-level-model-unknown-frontmatter.json",
+      "folder": "agent-effort-user-top-level-model-unknown-frontmatter",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/agent-effort-user-top-level-model-unknown-inherit.json",
+      "folder": "agent-effort-user-top-level-model-unknown-inherit",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/agent-project-over-user.json",
+      "folder": "agent-project-over-user",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/agent-reader-rejected-but-loads.json",
+      "folder": "agent-reader-rejected-but-loads",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/agent-reader-rejected-untested.json",
+      "folder": "agent-reader-rejected-untested",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/agent-same-name-one-tree.json",
+      "folder": "agent-same-name-one-tree",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/agent-unknown-field.json",
+      "folder": "agent-unknown-field",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/auto-compact-agent-env-clamped.json",
+      "folder": "auto-compact-agent-env-clamped",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/auto-compact-agent-env-not-a-number.json",
+      "folder": "auto-compact-agent-env-not-a-number",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/auto-compact-agent-frontmatter.json",
+      "folder": "auto-compact-agent-frontmatter",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/auto-compact-agent-frontmatter-above-session-window.json",
+      "folder": "auto-compact-agent-frontmatter-above-session-window",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/auto-compact-agent-frontmatter-out-of-range.json",
+      "folder": "auto-compact-agent-frontmatter-out-of-range",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/auto-compact-agent-session-window-unknown.json",
+      "folder": "auto-compact-agent-session-window-unknown",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/auto-compact-agent-settings-below-floor.json",
+      "folder": "auto-compact-agent-settings-below-floor",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/auto-compact-env-above-ceiling.json",
+      "folder": "auto-compact-env-above-ceiling",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/auto-compact-env-below-floor.json",
+      "folder": "auto-compact-env-below-floor",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/auto-compact-env-empty.json",
+      "folder": "auto-compact-env-empty",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/auto-compact-env-over-flag-over-project.json",
+      "folder": "auto-compact-env-over-flag-over-project",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/auto-compact-higher-file-top-level-over-lower-per-model.json",
+      "folder": "auto-compact-higher-file-top-level-over-lower-per-model",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/auto-compact-per-model-same-file.json",
+      "folder": "auto-compact-per-model-same-file",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/auto-compact-settings-below-floor.json",
+      "folder": "auto-compact-settings-below-floor",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/auto-compact-top-level.json",
+      "folder": "auto-compact-top-level",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/available-managed-empty-list.json",
+      "folder": "available-managed-empty-list",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/available-managed-over-user-and-project.json",
+      "folder": "available-managed-over-user-and-project",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/available-user-and-project-merge.json",
+      "folder": "available-user-and-project-merge",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/available-wrong-type-at-merge-layer.json",
+      "folder": "available-wrong-type-at-merge-layer",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/cap-model-unknown-invalid-lowers-nothing.json",
+      "folder": "cap-model-unknown-invalid-lowers-nothing",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/cap-model-unknown-max-lowers-nothing.json",
+      "folder": "cap-model-unknown-max-lowers-nothing",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/cap-model-unknown-per-model-cap-ignored.json",
+      "folder": "cap-model-unknown-per-model-cap-ignored",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/cap-other-file-per-model-lowest.json",
+      "folder": "cap-other-file-per-model-lowest",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/cap-per-model-invalid-alone.json",
+      "folder": "cap-per-model-invalid-alone",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/cap-same-file-per-model-invalid.json",
+      "folder": "cap-same-file-per-model-invalid",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/cap-same-file-per-model-max.json",
+      "folder": "cap-same-file-per-model-max",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/cap-same-file-per-model-replaces.json",
+      "folder": "cap-same-file-per-model-replaces",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/cap-top-level-invalid.json",
+      "folder": "cap-top-level-invalid",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/cap-user-low-project-invalid.json",
+      "folder": "cap-user-low-project-invalid",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/effort-env-empty-project-high.json",
+      "folder": "effort-env-empty-project-high",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/effort-env-over-flag-over-cli-settings.json",
+      "folder": "effort-env-over-flag-over-cli-settings",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/effort-flag-lowered-by-cap-model-unknown.json",
+      "folder": "effort-flag-lowered-by-cap-model-unknown",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/effort-lowered-by-cap.json",
+      "folder": "effort-lowered-by-cap",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/effort-lowered-by-cap-model-unknown.json",
+      "folder": "effort-lowered-by-cap-model-unknown",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/effort-lowered-unsupported-level.json",
+      "folder": "effort-lowered-unsupported-level",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/effort-max-in-settings-invalid.json",
+      "folder": "effort-max-in-settings-invalid",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/effort-no-effort-support-haiku-4-5.json",
+      "folder": "effort-no-effort-support-haiku-4-5",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/effort-project-top-level-opus-5-5.json",
+      "folder": "effort-project-top-level-opus-5-5",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/effort-project-top-level-xhigh-opus-5-5.json",
+      "folder": "effort-project-top-level-xhigh-opus-5-5",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/effort-user-model-settings-opus-5-5.json",
+      "folder": "effort-user-model-settings-opus-5-5",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/effort-user-model-unknown-under-cap.json",
+      "folder": "effort-user-model-unknown-under-cap",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/effort-user-top-level-fable-5-1.json",
+      "folder": "effort-user-top-level-fable-5-1",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/effort-user-top-level-ignored-opus-5-5.json",
+      "folder": "effort-user-top-level-ignored-opus-5-5",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/effort-user-top-level-model-unknown.json",
+      "folder": "effort-user-top-level-model-unknown",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/effort-user-top-level-xhigh-ignored-opus-5-5.json",
+      "folder": "effort-user-top-level-xhigh-ignored-opus-5-5",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/env-block-over-shell.json",
+      "folder": "env-block-over-shell",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/fallback-allowed-list-drops-all.json",
+      "folder": "fallback-allowed-list-drops-all",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/fallback-allowed-list-drops-entry.json",
+      "folder": "fallback-allowed-list-drops-entry",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/fallback-and-allowed-defaults.json",
+      "folder": "fallback-and-allowed-defaults",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/fallback-chain-five-capped.json",
+      "folder": "fallback-chain-five-capped",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/fallback-default-entry-over-three-unknown.json",
+      "folder": "fallback-default-entry-over-three-unknown",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/fallback-default-entry-with-allowed-list-unknown.json",
+      "folder": "fallback-default-entry-with-allowed-list-unknown",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/fallback-flag-over-file.json",
+      "folder": "fallback-flag-over-file",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/fallback-managed-denied-models-unknown.json",
+      "folder": "fallback-managed-denied-models-unknown",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/fallback-managed-replaces-whole.json",
+      "folder": "fallback-managed-replaces-whole",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/fallback-over-three-with-blocked-lowered.json",
+      "folder": "fallback-over-three-with-blocked-lowered",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/fallback-project-over-user-whole.json",
+      "folder": "fallback-project-over-user-whole",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/fallback-string-value-unknown.json",
+      "folder": "fallback-string-value-unknown",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/max-effort-lowest-cap-from-user.json",
+      "folder": "max-effort-lowest-cap-from-user",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/model-flag-over-env-over-cli-settings.json",
+      "folder": "model-flag-over-env-over-cli-settings",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/model-main-default-unknown.json",
+      "folder": "model-main-default-unknown",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/model-settings-agent-pinned-by-alias.json",
+      "folder": "model-settings-agent-pinned-by-alias",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/model-settings-alias-name.json",
+      "folder": "model-settings-alias-name",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/model-settings-canonical-name.json",
+      "folder": "model-settings-canonical-name",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/model-settings-canonical-over-alias-same-file.json",
+      "folder": "model-settings-canonical-over-alias-same-file",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/model-settings-higher-file-top-level-wins.json",
+      "folder": "model-settings-higher-file-top-level-wins",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/model-unknown-name-effort-unknown.json",
+      "folder": "model-unknown-name-effort-unknown",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/model-user-env-block-over-project-key.json",
+      "folder": "model-user-env-block-over-project-key",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/prompt-cache-force-5m-over-everything.json",
+      "folder": "prompt-cache-force-5m-over-everything",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/prompt-cache-key-over-enable-1h.json",
+      "folder": "prompt-cache-key-over-enable-1h",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/prompt-cache-no-plan-unknown.json",
+      "folder": "prompt-cache-no-plan-unknown",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/prompt-cache-plan-api-key-five-minutes.json",
+      "folder": "prompt-cache-plan-api-key-five-minutes",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/prompt-cache-plan-subscription-unknown.json",
+      "folder": "prompt-cache-plan-subscription-unknown",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/prompt-cache-setting-over-frontmatter.json",
+      "folder": "prompt-cache-setting-over-frontmatter",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/prompt-cache-unsupported-value-ignored.json",
+      "folder": "prompt-cache-unsupported-value-ignored",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/settings-user-not-json-skipped.json",
+      "folder": "settings-user-not-json-skipped",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/subagent-force-alone-runs-on-main-model.json",
+      "folder": "subagent-force-alone-runs-on-main-model",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/subagent-force-env-over-frontmatter.json",
+      "folder": "subagent-force-env-over-frontmatter",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/subagent-frontmatter-over-env.json",
+      "folder": "subagent-frontmatter-over-env",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/subagent-inherit-over-env.json",
+      "folder": "subagent-inherit-over-env",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/subagent-model-default-main-model.json",
+      "folder": "subagent-model-default-main-model",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/subagent-prompt-cache-local-over-project.json",
+      "folder": "subagent-prompt-cache-local-over-project",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/thinking-alias-swapped-by-allowlist.json",
+      "folder": "thinking-alias-swapped-by-allowlist",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/thinking-env-not-a-number-unknown.json",
+      "folder": "thinking-env-not-a-number-unknown",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/thinking-env-positive-over-false-older-model.json",
+      "folder": "thinking-env-positive-over-false-older-model",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/thinking-env-zero-ignored-opus-5-5.json",
+      "folder": "thinking-env-zero-ignored-opus-5-5",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/thinking-env-zero-older-model-over-true.json",
+      "folder": "thinking-env-zero-older-model-over-true",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/thinking-false-ignored-opus-5-5.json",
+      "folder": "thinking-false-ignored-opus-5-5",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/thinking-false-model-unknown.json",
+      "folder": "thinking-false-model-unknown",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/thinking-false-older-model.json",
+      "folder": "thinking-false-older-model",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/thinking-higher-file-wins.json",
+      "folder": "thinking-higher-file-wins",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/thinking-model-blocked-by-allowlist.json",
+      "folder": "thinking-model-blocked-by-allowlist",
+      "kind": "resolution"
+    },
+    {
+      "file": "resolution/thinking-string-false-unknown.json",
+      "folder": "thinking-string-false-unknown",
+      "kind": "resolution"
+    }
+  ],
+  "dropped_fields": [
+    "rules",
+    "models"
+  ],
+  "files": [
+    "allowed-differences.json",
+    "demo/driftwood.json",
+    "demo/harbor-light.json",
+    "demo/lantern.json",
+    "demo/saltmarsh.json",
+    "demo/tidewater-reporting.json",
+    "manifest.json",
+    "resolution/agent-bak-copy-skipped.json",
+    "resolution/agent-effort-cap-model-unknown-invalid-lowers-nothing.json",
+    "resolution/agent-effort-cap-model-unknown-max-lowers-nothing.json",
+    "resolution/agent-effort-cap-model-unknown-per-model-cap-ignored.json",
+    "resolution/agent-effort-default-fable-5-1.json",
+    "resolution/agent-effort-env-empty-frontmatter-high.json",
+    "resolution/agent-effort-env-no-frontmatter-fable-5-1.json",
+    "resolution/agent-effort-env-over-frontmatter.json",
+    "resolution/agent-effort-flag-no-frontmatter-fable-5-1.json",
+    "resolution/agent-effort-flag-no-frontmatter.json",
+    "resolution/agent-effort-frontmatter-over-flag.json",
+    "resolution/agent-effort-frontmatter-over-project.json",
+    "resolution/agent-effort-lowered-by-cap-model-unknown-frontmatter.json",
+    "resolution/agent-effort-lowered-by-cap-model-unknown-settings.json",
+    "resolution/agent-effort-lowered-by-cap-model-unknown.json",
+    "resolution/agent-effort-lowered-by-cap.json",
+    "resolution/agent-effort-model-settings-main-model-only.json",
+    "resolution/agent-effort-project-no-frontmatter.json",
+    "resolution/agent-effort-user-model-unknown-under-cap.json",
+    "resolution/agent-effort-user-top-level-ignored-haiku-5-5.json",
+    "resolution/agent-effort-user-top-level-ignored-opus-5-5.json",
+    "resolution/agent-effort-user-top-level-model-unknown-env.json",
+    "resolution/agent-effort-user-top-level-model-unknown-frontmatter.json",
+    "resolution/agent-effort-user-top-level-model-unknown-inherit.json",
+    "resolution/agent-project-over-user.json",
+    "resolution/agent-reader-rejected-but-loads.json",
+    "resolution/agent-reader-rejected-untested.json",
+    "resolution/agent-same-name-one-tree.json",
+    "resolution/agent-unknown-field.json",
+    "resolution/auto-compact-agent-env-clamped.json",
+    "resolution/auto-compact-agent-env-not-a-number.json",
+    "resolution/auto-compact-agent-frontmatter-above-session-window.json",
+    "resolution/auto-compact-agent-frontmatter-out-of-range.json",
+    "resolution/auto-compact-agent-frontmatter.json",
+    "resolution/auto-compact-agent-session-window-unknown.json",
+    "resolution/auto-compact-agent-settings-below-floor.json",
+    "resolution/auto-compact-env-above-ceiling.json",
+    "resolution/auto-compact-env-below-floor.json",
+    "resolution/auto-compact-env-empty.json",
+    "resolution/auto-compact-env-over-flag-over-project.json",
+    "resolution/auto-compact-higher-file-top-level-over-lower-per-model.json",
+    "resolution/auto-compact-per-model-same-file.json",
+    "resolution/auto-compact-settings-below-floor.json",
+    "resolution/auto-compact-top-level.json",
+    "resolution/available-managed-empty-list.json",
+    "resolution/available-managed-over-user-and-project.json",
+    "resolution/available-user-and-project-merge.json",
+    "resolution/available-wrong-type-at-merge-layer.json",
+    "resolution/cap-model-unknown-invalid-lowers-nothing.json",
+    "resolution/cap-model-unknown-max-lowers-nothing.json",
+    "resolution/cap-model-unknown-per-model-cap-ignored.json",
+    "resolution/cap-other-file-per-model-lowest.json",
+    "resolution/cap-per-model-invalid-alone.json",
+    "resolution/cap-same-file-per-model-invalid.json",
+    "resolution/cap-same-file-per-model-max.json",
+    "resolution/cap-same-file-per-model-replaces.json",
+    "resolution/cap-top-level-invalid.json",
+    "resolution/cap-user-low-project-invalid.json",
+    "resolution/effort-env-empty-project-high.json",
+    "resolution/effort-env-over-flag-over-cli-settings.json",
+    "resolution/effort-flag-lowered-by-cap-model-unknown.json",
+    "resolution/effort-lowered-by-cap-model-unknown.json",
+    "resolution/effort-lowered-by-cap.json",
+    "resolution/effort-lowered-unsupported-level.json",
+    "resolution/effort-max-in-settings-invalid.json",
+    "resolution/effort-no-effort-support-haiku-4-5.json",
+    "resolution/effort-project-top-level-opus-5-5.json",
+    "resolution/effort-project-top-level-xhigh-opus-5-5.json",
+    "resolution/effort-user-model-settings-opus-5-5.json",
+    "resolution/effort-user-model-unknown-under-cap.json",
+    "resolution/effort-user-top-level-fable-5-1.json",
+    "resolution/effort-user-top-level-ignored-opus-5-5.json",
+    "resolution/effort-user-top-level-model-unknown.json",
+    "resolution/effort-user-top-level-xhigh-ignored-opus-5-5.json",
+    "resolution/env-block-over-shell.json",
+    "resolution/fallback-allowed-list-drops-all.json",
+    "resolution/fallback-allowed-list-drops-entry.json",
+    "resolution/fallback-and-allowed-defaults.json",
+    "resolution/fallback-chain-five-capped.json",
+    "resolution/fallback-default-entry-over-three-unknown.json",
+    "resolution/fallback-default-entry-with-allowed-list-unknown.json",
+    "resolution/fallback-flag-over-file.json",
+    "resolution/fallback-managed-denied-models-unknown.json",
+    "resolution/fallback-managed-replaces-whole.json",
+    "resolution/fallback-over-three-with-blocked-lowered.json",
+    "resolution/fallback-project-over-user-whole.json",
+    "resolution/fallback-string-value-unknown.json",
+    "resolution/max-effort-lowest-cap-from-user.json",
+    "resolution/model-flag-over-env-over-cli-settings.json",
+    "resolution/model-main-default-unknown.json",
+    "resolution/model-settings-agent-pinned-by-alias.json",
+    "resolution/model-settings-alias-name.json",
+    "resolution/model-settings-canonical-name.json",
+    "resolution/model-settings-canonical-over-alias-same-file.json",
+    "resolution/model-settings-higher-file-top-level-wins.json",
+    "resolution/model-unknown-name-effort-unknown.json",
+    "resolution/model-user-env-block-over-project-key.json",
+    "resolution/prompt-cache-force-5m-over-everything.json",
+    "resolution/prompt-cache-key-over-enable-1h.json",
+    "resolution/prompt-cache-no-plan-unknown.json",
+    "resolution/prompt-cache-plan-api-key-five-minutes.json",
+    "resolution/prompt-cache-plan-subscription-unknown.json",
+    "resolution/prompt-cache-setting-over-frontmatter.json",
+    "resolution/prompt-cache-unsupported-value-ignored.json",
+    "resolution/settings-user-not-json-skipped.json",
+    "resolution/subagent-force-alone-runs-on-main-model.json",
+    "resolution/subagent-force-env-over-frontmatter.json",
+    "resolution/subagent-frontmatter-over-env.json",
+    "resolution/subagent-inherit-over-env.json",
+    "resolution/subagent-model-default-main-model.json",
+    "resolution/subagent-prompt-cache-local-over-project.json",
+    "resolution/thinking-alias-swapped-by-allowlist.json",
+    "resolution/thinking-env-not-a-number-unknown.json",
+    "resolution/thinking-env-positive-over-false-older-model.json",
+    "resolution/thinking-env-zero-ignored-opus-5-5.json",
+    "resolution/thinking-env-zero-older-model-over-true.json",
+    "resolution/thinking-false-ignored-opus-5-5.json",
+    "resolution/thinking-false-model-unknown.json",
+    "resolution/thinking-false-older-model.json",
+    "resolution/thinking-higher-file-wins.json",
+    "resolution/thinking-model-blocked-by-allowlist.json",
+    "resolution/thinking-string-false-unknown.json"
+  ],
+  "old_call": "api_settings.settings(server.fixture_context(folder, None, None, rules, fields), query), in process, on a copy of each folder",
+  "old_commit": "e9ff175dc63a60cdbaa8c64466e50a28e04ce664",
+  "path_placeholder": {
+    "note": "Old display paths are relative to that folder, so a payload rarely holds the placeholder. Any absolute temp path is replaced at record time.",
+    "placeholder": "/work/settings",
+    "stands_for": "the temp folder the recorder built the demo or copied the resolver folders into"
+  },
+  "python": "3.9.6"
+}

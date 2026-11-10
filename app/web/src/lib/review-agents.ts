@@ -82,7 +82,10 @@ export interface SourceLine {
 }
 
 /** The muted line under the agent's name. */
-export function sourceLine(scope: AgentRow["scope"] | NoRuns["scope"]): SourceLine {
+export function sourceLine(
+  scope: AgentRow["scope"] | NoRuns["scope"],
+  plugin?: string | null,
+): SourceLine {
   switch (scope) {
     case "user":
       return { text: t("ag_src_user"), description: null };
@@ -92,6 +95,13 @@ export function sourceLine(scope: AgentRow["scope"] | NoRuns["scope"]): SourceLi
       return { text: t("ag_main_src"), description: null };
     case "unnamed":
       return { text: t("ag_src_unnamed"), description: null };
+    case "managed":
+      return { text: t("ag_src_managed"), description: null };
+    case "plugin":
+      // A plugin row always carries its plugin's name. Without one the source reads as unknown.
+      return plugin == null || plugin === ""
+        ? { text: t("ag_src_unknown"), description: t("ag_src_unknown_aria") }
+        : { text: t("ag_src_plugin", { plugin }), description: null };
     case "no_file":
       return { text: t("ag_src_unknown"), description: t("ag_src_unknown_aria") };
   }
@@ -106,13 +116,39 @@ export function checkStatus(row: AgentRow): SettingStatus | null {
   return row.set_reason === "read_failed" ? null : "default";
 }
 
+/**
+ * True for a plugin or managed agent. The Model check reads agent files with the resolver, which
+ * does not cover these two, so the Check cell says Not checked and points to Your setup.
+ */
+export function isUnchecked(row: Pick<AgentRow, "scope" | "reason_code">): boolean {
+  return (
+    row.scope === "plugin" ||
+    row.scope === "managed" ||
+    row.reason_code === "agent_source_unchecked"
+  );
+}
+
+/** The setup item key of an agent row, `judge` or `lint-kit:linter`, or null with no item. */
+export function itemKeyOf(row: { item_id?: string | null }): string | null {
+  const id = row.item_id;
+  if (id == null || !id.startsWith("agents:") || id.length === "agents:".length) return null;
+  return id.slice("agents:".length);
+}
+
 export interface AgentRowView {
+  /** The agent type. Two rows can share it, a plugin agent and a file agent. */
   key: string;
+  /** Unique per row, for React. The setup item id, else the agent type. */
+  id: string;
+  /** The setup item key the name links to, or null for a row with no item. */
+  itemKey: string | null;
   name: string;
   source: SourceLine;
   set: SetCell;
   ran: RanCell;
   check: SettingStatus | null;
+  /** The Check cell says Not checked, for a plugin or managed agent. */
+  unchecked: boolean;
   runs: number;
   cost: string;
   /** The model whose colour fills the cost bar. */
@@ -123,6 +159,8 @@ export interface AgentRowView {
 
 export interface NoRunsView {
   key: string;
+  id: string;
+  itemKey: string | null;
   name: string;
   source: SourceLine;
   set: SetCell;
@@ -134,12 +172,12 @@ export interface AgentsView {
 }
 
 /**
- * The Runs cell. The server counts a subagent's runs and gives the Main session none, because it
- * is not a run of its own. The board counts the Main session once for each session, as the model
- * check does, so a Main session row reads its session count.
+ * The Runs cell. A run is any agent run, the Main session included, so the server counts the Main
+ * session once for each session and its Runs equal its sessions. Every page reads the same number
+ * (Task 21 item 10).
  */
 export function runsOf(row: AgentRow): number {
-  return row.scope === "main" ? row.sessions : row.runs;
+  return row.runs;
 }
 
 export function buildAgents(answer: AgentList): AgentsView {
@@ -147,11 +185,14 @@ export function buildAgents(answer: AgentList): AgentsView {
   return {
     rows: answer.ran.map((row) => ({
       key: row.agent,
+      id: row.item_id ?? row.agent,
+      itemKey: itemKeyOf(row),
       name: agentName(row.agent),
-      source: sourceLine(row.scope),
+      source: sourceLine(row.scope, row.plugin),
       set: setCell(row.set, row.set_reason),
       ran: ranCell(row),
-      check: checkStatus(row),
+      check: isUnchecked(row) ? null : checkStatus(row),
+      unchecked: isUnchecked(row),
       runs: runsOf(row),
       cost: costWords(row.cost, row.unpriced),
       model: modelFamily(row.ran.model),
@@ -159,8 +200,10 @@ export function buildAgents(answer: AgentList): AgentsView {
     })),
     neverRan: answer.never_ran.map((row) => ({
       key: row.agent,
+      id: row.item_id ?? row.agent,
+      itemKey: itemKeyOf(row),
       name: row.agent,
-      source: sourceLine(row.scope),
+      source: sourceLine(row.scope, row.plugin),
       set: setCell(row.set, row.set_reason),
     })),
   };

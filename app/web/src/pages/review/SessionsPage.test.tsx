@@ -151,6 +151,22 @@ describe("the list", () => {
     expect(await screen.findByText("at least $3.00")).toBeInTheDocument();
   });
 
+  it("says what a run is in a visible note, not in a title", async () => {
+    await open(
+      reviewServer({
+        sessions: () =>
+          sessionList([{ day: "2026-11-09", sessions: [sessionAt("a", "2026-11-09T14:00:00Z")] }]),
+      }),
+    );
+    const table = await screen.findByRole("table", { name: "Sessions" });
+    const note = screen.getByText(
+      "Runs counts each agent run, plus one for the main session in each session.",
+    );
+    expect(note).toBeVisible();
+    expect(table.compareDocumentPosition(note) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(within(table).getByRole("columnheader", { name: "Runs" })).not.toHaveAttribute("title");
+  });
+
   it("says the list is complete, in the singular and the plural", async () => {
     const one = reviewServer({
       sessions: () =>

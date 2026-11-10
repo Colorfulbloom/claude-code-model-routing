@@ -309,6 +309,22 @@ code {
   outline-offset: -5px;
 }
 
+/* The start bar for the first cell of a table row (the review tables). The cell has start padding
+   (the well's gutter), so the 3px bar sits at the row's true left edge and never reaches the text.
+   It is a border on a pseudo-element, so forced-colors mode keeps it (box-shadow is dropped there).
+   Pair it with the fill on the row's cells (see .review-agents-picked). */
+.chosen-cell-start {
+  position: relative;
+}
+
+.chosen-cell-start::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  border-inline-start: 3px solid var(--accent);
+}
+
 /* The mark: a check before the label, or the word "Selected" in accent on the title row. */
 .chosen-mark::before {
   content: "\2713\00a0" / "";

@@ -108,6 +108,26 @@
   width: min(100%, 720px);
 }
 
+.sheet-cell[data-component="ToFixRow"],
+.sheet-cell[data-component="ToFixGroup"],
+.sheet-cell[data-component="Breadcrumb"] {
+  width: min(100%, 560px);
+}
+
+.sheet-cell[data-component="ListInspector"] {
+  width: 100%;
+}
+
+/* A narrow box that shows wrapping without a viewport change. */
+.sheet-narrow {
+  width: 180px;
+  max-width: 100%;
+}
+
+.sheet-pad {
+  padding: var(--space-3);
+}
+
 .sheet-cell[data-component="Tile"] {
   width: min(100%, 280px);
 }

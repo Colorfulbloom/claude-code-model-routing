@@ -9,6 +9,7 @@ controller stands in for the browser (I-14ae), so no real tab opens.
 
 from __future__ import annotations
 
+import contextlib
 import importlib.util
 import json
 import os
@@ -16,6 +17,7 @@ import re
 import shlex
 import shutil
 import signal
+import socket
 import stat
 import subprocess
 import sys
@@ -272,13 +274,56 @@ class Tree:
             return []
         return [json.loads(line) for line in path.read_text().splitlines()]
 
+    def fake_pids(self) -> list[int]:
+        """Every pid a fake server in this tree wrote to fake-serve.pids on start."""
+        path = self.root / "fake-serve.pids"
+        if not path.exists():
+            return []
+        return [int(word) for word in path.read_text().split() if word.isdigit()]
+
+    def kill_fakes(self) -> None:
+        """Stop every fake server this tree started, with or without a server.json.
+
+        A pid counts only while its command line still names a serve.py, so a pid the
+        system reused for something else is left alone.
+        """
+        for pid in self.fake_pids():
+            if pid_alive(pid) and "serve.py" in command_of(pid):
+                with contextlib.suppress(ProcessLookupError):
+                    os.kill(pid, signal.SIGKILL)
+
+
+def command_of(pid: int) -> str:
+    """The command line of pid, or an empty string when it is gone."""
+    return subprocess.run(  # noqa: S603
+        ["/bin/ps", "-o", "command=", "-p", str(pid)],
+        capture_output=True,
+        text=True,
+        check=False,
+    ).stdout.strip()
+
 
 @pytest.fixture
 def tree(tmp_path: Path) -> Iterator[Tree]:
-    """A Tree with the fake uv installed. Any server left running is stopped."""
+    """A Tree with the fake uv installed. Any server left running is stopped.
+
+    The teardown stops the server in server.json first, the way a user would. Then it
+    kills every fake the tree started, whether or not a server.json exists, and it runs
+    even when the stop above fails. A fake once ran 14 hours after a killed test run.
+    """
     t = Tree(tmp_path.resolve() / "checkout")
     t.install_uv()
-    yield t
+    try:
+        yield t
+    finally:
+        try:
+            _stop_recorded(t)
+        finally:
+            t.kill_fakes()
+
+
+def _stop_recorded(t: Tree) -> None:
+    """Run stop for each server.json the tree holds, then kill what still runs."""
     real = t.real_record()
     if real is not None:
         t.run_real("stop")
@@ -1214,7 +1259,7 @@ def test_a_pid_that_is_not_the_server_is_never_signalled(tree: Tree) -> None:
     }
     (tree.data / "server.json").write_text(json.dumps(rec))
     proc = tree.run("stop")
-    assert "No Bar Tab preview is running." in proc.stdout
+    assert "No demo preview is running." in proc.stdout
     assert tree.record() is None
     assert pid_alive(os.getpid())
 
@@ -1236,7 +1281,9 @@ def test_stop_ends_the_server_and_leaves_no_process(tree: Tree) -> None:
     assert proc.stdout.strip() == f"Stopped Bar Tab (port {rec['port']})."
     assert wait_for(lambda: not pid_alive(pid))
     assert tree.record() is None
-    assert tree.run("stop").stdout.strip() == "No Bar Tab preview is running."
+    assert tree.run("stop").stdout.strip() == (
+        "No demo preview is running. A real-data preview stops with --real stop."
+    )
 
 
 def test_guard_denies_a_call_nested_deeper_than_it_looks() -> None:
@@ -2173,3 +2220,91 @@ def test_code_opens_a_new_link_in_the_browser(tree: Tree) -> None:
     proc = tree.run("code", session="a", BROWSER=tree.install_browser())
     assert "Opened in your browser." in proc.stdout
     assert len(tree.browser_log.read_text().splitlines()) == 1
+
+
+# --------------------------------------------------------------------------
+# The fake server never outlives its test (Task 21 item 12)
+
+
+def free_port() -> int:
+    """A free port in 47000 to 47999, the only range the tests may bind."""
+    for port in range(47400, 47900):
+        with socket.socket() as probe:
+            try:
+                probe.bind(("127.0.0.1", port))
+            except OSError:
+                continue
+            return port
+    pytest.fail("no free port in 47400 to 47899")
+
+
+def spawn_fake(tree: Tree, *flags: str, **env: str) -> subprocess.Popen[bytes]:
+    """Start the tree's fake server directly and wait for its launch line."""
+    tree.data.mkdir(exist_ok=True)
+    read_fd, write_fd = os.pipe()
+    cmd = [PY3, "-B", str(tree.root / "app" / "server" / "serve.py")]
+    cmd += ["--data", str(tree.data), "--port", str(free_port())]
+    cmd += ["--project-dir", str(tree.project), "--launch-fd", str(write_fd), *flags]
+    proc = subprocess.Popen(  # noqa: S603
+        cmd,
+        pass_fds=(write_fd,),
+        env=tree.env(**env),
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    os.close(write_fd)
+    with os.fdopen(read_fd) as launch:
+        line = launch.readline()
+    assert json.loads(line)["pid"] == proc.pid
+    return proc
+
+
+def test_a_fake_server_left_alone_exits_after_its_idle_minutes(tree: Tree) -> None:
+    # 0.03 minutes is 1.8 seconds with no request.
+    proc = spawn_fake(tree, "--idle-exit-minutes", "0.03")
+    began = time.monotonic()
+    try:
+        assert proc.wait(timeout=20) == 0
+    finally:
+        if proc.poll() is None:
+            proc.kill()
+            proc.wait()
+    assert time.monotonic() - began >= 1.0
+    assert tree.record() is None  # like the real server, it removes server.json
+
+
+def test_a_fake_server_with_idle_off_still_exits_at_its_hard_cap(tree: Tree) -> None:
+    proc = spawn_fake(tree, "--idle-exit-minutes", "0", FAKE_SERVE_HARD_CAP_SECONDS="2")
+    try:
+        assert proc.wait(timeout=20) == 0
+    finally:
+        if proc.poll() is None:
+            proc.kill()
+            proc.wait()
+    assert tree.record() is None
+
+
+def test_a_started_fake_exits_by_itself_at_the_hard_cap(tree: Tree) -> None:
+    # The launcher asks for a 30 minute idle exit, so only the cap can end this one.
+    tree.start("s1", FAKE_SERVE_HARD_CAP_SECONDS="2").check_returncode()
+    pid = tree.pid()
+    assert pid in tree.fake_pids()
+    assert wait_for(lambda: not pid_alive(pid), seconds=20)
+    assert tree.record() is None
+
+
+def test_the_teardown_stops_a_fake_that_has_no_server_json(tree: Tree) -> None:
+    tree.start("s1").check_returncode()
+    pid = tree.pid()
+    (tree.data / "server.json").unlink()
+    assert tree.record() is None
+    assert pid_alive(pid)
+    assert pid in tree.fake_pids()
+    tree.kill_fakes()
+    assert wait_for(lambda: not pid_alive(pid), seconds=10)
+
+
+def test_the_hard_cap_is_ten_minutes_at_most() -> None:
+    # The cap takes the smaller of 600 seconds and the variable, so it can't be raised.
+    assert "min(600.0," in FAKES.FAKE_SERVE
+    assert "--idle-exit-minutes" in FAKES.FAKE_SERVE

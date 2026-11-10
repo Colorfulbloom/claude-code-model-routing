@@ -3,7 +3,7 @@
 
 Run from the repo root with the system Python:
 
-    /usr/bin/python3 app/oracle/record.py [--only usage|live|long]
+    /usr/bin/python3 app/oracle/record.py [--only usage|live|long|settings]
 
 Usage part. It builds the demo set into a temp folder outside the repo, builds a
 context with dashboard/server.py fixture_context, and calls the old
@@ -20,6 +20,14 @@ of the session goes to <scenario>/pincheck.json, at the scenario clock.
 Long part. It builds the 400-day demo with app/oracle/long_demo.py into a temp
 folder and sums the generator's own request list per project, window, model,
 agent type and local day. The output goes to app/fixtures/oracle/demo-long/.
+
+Settings part (M4). It builds the demo into a temp folder and calls the old
+api_settings.settings in process for each listed project, then copies each of the
+122 folders of tests/fixtures/resolution to a temp folder (the repo's git root sits
+above the originals) and calls it once on each copy. The answer minus its rules and
+models tables goes to app/fixtures/oracle/settings/demo/<project>.json and
+resolution/<folder>.json. --settings-out writes somewhere else, for the byte-stability
+test. A temp path in a payload is replaced by /work/settings, and the manifest says so.
 
 No server starts and no port opens. Python 3.9 standard library only. The old code
 is imported and run, never changed.
@@ -761,10 +769,170 @@ def _record_long() -> None:
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+SETTINGS_OUT = REPO / "app" / "fixtures" / "oracle" / "settings"
+RESOLUTION = REPO / "tests" / "fixtures" / "resolution"
+SETTINGS_ROOT = "/work/settings"
+# Fields the differential does not compare and the old answer repeats per project: the
+# rules table (every quote of every rule named) and the model display names.
+SETTINGS_DROPPED = ("rules", "models")
+SETTINGS_DOC = (
+    "differences holds entries {id, kind, cases, count, reason, plan_ref}. kind is the "
+    "label the comparison gives a difference, cases is '*' or the payloads it applies "
+    "to, and count is how many differences of that kind the payloads hold. reason says "
+    "why the new answer differs and plan_ref names the plan section that allows it. "
+    "Any difference outside these entries fails. mappings holds the rules the "
+    "comparison applies first. This file is written once and then edited by hand."
+)
+
+
+def _settings_answer(
+    api_settings: Any,  # noqa: ANN401
+    ctx: Any,  # noqa: ANN401
+    query: dict[str, list[str]],
+) -> dict[str, Any]:
+    """Ask the old settings route and drop the fields nobody compares."""
+    status, answer = api_settings.settings(ctx, query)
+    if status != HTTP_OK:
+        msg = f"settings answered {status} for {query}"
+        raise RuntimeError(msg)
+    return {k: v for k, v in answer.items() if k not in SETTINGS_DROPPED}
+
+
+def _clean_settings(text: str, real: list[str]) -> str:
+    """Replace every real build folder spelling in a payload with the placeholder."""
+    for item in real:
+        text = text.replace(item, SETTINGS_ROOT)
+    return text
+
+
+def _settings_demo(
+    tmp: Path, old: dict[str, Any]
+) -> tuple[dict[str, str], list[dict[str, Any]]]:
+    """Ask the old settings route for each project of the demo build."""
+    folder = tmp / "demo"
+    subprocess.run(  # noqa: S603
+        [sys.executable, str(BUILD_SCRIPT), str(folder), "--now", NOW, "--tz", TZ],
+        check=True,
+        capture_output=True,
+    )
+    ctx = old["server"].fixture_context(
+        str(folder), None, None, old["rules"], old["fields"]
+    )
+    real = sorted({str(folder), str(folder.absolute())}, key=len, reverse=True)
+    files: dict[str, str] = {}
+    cases: list[dict[str, Any]] = []
+    for project in old["projects"].load(ctx).projects:
+        answer = _settings_answer(old["api_settings"], ctx, {"project": [project.key]})
+        name = f"demo/{project.key}.json"
+        files[name] = _clean_settings(_dumps(answer), real)
+        cases.append({"file": name, "kind": "demo", "project": project.key})
+    return files, cases
+
+
+def _settings_resolution(
+    tmp: Path, old: dict[str, Any]
+) -> tuple[dict[str, str], list[dict[str, Any]]]:
+    """Ask the old settings route for each resolver folder, on a copy of it.
+
+    The folders sit under the repo's git root, so each is copied to a temp folder
+    first. Nothing above the copy can then add a repo-root local settings file.
+    """
+    root = tmp / "resolution"
+    real = sorted({str(root), str(root.absolute())}, key=len, reverse=True)
+    files: dict[str, str] = {}
+    cases: list[dict[str, Any]] = []
+    for source in sorted(p for p in RESOLUTION.iterdir() if p.is_dir()):
+        folder = root / source.name
+        shutil.copytree(source, folder, symlinks=True)
+        ctx = old["server"].fixture_context(
+            str(folder), None, None, old["rules"], old["fields"]
+        )
+        answer = _settings_answer(old["api_settings"], ctx, {})
+        name = f"resolution/{source.name}.json"
+        files[name] = _clean_settings(_dumps(answer), real)
+        cases.append({"file": name, "kind": "resolution", "folder": source.name})
+    return files, cases
+
+
+def _record_settings(out: Path = SETTINGS_OUT) -> None:
+    """Record the old /api/settings answers into out.
+
+    One payload per project of the demo build and one per resolver folder. The default
+    out is app/fixtures/oracle/settings/.
+    """
+    old = {
+        name: _old(name) for name in ("api_settings", "projects", "resolve", "server")
+    }
+    old["rules"] = old["resolve"].load_rules()
+    old["fields"] = old["resolve"].load_agent_fields()
+    tmp = Path(tempfile.mkdtemp(prefix="oracle-")).resolve()
+    try:
+        files, cases = _settings_demo(tmp, old)
+        more_files, more_cases = _settings_resolution(tmp, old)
+        files.update(more_files)
+        cases += more_cases
+        for sub in ("demo", "resolution"):
+            (out / sub).mkdir(parents=True, exist_ok=True)
+            for stale in (out / sub).glob("*.json"):
+                if f"{sub}/{stale.name}" not in files:
+                    stale.unlink()
+        for name, text in files.items():
+            _write(out / name, text)
+        allowed = out / "allowed-differences.json"
+        if not allowed.is_file():
+            _write(
+                allowed,
+                _dumps({"_doc": SETTINGS_DOC, "differences": [], "mappings": []}),
+            )
+        version = sys.version_info
+        manifest = {
+            "build_args": {
+                "demo_now": NOW,
+                "demo_script": "tests/fixtures/demo/build_demo.py",
+                "demo_tz": TZ,
+                "resolution_folders": "tests/fixtures/resolution",
+            },
+            "cases": cases,
+            "dropped_fields": list(SETTINGS_DROPPED),
+            "files": sorted([*files, "allowed-differences.json", "manifest.json"]),
+            "old_call": (
+                "api_settings.settings(server.fixture_context(folder, None, None,"
+                " rules, fields), query), in process, on a copy of each folder"
+            ),
+            "old_commit": _git(
+                "log", "-1", "--format=%H", OLD_COMMIT_REF, "--", "dashboard"
+            ),
+            "path_placeholder": {
+                "placeholder": SETTINGS_ROOT,
+                "stands_for": (
+                    "the temp folder the recorder built the demo or copied the"
+                    " resolver folders into"
+                ),
+                "note": (
+                    "Old display paths are relative to that folder, so a payload"
+                    " rarely holds the placeholder. Any absolute temp path is"
+                    " replaced at record time."
+                ),
+            },
+            "python": f"{version[0]}.{version[1]}.{version[2]}",
+        }
+        _write(out / "manifest.json", _dumps(manifest))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def main() -> int:
     """Run the chosen recorders. Return the exit code."""
     parser = argparse.ArgumentParser(description="Record the old app's answers.")
-    parser.add_argument("--only", choices=("usage", "live", "long"), default=None)
+    parser.add_argument(
+        "--only", choices=("usage", "live", "long", "settings"), default=None
+    )
+    parser.add_argument(
+        "--settings-out",
+        type=Path,
+        default=SETTINGS_OUT,
+        help="where the settings part writes (default app/fixtures/oracle/settings)",
+    )
     args = parser.parse_args()
     if args.only in (None, "usage"):
         _record_usage()
@@ -772,6 +940,8 @@ def main() -> int:
         _record_live()
     if args.only in (None, "long"):
         _record_long()
+    if args.only in (None, "settings"):
+        _record_settings(args.settings_out)
     return 0
 
 

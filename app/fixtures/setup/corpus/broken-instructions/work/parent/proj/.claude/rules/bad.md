@@ -1,0 +1,4 @@
+---
+paths: [unclosed
+---
+Body.

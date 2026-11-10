@@ -1,0 +1,24 @@
+{
+  "case": "broken-plugins",
+  "note": "An orphaned version folder (.orphaned_at) is no problem and no item. It shows in the plugin's facts. An install path outside plugins/ is not read here, so that plugin is unknown with a Can't tell row coded plugin_outside_plugins. A known_marketplaces.json that is not an object is plugin_format_unknown (a guess: the file shape is not in the docs).",
+  "project": {"name": "Proj", "dir": "work/parent/proj"},
+  "parts": {
+    "plugins": {
+      "items": [
+        {"id": "plugins:alpha@bartab-demo", "key": "alpha@bartab-demo", "scope": "user", "status": "in_effect", "effective": {"value": "enabled", "origin": "set"}, "facts": {"version": "1.0.0", "orphaned_versions": ["0.9.0"]}, "sources": [{"scope": "user", "key": "enabledPlugins.alpha@bartab-demo", "file": "~/.claude/settings.json", "line": 3, "status": "in_effect"}]},
+        {"id": "plugins:beta@bartab-demo", "key": "beta@bartab-demo", "scope": "user", "status": "invalid", "effective": {"value": "enabled", "origin": "unknown"}, "sources": [{"scope": "user", "key": "enabledPlugins.beta@bartab-demo", "file": "~/.claude/settings.json", "line": 4, "status": "invalid"}]},
+        {"id": "plugins:delta@bartab-demo", "key": "delta@bartab-demo", "scope": "user", "status": "unknown", "not_read": "plugin_outside_plugins", "effective": {"value": "enabled", "origin": "unknown"}, "sources": [{"scope": "user", "key": "enabledPlugins.delta@bartab-demo", "file": "~/.claude/settings.json", "line": 6, "status": "unknown"}]},
+        {"id": "plugins:gamma@bartab-demo", "key": "gamma@bartab-demo", "scope": "user", "status": "invalid", "effective": {"value": "enabled", "origin": "unknown"}, "sources": [{"scope": "user", "key": "enabledPlugins.gamma@bartab-demo", "file": "~/.claude/settings.json", "line": 5, "status": "invalid"}]}
+      ],
+      "unreadable": [
+        {"file": "~/elsewhere/delta", "scope": "user", "reason": "plugin_outside_plugins"}
+      ]
+    }
+  },
+  "problems": [
+    {"id": "plugin_manifest_invalid:plugins:gamma@bartab-demo:1", "group": "wont_load", "code": "plugin_manifest_invalid", "part": "plugins", "item_id": "plugins:gamma@bartab-demo", "file": "~/.claude/plugins/cache/bartab-demo/gamma/1.0.0/.claude-plugin/plugin.json", "line": 1},
+    {"id": "plugin_not_installed:plugins:beta@bartab-demo:4", "group": "wont_load", "code": "plugin_not_installed", "part": "plugins", "item_id": "plugins:beta@bartab-demo", "file": "~/.claude/settings.json", "line": 4},
+    {"id": "plugin_format_unknown:~/.claude/plugins/known_marketplaces.json", "group": "cant_tell", "code": "plugin_format_unknown", "part": "plugins", "item_id": null, "file": "~/.claude/plugins/known_marketplaces.json", "line": null},
+    {"id": "plugin_outside_plugins:plugins:delta@bartab-demo", "group": "cant_tell", "code": "plugin_outside_plugins", "part": "plugins", "item_id": "plugins:delta@bartab-demo", "file": "~/elsewhere/delta", "line": null}
+  ]
+}

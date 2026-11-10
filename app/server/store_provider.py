@@ -23,6 +23,8 @@ from typing import TypeVar, cast, get_args
 from zoneinfo import ZoneInfo
 
 import agent_setup
+import collect_settings
+import git_root
 import history
 import ingest
 import live_sessions
@@ -30,12 +32,15 @@ import model_catalog
 import model_check
 import price_feed
 import price_transport
+import problems
 import project_map
 import projects
 import review_answers
 import review_query
 import review_windows
 import server_zone
+import setup_answers
+import setup_store
 import store
 import store_writer
 import timeline
@@ -58,18 +63,24 @@ from models import (
     ModelList,
     PassError,
     PricesInfo,
+    ProblemList,
     Project,
     ProjectList,
     ReviewRange,
     RunningItem,
     SessionList,
+    SetupMap,
+    SetupPart,
+    SetupPartAnswer,
     Summary,
     Timeline,
     TimelinePrices,
     TimelineRun,
+    ToFix,
     Unchanged,
 )
 from provider import UnknownProjectError, UnknownSessionError
+from setup_contract import SetupContext
 from store_paths import StoreLayout
 
 logger = logging.getLogger(__name__)
@@ -301,6 +312,9 @@ class StoreProvider:
         self._catalog = model_catalog.load_catalog()
         self._entries: dict[str, tuple[float, list[model_check.Row]]] = {}
         self._cache_lock = threading.Lock()
+        self._setup = setup_answers.SetupService(
+            started_at=datetime.fromtimestamp(clock(), tz=UTC)
+        )
 
     # ------------------------------------------------------------ lifecycle
 
@@ -412,6 +426,7 @@ class StoreProvider:
                     display_path=item.display_path,
                     state=item.state,  # pyright: ignore[reportArgumentType]
                     running=item.key in running,
+                    listed=item.listed,
                 )
                 for item in mapped
             ]
@@ -508,6 +523,17 @@ class StoreProvider:
             return None
         return Path(project.path if project.path else str(self._project_dir))
 
+    def _local_path(self, check_dir: Path | None) -> Path | None:
+        """Return the repo-root local settings file of a listed project, or None.
+
+        Only real mode looks for a git root. A demo or flow build sits in a folder the
+        server made, so a ``.git`` above it is the checkout's, not the project's
+        (the old app bounded fixture runs the same way).
+        """
+        if check_dir is None or self._mode != "real":
+            return None
+        return git_root.local_settings_path(check_dir, self._home)
+
     def _entries_for(self, project: project_map.MappedProject) -> list[model_check.Row]:
         """Return the project's resolver entries, read at most once per 10 s."""
         now = self._clock()
@@ -515,11 +541,20 @@ class StoreProvider:
             cached = self._entries.get(project.key)
         if cached is not None and now - cached[0] < ENTRIES_TTL_SECONDS:
             return cached[1]
+        check_dir = self._check_dir(project)
         entries = model_check.resolve_entries(
             claude_dir=self._claude_dir,
-            project_dir=self._check_dir(project),
+            project_dir=check_dir,
             managed_dir=self._managed_dir,
             shell_env=self._shell_env,
+            local_path=self._local_path(check_dir),
+            plan=projects.load_plan(
+                projects.ProjectsContext(
+                    config_dir=str(self._claude_dir),
+                    project_dir=str(self._project_dir),
+                    home=self._home,
+                )
+            ),
         )
         with self._cache_lock:
             self._entries[project.key] = (now, entries)
@@ -531,8 +566,12 @@ class StoreProvider:
         """Return the model check function for one project, entries cached 10 s."""
 
         def check(_key: str, runs: Sequence[TimelineRun]) -> ModelCheck:
+            entries = self._entries_for(project)
             return model_check.build_model_check(
-                entries=self._entries_for(project), runs=runs, catalog=self._catalog
+                entries=entries,
+                runs=runs,
+                catalog=self._catalog,
+                item_of=agent_setup.item_lookup(entries, self._agent_refs(project)),
             )
 
         return check
@@ -544,9 +583,149 @@ class StoreProvider:
         so the answer's other cards stay.
         """
         try:
-            return agent_setup.from_entries(self._entries_for(project), self._catalog)
+            return agent_setup.from_entries(
+                self._entries_for(project), self._catalog, self._agent_refs(project)
+            )
         except agent_setup.SETUP_ERRORS:
             return agent_setup.AgentSetup(failed=True)
+
+    # ------------------------------------------------------------ Setup
+
+    def _mapped_item(self, project: str) -> project_map.MappedProject:
+        """Return the mapped project for a key, refreshing the mapping once.
+
+        Raises:
+            UnknownProjectError: When ``project`` is not a project key.
+        """
+        with self._reader() as conn:
+            mapped = self._mapped_projects(conn)
+            item = next((m for m in mapped if m.key == project), None)
+            if item is None or not item.folders:
+                # The 5 s mapping cache can predate the project's first transcripts.
+                mapped = self._mapped_projects(conn, refresh=True)
+                item = next((m for m in mapped if m.key == project), None)
+        if item is None:
+            raise UnknownProjectError
+        return item
+
+    def _setup_request(
+        self, item: project_map.MappedProject
+    ) -> setup_answers.SetupRequest:
+        """Build the request the setup service answers for one project.
+
+        The data version is the store's pass marker and the local day, so a finished
+        ingest pass or a new day drops the cached read. The two store lookups run on a
+        cold read only.
+        """
+        now = self.now()
+        with self._reader() as conn:
+            marker = review_answers.pass_marker(conn)
+            as_of = timeline.as_of(conn, now)
+        check_dir = self._check_dir(item)
+        listed = item.listed and check_dir is not None
+        ctx = SetupContext(
+            project_key=item.key,
+            config_dir=self._claude_dir,
+            home=Path(self._home) if self._home else None,
+            project_dir=check_dir if listed else None,
+            managed_dir=self._managed_dir,
+            shell_env=self._shell_env,
+            plan=projects.load_plan(
+                projects.ProjectsContext(
+                    config_dir=str(self._claude_dir),
+                    project_dir=str(self._project_dir),
+                    home=self._home,
+                )
+            ),
+            real_mode=self._mode == "real",
+        )
+        folders = sorted(item.folders)
+        ready = marker is not None
+
+        def usage() -> setup_answers.SetupUsage | None:
+            if not ready:
+                return None
+            with self._reader() as conn:
+                doc = self._pricer_on(conn).doc
+                return setup_store.usage_of(
+                    conn, doc, folders, now=now, tz=self._tz.key
+                )
+
+        def transcripts() -> problems.Transcripts:
+            with self._reader() as conn:
+                return setup_store.transcripts_of(conn, folders)
+
+        day = now.astimezone(self._tz).date().isoformat()
+        return setup_answers.SetupRequest(
+            project=item.key,
+            ctx=ctx,
+            listed=listed,
+            version=f"{marker or ''}|{day}",
+            as_of=as_of,
+            usage=usage,
+            transcripts=transcripts,
+        )
+
+    def _agent_refs(
+        self, project: project_map.MappedProject
+    ) -> dict[str, agent_setup.AgentRef]:
+        """Return the project's agents by transcript type, from the cached setup read.
+
+        An error leaves the refs empty: the agents then show as they did before the
+        setup half, and nothing else on the page changes.
+        """
+        try:
+            items = self._setup.agent_items(self._setup_request(project))
+        except Exception as exc:  # noqa: BLE001 - the refs only add ids and plugin rows
+            logger.error(  # noqa: TRY400 - the type only; a traceback could carry file text
+                "agent refs failed (%s)", type(exc).__name__
+            )
+            return {}
+        return agent_setup.refs_from_items(items)
+
+    def setup_map(self, project: str, etag: str | None) -> SetupMap | Unchanged:
+        """Return ``GET /api/setup``, or the short answer when ``etag`` matches.
+
+        Raises:
+            UnknownProjectError: When ``project`` is not a project key.
+        """
+        request = self._setup_request(self._mapped_item(project))
+        return self._setup.setup_map(request, etag, self.now())
+
+    def setup_part(
+        self, project: str, part: SetupPart, etag: str | None
+    ) -> SetupPartAnswer | Unchanged:
+        """Return ``GET /api/setup/{part}``, or the short answer when ``etag`` matches.
+
+        Raises:
+            UnknownProjectError: When ``project`` is not a project key.
+        """
+        request = self._setup_request(self._mapped_item(project))
+        return self._setup.setup_part(request, part, etag, self.now())
+
+    def problems(self, project: str, etag: str | None) -> ProblemList | Unchanged:
+        """Return ``GET /api/problems``, or the short answer when ``etag`` matches.
+
+        Raises:
+            UnknownProjectError: When ``project`` is not a project key.
+        """
+        request = self._setup_request(self._mapped_item(project))
+        return self._setup.problems(request, etag, self.now())
+
+    def _to_fix(self, project: str | None, *, first_ingest_done: bool) -> ToFix:
+        """Return the nav's To fix state for a project.
+
+        It is ``unchecked`` for no project, an unknown one, and before the first ingest
+        has finished (the unreadable transcripts are not known yet).
+        """
+        unchecked = ToFix(state="unchecked", count=None, etag=None)
+        if project is None or not first_ingest_done:
+            return unchecked
+        try:
+            item = self._mapped_item(project)
+        except UnknownProjectError:
+            return unchecked
+        return self._setup.to_fix(self._setup_request(item))
 
     def _build_timeline(
         self,
@@ -874,7 +1053,9 @@ class StoreProvider:
 
         Args:
             instance: The server instance id.
-            project: The project key in the route. ``to_fix_count`` stays None until M4.
+            project: The project key in the route. ``to_fix`` and ``to_fix_count``
+                come from the same cached problems pass as ``GET /api/problems``, and
+                stay unchecked without a project or before the first ingest ends.
 
         Returns:
             The answer for ``GET /api/app``.
@@ -890,6 +1071,9 @@ class StoreProvider:
             as_of = self.now()
         stamp = "" if as_of is None else history.utc_text(as_of)
         etag = f"{self._writer.generation}-{stamp}"
+        to_fix = self._to_fix(
+            project, first_ingest_done=status.first_ingest is not None
+        )
         return AppInfo(
             server_time=self.now(),
             instance=instance,
@@ -900,7 +1084,8 @@ class StoreProvider:
             ingest=self._ingest(status),
             history=self._history(status),
             running=running,
-            to_fix_count=None,
+            to_fix_count=to_fix.count,
+            to_fix=to_fix,
             editable_projects=[],
             mode=self._mode,
             clock=self._data_clock.info(),
@@ -1002,7 +1187,19 @@ def create(  # noqa: PLR0913 - one server's settings, keyword-only
         A provider that ``start`` brings up.
     """
     layout = StoreLayout(store_dir)
-    settings = price_feed.PriceSettings(layout=layout)
+    # A demo or flow build carries its own managed folder and shell environment.
+    # Real mode names both itself.
+    managed = (
+        managed_dir
+        if managed_dir is not None
+        else (claude_dir.parent / "managed" if demo else None)
+    )
+    # The managed ``modelPricing`` layer, read through ``read_scope`` (m4-build.md
+    # section 2). Claude Code reads that key from managed settings only.
+    settings = price_feed.PriceSettings(
+        layout=layout,
+        managed_pricing=collect_settings.ManagedPricing(claude_dir, managed),
+    )
     policy = tier_policy(settings, clock())
     writer = store_writer.StoreWriter(
         layout,
@@ -1033,13 +1230,7 @@ def create(  # noqa: PLR0913 - one server's settings, keyword-only
         hold_seconds=PACED_HOLD_SECONDS if pace_ms > 0 else 0.0,
         data_clock=data_clock,
         mode=mode if mode is not None else ("demo" if demo else "real"),
-        # A demo or flow build carries its own managed folder and shell environment.
-        # Real mode names both itself.
-        managed_dir=(
-            managed_dir
-            if managed_dir is not None
-            else (claude_dir.parent / "managed" if demo else None)
-        ),
+        managed_dir=managed,
         shell_env=(
             dict(shell_env)
             if shell_env is not None

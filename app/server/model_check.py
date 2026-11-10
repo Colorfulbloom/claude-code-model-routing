@@ -1,7 +1,8 @@
 """The per-session Model check: what the setup asks for against what the runs used.
 
 ``resolve_entries`` builds the resolver entries for one project. It reads settings,
-agent files, rules and managed settings through ``collect`` and nothing else. The
+rules and managed settings through ``collect``, and agent files through
+``agent_files`` and ``read_scope``, as the Agents part of Your setup does. The
 caller passes the folders and the shell environment, so this module never reads
 ``os.environ`` or looks a home folder up. ``build_model_check`` groups a session's
 runs by agent type, asks ``pincheck.check_agent`` about each type, and maps the
@@ -62,21 +63,25 @@ managed file as ``<managed folder name>/<path>``.
 import collections
 import functools
 import os
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path, PurePath
 from typing import Any
 
+import agent_files
 import collect
 import model_catalog
 import pincheck
+import read_scope
 import resolve
+import setup_contract
 from models import (
     ModelCheck,
     ModelCheckRow,
     ModelCheckStatus,
     RanPair,
     SetPair,
+    SetupScope,
     SetValue,
     TimelineRun,
 )
@@ -101,6 +106,8 @@ _UNNAMED_KEY = pincheck.UNNAMED
 _TIMELINE_UNNAMED = "unnamed"
 
 _Judged = tuple[ModelCheckStatus, str, dict[str, str]]
+# Maps a timeline agent (None for the main session) to its setup item id, or None.
+ItemOf = Callable[[str | None], str | None]
 
 
 @functools.cache
@@ -122,11 +129,22 @@ def _display(
     project_dir: Path | None,
     claude_dir: Path,
     managed_dir: Path | None,
+    local_path: Path | None = None,
 ) -> object:
-    """Return a display path for a file an entry names. Never an absolute path."""
+    """Return a display path for a file an entry names. Never an absolute path.
+
+    The repo-root local settings file sits above the project, so it shows relative
+    to the project folder (``../.claude/settings.local.json``).
+    """
     if not isinstance(path, str):
         return path
     target = PurePath(path)
+    if (
+        local_path is not None
+        and project_dir is not None
+        and target == PurePath(local_path)
+    ):
+        return Path(os.path.relpath(target, project_dir)).as_posix()
     if project_dir is not None and target.is_relative_to(project_dir):
         return target.relative_to(project_dir).as_posix()
     if target.is_relative_to(claude_dir):
@@ -136,12 +154,69 @@ def _display(
     return target.name
 
 
-def resolve_entries(
+def _scope_for(
+    claude_dir: Path, project_dir: Path | None, managed_dir: Path | None
+) -> read_scope.Scope:
+    """Return the scope of one entries read: its folders and no home folder."""
+    return read_scope.Scope(
+        setup_contract.SetupContext(
+            project_key="",
+            config_dir=claude_dir,
+            home=None,
+            project_dir=project_dir,
+            managed_dir=managed_dir,
+        )
+    )
+
+
+def _local_file(
+    scope: read_scope.Scope,
+    project_dir: Path | None,
+    local_path: Path | None,
+) -> tuple[str | None, dict[str, bytes] | None]:
+    """Read the repo-root local settings file through ``read_scope``.
+
+    Returns ``(path for collect, overlay for collect)``. The bytes go in the overlay,
+    so ``collect`` never opens the file itself. A file the scope refuses or that is
+    over the cap is dropped (None, None). A file that has vanished or cannot be read
+    still goes to ``collect`` as a path, which reports it as the old app did.
+    """
+    if local_path is None or project_dir is None:
+        return None, None
+    got = read_scope.read_bytes(scope, local_path, setup_contract.FILE_CAP_BYTES)
+    if isinstance(got, bytes):
+        return str(local_path), {str(local_path): got}
+    if got.reason in ("outside_scope", "plugin_outside_plugins", "too_large"):
+        return None, None
+    return str(local_path), None
+
+
+def _agent_records(
+    scope: read_scope.Scope,
+    claude_dir: Path,
+    project_dir: Path | None,
+) -> list[Row]:
+    """Return the strict resolver's agent records, read through ``read_scope``.
+
+    The project folder comes first, then the user folder, as the old collector has
+    them. With no project, only the user folder is read.
+    """
+    roots: list[tuple[SetupScope, str]] = []
+    if project_dir is not None:
+        roots.append(("project", str(project_dir / ".claude" / "agents")))
+    roots.append(("user", str(claude_dir / "agents")))
+    return agent_files.find_records(scope, roots)
+
+
+def resolve_entries(  # noqa: PLR0913 - keyword-only inputs of one read
     *,
     claude_dir: Path,
     project_dir: Path | None,
     managed_dir: Path | None,
     shell_env: Mapping[str, str],
+    local_path: Path | None = None,
+    plan: str | None = None,
+    scope: read_scope.Scope | None = None,
 ) -> list[Row]:
     """Return the resolver entries for one project, as the old ``_entries`` does.
 
@@ -152,21 +227,44 @@ def resolve_entries(
         managed_dir: The managed settings folder, or None.
         shell_env: The shell environment the resolver may read. The caller decides
             what goes in. This function never reads ``os.environ``.
+        local_path: The repo-root ``.claude/settings.local.json`` of a project below
+            its git root (``git_root.local_settings_path``), or None when the
+            project's own local file is the only one. It is read through
+            ``read_scope``, so a path the scope refuses is left out.
+        plan: ``subscription``, ``api_key``, ``cloud_provider`` or None, from the
+            project list. The resolver reads it for rules that depend on the plan.
+        scope: The project's ``read_scope.Scope``, when the caller has one. Without
+            it this function builds one from the folders above.
 
     Returns:
         ``resolve.resolve`` entries with every ``file`` and ``other_file`` turned
         into a display path.
+
+    The agent files go through ``read_scope`` as the Agents part reads them: the
+    1 MiB cap, strict UTF-8 and the outside-scope refusal. A file the scope refuses
+    is left out, so it never counts as an agent that runs. The rules folders are
+    only listed (``collect.collect_rules_files``), never read.
     """
     rules = _rules()
+    if scope is None:
+        scope = _scope_for(claude_dir, project_dir, managed_dir)
+    local, overlay = _local_file(scope, project_dir, local_path)
+    folder = str(project_dir) if project_dir is not None else NO_PROJECT
     collected = collect.collect(
         config_dir=str(claude_dir),
-        project_dir=str(project_dir) if project_dir is not None else NO_PROJECT,
+        project_dir=folder,
         managed_dir=str(managed_dir) if managed_dir is not None else None,
         shell_env=shell_env,
         rules=rules,
+        overlay=overlay,
+        local_path=local,
+        reuse={
+            "agents": _agent_records(scope, claude_dir, project_dir),
+            "rules_files": collect.collect_rules_files(str(claude_dir), folder),
+        },
     )
     entries = resolve.resolve(
-        resolve.Inputs(collected=collected), rules, _agent_fields()
+        resolve.Inputs(collected=collected, plan=plan), rules, _agent_fields()
     )
     shown: list[Row] = []
     for entry in entries:
@@ -178,6 +276,7 @@ def resolve_entries(
                     project_dir=project_dir,
                     claude_dir=claude_dir,
                     managed_dir=managed_dir,
+                    local_path=local_path,
                 )
         shown.append(copy)
     return shown
@@ -389,14 +488,49 @@ def judge_agent(
     )
 
 
+def lowered_settings(
+    entries: Sequence[Row], key: str, catalog: model_catalog.Catalog
+) -> list[dict[str, str]]:
+    """Return the params of each setting of an agent that a cap lowers, model first.
+
+    ``judge_agent`` names only the worst setting, so a lowered effort hides behind a
+    model that is ignored. This judges each pinned setting on its own, over no runs,
+    with the same rules. A setting that is overridden, ignored or invalid is not
+    lowered here, whatever the other setting says.
+
+    Args:
+        entries: The ``resolve_entries`` result for the project.
+        key: An agent type.
+        catalog: The model catalog, so an alias and its dated name compare equal.
+
+    Returns:
+        One dict per lowered setting: ``setting``, ``value``, ``expected`` (what runs)
+        and the ``cap_*`` params. Empty when the agent has no file or no pin.
+    """
+    check = pincheck.check_agent(list(entries), key, [], [], catalog)
+    if check is None or check["pinned"] == "none":
+        return []
+    found: list[dict[str, str]] = []
+    for kind in _KINDS:
+        setting: Row | None = check[kind]
+        if setting is None:
+            continue
+        status, _code, params = _judge_setting(kind, setting)
+        if status == "lowered":
+            found.append(params)
+    return found
+
+
 def _row(
     agent: str | None,
     runs: Sequence[Row],
     entries: list[Row],
     catalog: model_catalog.Catalog,
+    item_of: ItemOf | None,
 ) -> ModelCheckRow:
     verdict = judge_agent(entries, agent_key(agent), runs, catalog)
     return ModelCheckRow(
+        item_id=None if item_of is None else item_of(agent),
         agent=agent,
         set=verdict.set,
         ran=_ran(runs),
@@ -417,6 +551,7 @@ def build_model_check(
     entries: Sequence[Row],
     runs: Sequence[TimelineRun],
     catalog: model_catalog.Catalog,
+    item_of: ItemOf | None = None,
 ) -> ModelCheck:
     """Build the Model check for one session.
 
@@ -424,6 +559,8 @@ def build_model_check(
         entries: The ``resolve_entries`` result for the session's project.
         runs: The runs ``build_timeline`` passes (the main session has ``agent`` None).
         catalog: The model catalog, so an alias and its dated name compare equal.
+        item_of: Maps an agent to its setup item id for the row's ``item_id``, or None
+            for no ids.
 
     Returns:
         One row per agent type, the main session included, worst first, then by
@@ -436,7 +573,7 @@ def build_model_check(
             {"run_id": run.run_id, "model": run.model, "effort": run.effort}
         )
     return build_model_check_from_runs(
-        entries=entries, runs_by_agent=by_agent, catalog=catalog
+        entries=entries, runs_by_agent=by_agent, catalog=catalog, item_of=item_of
     )
 
 
@@ -445,6 +582,7 @@ def build_model_check_from_runs(
     entries: Sequence[Row],
     runs_by_agent: Mapping[str | None, Sequence[Row]],
     catalog: model_catalog.Catalog,
+    item_of: ItemOf | None = None,
 ) -> ModelCheck:
     """Build the Model check from runs that are already grouped by agent.
 
@@ -457,13 +595,15 @@ def build_model_check_from_runs(
             is the timeline's agent name: None for the main session, ``unnamed`` for an
             unnamed agent, else the agent type.
         catalog: The model catalog, so an alias and its dated name compare equal.
+        item_of: As in ``build_model_check``.
 
     Returns:
         The Model check, as ``build_model_check`` returns it.
     """
     listed = list(entries)
     rows = [
-        _row(agent, group, listed, catalog) for agent, group in runs_by_agent.items()
+        _row(agent, group, listed, catalog, item_of)
+        for agent, group in runs_by_agent.items()
     ]
     rows.sort(key=_sort_key)
     return ModelCheck(

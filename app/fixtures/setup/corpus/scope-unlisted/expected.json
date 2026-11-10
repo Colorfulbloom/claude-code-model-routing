@@ -1,0 +1,22 @@
+{
+  "case": "scope-unlisted",
+  "note": "The project is not in routing-dashboard.json, so nothing under it is read. Only user scope shows. The decoy values are claude-haiku-5-5, the name hidden and the text Never read.",
+  "project": {"name": "Proj", "dir": "work/parent/proj"},
+  "parts": {
+    "settings": {
+      "items": [
+        {"id": "settings:effortLevel", "key": "effortLevel", "scope": null, "status": "default", "effective": {"value": "medium", "origin": "default"}, "sources": []},
+        {"id": "settings:model", "key": "model", "scope": "user", "status": "in_effect", "effective": {"value": "claude-sonnet-5-5", "origin": "set"}, "sources": [{"scope": "user", "key": "model", "file": "~/.claude/settings.json", "line": 2, "status": "in_effect"}]}
+      ],
+      "unreadable": []
+    },
+    "instructions": {
+      "items": [
+        {"id": "instructions:~/.claude/CLAUDE.md", "key": "~/.claude/CLAUDE.md", "scope": "user", "status": "in_effect", "loads": {"kind": "always", "globs": []}, "imports": [], "sources": [{"scope": "user", "key": "file", "file": "~/.claude/CLAUDE.md", "line": null, "status": "in_effect"}]}
+      ],
+      "unreadable": []
+    }
+  },
+  "problems": [],
+  "never": ["claude-haiku-5-5", "hidden", "Never read."]
+}

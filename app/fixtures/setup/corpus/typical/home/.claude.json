@@ -1,0 +1,24 @@
+{
+  "numStartups": 12,
+  "oauthAccount": {"emailAddress": "someone@example.test"},
+  "userID": "DROPPED-KEY-SENTINEL-0001",
+  "mcpServers": {
+    "notes": {
+      "type": "sse",
+      "url": "https://notes.example.test/sse",
+      "headers": {"X-Api-Key": "fake-xapikey-0123456789abcdef"}
+    }
+  },
+  "projects": {
+    "@@PROJECT@@": {
+      "allowedTools": [],
+      "mcpServers": {
+        "scratch": {
+          "command": "node",
+          "args": ["scratch.js", "--password=hunter2local"],
+          "env": {"SCRATCH_TOKEN": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJmYWtlIn0.FAKESIGNATUREvalue0123456789"}
+        }
+      }
+    }
+  }
+}

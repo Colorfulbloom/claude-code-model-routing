@@ -1,0 +1,9 @@
+{
+  "case": "broken-claude-json",
+  "note": "Bad JSON in the masked user file. The row carries a line and never the text.",
+  "project": {"name": "Proj", "dir": "work/parent/proj"},
+  "parts": {},
+  "problems": [
+    {"id": "json_invalid:~/.claude.json:1", "group": "wont_load", "code": "json_invalid", "part": "mcp", "item_id": null, "file": "~/.claude.json", "line": 1}
+  ]
+}

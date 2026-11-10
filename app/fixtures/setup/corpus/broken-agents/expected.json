@@ -1,0 +1,23 @@
+{
+  "case": "broken-agents",
+  "note": "Guesses the docs do not settle. Two files with one name in one folder, the first in sorted file order loads and the other is invalid. A file with a name but a problem is an item with status invalid. A file with no usable name has no item. A block scalar the strict reader rejects but YAML parses keeps the resolver's status (invalid here, because the resolver treats the file as one that does not load) and gets a Can't tell row, frontmatter_reader_gap.",
+  "project": {"name": "Proj", "dir": "work/parent/proj"},
+  "parts": {
+    "agents": {
+      "items": [
+        {"id": "agents:folded", "key": "folded", "scope": "user", "status": "invalid", "sources": [{"scope": "user", "key": "name", "file": "~/.claude/agents/folded.md", "line": 2, "status": "invalid"}]},
+        {"id": "agents:good", "key": "good", "scope": "user", "status": "in_effect", "sources": [{"scope": "user", "key": "name", "file": "~/.claude/agents/good.md", "line": 2, "status": "in_effect"}]},
+        {"id": "agents:nodesc", "key": "nodesc", "scope": "user", "status": "invalid", "sources": [{"scope": "user", "key": "name", "file": "~/.claude/agents/nodesc.md", "line": 2, "status": "invalid"}]},
+        {"id": "agents:twin", "key": "twin", "scope": "user", "status": "in_effect", "sources": [{"scope": "user", "key": "name", "file": "~/.claude/agents/dup-a.md", "line": 2, "status": "in_effect"}, {"scope": "user", "key": "name", "file": "~/.claude/agents/dup-b.md", "line": 2, "status": "invalid"}]}
+      ],
+      "unreadable": []
+    }
+  },
+  "problems": [
+    {"id": "same_name_in_folder:agents:twin:2", "group": "wont_load", "code": "same_name_in_folder", "part": "agents", "item_id": "agents:twin", "file": "~/.claude/agents/dup-b.md", "line": 2},
+    {"id": "agent_no_description:agents:nodesc:1", "group": "wont_load", "code": "agent_no_description", "part": "agents", "item_id": "agents:nodesc", "file": "~/.claude/agents/nodesc.md", "line": 1},
+    {"id": "frontmatter_invalid:~/.claude/agents/nofront.md:1", "group": "wont_load", "code": "frontmatter_invalid", "part": "agents", "item_id": null, "file": "~/.claude/agents/nofront.md", "line": 1},
+    {"id": "agent_not_md:~/.claude/agents/notes.txt", "group": "wont_load", "code": "agent_not_md", "part": "agents", "item_id": null, "file": "~/.claude/agents/notes.txt", "line": null},
+    {"id": "frontmatter_reader_gap:agents:folded:3", "group": "cant_tell", "code": "frontmatter_reader_gap", "part": "agents", "item_id": "agents:folded", "file": "~/.claude/agents/folded.md", "line": 3}
+  ]
+}

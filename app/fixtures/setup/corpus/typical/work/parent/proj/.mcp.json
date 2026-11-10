@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "docs": {
+      "command": "npx",
+      "args": ["-y", "docs-mcp", "--token", "ghp_FAKEFAKEFAKEFAKEFAKEFAKEFAKE000001"],
+      "env": {"DOCS_API_KEY": "sk-live-FAKEENVSECRET000000002"}
+    },
+    "search": {
+      "type": "http",
+      "url": "https://user:hunter2pass@search.example.test/mcp",
+      "headers": {"Authorization": "Bearer FAKEBEARERTOKEN0123456789abcdef"}
+    }
+  }
+}

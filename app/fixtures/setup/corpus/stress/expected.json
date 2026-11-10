@@ -1,0 +1,4892 @@
+{
+  "case": "stress",
+  "generated": true,
+  "parts": {
+    "agents": {
+      "items": [
+        {
+          "id": "agents:stress-agent-with-a-deliberately-long-name-for-layout-checks-00",
+          "key": "stress-agent-with-a-deliberately-long-name-for-layout-checks-00",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/stress-agent-with-a-deliberately-long-name-for-layout-checks-00.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:stress-agent-with-a-deliberately-long-name-for-layout-checks-01",
+          "key": "stress-agent-with-a-deliberately-long-name-for-layout-checks-01",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/stress-agent-with-a-deliberately-long-name-for-layout-checks-01.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:stress-agent-with-a-deliberately-long-name-for-layout-checks-02",
+          "key": "stress-agent-with-a-deliberately-long-name-for-layout-checks-02",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/stress-agent-with-a-deliberately-long-name-for-layout-checks-02.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:stress-agent-with-a-deliberately-long-name-for-layout-checks-03",
+          "key": "stress-agent-with-a-deliberately-long-name-for-layout-checks-03",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/stress-agent-with-a-deliberately-long-name-for-layout-checks-03.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:stress-agent-with-a-deliberately-long-name-for-layout-checks-04",
+          "key": "stress-agent-with-a-deliberately-long-name-for-layout-checks-04",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/stress-agent-with-a-deliberately-long-name-for-layout-checks-04.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:stress-agent-with-a-deliberately-long-name-for-layout-checks-05",
+          "key": "stress-agent-with-a-deliberately-long-name-for-layout-checks-05",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/stress-agent-with-a-deliberately-long-name-for-layout-checks-05.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:stress-agent-with-a-deliberately-long-name-for-layout-checks-06",
+          "key": "stress-agent-with-a-deliberately-long-name-for-layout-checks-06",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/stress-agent-with-a-deliberately-long-name-for-layout-checks-06.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:stress-agent-with-a-deliberately-long-name-for-layout-checks-07",
+          "key": "stress-agent-with-a-deliberately-long-name-for-layout-checks-07",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/stress-agent-with-a-deliberately-long-name-for-layout-checks-07.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:stress-agent-with-a-deliberately-long-name-for-layout-checks-08",
+          "key": "stress-agent-with-a-deliberately-long-name-for-layout-checks-08",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/stress-agent-with-a-deliberately-long-name-for-layout-checks-08.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:stress-agent-with-a-deliberately-long-name-for-layout-checks-09",
+          "key": "stress-agent-with-a-deliberately-long-name-for-layout-checks-09",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/stress-agent-with-a-deliberately-long-name-for-layout-checks-09.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:stress-agent-with-a-deliberately-long-name-for-layout-checks-10",
+          "key": "stress-agent-with-a-deliberately-long-name-for-layout-checks-10",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/stress-agent-with-a-deliberately-long-name-for-layout-checks-10.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:stress-agent-with-a-deliberately-long-name-for-layout-checks-11",
+          "key": "stress-agent-with-a-deliberately-long-name-for-layout-checks-11",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/stress-agent-with-a-deliberately-long-name-for-layout-checks-11.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:stress-agent-with-a-deliberately-long-name-for-layout-checks-12",
+          "key": "stress-agent-with-a-deliberately-long-name-for-layout-checks-12",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/stress-agent-with-a-deliberately-long-name-for-layout-checks-12.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:stress-agent-with-a-deliberately-long-name-for-layout-checks-13",
+          "key": "stress-agent-with-a-deliberately-long-name-for-layout-checks-13",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/stress-agent-with-a-deliberately-long-name-for-layout-checks-13.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:stress-agent-with-a-deliberately-long-name-for-layout-checks-14",
+          "key": "stress-agent-with-a-deliberately-long-name-for-layout-checks-14",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/stress-agent-with-a-deliberately-long-name-for-layout-checks-14.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:stress-agent-with-a-deliberately-long-name-for-layout-checks-15",
+          "key": "stress-agent-with-a-deliberately-long-name-for-layout-checks-15",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/stress-agent-with-a-deliberately-long-name-for-layout-checks-15.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:stress-agent-with-a-deliberately-long-name-for-layout-checks-16",
+          "key": "stress-agent-with-a-deliberately-long-name-for-layout-checks-16",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/stress-agent-with-a-deliberately-long-name-for-layout-checks-16.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:stress-agent-with-a-deliberately-long-name-for-layout-checks-17",
+          "key": "stress-agent-with-a-deliberately-long-name-for-layout-checks-17",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/stress-agent-with-a-deliberately-long-name-for-layout-checks-17.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:stress-agent-with-a-deliberately-long-name-for-layout-checks-18",
+          "key": "stress-agent-with-a-deliberately-long-name-for-layout-checks-18",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/stress-agent-with-a-deliberately-long-name-for-layout-checks-18.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:stress-agent-with-a-deliberately-long-name-for-layout-checks-19",
+          "key": "stress-agent-with-a-deliberately-long-name-for-layout-checks-19",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/stress-agent-with-a-deliberately-long-name-for-layout-checks-19.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:stress-agent-with-a-deliberately-long-name-for-layout-checks-20",
+          "key": "stress-agent-with-a-deliberately-long-name-for-layout-checks-20",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/stress-agent-with-a-deliberately-long-name-for-layout-checks-20.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:stress-agent-with-a-deliberately-long-name-for-layout-checks-21",
+          "key": "stress-agent-with-a-deliberately-long-name-for-layout-checks-21",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/stress-agent-with-a-deliberately-long-name-for-layout-checks-21.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:stress-agent-with-a-deliberately-long-name-for-layout-checks-22",
+          "key": "stress-agent-with-a-deliberately-long-name-for-layout-checks-22",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/stress-agent-with-a-deliberately-long-name-for-layout-checks-22.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:stress-agent-with-a-deliberately-long-name-for-layout-checks-23",
+          "key": "stress-agent-with-a-deliberately-long-name-for-layout-checks-23",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/stress-agent-with-a-deliberately-long-name-for-layout-checks-23.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:stress-agent-with-a-deliberately-long-name-for-layout-checks-24",
+          "key": "stress-agent-with-a-deliberately-long-name-for-layout-checks-24",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/stress-agent-with-a-deliberately-long-name-for-layout-checks-24.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:stress-agent-with-a-deliberately-long-name-for-layout-checks-25",
+          "key": "stress-agent-with-a-deliberately-long-name-for-layout-checks-25",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/stress-agent-with-a-deliberately-long-name-for-layout-checks-25.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:stress-agent-with-a-deliberately-long-name-for-layout-checks-26",
+          "key": "stress-agent-with-a-deliberately-long-name-for-layout-checks-26",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/stress-agent-with-a-deliberately-long-name-for-layout-checks-26.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:stress-agent-with-a-deliberately-long-name-for-layout-checks-27",
+          "key": "stress-agent-with-a-deliberately-long-name-for-layout-checks-27",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/stress-agent-with-a-deliberately-long-name-for-layout-checks-27.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:stress-agent-with-a-deliberately-long-name-for-layout-checks-28",
+          "key": "stress-agent-with-a-deliberately-long-name-for-layout-checks-28",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/stress-agent-with-a-deliberately-long-name-for-layout-checks-28.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:stress-agent-with-a-deliberately-long-name-for-layout-checks-29",
+          "key": "stress-agent-with-a-deliberately-long-name-for-layout-checks-29",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/stress-agent-with-a-deliberately-long-name-for-layout-checks-29.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:stress-agent-with-a-deliberately-long-name-for-layout-checks-30",
+          "key": "stress-agent-with-a-deliberately-long-name-for-layout-checks-30",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/stress-agent-with-a-deliberately-long-name-for-layout-checks-30.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:stress-agent-with-a-deliberately-long-name-for-layout-checks-31",
+          "key": "stress-agent-with-a-deliberately-long-name-for-layout-checks-31",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/stress-agent-with-a-deliberately-long-name-for-layout-checks-31.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:stress-agent-with-a-deliberately-long-name-for-layout-checks-32",
+          "key": "stress-agent-with-a-deliberately-long-name-for-layout-checks-32",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/stress-agent-with-a-deliberately-long-name-for-layout-checks-32.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:stress-agent-with-a-deliberately-long-name-for-layout-checks-33",
+          "key": "stress-agent-with-a-deliberately-long-name-for-layout-checks-33",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/stress-agent-with-a-deliberately-long-name-for-layout-checks-33.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:stress-agent-with-a-deliberately-long-name-for-layout-checks-34",
+          "key": "stress-agent-with-a-deliberately-long-name-for-layout-checks-34",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/stress-agent-with-a-deliberately-long-name-for-layout-checks-34.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:stress-agent-with-a-deliberately-long-name-for-layout-checks-35",
+          "key": "stress-agent-with-a-deliberately-long-name-for-layout-checks-35",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/stress-agent-with-a-deliberately-long-name-for-layout-checks-35.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:stress-agent-with-a-deliberately-long-name-for-layout-checks-36",
+          "key": "stress-agent-with-a-deliberately-long-name-for-layout-checks-36",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/stress-agent-with-a-deliberately-long-name-for-layout-checks-36.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:stress-agent-with-a-deliberately-long-name-for-layout-checks-37",
+          "key": "stress-agent-with-a-deliberately-long-name-for-layout-checks-37",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/stress-agent-with-a-deliberately-long-name-for-layout-checks-37.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:stress-agent-with-a-deliberately-long-name-for-layout-checks-38",
+          "key": "stress-agent-with-a-deliberately-long-name-for-layout-checks-38",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/stress-agent-with-a-deliberately-long-name-for-layout-checks-38.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:stress-agent-with-a-deliberately-long-name-for-layout-checks-39",
+          "key": "stress-agent-with-a-deliberately-long-name-for-layout-checks-39",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/stress-agent-with-a-deliberately-long-name-for-layout-checks-39.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:stress-agent-with-a-deliberately-long-name-for-layout-checks-40",
+          "key": "stress-agent-with-a-deliberately-long-name-for-layout-checks-40",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/stress-agent-with-a-deliberately-long-name-for-layout-checks-40.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:stress-agent-with-a-deliberately-long-name-for-layout-checks-41",
+          "key": "stress-agent-with-a-deliberately-long-name-for-layout-checks-41",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/stress-agent-with-a-deliberately-long-name-for-layout-checks-41.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:stress-agent-with-a-deliberately-long-name-for-layout-checks-42",
+          "key": "stress-agent-with-a-deliberately-long-name-for-layout-checks-42",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/stress-agent-with-a-deliberately-long-name-for-layout-checks-42.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:stress-agent-with-a-deliberately-long-name-for-layout-checks-43",
+          "key": "stress-agent-with-a-deliberately-long-name-for-layout-checks-43",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/stress-agent-with-a-deliberately-long-name-for-layout-checks-43.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:stress-agent-with-a-deliberately-long-name-for-layout-checks-44",
+          "key": "stress-agent-with-a-deliberately-long-name-for-layout-checks-44",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/stress-agent-with-a-deliberately-long-name-for-layout-checks-44.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:stress-agent-with-a-deliberately-long-name-for-layout-checks-45",
+          "key": "stress-agent-with-a-deliberately-long-name-for-layout-checks-45",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/stress-agent-with-a-deliberately-long-name-for-layout-checks-45.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:stress-agent-with-a-deliberately-long-name-for-layout-checks-46",
+          "key": "stress-agent-with-a-deliberately-long-name-for-layout-checks-46",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/stress-agent-with-a-deliberately-long-name-for-layout-checks-46.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:stress-agent-with-a-deliberately-long-name-for-layout-checks-47",
+          "key": "stress-agent-with-a-deliberately-long-name-for-layout-checks-47",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/stress-agent-with-a-deliberately-long-name-for-layout-checks-47.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:stress-agent-with-a-deliberately-long-name-for-layout-checks-48",
+          "key": "stress-agent-with-a-deliberately-long-name-for-layout-checks-48",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/stress-agent-with-a-deliberately-long-name-for-layout-checks-48.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "agents:stress-agent-with-a-deliberately-long-name-for-layout-checks-49",
+          "key": "stress-agent-with-a-deliberately-long-name-for-layout-checks-49",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/agents/stress-agent-with-a-deliberately-long-name-for-layout-checks-49.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        }
+      ],
+      "unreadable": []
+    },
+    "instructions": {
+      "items": [
+        {
+          "id": "instructions:~/.claude/CLAUDE.md",
+          "key": "~/.claude/CLAUDE.md",
+          "loads": {
+            "globs": [],
+            "kind": "always"
+          },
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/CLAUDE.md",
+              "key": "file",
+              "line": null,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "instructions:CLAUDE.md",
+          "key": "CLAUDE.md",
+          "loads": {
+            "globs": [],
+            "kind": "always"
+          },
+          "scope": "project",
+          "sources": [
+            {
+              "file": "CLAUDE.md",
+              "key": "file",
+              "line": null,
+              "scope": "project",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "instructions:level1/CLAUDE.md",
+          "key": "level1/CLAUDE.md",
+          "loads": {
+            "globs": [],
+            "kind": "on_demand"
+          },
+          "scope": "project",
+          "sources": [
+            {
+              "file": "level1/CLAUDE.md",
+              "key": "file",
+              "line": null,
+              "scope": "project",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "instructions:level1/level2/CLAUDE.md",
+          "key": "level1/level2/CLAUDE.md",
+          "loads": {
+            "globs": [],
+            "kind": "on_demand"
+          },
+          "scope": "project",
+          "sources": [
+            {
+              "file": "level1/level2/CLAUDE.md",
+              "key": "file",
+              "line": null,
+              "scope": "project",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "instructions:level1/level2/level3/CLAUDE.md",
+          "key": "level1/level2/level3/CLAUDE.md",
+          "loads": {
+            "globs": [],
+            "kind": "on_demand"
+          },
+          "scope": "project",
+          "sources": [
+            {
+              "file": "level1/level2/level3/CLAUDE.md",
+              "key": "file",
+              "line": null,
+              "scope": "project",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "instructions:level1/level2/level3/level4/CLAUDE.md",
+          "key": "level1/level2/level3/level4/CLAUDE.md",
+          "loads": {
+            "globs": [],
+            "kind": "on_demand"
+          },
+          "scope": "project",
+          "sources": [
+            {
+              "file": "level1/level2/level3/level4/CLAUDE.md",
+              "key": "file",
+              "line": null,
+              "scope": "project",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "instructions:level1/level2/level3/level4/level5/CLAUDE.md",
+          "key": "level1/level2/level3/level4/level5/CLAUDE.md",
+          "loads": {
+            "globs": [],
+            "kind": "on_demand"
+          },
+          "scope": "project",
+          "sources": [
+            {
+              "file": "level1/level2/level3/level4/level5/CLAUDE.md",
+              "key": "file",
+              "line": null,
+              "scope": "project",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "instructions:level1/level2/level3/level4/level5/level6/CLAUDE.md",
+          "key": "level1/level2/level3/level4/level5/level6/CLAUDE.md",
+          "loads": {
+            "globs": [],
+            "kind": "on_demand"
+          },
+          "scope": "project",
+          "sources": [
+            {
+              "file": "level1/level2/level3/level4/level5/level6/CLAUDE.md",
+              "key": "file",
+              "line": null,
+              "scope": "project",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        }
+      ],
+      "unreadable": []
+    },
+    "permissions": {
+      "items": [
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./a-long-directory-name-for-stress-testing/deny/segment-000/**)",
+          "key": "Read(./a-long-directory-name-for-stress-testing/deny/segment-000/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.deny",
+              "line": 159,
+              "line_has": "Read(./a-long-directory-name-for-stress-testing/deny/segment-000/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./a-long-directory-name-for-stress-testing/deny/segment-001/**)",
+          "key": "Read(./a-long-directory-name-for-stress-testing/deny/segment-001/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.deny",
+              "line": 160,
+              "line_has": "Read(./a-long-directory-name-for-stress-testing/deny/segment-001/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./a-long-directory-name-for-stress-testing/deny/segment-002/**)",
+          "key": "Read(./a-long-directory-name-for-stress-testing/deny/segment-002/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.deny",
+              "line": 161,
+              "line_has": "Read(./a-long-directory-name-for-stress-testing/deny/segment-002/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./a-long-directory-name-for-stress-testing/deny/segment-003/**)",
+          "key": "Read(./a-long-directory-name-for-stress-testing/deny/segment-003/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.deny",
+              "line": 162,
+              "line_has": "Read(./a-long-directory-name-for-stress-testing/deny/segment-003/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./a-long-directory-name-for-stress-testing/deny/segment-004/**)",
+          "key": "Read(./a-long-directory-name-for-stress-testing/deny/segment-004/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.deny",
+              "line": 163,
+              "line_has": "Read(./a-long-directory-name-for-stress-testing/deny/segment-004/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./a-long-directory-name-for-stress-testing/deny/segment-005/**)",
+          "key": "Read(./a-long-directory-name-for-stress-testing/deny/segment-005/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.deny",
+              "line": 164,
+              "line_has": "Read(./a-long-directory-name-for-stress-testing/deny/segment-005/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./a-long-directory-name-for-stress-testing/deny/segment-006/**)",
+          "key": "Read(./a-long-directory-name-for-stress-testing/deny/segment-006/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.deny",
+              "line": 165,
+              "line_has": "Read(./a-long-directory-name-for-stress-testing/deny/segment-006/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./a-long-directory-name-for-stress-testing/deny/segment-007/**)",
+          "key": "Read(./a-long-directory-name-for-stress-testing/deny/segment-007/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.deny",
+              "line": 166,
+              "line_has": "Read(./a-long-directory-name-for-stress-testing/deny/segment-007/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./a-long-directory-name-for-stress-testing/deny/segment-008/**)",
+          "key": "Read(./a-long-directory-name-for-stress-testing/deny/segment-008/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.deny",
+              "line": 167,
+              "line_has": "Read(./a-long-directory-name-for-stress-testing/deny/segment-008/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./a-long-directory-name-for-stress-testing/deny/segment-009/**)",
+          "key": "Read(./a-long-directory-name-for-stress-testing/deny/segment-009/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.deny",
+              "line": 168,
+              "line_has": "Read(./a-long-directory-name-for-stress-testing/deny/segment-009/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./a-long-directory-name-for-stress-testing/deny/segment-010/**)",
+          "key": "Read(./a-long-directory-name-for-stress-testing/deny/segment-010/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.deny",
+              "line": 169,
+              "line_has": "Read(./a-long-directory-name-for-stress-testing/deny/segment-010/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./a-long-directory-name-for-stress-testing/deny/segment-011/**)",
+          "key": "Read(./a-long-directory-name-for-stress-testing/deny/segment-011/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.deny",
+              "line": 170,
+              "line_has": "Read(./a-long-directory-name-for-stress-testing/deny/segment-011/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./a-long-directory-name-for-stress-testing/deny/segment-012/**)",
+          "key": "Read(./a-long-directory-name-for-stress-testing/deny/segment-012/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.deny",
+              "line": 171,
+              "line_has": "Read(./a-long-directory-name-for-stress-testing/deny/segment-012/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./a-long-directory-name-for-stress-testing/deny/segment-013/**)",
+          "key": "Read(./a-long-directory-name-for-stress-testing/deny/segment-013/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.deny",
+              "line": 172,
+              "line_has": "Read(./a-long-directory-name-for-stress-testing/deny/segment-013/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./a-long-directory-name-for-stress-testing/deny/segment-014/**)",
+          "key": "Read(./a-long-directory-name-for-stress-testing/deny/segment-014/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.deny",
+              "line": 173,
+              "line_has": "Read(./a-long-directory-name-for-stress-testing/deny/segment-014/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./a-long-directory-name-for-stress-testing/deny/segment-015/**)",
+          "key": "Read(./a-long-directory-name-for-stress-testing/deny/segment-015/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.deny",
+              "line": 174,
+              "line_has": "Read(./a-long-directory-name-for-stress-testing/deny/segment-015/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./a-long-directory-name-for-stress-testing/deny/segment-016/**)",
+          "key": "Read(./a-long-directory-name-for-stress-testing/deny/segment-016/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.deny",
+              "line": 175,
+              "line_has": "Read(./a-long-directory-name-for-stress-testing/deny/segment-016/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./a-long-directory-name-for-stress-testing/deny/segment-017/**)",
+          "key": "Read(./a-long-directory-name-for-stress-testing/deny/segment-017/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.deny",
+              "line": 176,
+              "line_has": "Read(./a-long-directory-name-for-stress-testing/deny/segment-017/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./a-long-directory-name-for-stress-testing/deny/segment-018/**)",
+          "key": "Read(./a-long-directory-name-for-stress-testing/deny/segment-018/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.deny",
+              "line": 177,
+              "line_has": "Read(./a-long-directory-name-for-stress-testing/deny/segment-018/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./a-long-directory-name-for-stress-testing/deny/segment-019/**)",
+          "key": "Read(./a-long-directory-name-for-stress-testing/deny/segment-019/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.deny",
+              "line": 178,
+              "line_has": "Read(./a-long-directory-name-for-stress-testing/deny/segment-019/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./a-long-directory-name-for-stress-testing/deny/segment-020/**)",
+          "key": "Read(./a-long-directory-name-for-stress-testing/deny/segment-020/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.deny",
+              "line": 179,
+              "line_has": "Read(./a-long-directory-name-for-stress-testing/deny/segment-020/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./a-long-directory-name-for-stress-testing/deny/segment-021/**)",
+          "key": "Read(./a-long-directory-name-for-stress-testing/deny/segment-021/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.deny",
+              "line": 180,
+              "line_has": "Read(./a-long-directory-name-for-stress-testing/deny/segment-021/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./a-long-directory-name-for-stress-testing/deny/segment-022/**)",
+          "key": "Read(./a-long-directory-name-for-stress-testing/deny/segment-022/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.deny",
+              "line": 181,
+              "line_has": "Read(./a-long-directory-name-for-stress-testing/deny/segment-022/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./a-long-directory-name-for-stress-testing/deny/segment-023/**)",
+          "key": "Read(./a-long-directory-name-for-stress-testing/deny/segment-023/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.deny",
+              "line": 182,
+              "line_has": "Read(./a-long-directory-name-for-stress-testing/deny/segment-023/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./a-long-directory-name-for-stress-testing/deny/segment-024/**)",
+          "key": "Read(./a-long-directory-name-for-stress-testing/deny/segment-024/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.deny",
+              "line": 183,
+              "line_has": "Read(./a-long-directory-name-for-stress-testing/deny/segment-024/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./a-long-directory-name-for-stress-testing/deny/segment-025/**)",
+          "key": "Read(./a-long-directory-name-for-stress-testing/deny/segment-025/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.deny",
+              "line": 184,
+              "line_has": "Read(./a-long-directory-name-for-stress-testing/deny/segment-025/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./a-long-directory-name-for-stress-testing/deny/segment-026/**)",
+          "key": "Read(./a-long-directory-name-for-stress-testing/deny/segment-026/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.deny",
+              "line": 185,
+              "line_has": "Read(./a-long-directory-name-for-stress-testing/deny/segment-026/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./a-long-directory-name-for-stress-testing/deny/segment-027/**)",
+          "key": "Read(./a-long-directory-name-for-stress-testing/deny/segment-027/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.deny",
+              "line": 186,
+              "line_has": "Read(./a-long-directory-name-for-stress-testing/deny/segment-027/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./a-long-directory-name-for-stress-testing/deny/segment-028/**)",
+          "key": "Read(./a-long-directory-name-for-stress-testing/deny/segment-028/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.deny",
+              "line": 187,
+              "line_has": "Read(./a-long-directory-name-for-stress-testing/deny/segment-028/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./a-long-directory-name-for-stress-testing/deny/segment-029/**)",
+          "key": "Read(./a-long-directory-name-for-stress-testing/deny/segment-029/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.deny",
+              "line": 188,
+              "line_has": "Read(./a-long-directory-name-for-stress-testing/deny/segment-029/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./a-long-directory-name-for-stress-testing/deny/segment-030/**)",
+          "key": "Read(./a-long-directory-name-for-stress-testing/deny/segment-030/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.deny",
+              "line": 189,
+              "line_has": "Read(./a-long-directory-name-for-stress-testing/deny/segment-030/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./a-long-directory-name-for-stress-testing/deny/segment-031/**)",
+          "key": "Read(./a-long-directory-name-for-stress-testing/deny/segment-031/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.deny",
+              "line": 190,
+              "line_has": "Read(./a-long-directory-name-for-stress-testing/deny/segment-031/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./a-long-directory-name-for-stress-testing/deny/segment-032/**)",
+          "key": "Read(./a-long-directory-name-for-stress-testing/deny/segment-032/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.deny",
+              "line": 191,
+              "line_has": "Read(./a-long-directory-name-for-stress-testing/deny/segment-032/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./a-long-directory-name-for-stress-testing/deny/segment-033/**)",
+          "key": "Read(./a-long-directory-name-for-stress-testing/deny/segment-033/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.deny",
+              "line": 192,
+              "line_has": "Read(./a-long-directory-name-for-stress-testing/deny/segment-033/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./a-long-directory-name-for-stress-testing/deny/segment-034/**)",
+          "key": "Read(./a-long-directory-name-for-stress-testing/deny/segment-034/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.deny",
+              "line": 193,
+              "line_has": "Read(./a-long-directory-name-for-stress-testing/deny/segment-034/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./a-long-directory-name-for-stress-testing/deny/segment-035/**)",
+          "key": "Read(./a-long-directory-name-for-stress-testing/deny/segment-035/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.deny",
+              "line": 194,
+              "line_has": "Read(./a-long-directory-name-for-stress-testing/deny/segment-035/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./a-long-directory-name-for-stress-testing/deny/segment-036/**)",
+          "key": "Read(./a-long-directory-name-for-stress-testing/deny/segment-036/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.deny",
+              "line": 195,
+              "line_has": "Read(./a-long-directory-name-for-stress-testing/deny/segment-036/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./a-long-directory-name-for-stress-testing/deny/segment-037/**)",
+          "key": "Read(./a-long-directory-name-for-stress-testing/deny/segment-037/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.deny",
+              "line": 196,
+              "line_has": "Read(./a-long-directory-name-for-stress-testing/deny/segment-037/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./a-long-directory-name-for-stress-testing/deny/segment-038/**)",
+          "key": "Read(./a-long-directory-name-for-stress-testing/deny/segment-038/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.deny",
+              "line": 197,
+              "line_has": "Read(./a-long-directory-name-for-stress-testing/deny/segment-038/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./a-long-directory-name-for-stress-testing/deny/segment-039/**)",
+          "key": "Read(./a-long-directory-name-for-stress-testing/deny/segment-039/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.deny",
+              "line": 198,
+              "line_has": "Read(./a-long-directory-name-for-stress-testing/deny/segment-039/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./a-long-directory-name-for-stress-testing/deny/segment-040/**)",
+          "key": "Read(./a-long-directory-name-for-stress-testing/deny/segment-040/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.deny",
+              "line": 199,
+              "line_has": "Read(./a-long-directory-name-for-stress-testing/deny/segment-040/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./a-long-directory-name-for-stress-testing/deny/segment-041/**)",
+          "key": "Read(./a-long-directory-name-for-stress-testing/deny/segment-041/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.deny",
+              "line": 200,
+              "line_has": "Read(./a-long-directory-name-for-stress-testing/deny/segment-041/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./a-long-directory-name-for-stress-testing/deny/segment-042/**)",
+          "key": "Read(./a-long-directory-name-for-stress-testing/deny/segment-042/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.deny",
+              "line": 201,
+              "line_has": "Read(./a-long-directory-name-for-stress-testing/deny/segment-042/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./a-long-directory-name-for-stress-testing/deny/segment-043/**)",
+          "key": "Read(./a-long-directory-name-for-stress-testing/deny/segment-043/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.deny",
+              "line": 202,
+              "line_has": "Read(./a-long-directory-name-for-stress-testing/deny/segment-043/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./a-long-directory-name-for-stress-testing/deny/segment-044/**)",
+          "key": "Read(./a-long-directory-name-for-stress-testing/deny/segment-044/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.deny",
+              "line": 203,
+              "line_has": "Read(./a-long-directory-name-for-stress-testing/deny/segment-044/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./a-long-directory-name-for-stress-testing/deny/segment-045/**)",
+          "key": "Read(./a-long-directory-name-for-stress-testing/deny/segment-045/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.deny",
+              "line": 204,
+              "line_has": "Read(./a-long-directory-name-for-stress-testing/deny/segment-045/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./a-long-directory-name-for-stress-testing/deny/segment-046/**)",
+          "key": "Read(./a-long-directory-name-for-stress-testing/deny/segment-046/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.deny",
+              "line": 205,
+              "line_has": "Read(./a-long-directory-name-for-stress-testing/deny/segment-046/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./a-long-directory-name-for-stress-testing/deny/segment-047/**)",
+          "key": "Read(./a-long-directory-name-for-stress-testing/deny/segment-047/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.deny",
+              "line": 206,
+              "line_has": "Read(./a-long-directory-name-for-stress-testing/deny/segment-047/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./a-long-directory-name-for-stress-testing/deny/segment-048/**)",
+          "key": "Read(./a-long-directory-name-for-stress-testing/deny/segment-048/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.deny",
+              "line": 207,
+              "line_has": "Read(./a-long-directory-name-for-stress-testing/deny/segment-048/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "deny",
+          "id": "permissions:deny:Read(./a-long-directory-name-for-stress-testing/deny/segment-049/**)",
+          "key": "Read(./a-long-directory-name-for-stress-testing/deny/segment-049/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.deny",
+              "line": 208,
+              "line_has": "Read(./a-long-directory-name-for-stress-testing/deny/segment-049/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Edit(./a-long-directory-name-for-stress-testing/ask/segment-000/**)",
+          "key": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-000/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 107,
+              "line_has": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-000/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Edit(./a-long-directory-name-for-stress-testing/ask/segment-001/**)",
+          "key": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-001/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 108,
+              "line_has": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-001/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Edit(./a-long-directory-name-for-stress-testing/ask/segment-002/**)",
+          "key": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-002/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 109,
+              "line_has": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-002/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Edit(./a-long-directory-name-for-stress-testing/ask/segment-003/**)",
+          "key": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-003/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 110,
+              "line_has": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-003/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Edit(./a-long-directory-name-for-stress-testing/ask/segment-004/**)",
+          "key": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-004/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 111,
+              "line_has": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-004/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Edit(./a-long-directory-name-for-stress-testing/ask/segment-005/**)",
+          "key": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-005/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 112,
+              "line_has": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-005/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Edit(./a-long-directory-name-for-stress-testing/ask/segment-006/**)",
+          "key": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-006/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 113,
+              "line_has": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-006/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Edit(./a-long-directory-name-for-stress-testing/ask/segment-007/**)",
+          "key": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-007/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 114,
+              "line_has": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-007/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Edit(./a-long-directory-name-for-stress-testing/ask/segment-008/**)",
+          "key": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-008/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 115,
+              "line_has": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-008/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Edit(./a-long-directory-name-for-stress-testing/ask/segment-009/**)",
+          "key": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-009/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 116,
+              "line_has": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-009/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Edit(./a-long-directory-name-for-stress-testing/ask/segment-010/**)",
+          "key": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-010/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 117,
+              "line_has": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-010/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Edit(./a-long-directory-name-for-stress-testing/ask/segment-011/**)",
+          "key": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-011/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 118,
+              "line_has": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-011/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Edit(./a-long-directory-name-for-stress-testing/ask/segment-012/**)",
+          "key": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-012/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 119,
+              "line_has": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-012/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Edit(./a-long-directory-name-for-stress-testing/ask/segment-013/**)",
+          "key": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-013/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 120,
+              "line_has": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-013/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Edit(./a-long-directory-name-for-stress-testing/ask/segment-014/**)",
+          "key": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-014/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 121,
+              "line_has": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-014/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Edit(./a-long-directory-name-for-stress-testing/ask/segment-015/**)",
+          "key": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-015/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 122,
+              "line_has": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-015/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Edit(./a-long-directory-name-for-stress-testing/ask/segment-016/**)",
+          "key": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-016/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 123,
+              "line_has": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-016/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Edit(./a-long-directory-name-for-stress-testing/ask/segment-017/**)",
+          "key": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-017/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 124,
+              "line_has": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-017/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Edit(./a-long-directory-name-for-stress-testing/ask/segment-018/**)",
+          "key": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-018/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 125,
+              "line_has": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-018/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Edit(./a-long-directory-name-for-stress-testing/ask/segment-019/**)",
+          "key": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-019/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 126,
+              "line_has": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-019/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Edit(./a-long-directory-name-for-stress-testing/ask/segment-020/**)",
+          "key": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-020/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 127,
+              "line_has": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-020/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Edit(./a-long-directory-name-for-stress-testing/ask/segment-021/**)",
+          "key": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-021/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 128,
+              "line_has": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-021/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Edit(./a-long-directory-name-for-stress-testing/ask/segment-022/**)",
+          "key": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-022/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 129,
+              "line_has": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-022/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Edit(./a-long-directory-name-for-stress-testing/ask/segment-023/**)",
+          "key": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-023/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 130,
+              "line_has": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-023/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Edit(./a-long-directory-name-for-stress-testing/ask/segment-024/**)",
+          "key": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-024/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 131,
+              "line_has": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-024/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Edit(./a-long-directory-name-for-stress-testing/ask/segment-025/**)",
+          "key": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-025/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 132,
+              "line_has": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-025/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Edit(./a-long-directory-name-for-stress-testing/ask/segment-026/**)",
+          "key": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-026/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 133,
+              "line_has": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-026/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Edit(./a-long-directory-name-for-stress-testing/ask/segment-027/**)",
+          "key": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-027/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 134,
+              "line_has": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-027/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Edit(./a-long-directory-name-for-stress-testing/ask/segment-028/**)",
+          "key": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-028/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 135,
+              "line_has": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-028/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Edit(./a-long-directory-name-for-stress-testing/ask/segment-029/**)",
+          "key": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-029/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 136,
+              "line_has": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-029/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Edit(./a-long-directory-name-for-stress-testing/ask/segment-030/**)",
+          "key": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-030/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 137,
+              "line_has": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-030/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Edit(./a-long-directory-name-for-stress-testing/ask/segment-031/**)",
+          "key": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-031/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 138,
+              "line_has": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-031/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Edit(./a-long-directory-name-for-stress-testing/ask/segment-032/**)",
+          "key": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-032/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 139,
+              "line_has": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-032/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Edit(./a-long-directory-name-for-stress-testing/ask/segment-033/**)",
+          "key": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-033/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 140,
+              "line_has": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-033/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Edit(./a-long-directory-name-for-stress-testing/ask/segment-034/**)",
+          "key": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-034/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 141,
+              "line_has": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-034/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Edit(./a-long-directory-name-for-stress-testing/ask/segment-035/**)",
+          "key": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-035/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 142,
+              "line_has": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-035/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Edit(./a-long-directory-name-for-stress-testing/ask/segment-036/**)",
+          "key": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-036/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 143,
+              "line_has": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-036/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Edit(./a-long-directory-name-for-stress-testing/ask/segment-037/**)",
+          "key": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-037/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 144,
+              "line_has": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-037/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Edit(./a-long-directory-name-for-stress-testing/ask/segment-038/**)",
+          "key": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-038/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 145,
+              "line_has": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-038/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Edit(./a-long-directory-name-for-stress-testing/ask/segment-039/**)",
+          "key": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-039/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 146,
+              "line_has": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-039/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Edit(./a-long-directory-name-for-stress-testing/ask/segment-040/**)",
+          "key": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-040/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 147,
+              "line_has": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-040/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Edit(./a-long-directory-name-for-stress-testing/ask/segment-041/**)",
+          "key": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-041/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 148,
+              "line_has": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-041/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Edit(./a-long-directory-name-for-stress-testing/ask/segment-042/**)",
+          "key": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-042/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 149,
+              "line_has": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-042/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Edit(./a-long-directory-name-for-stress-testing/ask/segment-043/**)",
+          "key": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-043/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 150,
+              "line_has": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-043/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Edit(./a-long-directory-name-for-stress-testing/ask/segment-044/**)",
+          "key": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-044/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 151,
+              "line_has": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-044/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Edit(./a-long-directory-name-for-stress-testing/ask/segment-045/**)",
+          "key": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-045/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 152,
+              "line_has": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-045/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Edit(./a-long-directory-name-for-stress-testing/ask/segment-046/**)",
+          "key": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-046/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 153,
+              "line_has": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-046/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Edit(./a-long-directory-name-for-stress-testing/ask/segment-047/**)",
+          "key": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-047/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 154,
+              "line_has": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-047/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Edit(./a-long-directory-name-for-stress-testing/ask/segment-048/**)",
+          "key": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-048/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 155,
+              "line_has": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-048/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "ask",
+          "id": "permissions:ask:Edit(./a-long-directory-name-for-stress-testing/ask/segment-049/**)",
+          "key": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-049/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.ask",
+              "line": 156,
+              "line_has": "Edit(./a-long-directory-name-for-stress-testing/ask/segment-049/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-000/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-000/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 5,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-000/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-001/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-001/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 6,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-001/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-002/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-002/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 7,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-002/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-003/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-003/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 8,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-003/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-004/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-004/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 9,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-004/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-005/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-005/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 10,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-005/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-006/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-006/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 11,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-006/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-007/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-007/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 12,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-007/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-008/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-008/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 13,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-008/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-009/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-009/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 14,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-009/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-010/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-010/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 15,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-010/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-011/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-011/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 16,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-011/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-012/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-012/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 17,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-012/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-013/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-013/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 18,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-013/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-014/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-014/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 19,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-014/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-015/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-015/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 20,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-015/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-016/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-016/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 21,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-016/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-017/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-017/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 22,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-017/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-018/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-018/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 23,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-018/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-019/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-019/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 24,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-019/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-020/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-020/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 25,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-020/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-021/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-021/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 26,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-021/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-022/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-022/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 27,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-022/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-023/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-023/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 28,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-023/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-024/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-024/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 29,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-024/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-025/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-025/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 30,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-025/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-026/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-026/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 31,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-026/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-027/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-027/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 32,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-027/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-028/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-028/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 33,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-028/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-029/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-029/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 34,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-029/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-030/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-030/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 35,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-030/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-031/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-031/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 36,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-031/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-032/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-032/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 37,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-032/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-033/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-033/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 38,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-033/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-034/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-034/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 39,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-034/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-035/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-035/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 40,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-035/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-036/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-036/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 41,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-036/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-037/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-037/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 42,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-037/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-038/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-038/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 43,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-038/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-039/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-039/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 44,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-039/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-040/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-040/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 45,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-040/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-041/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-041/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 46,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-041/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-042/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-042/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 47,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-042/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-043/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-043/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 48,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-043/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-044/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-044/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 49,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-044/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-045/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-045/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 50,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-045/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-046/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-046/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 51,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-046/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-047/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-047/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 52,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-047/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-048/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-048/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 53,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-048/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-049/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-049/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 54,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-049/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-050/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-050/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 55,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-050/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-051/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-051/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 56,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-051/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-052/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-052/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 57,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-052/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-053/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-053/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 58,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-053/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-054/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-054/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 59,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-054/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-055/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-055/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 60,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-055/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-056/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-056/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 61,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-056/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-057/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-057/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 62,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-057/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-058/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-058/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 63,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-058/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-059/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-059/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 64,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-059/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-060/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-060/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 65,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-060/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-061/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-061/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 66,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-061/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-062/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-062/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 67,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-062/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-063/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-063/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 68,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-063/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-064/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-064/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 69,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-064/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-065/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-065/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 70,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-065/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-066/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-066/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 71,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-066/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-067/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-067/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 72,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-067/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-068/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-068/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 73,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-068/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-069/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-069/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 74,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-069/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-070/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-070/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 75,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-070/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-071/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-071/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 76,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-071/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-072/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-072/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 77,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-072/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-073/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-073/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 78,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-073/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-074/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-074/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 79,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-074/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-075/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-075/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 80,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-075/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-076/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-076/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 81,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-076/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-077/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-077/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 82,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-077/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-078/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-078/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 83,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-078/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-079/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-079/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 84,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-079/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-080/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-080/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 85,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-080/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-081/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-081/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 86,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-081/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-082/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-082/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 87,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-082/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-083/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-083/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 88,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-083/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-084/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-084/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 89,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-084/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-085/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-085/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 90,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-085/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-086/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-086/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 91,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-086/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-087/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-087/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 92,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-087/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-088/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-088/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 93,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-088/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-089/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-089/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 94,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-089/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-090/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-090/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 95,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-090/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-091/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-091/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 96,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-091/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-092/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-092/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 97,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-092/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-093/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-093/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 98,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-093/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-094/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-094/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 99,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-094/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-095/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-095/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 100,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-095/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-096/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-096/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 101,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-096/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-097/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-097/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 102,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-097/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-098/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-098/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 103,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-098/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "group": "allow",
+          "id": "permissions:allow:Bash(./a-long-directory-name-for-stress-testing/allow/segment-099/**)",
+          "key": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-099/**)",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "permissions.allow",
+              "line": 104,
+              "line_has": "Bash(./a-long-directory-name-for-stress-testing/allow/segment-099/**)",
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        }
+      ],
+      "unreadable": []
+    },
+    "plugins": {
+      "items": [
+        {
+          "effective": {
+            "origin": "set",
+            "value": "enabled"
+          },
+          "id": "plugins:stress-plugin-with-a-long-name-for-the-list-00@bartab-demo",
+          "key": "stress-plugin-with-a-long-name-for-the-list-00@bartab-demo",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "enabledPlugins.stress-plugin-with-a-long-name-for-the-list-00@bartab-demo",
+              "line": 212,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "effective": {
+            "origin": "set",
+            "value": "enabled"
+          },
+          "id": "plugins:stress-plugin-with-a-long-name-for-the-list-01@bartab-demo",
+          "key": "stress-plugin-with-a-long-name-for-the-list-01@bartab-demo",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "enabledPlugins.stress-plugin-with-a-long-name-for-the-list-01@bartab-demo",
+              "line": 213,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "effective": {
+            "origin": "set",
+            "value": "enabled"
+          },
+          "id": "plugins:stress-plugin-with-a-long-name-for-the-list-02@bartab-demo",
+          "key": "stress-plugin-with-a-long-name-for-the-list-02@bartab-demo",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "enabledPlugins.stress-plugin-with-a-long-name-for-the-list-02@bartab-demo",
+              "line": 214,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "effective": {
+            "origin": "set",
+            "value": "enabled"
+          },
+          "id": "plugins:stress-plugin-with-a-long-name-for-the-list-03@bartab-demo",
+          "key": "stress-plugin-with-a-long-name-for-the-list-03@bartab-demo",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "enabledPlugins.stress-plugin-with-a-long-name-for-the-list-03@bartab-demo",
+              "line": 215,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "effective": {
+            "origin": "set",
+            "value": "enabled"
+          },
+          "id": "plugins:stress-plugin-with-a-long-name-for-the-list-04@bartab-demo",
+          "key": "stress-plugin-with-a-long-name-for-the-list-04@bartab-demo",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "enabledPlugins.stress-plugin-with-a-long-name-for-the-list-04@bartab-demo",
+              "line": 216,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "effective": {
+            "origin": "set",
+            "value": "enabled"
+          },
+          "id": "plugins:stress-plugin-with-a-long-name-for-the-list-05@bartab-demo",
+          "key": "stress-plugin-with-a-long-name-for-the-list-05@bartab-demo",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "enabledPlugins.stress-plugin-with-a-long-name-for-the-list-05@bartab-demo",
+              "line": 217,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "effective": {
+            "origin": "set",
+            "value": "enabled"
+          },
+          "id": "plugins:stress-plugin-with-a-long-name-for-the-list-06@bartab-demo",
+          "key": "stress-plugin-with-a-long-name-for-the-list-06@bartab-demo",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "enabledPlugins.stress-plugin-with-a-long-name-for-the-list-06@bartab-demo",
+              "line": 218,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "effective": {
+            "origin": "set",
+            "value": "enabled"
+          },
+          "id": "plugins:stress-plugin-with-a-long-name-for-the-list-07@bartab-demo",
+          "key": "stress-plugin-with-a-long-name-for-the-list-07@bartab-demo",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "enabledPlugins.stress-plugin-with-a-long-name-for-the-list-07@bartab-demo",
+              "line": 219,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "effective": {
+            "origin": "set",
+            "value": "enabled"
+          },
+          "id": "plugins:stress-plugin-with-a-long-name-for-the-list-08@bartab-demo",
+          "key": "stress-plugin-with-a-long-name-for-the-list-08@bartab-demo",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "enabledPlugins.stress-plugin-with-a-long-name-for-the-list-08@bartab-demo",
+              "line": 220,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "effective": {
+            "origin": "set",
+            "value": "enabled"
+          },
+          "id": "plugins:stress-plugin-with-a-long-name-for-the-list-09@bartab-demo",
+          "key": "stress-plugin-with-a-long-name-for-the-list-09@bartab-demo",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "enabledPlugins.stress-plugin-with-a-long-name-for-the-list-09@bartab-demo",
+              "line": 221,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "effective": {
+            "origin": "set",
+            "value": "enabled"
+          },
+          "id": "plugins:stress-plugin-with-a-long-name-for-the-list-10@bartab-demo",
+          "key": "stress-plugin-with-a-long-name-for-the-list-10@bartab-demo",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "enabledPlugins.stress-plugin-with-a-long-name-for-the-list-10@bartab-demo",
+              "line": 222,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "effective": {
+            "origin": "set",
+            "value": "enabled"
+          },
+          "id": "plugins:stress-plugin-with-a-long-name-for-the-list-11@bartab-demo",
+          "key": "stress-plugin-with-a-long-name-for-the-list-11@bartab-demo",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "enabledPlugins.stress-plugin-with-a-long-name-for-the-list-11@bartab-demo",
+              "line": 223,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "effective": {
+            "origin": "set",
+            "value": "enabled"
+          },
+          "id": "plugins:stress-plugin-with-a-long-name-for-the-list-12@bartab-demo",
+          "key": "stress-plugin-with-a-long-name-for-the-list-12@bartab-demo",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "enabledPlugins.stress-plugin-with-a-long-name-for-the-list-12@bartab-demo",
+              "line": 224,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "effective": {
+            "origin": "set",
+            "value": "enabled"
+          },
+          "id": "plugins:stress-plugin-with-a-long-name-for-the-list-13@bartab-demo",
+          "key": "stress-plugin-with-a-long-name-for-the-list-13@bartab-demo",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "enabledPlugins.stress-plugin-with-a-long-name-for-the-list-13@bartab-demo",
+              "line": 225,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "effective": {
+            "origin": "set",
+            "value": "enabled"
+          },
+          "id": "plugins:stress-plugin-with-a-long-name-for-the-list-14@bartab-demo",
+          "key": "stress-plugin-with-a-long-name-for-the-list-14@bartab-demo",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "enabledPlugins.stress-plugin-with-a-long-name-for-the-list-14@bartab-demo",
+              "line": 226,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "effective": {
+            "origin": "set",
+            "value": "enabled"
+          },
+          "id": "plugins:stress-plugin-with-a-long-name-for-the-list-15@bartab-demo",
+          "key": "stress-plugin-with-a-long-name-for-the-list-15@bartab-demo",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "enabledPlugins.stress-plugin-with-a-long-name-for-the-list-15@bartab-demo",
+              "line": 227,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "effective": {
+            "origin": "set",
+            "value": "enabled"
+          },
+          "id": "plugins:stress-plugin-with-a-long-name-for-the-list-16@bartab-demo",
+          "key": "stress-plugin-with-a-long-name-for-the-list-16@bartab-demo",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "enabledPlugins.stress-plugin-with-a-long-name-for-the-list-16@bartab-demo",
+              "line": 228,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "effective": {
+            "origin": "set",
+            "value": "enabled"
+          },
+          "id": "plugins:stress-plugin-with-a-long-name-for-the-list-17@bartab-demo",
+          "key": "stress-plugin-with-a-long-name-for-the-list-17@bartab-demo",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "enabledPlugins.stress-plugin-with-a-long-name-for-the-list-17@bartab-demo",
+              "line": 229,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "effective": {
+            "origin": "set",
+            "value": "enabled"
+          },
+          "id": "plugins:stress-plugin-with-a-long-name-for-the-list-18@bartab-demo",
+          "key": "stress-plugin-with-a-long-name-for-the-list-18@bartab-demo",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "enabledPlugins.stress-plugin-with-a-long-name-for-the-list-18@bartab-demo",
+              "line": 230,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "effective": {
+            "origin": "set",
+            "value": "enabled"
+          },
+          "id": "plugins:stress-plugin-with-a-long-name-for-the-list-19@bartab-demo",
+          "key": "stress-plugin-with-a-long-name-for-the-list-19@bartab-demo",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "enabledPlugins.stress-plugin-with-a-long-name-for-the-list-19@bartab-demo",
+              "line": 231,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        }
+      ],
+      "unreadable": []
+    },
+    "settings": {
+      "items": [
+        {
+          "effective": {
+            "origin": "set",
+            "value": "claude-opus-5-5"
+          },
+          "id": "settings:model",
+          "key": "model",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/settings.json",
+              "key": "model",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        }
+      ],
+      "unreadable": []
+    },
+    "skills": {
+      "items": [
+        {
+          "id": "skills:stress-skill-with-a-long-name-for-the-slash-menu-00",
+          "key": "stress-skill-with-a-long-name-for-the-slash-menu-00",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/skills/stress-skill-with-a-long-name-for-the-slash-menu-00/SKILL.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "skills:stress-skill-with-a-long-name-for-the-slash-menu-01",
+          "key": "stress-skill-with-a-long-name-for-the-slash-menu-01",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/skills/stress-skill-with-a-long-name-for-the-slash-menu-01/SKILL.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "skills:stress-skill-with-a-long-name-for-the-slash-menu-02",
+          "key": "stress-skill-with-a-long-name-for-the-slash-menu-02",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/skills/stress-skill-with-a-long-name-for-the-slash-menu-02/SKILL.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "skills:stress-skill-with-a-long-name-for-the-slash-menu-03",
+          "key": "stress-skill-with-a-long-name-for-the-slash-menu-03",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/skills/stress-skill-with-a-long-name-for-the-slash-menu-03/SKILL.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "skills:stress-skill-with-a-long-name-for-the-slash-menu-04",
+          "key": "stress-skill-with-a-long-name-for-the-slash-menu-04",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/skills/stress-skill-with-a-long-name-for-the-slash-menu-04/SKILL.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "skills:stress-skill-with-a-long-name-for-the-slash-menu-05",
+          "key": "stress-skill-with-a-long-name-for-the-slash-menu-05",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/skills/stress-skill-with-a-long-name-for-the-slash-menu-05/SKILL.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "skills:stress-skill-with-a-long-name-for-the-slash-menu-06",
+          "key": "stress-skill-with-a-long-name-for-the-slash-menu-06",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/skills/stress-skill-with-a-long-name-for-the-slash-menu-06/SKILL.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "skills:stress-skill-with-a-long-name-for-the-slash-menu-07",
+          "key": "stress-skill-with-a-long-name-for-the-slash-menu-07",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/skills/stress-skill-with-a-long-name-for-the-slash-menu-07/SKILL.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "skills:stress-skill-with-a-long-name-for-the-slash-menu-08",
+          "key": "stress-skill-with-a-long-name-for-the-slash-menu-08",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/skills/stress-skill-with-a-long-name-for-the-slash-menu-08/SKILL.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        },
+        {
+          "id": "skills:stress-skill-with-a-long-name-for-the-slash-menu-09",
+          "key": "stress-skill-with-a-long-name-for-the-slash-menu-09",
+          "scope": "user",
+          "sources": [
+            {
+              "file": "~/.claude/skills/stress-skill-with-a-long-name-for-the-slash-menu-09/SKILL.md",
+              "key": "name",
+              "line": 2,
+              "scope": "user",
+              "status": "in_effect"
+            }
+          ],
+          "status": "in_effect"
+        }
+      ],
+      "unreadable": []
+    }
+  },
+  "problems": [],
+  "project": {
+    "dir": "work/parent/proj",
+    "name": "Proj"
+  }
+}

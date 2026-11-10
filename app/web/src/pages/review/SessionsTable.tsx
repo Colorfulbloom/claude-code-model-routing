@@ -2,7 +2,7 @@
  * The session rows both Review pages draw: the Sessions page under its day headers, and Summary's
  * four most expensive sessions with no headers. It is a plain table, not the grid table, because a
  * day header row needs `scope="colgroup"`. The first cell is the link to Session review, with the
- * range kept. At 720px and below the Agents, Runs and Tokens columns clip-hide, as in the other tables.
+ * range kept, and a click anywhere on the row forwards to it (`useRowLink`). At 720px and below the Agents, Runs and Tokens columns clip-hide, as in the other tables.
  */
 import { useId } from "react";
 import { Link } from "react-aria-components";
@@ -12,6 +12,7 @@ import { RunStateGlyph } from "@/components/RunStateGlyph/RunStateGlyph";
 import { ShareBar } from "@/components/ShareBar/ShareBar";
 import { Well } from "@/components/Well/Well";
 import { reviewPath } from "@/lib/range";
+import { useRowLink } from "@/lib/row-link";
 import type { SessionGroup, SessionRowView } from "@/lib/review-cards";
 import { t } from "@/strings/t";
 
@@ -30,8 +31,9 @@ function Row({
 }) {
   const noteId = useId();
   const word = stateWord(row.state);
+  const rowLink = useRowLink();
   return (
-    <tr className="review-row">
+    <tr className="review-row" {...rowLink}>
       <th scope="row" className="review-cell review-session">
         <Link
           className="review-link"

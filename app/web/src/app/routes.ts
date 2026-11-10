@@ -116,6 +116,8 @@ export function parseRoute(path: string): ParsedRoute | null {
       return at("agent_edit", { name: c });
     }
   }
+  // A part's list, with no item picked.
+  if (a === "setup" && b !== undefined && tail.length === 2) return at("surface", { part: b });
   if (a === "setup" && b !== undefined && c !== undefined) {
     if (tail.length === 3) return at("surface", { part: b, item: c });
     if (tail.length === 4 && d === "edit") return at("surface_edit", { part: b, item: c });

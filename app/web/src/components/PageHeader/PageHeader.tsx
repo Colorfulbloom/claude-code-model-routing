@@ -1,4 +1,4 @@
-import { Breadcrumb, Breadcrumbs, Link } from "react-aria-components";
+import { Breadcrumb } from "../Breadcrumb/Breadcrumb";
 import { cx } from "../cx";
 import "./PageHeader.css";
 
@@ -26,17 +26,7 @@ export function PageHeader({ title, sub, breadcrumb, controls, className }: Page
     <header className={cx("page-header", className)}>
       <div className="page-header-text">
         {breadcrumb !== undefined && (
-          <nav aria-label={breadcrumb.label}>
-            <Breadcrumbs className="page-header-crumbs">
-              {breadcrumb.items.map((item) => (
-                <Breadcrumb key={item.href} id={item.href} className="page-header-crumb">
-                  <Link href={item.href} className="page-header-crumb-link">
-                    {item.label}
-                  </Link>
-                </Breadcrumb>
-              ))}
-            </Breadcrumbs>
-          </nav>
+          <Breadcrumb label={breadcrumb.label} items={breadcrumb.items} />
         )}
         <h1 className="page-header-title">{title}</h1>
         {sub !== undefined && <p className="page-header-sub">{sub}</p>}

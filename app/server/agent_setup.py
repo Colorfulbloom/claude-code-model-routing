@@ -10,7 +10,15 @@ lists the agent files with no run in the range.
 An agent file that loads is one whose ``agentFile`` entry is in effect or unknown.
 A project file wins over a user file of the same name, as Claude Code does, because
 the resolver ranks the layers and marks the loser overridden. A name that ran with
-no loading file in either scope (a plugin or built-in agent) has scope ``no_file``.
+no loading file in either scope and no setup item (a built-in agent) has scope
+``no_file``.
+
+M4 adds the setup read's agent items (``refs``). A plugin agent's type in a transcript
+is ``<plugin>:<name>`` and its item is ``agents:<plugin>:<name>``. A managed agent that
+no user or project file shadows is a ``managed`` ref. Both get their own scope, an
+``item_id`` and a ``set`` read from their front matter. The resolver does not judge
+them, so their status is None with the reason ``agent_source_unchecked``. A user or
+project agent keeps the resolver's judgment and gets the item id ``agents:<name>``.
 
 Why ``set`` holds no value, as ``set_reason``:
 
@@ -23,10 +31,11 @@ When only one of model and effort is set, ``set`` holds a SetPair with the other
 None. This module never reads ``os.environ`` or looks a home folder up.
 """
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import agent_files
 import model_catalog
 import model_check
 import pincheck
@@ -37,8 +46,13 @@ from models import (
     ModelCheckStatus,
     SetPair,
     SetReason,
+    SetupItem,
+    SetValue,
 )
 from usage import Row
+
+UNCHECKED_CODE = "agent_source_unchecked"
+_REF_SCOPES: tuple[AgentFileScope, ...] = ("managed", "plugin")
 
 # What ``collect`` and ``resolve`` can raise for a setup they cannot read. ``collect``
 # turns a missing or unreadable file into data, so these are the rest: an operating
@@ -65,6 +79,24 @@ class AgentFile:
 
 
 @dataclass(frozen=True)
+class AgentRef:
+    """An agent the setup read knows, by the type a transcript names.
+
+    ``item_id`` is the setup item (``agents:<name>`` or ``agents:<plugin>:<name>``).
+    ``scope`` is the layer of the item's lead file. ``set`` and ``set_reason`` are read
+    from the front matter (model and effort), and are used only for a plugin or managed
+    agent that the resolver does not judge.
+    """
+
+    item_id: str
+    name: str
+    plugin: str | None
+    scope: AgentFileScope
+    set: SetPair | None
+    set_reason: SetReason | None
+
+
+@dataclass(frozen=True)
 class AgentSetup:
     """What the user and project scopes set, read once.
 
@@ -73,7 +105,8 @@ class AgentSetup:
     ``agent_setup`` (and one with ``model_check`` for the Summary).
 
     ``files`` maps an agent type to its file. ``main`` is the main session's pins,
-    or None when it sets neither (``main_reason`` then says why).
+    or None when it sets neither (``main_reason`` then says why). ``refs`` maps an
+    agent type to its setup item, from the setup read (empty when none was read).
     """
 
     failed: bool = False
@@ -82,6 +115,7 @@ class AgentSetup:
     main_reason: SetReason | None = None
     entries: Sequence[Row] = ()
     catalog: model_catalog.Catalog = field(default_factory=lambda: _CATALOG)
+    refs: Mapping[str, AgentRef] = field(default_factory=dict[str, AgentRef])
 
 
 @dataclass(frozen=True)
@@ -90,8 +124,9 @@ class AgentCheck:
 
     ``status`` is None when nothing is set or the setup could not be read. Then
     ``reason_code`` is the M2 code without a status (``no_agent_file``, ``no_pin``,
-    ``unnamed_agent``), or None for a failed setup. ``runs_as_set`` and
-    ``runs_not_as_set`` are None when ``status`` is None.
+    ``unnamed_agent``) or ``agent_source_unchecked`` for a plugin or managed agent, or
+    None for a failed setup. ``runs_as_set`` and ``runs_not_as_set`` are None when
+    ``status`` is None. ``item_id`` and ``plugin`` name the agent's setup item.
     """
 
     scope: AgentScope
@@ -102,6 +137,8 @@ class AgentCheck:
     params: dict[str, str]
     runs_as_set: int | None
     runs_not_as_set: int | None
+    item_id: str | None = None
+    plugin: str | None = None
 
 
 def _shown(pair: SetPair) -> tuple[SetPair | None, SetReason | None]:
@@ -127,14 +164,67 @@ def _loading_files(entries: Sequence[Row]) -> dict[str, AgentFileScope]:
     return found
 
 
+def _field_value(item: SetupItem, name: str, file: str | None) -> SetValue | None:
+    """Return what the item's front matter sets for ``name`` (model or effort)."""
+    facts = item.facts.agent
+    if facts is None:
+        return None
+    for found in facts.fields:
+        if found.name == name and not found.ignored and found.value is not None:
+            return SetValue(
+                value=found.value.text, file=file, line=found.line, scope="agent"
+            )
+    return None
+
+
+def ref_of(item: SetupItem) -> tuple[str, AgentRef] | None:
+    """Return ``(agent type, ref)`` for an agent item of the setup read, or None.
+
+    The type is ``<plugin>:<name>`` for a plugin agent, else the name. An item whose
+    lead file is not a user, project, managed or plugin file has no ref.
+    """
+    if item.scope not in ("user", "project", "managed", "plugin"):
+        return None
+    plugin = item.facts.agent.plugin if item.facts.agent is not None else None
+    file = item.reason.params.get("file") if item.reason is not None else None
+    pair = SetPair(
+        model=_field_value(item, "model", file),
+        effort=_field_value(item, "effort", file),
+    )
+    shown, reason = _shown(pair)
+    key = f"{plugin}:{item.name}" if plugin else item.name
+    return key, AgentRef(
+        item_id=item.id,
+        name=item.name,
+        plugin=plugin,
+        scope=item.scope,
+        set=shown,
+        set_reason=reason,
+    )
+
+
+def refs_from_items(items: Sequence[SetupItem]) -> dict[str, AgentRef]:
+    """Index the setup read's agent items by the agent type a transcript names."""
+    found: dict[str, AgentRef] = {}
+    for item in items:
+        made = ref_of(item)
+        if made is not None:
+            found[made[0]] = made[1]
+    return found
+
+
 def from_entries(
-    entries: Sequence[Row], catalog: model_catalog.Catalog | None = None
+    entries: Sequence[Row],
+    catalog: model_catalog.Catalog | None = None,
+    refs: Mapping[str, AgentRef] | None = None,
 ) -> AgentSetup:
     """Build the setup from resolver entries, for a caller that caches them.
 
     Args:
         entries: The ``model_check.resolve_entries`` result for the project.
         catalog: The model catalog. Loaded from the rules file when None.
+        refs: The setup read's agent items by agent type (``refs_from_items``), or
+            None when no setup read is at hand.
 
     Returns:
         The setup, not failed.
@@ -148,15 +238,51 @@ def from_entries(
         model_check.judge_agent(entries, _MAIN_KEY, [], used).set
     )
     return AgentSetup(
-        files=files, main=main, main_reason=main_reason, entries=entries, catalog=used
+        files=files,
+        main=main,
+        main_reason=main_reason,
+        entries=entries,
+        catalog=used,
+        refs=dict(refs or {}),
     )
 
 
-def load_setup(
+def item_lookup(
+    entries: Sequence[Row], refs: Mapping[str, AgentRef]
+) -> Callable[[str | None], str | None]:
+    """Return a function from a timeline agent to its setup item id, or None.
+
+    Cheaper than ``from_entries``: it judges no agent. The timeline's agent is None for
+    the main session, ``unnamed`` for an unnamed agent, and else the agent type.
+    """
+    loading = _loading_files(entries)
+
+    def lookup(agent: str | None) -> str | None:
+        key = model_check.agent_key(agent)
+        if key in (_MAIN_KEY, _UNNAMED_KEY):
+            return None
+        return _item_of(key, loading, refs)
+
+    return lookup
+
+
+def _item_of(
+    key: str, loading: Mapping[str, AgentFileScope], refs: Mapping[str, AgentRef]
+) -> str | None:
+    ref = refs.get(key)
+    if ref is not None:
+        return ref.item_id
+    return agent_files.agent_item_id(key) if key in loading else None
+
+
+def load_setup(  # noqa: PLR0913 - the two new inputs are keyword-only
     claude_dir: Path,
     project_dir: Path | None,
     managed_dir: Path | None,
     shell_env: Mapping[str, str],
+    *,
+    local_path: Path | None = None,
+    plan: str | None = None,
 ) -> AgentSetup:
     """Read the agent files and the main session's pins for one project.
 
@@ -165,6 +291,9 @@ def load_setup(
         project_dir: The project folder, or None for user and managed scope only.
         managed_dir: The managed settings folder, or None.
         shell_env: The shell environment the resolver may read.
+        local_path: The repo-root local settings file, or None (see
+            ``model_check.resolve_entries``).
+        plan: The project list's plan, or None.
 
     Returns:
         The setup. When reading raises one of ``SETUP_ERRORS`` the setup is failed
@@ -176,10 +305,20 @@ def load_setup(
             project_dir=project_dir,
             managed_dir=managed_dir,
             shell_env=shell_env,
+            local_path=local_path,
+            plan=plan,
         )
     except SETUP_ERRORS:
         return AgentSetup(failed=True)
     return from_entries(entries)
+
+
+def _unjudged(setup: AgentSetup, agent_key: str) -> AgentRef | None:
+    """Return the ref of a plugin or managed agent that no file of the owner hides."""
+    ref = setup.refs.get(agent_key)
+    if ref is None or agent_key in setup.files or ref.scope not in _REF_SCOPES:
+        return None
+    return ref
 
 
 def _scope_of(setup: AgentSetup, agent_key: str) -> AgentScope:
@@ -188,7 +327,22 @@ def _scope_of(setup: AgentSetup, agent_key: str) -> AgentScope:
     if agent_key == _UNNAMED_KEY:
         return "unnamed"
     found = setup.files.get(agent_key)
-    return "no_file" if found is None else found.scope
+    if found is not None:
+        return found.scope
+    ref = _unjudged(setup, agent_key)
+    return "no_file" if ref is None else ref.scope
+
+
+def _identity(setup: AgentSetup, agent_key: str) -> tuple[str | None, str | None]:
+    """Return ``(item id, plugin)`` of an agent key, or two Nones."""
+    if agent_key in (_MAIN_KEY, _UNNAMED_KEY):
+        return None, None
+    ref = setup.refs.get(agent_key)
+    if ref is not None:
+        return ref.item_id, ref.plugin
+    if agent_key in setup.files:
+        return agent_files.agent_item_id(agent_key), None
+    return None, None
 
 
 def check_agent(setup: AgentSetup, agent_key: str, runs: Sequence[Row]) -> AgentCheck:
@@ -204,16 +358,35 @@ def check_agent(setup: AgentSetup, agent_key: str, runs: Sequence[Row]) -> Agent
         The scope, what is set (and why not), the status mapped as the timeline's
         Model check maps it, its reason and params, and the run split. A failed
         setup gives status None, ``set_reason`` ``read_failed`` and scope ``no_file``
-        for a type (the file cannot be known), ``main`` or ``unnamed`` otherwise.
+        for a type (the file cannot be known), ``main`` or ``unnamed`` otherwise. A
+        plugin or managed agent gives its front matter's ``set``, status None and the
+        reason ``agent_source_unchecked``.
     """
     scope = _scope_of(setup, agent_key)
+    item_id, plugin = _identity(setup, agent_key)
     if setup.failed:
-        return AgentCheck(scope, None, "read_failed", None, None, {}, None, None)
+        return AgentCheck(
+            scope, None, "read_failed", None, None, {}, None, None, item_id, plugin
+        )
     verdict = model_check.judge_agent(setup.entries, agent_key, runs, setup.catalog)
     shown: SetPair | None
     reason: SetReason | None
+    unjudged = _unjudged(setup, agent_key)
     if agent_key == _MAIN_KEY:
         shown, reason = setup.main, setup.main_reason
+    elif unjudged is not None:
+        return AgentCheck(
+            scope=scope,
+            set=unjudged.set,
+            set_reason=unjudged.set_reason,
+            status=None,
+            reason_code=UNCHECKED_CODE,
+            params={},
+            runs_as_set=None,
+            runs_not_as_set=None,
+            item_id=item_id,
+            plugin=plugin,
+        )
     elif agent_key == _UNNAMED_KEY or agent_key not in setup.files:
         shown, reason = None, "no_file"
     else:
@@ -229,11 +402,13 @@ def check_agent(setup: AgentSetup, agent_key: str, runs: Sequence[Row]) -> Agent
         params=verdict.params,
         runs_as_set=verdict.runs - verdict.mismatched_runs if judged else None,
         runs_not_as_set=verdict.mismatched_runs if judged else None,
+        item_id=item_id,
+        plugin=plugin,
     )
 
 
 def never_ran(setup: AgentSetup, ran_keys: Sequence[str]) -> list[AgentNoRuns]:
-    """Return the agent files with no run in the range, sorted by name.
+    """Return the agents with no run in the range, sorted by agent type.
 
     Args:
         setup: The ``load_setup`` result.
@@ -241,17 +416,34 @@ def never_ran(setup: AgentSetup, ran_keys: Sequence[str]) -> list[AgentNoRuns]:
             file).
 
     Returns:
-        One row per loading user or project agent file whose name is not in
-        ``ran_keys``. A failed setup lists none, because it knows no files.
+        One row per loading user or project agent file, and per plugin or managed agent
+        of the setup read, whose type is not in ``ran_keys``. A failed setup lists
+        none, because it knows no files.
     """
     ran = set(ran_keys)
-    return [
-        AgentNoRuns(
-            agent=found.name,
-            scope=found.scope,
-            set=found.set,
-            set_reason=found.set_reason,
+    rows: dict[str, AgentNoRuns] = {}
+    for name, found in setup.files.items():
+        if name not in ran:
+            item_id, plugin = _identity(setup, name)
+            rows[name] = AgentNoRuns(
+                agent=found.name,
+                scope=found.scope,
+                set=found.set,
+                set_reason=found.set_reason,
+                item_id=item_id,
+                plugin=plugin,
+            )
+    for key, ref in setup.refs.items():
+        if key in ran or key in rows or ref.scope not in _REF_SCOPES:
+            continue
+        if key in setup.files:
+            continue
+        rows[key] = AgentNoRuns(
+            agent=key,
+            scope=ref.scope,
+            set=ref.set,
+            set_reason=ref.set_reason,
+            item_id=ref.item_id,
+            plugin=ref.plugin,
         )
-        for name, found in sorted(setup.files.items())
-        if name not in ran
-    ]
+    return [rows[key] for key in sorted(rows)]

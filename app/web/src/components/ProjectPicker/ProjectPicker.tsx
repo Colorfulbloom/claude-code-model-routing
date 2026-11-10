@@ -35,7 +35,9 @@ export function projectOption(item: ProjectItem): SelectOption {
     label: item.name,
     description: (
       <>
-        <span className="pk-path">{item.path}</span>
+        <span className="pk-path" title={item.path}>
+          {item.path}
+        </span>
         <span className={cx("pk-state", `pk-state-${item.kind}`)}>
           <span aria-hidden="true">{glyphs[item.kind]}</span>
           {item.stateWord}

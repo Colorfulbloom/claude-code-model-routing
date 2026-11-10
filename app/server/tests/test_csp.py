@@ -1,5 +1,6 @@
 """Tests for the CSP, the security headers and the index rewrite."""
 
+import os
 import re
 from pathlib import Path
 from typing import Any
@@ -32,6 +33,35 @@ def _meta(html: str, name: str) -> str:
 
 def test_csp_string_equals_the_contract() -> None:
     assert csp.build_csp("abc") == EXPECTED_CSP.format(n="abc")
+
+
+def test_index_source_rereads_after_a_rebuild(tmp_path: Path) -> None:
+    index = tmp_path / "index.html"
+    index.write_text(
+        '<html><head><script src="/a-1.js"></script></head></html>', "utf-8"
+    )
+    source = csp.IndexSource(tmp_path)
+    assert "a-1.js" in source.page.source
+    # A rebuild writes new asset hashes, even at the same length and the same second.
+    index.write_text(
+        '<html><head><script src="/a-2.js"></script></head></html>', "utf-8"
+    )
+    os.utime(index, ns=(1, 1))
+    assert "a-2.js" in source.page.source
+    index.unlink()
+    assert source.page.found is False
+    index.write_text(
+        '<html><head><script src="/a-3.js"></script></head></html>', "utf-8"
+    )
+    assert "a-3.js" in source.page.source
+    assert source.page.found is True
+
+
+def test_the_served_index_follows_a_rebuild(client: Any, dist_dir: Path) -> None:
+    path = dist_dir / "index.html"
+    path.write_text("<html><head><title>second</title></head></html>", "utf-8")
+    os.utime(path, ns=(2, 2))
+    assert "second" in client.get("/").text
 
 
 def test_each_request_gets_a_fresh_nonce(client: Any) -> None:

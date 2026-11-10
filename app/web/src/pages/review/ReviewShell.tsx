@@ -32,6 +32,11 @@ export interface ReviewShellProps {
   setRange: (next: ReviewRange) => void;
   /** The window of any answer for this range, or null before the first one arrives. */
   reviewWindow: ReviewWindow | null;
+  /**
+   * True leaves the phone page strip out and hides the title from sight, for a picked item that
+   * is its own page. The Range select stays, because it changes the numbers shown.
+   */
+  hidePages?: boolean;
   children: React.ReactNode;
 }
 
@@ -41,6 +46,7 @@ export function ReviewShell({
   range,
   setRange,
   reviewWindow,
+  hidePages = false,
   children,
 }: ReviewShellProps) {
   const desktop = useIsDesktop();
@@ -59,6 +65,7 @@ export function ReviewShell({
     <div className="review">
       <ScopeBar
         form="range"
+        {...(hidePages ? { className: "scope-bar-bare" } : {})}
         title={pageName(page)}
         {...(reviewWindow === null ? {} : { sub: subLine(range, reviewWindow) })}
         range={{
@@ -71,7 +78,9 @@ export function ReviewShell({
             postStatus(t("rt_range", { range: rangeNoun(id, reviewWindow) }));
           },
         }}
-        {...(desktop ? {} : { pages: <Segmented label={t("nav_review")} items={items} /> })}
+        {...(desktop || hidePages
+          ? {}
+          : { pages: <Segmented label={t("nav_review")} items={items} /> })}
       />
       {children}
     </div>

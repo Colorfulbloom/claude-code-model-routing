@@ -1,0 +1,5 @@
+{
+  "mcpServers": {
+    "corp-wiki": {"type": "http", "url": "https://wiki.example.test/mcp", "headers": {"Authorization": "Bearer FAKECORPBEARER0123456789abcdef"}}
+  }
+}

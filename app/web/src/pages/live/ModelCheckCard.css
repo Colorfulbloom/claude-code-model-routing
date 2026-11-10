@@ -1,3 +1,8 @@
+/* See why sits under the reason, apart from it. */
+.live-mc-why {
+  margin-top: var(--space-2);
+}
+
 /*
  * The compact Model check (Review, a-m3 p7 summary). One grey row per finding, a status chip in a
  * fixed column and one sentence beside it. The rows sit on the raised surface with its hairline

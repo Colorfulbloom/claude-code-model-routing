@@ -1,0 +1,43 @@
+.breadcrumb[hidden] {
+  display: none;
+}
+
+.breadcrumb-list {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-sm);
+}
+
+.breadcrumb-item {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.breadcrumb-item + .breadcrumb-item::before {
+  content: "/" / "";
+  padding: 0 var(--space-2);
+  color: var(--text-muted);
+}
+
+/* The padding box keeps the target at least 26px tall. */
+.breadcrumb-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  color: var(--accent);
+  overflow-wrap: anywhere;
+}
+
+.breadcrumb-link:hover,
+.breadcrumb-link.is-hover {
+  text-decoration: underline;
+}
+
+.breadcrumb-link[aria-current="page"] {
+  color: var(--text-muted);
+  text-decoration: none;
+}

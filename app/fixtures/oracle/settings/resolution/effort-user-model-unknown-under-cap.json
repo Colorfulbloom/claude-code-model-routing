@@ -1,0 +1,273 @@
+{
+  "attention": [
+    {
+      "rows": [
+        {
+          "entry": 0,
+          "route": {
+            "agent": "@main",
+            "setting": "model"
+          }
+        },
+        {
+          "entry": 2,
+          "route": {
+            "agent": "@main",
+            "setting": "effortLevel"
+          }
+        },
+        {
+          "entry": 3,
+          "route": {
+            "agent": "@main",
+            "setting": "autoCompactWindow"
+          }
+        },
+        {
+          "entry": 4,
+          "route": {
+            "agent": "@main",
+            "setting": "promptCacheTtl"
+          }
+        }
+      ],
+      "status": "unknown"
+    }
+  ],
+  "attention_equal": 0,
+  "config_dir_display": "config",
+  "config_file_display": "config/routing-dashboard.json",
+  "entries": [
+    {
+      "file": null,
+      "key": "model",
+      "layer": "default",
+      "reason": "Nothing the dashboard reads sets the model, so the session starts on Claude Code's default model. The account type decides it, unless ANTHROPIC_DEFAULT_MODEL, an organization default or a model recorded on the account applies. So the dashboard can't say which model it is. To check, run /status in a new session started in this project.",
+      "rule_id": "model-main-default",
+      "rule_ids": [
+        "model-main-default",
+        "model-main-session-order"
+      ],
+      "scope": "main",
+      "status": "unknown",
+      "value": null
+    },
+    {
+      "file": "project/.claude/settings.json",
+      "key": "maxEffortLevel",
+      "layer": "project",
+      "line": 2,
+      "reason": "The lowest cap applies. The cap in project/.claude/settings.json can't be raised from another file.",
+      "rule_id": "max-effort-level-lowest-cap",
+      "rule_ids": [
+        "max-effort-level-lowest-cap",
+        "max-effort-level-values"
+      ],
+      "scope": "main",
+      "status": "in_effect",
+      "value": "low"
+    },
+    {
+      "file": "config/settings.json",
+      "key": "effortLevel",
+      "layer": "user",
+      "line": 2,
+      "reason": "config/settings.json sets a top-level effortLevel of high, and that level may not reach the session. Opus 5.5 and models released after it ignore this key in the user file, and earlier models use it. The dashboard doesn't know the session's model, so it can't say which level the session runs at. To check, run /effort status in a new session started in this project.",
+      "rule_id": "effort-level-user-settings-model-unknown",
+      "rule_ids": [
+        "effort-level-user-settings-model-unknown",
+        "effort-level-layer-order"
+      ],
+      "scope": "main",
+      "status": "unknown",
+      "value": "high"
+    },
+    {
+      "file": null,
+      "key": "autoCompactWindow",
+      "layer": "default",
+      "reason": "Nothing the dashboard reads sets the auto-compact window, so Claude Code uses the window tuned for the model. On Opus 5.5 that window is 1000000 tokens. Only Opus 5.5 was checked, so for any other model the dashboard can't say what the window is. To check, run /autocompact in a new session started in this project.",
+      "rule_id": "auto-compact-window-default",
+      "rule_ids": [
+        "auto-compact-window-default",
+        "auto-compact-window-order"
+      ],
+      "scope": "main",
+      "status": "unknown",
+      "value": null
+    },
+    {
+      "file": null,
+      "key": "promptCacheTtl",
+      "layer": "default",
+      "reason": "Nothing the dashboard reads sets the main conversation's cache lifetime, so the plan decides it. On a subscription it's one hour within plan usage, five minutes once usage credits start. On an API key or a cloud provider it's five minutes. The dashboard can't tell when usage credits start. With no plan in the dashboard config, it can't tell the plan either. To check, run claude -p \"hello\" --output-format json in this project and read usage.cache_creation.",
+      "rule_id": "prompt-cache-default-by-plan",
+      "rule_ids": [
+        "prompt-cache-default-by-plan",
+        "prompt-cache-ttl-order"
+      ],
+      "scope": "main",
+      "status": "unknown",
+      "value": null
+    },
+    {
+      "file": null,
+      "key": "availableModels",
+      "layer": "default",
+      "reason": "Nothing sets a list, so every model is available.",
+      "rule_id": "available-models-default",
+      "rule_ids": [
+        "available-models-default",
+        "available-models-order"
+      ],
+      "scope": "main",
+      "status": "default",
+      "value": null
+    },
+    {
+      "file": null,
+      "key": "alwaysThinkingEnabled",
+      "layer": "default",
+      "reason": "Nothing sets extended thinking, so it's on by default for models that support it.",
+      "rule_id": "always-thinking-default",
+      "rule_ids": [
+        "always-thinking-default",
+        "always-thinking-order"
+      ],
+      "scope": "main",
+      "status": "default",
+      "value": "on"
+    },
+    {
+      "file": null,
+      "key": "fallbackModel",
+      "layer": "default",
+      "reason": "Nothing sets a chain, so a failed request isn't retried on another model.",
+      "rule_id": "fallback-model-default",
+      "rule_ids": [
+        "fallback-model-default",
+        "fallback-model-order"
+      ],
+      "scope": "main",
+      "status": "default",
+      "value": null
+    }
+  ],
+  "files": [
+    {
+      "layer": "project",
+      "path": "project/.claude/settings.json",
+      "status": "ok"
+    },
+    {
+      "layer": "user",
+      "path": "config/settings.json",
+      "status": "ok"
+    }
+  ],
+  "installed": null,
+  "local_file_display": null,
+  "no_user_settings": false,
+  "path_display": "project",
+  "project": "project",
+  "rows": [
+    {
+      "agent": "@main",
+      "entries": [
+        0
+      ],
+      "rule_ids": [
+        "model-main-default",
+        "model-main-session-order"
+      ],
+      "scope": "main",
+      "setting": "model"
+    },
+    {
+      "agent": "@main",
+      "entries": [
+        1
+      ],
+      "rule_ids": [
+        "max-effort-level-lowest-cap",
+        "max-effort-level-values"
+      ],
+      "scope": "main",
+      "setting": "maxEffortLevel"
+    },
+    {
+      "agent": "@main",
+      "entries": [
+        2
+      ],
+      "rule_ids": [
+        "effort-level-user-settings-model-unknown",
+        "effort-level-layer-order"
+      ],
+      "scope": "main",
+      "setting": "effortLevel"
+    },
+    {
+      "agent": "@main",
+      "entries": [
+        3
+      ],
+      "rule_ids": [
+        "auto-compact-window-default",
+        "auto-compact-window-order"
+      ],
+      "scope": "main",
+      "setting": "autoCompactWindow"
+    },
+    {
+      "agent": "@main",
+      "entries": [
+        4
+      ],
+      "rule_ids": [
+        "prompt-cache-default-by-plan",
+        "prompt-cache-ttl-order"
+      ],
+      "scope": "main",
+      "setting": "promptCacheTtl"
+    },
+    {
+      "agent": "@main",
+      "entries": [
+        5
+      ],
+      "rule_ids": [
+        "available-models-default",
+        "available-models-order"
+      ],
+      "scope": "main",
+      "setting": "availableModels"
+    },
+    {
+      "agent": "@main",
+      "entries": [
+        6
+      ],
+      "rule_ids": [
+        "always-thinking-default",
+        "always-thinking-order"
+      ],
+      "scope": "main",
+      "setting": "alwaysThinkingEnabled"
+    },
+    {
+      "agent": "@main",
+      "entries": [
+        7
+      ],
+      "rule_ids": [
+        "fallback-model-default",
+        "fallback-model-order"
+      ],
+      "scope": "main",
+      "setting": "fallbackModel"
+    }
+  ],
+  "shell_label": "session.json:shell_env",
+  "state": "ok"
+}

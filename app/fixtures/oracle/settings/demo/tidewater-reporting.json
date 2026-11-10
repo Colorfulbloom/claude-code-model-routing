@@ -1,0 +1,1074 @@
+{
+  "attention": [
+    {
+      "rows": [
+        {
+          "entry": 9,
+          "route": {
+            "agent": "@main",
+            "setting": "promptCacheTtl"
+          }
+        }
+      ],
+      "status": "unknown"
+    },
+    {
+      "rows": [
+        {
+          "entry": 5,
+          "route": {
+            "agent": "@main",
+            "setting": "effortLevel"
+          }
+        },
+        {
+          "entry": 19,
+          "route": {
+            "agent": "builder",
+            "setting": "effort"
+          }
+        },
+        {
+          "entry": 33,
+          "route": {
+            "agent": "scribe",
+            "setting": "effort"
+          }
+        }
+      ],
+      "status": "lowered"
+    },
+    {
+      "rows": [
+        {
+          "entry": 7,
+          "route": {
+            "agent": "@main",
+            "setting": "effortLevel"
+          }
+        },
+        {
+          "entry": 29,
+          "route": {
+            "agent": "reviewer",
+            "setting": "effort"
+          }
+        }
+      ],
+      "status": "ignored"
+    },
+    {
+      "rows": [
+        {
+          "entry": 2,
+          "route": {
+            "agent": "@main",
+            "setting": "env.CLAUDE_CODE_EFFORT_LEVEL"
+          }
+        },
+        {
+          "entry": 6,
+          "route": {
+            "agent": "@main",
+            "setting": "effortLevel"
+          }
+        },
+        {
+          "entry": 21,
+          "route": {
+            "agent": "builder",
+            "setting": "effort"
+          }
+        },
+        {
+          "entry": 27,
+          "route": {
+            "agent": "reviewer",
+            "setting": "effort"
+          }
+        },
+        {
+          "entry": 28,
+          "route": {
+            "agent": "reviewer",
+            "setting": "effort"
+          }
+        },
+        {
+          "entry": 34,
+          "route": {
+            "agent": "scribe",
+            "setting": "effort"
+          }
+        },
+        {
+          "entry": 35,
+          "route": {
+            "agent": "scribe",
+            "setting": "effort"
+          }
+        }
+      ],
+      "status": "overridden"
+    }
+  ],
+  "attention_equal": 3,
+  "config_dir_display": "config",
+  "config_file_display": "config/routing-dashboard.json",
+  "entries": [
+    {
+      "file": "config/settings.json",
+      "key": "env.ANTHROPIC_API_KEY",
+      "layer": "user",
+      "line": 5,
+      "reason": "env.ANTHROPIC_API_KEY comes from config/settings.json. A settings env block overwrites the shell, and the higher file wins.",
+      "rule_id": "env-block-order",
+      "rule_ids": [
+        "env-block-order"
+      ],
+      "scope": "main",
+      "status": "in_effect",
+      "value": "hidden"
+    },
+    {
+      "file": "projects/tidewater-reporting/.claude/settings.local.json",
+      "key": "env.CLAUDE_CODE_EFFORT_LEVEL",
+      "layer": "local",
+      "line": 3,
+      "reason": "env.CLAUDE_CODE_EFFORT_LEVEL comes from projects/tidewater-reporting/.claude/settings.local.json. A settings env block overwrites the shell, and the higher file wins.",
+      "rule_id": "env-block-order",
+      "rule_ids": [
+        "env-block-order"
+      ],
+      "scope": "main",
+      "status": "in_effect",
+      "value": "xhigh"
+    },
+    {
+      "file": "session.json:shell_env",
+      "key": "env.CLAUDE_CODE_EFFORT_LEVEL",
+      "layer": "env",
+      "reason": "env.CLAUDE_CODE_EFFORT_LEVEL comes from the shell. A settings env block overwrites the shell, and the higher file wins.",
+      "rule_id": "env-block-order",
+      "rule_ids": [
+        "env-block-order"
+      ],
+      "scope": "main",
+      "status": "overridden",
+      "value": ""
+    },
+    {
+      "file": "config/settings.json",
+      "key": "model",
+      "layer": "user",
+      "line": 2,
+      "reason": "config/settings.json sets the model. --model beats ANTHROPIC_MODEL, which beats the model key in any file, managed included.",
+      "rule_id": "model-main-session-order",
+      "rule_ids": [
+        "model-main-session-order"
+      ],
+      "scope": "main",
+      "status": "in_effect",
+      "value": "claude-opus-5-5"
+    },
+    {
+      "file": "projects/tidewater-reporting/.claude/settings.json",
+      "key": "maxEffortLevel",
+      "layer": "project",
+      "line": 3,
+      "model": "claude-opus-5-5",
+      "path": "modelSettings.claude-opus-5-5.maxEffortLevel",
+      "reason": "projects/tidewater-reporting/.claude/settings.json caps Opus 5.5 at high, replacing that file's top-level maxEffortLevel for this model only. Across files, the lowest cap still applies.",
+      "rule_id": "model-settings-max-effort-per-model",
+      "rule_ids": [
+        "model-settings-max-effort-per-model",
+        "model-settings-max-effort-values",
+        "max-effort-level-lowest-cap"
+      ],
+      "scope": "main",
+      "status": "in_effect",
+      "value": "high"
+    },
+    {
+      "becomes": "high",
+      "file": "projects/tidewater-reporting/.claude/settings.local.json",
+      "key": "effortLevel",
+      "layer": "env",
+      "line": 3,
+      "model": "claude-opus-5-5",
+      "reason": "xhigh from projects/tidewater-reporting/.claude/settings.local.json runs as high, because maxEffortLevel caps Opus 5.5 at high.",
+      "rule_id": "effort-lowered-by-cap",
+      "rule_ids": [
+        "effort-lowered-by-cap",
+        "effort-level-layer-order"
+      ],
+      "scope": "main",
+      "status": "lowered",
+      "value": "xhigh",
+      "via": "CLAUDE_CODE_EFFORT_LEVEL"
+    },
+    {
+      "file": "projects/tidewater-reporting/.claude/settings.json",
+      "key": "effortLevel",
+      "layer": "project",
+      "line": 7,
+      "model": "claude-opus-5-5",
+      "reason": "CLAUDE_CODE_EFFORT_LEVEL decides the effort. CLAUDE_CODE_EFFORT_LEVEL beats --effort, which beats every settings file. A level picked in a running session with /effort sits between the two, and the dashboard can't see it. Among the files, the highest one with a level that counts for the model wins. In one file, the model's modelSettings level beats the top-level effortLevel, and a canonical-name entry beats an alias entry.",
+      "rule_id": "effort-level-layer-order",
+      "rule_ids": [
+        "effort-level-layer-order"
+      ],
+      "scope": "main",
+      "status": "overridden",
+      "value": "medium"
+    },
+    {
+      "file": "config/settings.json",
+      "key": "effortLevel",
+      "layer": "user",
+      "line": 3,
+      "model": "claude-opus-5-5",
+      "reason": "Opus 5.5 ignores the top-level effortLevel in config/settings.json. Opus 5.5 and later models take a user settings level only from modelSettings.",
+      "rule_id": "effort-level-user-settings-opus-5-5",
+      "rule_ids": [
+        "effort-level-user-settings-opus-5-5"
+      ],
+      "scope": "main",
+      "status": "ignored",
+      "value": "xhigh"
+    },
+    {
+      "file": null,
+      "key": "autoCompactWindow",
+      "layer": "default",
+      "model": "claude-opus-5-5",
+      "reason": "Nothing the dashboard reads sets the auto-compact window, so Claude Code uses the window tuned for the model. On Opus 5.5 that window is 1000000 tokens. Only Opus 5.5 was checked, so for any other model the dashboard can't say what the window is. To check, run /autocompact in a new session started in this project.",
+      "rule_id": "auto-compact-window-default",
+      "rule_ids": [
+        "auto-compact-window-default",
+        "auto-compact-window-order"
+      ],
+      "scope": "main",
+      "status": "default",
+      "value": 1000000
+    },
+    {
+      "file": null,
+      "key": "promptCacheTtl",
+      "layer": "default",
+      "reason": "Nothing the dashboard reads sets the main conversation's cache lifetime, so the plan decides it. On a subscription it's one hour within plan usage, five minutes once usage credits start. On an API key or a cloud provider it's five minutes. The dashboard can't tell when usage credits start. With no plan in the dashboard config, it can't tell the plan either. To check, run claude -p \"hello\" --output-format json in this project and read usage.cache_creation.",
+      "rule_id": "prompt-cache-default-by-plan",
+      "rule_ids": [
+        "prompt-cache-default-by-plan",
+        "prompt-cache-ttl-order"
+      ],
+      "scope": "main",
+      "status": "unknown",
+      "value": null
+    },
+    {
+      "file": null,
+      "key": "availableModels",
+      "layer": "default",
+      "reason": "Nothing sets a list, so every model is available.",
+      "rule_id": "available-models-default",
+      "rule_ids": [
+        "available-models-default",
+        "available-models-order"
+      ],
+      "scope": "main",
+      "status": "default",
+      "value": null
+    },
+    {
+      "file": null,
+      "key": "alwaysThinkingEnabled",
+      "layer": "default",
+      "model": "claude-opus-5-5",
+      "reason": "Nothing can turn thinking off here, because Opus 5.5 always thinks.",
+      "rule_id": "always-thinking-default-always-on",
+      "rule_ids": [
+        "always-thinking-default-always-on",
+        "always-thinking-default",
+        "always-thinking-order"
+      ],
+      "scope": "main",
+      "status": "default",
+      "value": "on"
+    },
+    {
+      "file": null,
+      "key": "fallbackModel",
+      "layer": "default",
+      "reason": "Nothing sets a chain, so a failed request isn't retried on another model.",
+      "rule_id": "fallback-model-default",
+      "rule_ids": [
+        "fallback-model-default",
+        "fallback-model-order"
+      ],
+      "scope": "main",
+      "status": "default",
+      "value": null
+    },
+    {
+      "file": "projects/tidewater-reporting/.claude/rules/review.md",
+      "key": "rulesFile",
+      "layer": "project",
+      "line": 1,
+      "reason": "projects/tidewater-reporting/.claude/rules/review.md is in the project rules folder, and Claude Code loads only .md files there. User and project rules both load, user rules first, and neither overrides the other.",
+      "rule_id": "rules-files-listed",
+      "rule_ids": [
+        "rules-files-listed"
+      ],
+      "scope": "main",
+      "status": "in_effect",
+      "value": null
+    },
+    {
+      "file": "config/rules/writing.md",
+      "key": "rulesFile",
+      "layer": "user",
+      "line": 1,
+      "reason": "config/rules/writing.md is in the user rules folder, and Claude Code loads only .md files there. User and project rules both load, user rules first, and neither overrides the other.",
+      "rule_id": "rules-files-listed",
+      "rule_ids": [
+        "rules-files-listed"
+      ],
+      "scope": "main",
+      "status": "in_effect",
+      "value": null
+    },
+    {
+      "agent": "builder",
+      "file": "config/agents/builder.md",
+      "key": "agentFile",
+      "layer": "user",
+      "line": 2,
+      "reason": "config/agents/builder.md defines builder. When agents in different places share a name, Claude Code uses the one from the highest place. From highest to lowest, those are managed settings, the --agents flag, the project, the user folder and a plugin.",
+      "rule_id": "agent-file-location-order",
+      "rule_ids": [
+        "agent-file-location-order",
+        "agent-file-project-over-user"
+      ],
+      "scope": "agent",
+      "status": "in_effect",
+      "value": null
+    },
+    {
+      "agent": "reviewer",
+      "file": "config/agents/reviewer.md",
+      "key": "agentFile",
+      "layer": "user",
+      "line": 2,
+      "reason": "config/agents/reviewer.md defines reviewer. When agents in different places share a name, Claude Code uses the one from the highest place. From highest to lowest, those are managed settings, the --agents flag, the project, the user folder and a plugin.",
+      "rule_id": "agent-file-location-order",
+      "rule_ids": [
+        "agent-file-location-order",
+        "agent-file-project-over-user"
+      ],
+      "scope": "agent",
+      "status": "in_effect",
+      "value": null
+    },
+    {
+      "agent": "scribe",
+      "file": "config/agents/scribe.md",
+      "key": "agentFile",
+      "layer": "user",
+      "line": 2,
+      "reason": "config/agents/scribe.md defines scribe. When agents in different places share a name, Claude Code uses the one from the highest place. From highest to lowest, those are managed settings, the --agents flag, the project, the user folder and a plugin.",
+      "rule_id": "agent-file-location-order",
+      "rule_ids": [
+        "agent-file-location-order",
+        "agent-file-project-over-user"
+      ],
+      "scope": "agent",
+      "status": "in_effect",
+      "value": null
+    },
+    {
+      "agent": "builder",
+      "file": "config/agents/builder.md",
+      "key": "model",
+      "layer": "agent",
+      "line": 4,
+      "reason": "config/agents/builder.md sets the model for builder. The agent's frontmatter model, inherit included, beats CLAUDE_CODE_SUBAGENT_MODEL, which beats the main model, unless CLAUDE_CODE_SUBAGENT_MODEL_FORCE is on. A model passed at dispatch, or set by a mod's agent.spawn hook, beats the frontmatter, and the dashboard can't see either.",
+      "rule_id": "subagent-model-order",
+      "rule_ids": [
+        "subagent-model-order"
+      ],
+      "scope": "agent",
+      "status": "in_effect",
+      "value": "claude-fable-5-1"
+    },
+    {
+      "agent": "builder",
+      "becomes": "medium",
+      "file": "projects/tidewater-reporting/.claude/settings.local.json",
+      "key": "effort",
+      "layer": "env",
+      "line": 3,
+      "model": "claude-fable-5-1",
+      "reason": "builder is set to xhigh in projects/tidewater-reporting/.claude/settings.local.json but runs as medium, because maxEffortLevel caps Fable 5.1 at medium.",
+      "rule_id": "agent-effort-lowered-by-cap",
+      "rule_ids": [
+        "agent-effort-lowered-by-cap",
+        "agent-effort-order"
+      ],
+      "scope": "agent",
+      "status": "lowered",
+      "value": "xhigh",
+      "via": "CLAUDE_CODE_EFFORT_LEVEL"
+    },
+    {
+      "agent": "builder",
+      "file": "config/agents/builder.md",
+      "key": "effort",
+      "layer": "agent",
+      "line": 5,
+      "model": "claude-fable-5-1",
+      "reason": "CLAUDE_CODE_EFFORT_LEVEL sets the effort for builder. CLAUDE_CODE_EFFORT_LEVEL beats the agent's effort frontmatter, which beats --effort and the settings that count for its own model.",
+      "rule_id": "agent-effort-order",
+      "rule_ids": [
+        "agent-effort-order"
+      ],
+      "scope": "agent",
+      "status": "overridden",
+      "value": "xhigh"
+    },
+    {
+      "agent": "builder",
+      "file": "projects/tidewater-reporting/.claude/settings.json",
+      "key": "effort",
+      "layer": "project",
+      "line": 7,
+      "model": "claude-fable-5-1",
+      "reason": "CLAUDE_CODE_EFFORT_LEVEL sets the effort for builder. CLAUDE_CODE_EFFORT_LEVEL beats the agent's effort frontmatter, which beats --effort and the settings that count for its own model.",
+      "rule_id": "agent-effort-order",
+      "rule_ids": [
+        "agent-effort-order"
+      ],
+      "scope": "agent",
+      "status": "overridden",
+      "value": "medium"
+    },
+    {
+      "agent": "builder",
+      "file": "config/settings.json",
+      "key": "effort",
+      "layer": "user",
+      "line": 3,
+      "model": "claude-fable-5-1",
+      "reason": "CLAUDE_CODE_EFFORT_LEVEL sets the effort for builder. CLAUDE_CODE_EFFORT_LEVEL beats the agent's effort frontmatter, which beats --effort and the settings that count for its own model.",
+      "rule_id": "agent-effort-order",
+      "rule_ids": [
+        "agent-effort-order"
+      ],
+      "scope": "agent",
+      "status": "overridden",
+      "value": "xhigh"
+    },
+    {
+      "agent": "builder",
+      "file": null,
+      "key": "autoCompactWindow",
+      "layer": "default",
+      "model": "claude-fable-5-1",
+      "reason": "Nothing sets an auto-compact window for the session, so builder inherits the window tuned for the session's model. Its frontmatter can only lower that window. On Opus 5.5 that window is 1000000 tokens. Only Opus 5.5 was checked, so on any other model the dashboard can't say what the window is or whether the frontmatter lowers it. Run /autocompact in a session to see the session's window.",
+      "rule_id": "agent-auto-compact-window-default",
+      "rule_ids": [
+        "agent-auto-compact-window-default",
+        "agent-auto-compact-window"
+      ],
+      "scope": "agent",
+      "status": "default",
+      "value": 1000000
+    },
+    {
+      "agent": "builder",
+      "file": null,
+      "key": "subagentPromptCacheTtl",
+      "layer": "default",
+      "reason": "Nothing sets the cache lifetime for builder, so it gets five minutes on every plan.",
+      "rule_id": "subagent-prompt-cache-default",
+      "rule_ids": [
+        "subagent-prompt-cache-default",
+        "subagent-prompt-cache-ttl-order"
+      ],
+      "scope": "agent",
+      "status": "default",
+      "value": "5m"
+    },
+    {
+      "agent": "reviewer",
+      "file": "config/agents/reviewer.md",
+      "key": "model",
+      "layer": "agent",
+      "line": 4,
+      "reason": "config/agents/reviewer.md sets the model for reviewer. The agent's frontmatter model, inherit included, beats CLAUDE_CODE_SUBAGENT_MODEL, which beats the main model, unless CLAUDE_CODE_SUBAGENT_MODEL_FORCE is on. A model passed at dispatch, or set by a mod's agent.spawn hook, beats the frontmatter, and the dashboard can't see either.",
+      "rule_id": "subagent-model-order",
+      "rule_ids": [
+        "subagent-model-order"
+      ],
+      "scope": "agent",
+      "status": "in_effect",
+      "value": "claude-sonnet-5-5"
+    },
+    {
+      "agent": "reviewer",
+      "file": "projects/tidewater-reporting/.claude/settings.local.json",
+      "key": "effort",
+      "layer": "env",
+      "line": 3,
+      "model": "claude-sonnet-5-5",
+      "reason": "CLAUDE_CODE_EFFORT_LEVEL sets the effort for reviewer. CLAUDE_CODE_EFFORT_LEVEL beats the agent's effort frontmatter, which beats --effort and the settings that count for its own model.",
+      "rule_id": "agent-effort-order",
+      "rule_ids": [
+        "agent-effort-order"
+      ],
+      "scope": "agent",
+      "status": "in_effect",
+      "value": "xhigh",
+      "via": "CLAUDE_CODE_EFFORT_LEVEL"
+    },
+    {
+      "agent": "reviewer",
+      "file": "config/agents/reviewer.md",
+      "key": "effort",
+      "layer": "agent",
+      "line": 5,
+      "model": "claude-sonnet-5-5",
+      "reason": "CLAUDE_CODE_EFFORT_LEVEL sets the effort for reviewer. CLAUDE_CODE_EFFORT_LEVEL beats the agent's effort frontmatter, which beats --effort and the settings that count for its own model.",
+      "rule_id": "agent-effort-order",
+      "rule_ids": [
+        "agent-effort-order"
+      ],
+      "scope": "agent",
+      "status": "overridden",
+      "value": "high"
+    },
+    {
+      "agent": "reviewer",
+      "file": "projects/tidewater-reporting/.claude/settings.json",
+      "key": "effort",
+      "layer": "project",
+      "line": 7,
+      "model": "claude-sonnet-5-5",
+      "reason": "CLAUDE_CODE_EFFORT_LEVEL sets the effort for reviewer. CLAUDE_CODE_EFFORT_LEVEL beats the agent's effort frontmatter, which beats --effort and the settings that count for its own model.",
+      "rule_id": "agent-effort-order",
+      "rule_ids": [
+        "agent-effort-order"
+      ],
+      "scope": "agent",
+      "status": "overridden",
+      "value": "medium"
+    },
+    {
+      "agent": "reviewer",
+      "file": "config/settings.json",
+      "key": "effort",
+      "layer": "user",
+      "line": 3,
+      "model": "claude-sonnet-5-5",
+      "reason": "reviewer runs on Sonnet 5.5, which ignores the top-level effortLevel in config/settings.json. Opus 5.5 and later models take a user settings level only from their own modelSettings entry.",
+      "rule_id": "agent-effort-user-settings-opus-5-5",
+      "rule_ids": [
+        "agent-effort-user-settings-opus-5-5"
+      ],
+      "scope": "agent",
+      "status": "ignored",
+      "value": "xhigh"
+    },
+    {
+      "agent": "reviewer",
+      "file": null,
+      "key": "autoCompactWindow",
+      "layer": "default",
+      "model": "claude-sonnet-5-5",
+      "reason": "Nothing sets an auto-compact window for the session, so reviewer inherits the window tuned for the session's model. Its frontmatter can only lower that window. On Opus 5.5 that window is 1000000 tokens. Only Opus 5.5 was checked, so on any other model the dashboard can't say what the window is or whether the frontmatter lowers it. Run /autocompact in a session to see the session's window.",
+      "rule_id": "agent-auto-compact-window-default",
+      "rule_ids": [
+        "agent-auto-compact-window-default",
+        "agent-auto-compact-window"
+      ],
+      "scope": "agent",
+      "status": "default",
+      "value": 1000000
+    },
+    {
+      "agent": "reviewer",
+      "file": null,
+      "key": "subagentPromptCacheTtl",
+      "layer": "default",
+      "reason": "Nothing sets the cache lifetime for reviewer, so it gets five minutes on every plan.",
+      "rule_id": "subagent-prompt-cache-default",
+      "rule_ids": [
+        "subagent-prompt-cache-default",
+        "subagent-prompt-cache-ttl-order"
+      ],
+      "scope": "agent",
+      "status": "default",
+      "value": "5m"
+    },
+    {
+      "agent": "scribe",
+      "file": "config/agents/scribe.md",
+      "key": "model",
+      "layer": "agent",
+      "line": 4,
+      "reason": "config/agents/scribe.md sets the model for scribe. The agent's frontmatter model, inherit included, beats CLAUDE_CODE_SUBAGENT_MODEL, which beats the main model, unless CLAUDE_CODE_SUBAGENT_MODEL_FORCE is on. A model passed at dispatch, or set by a mod's agent.spawn hook, beats the frontmatter, and the dashboard can't see either.",
+      "rule_id": "subagent-model-order",
+      "rule_ids": [
+        "subagent-model-order"
+      ],
+      "scope": "agent",
+      "status": "in_effect",
+      "value": "claude-haiku-4-5"
+    },
+    {
+      "agent": "scribe",
+      "becomes": "high",
+      "file": "projects/tidewater-reporting/.claude/settings.local.json",
+      "key": "effort",
+      "layer": "env",
+      "line": 3,
+      "model": "claude-haiku-4-5",
+      "reason": "scribe is set to xhigh in projects/tidewater-reporting/.claude/settings.local.json but runs as high, because maxEffortLevel caps Haiku 4.5 at high.",
+      "rule_id": "agent-effort-lowered-by-cap",
+      "rule_ids": [
+        "agent-effort-lowered-by-cap",
+        "agent-effort-order"
+      ],
+      "scope": "agent",
+      "status": "lowered",
+      "value": "xhigh",
+      "via": "CLAUDE_CODE_EFFORT_LEVEL"
+    },
+    {
+      "agent": "scribe",
+      "file": "config/agents/scribe.md",
+      "key": "effort",
+      "layer": "agent",
+      "line": 5,
+      "model": "claude-haiku-4-5",
+      "reason": "CLAUDE_CODE_EFFORT_LEVEL sets the effort for scribe. CLAUDE_CODE_EFFORT_LEVEL beats the agent's effort frontmatter, which beats --effort and the settings that count for its own model.",
+      "rule_id": "agent-effort-order",
+      "rule_ids": [
+        "agent-effort-order"
+      ],
+      "scope": "agent",
+      "status": "overridden",
+      "value": "medium"
+    },
+    {
+      "agent": "scribe",
+      "file": "projects/tidewater-reporting/.claude/settings.json",
+      "key": "effort",
+      "layer": "project",
+      "line": 7,
+      "model": "claude-haiku-4-5",
+      "reason": "CLAUDE_CODE_EFFORT_LEVEL sets the effort for scribe. CLAUDE_CODE_EFFORT_LEVEL beats the agent's effort frontmatter, which beats --effort and the settings that count for its own model.",
+      "rule_id": "agent-effort-order",
+      "rule_ids": [
+        "agent-effort-order"
+      ],
+      "scope": "agent",
+      "status": "overridden",
+      "value": "medium"
+    },
+    {
+      "agent": "scribe",
+      "file": "config/settings.json",
+      "key": "effort",
+      "layer": "user",
+      "line": 3,
+      "model": "claude-haiku-4-5",
+      "reason": "CLAUDE_CODE_EFFORT_LEVEL sets the effort for scribe. CLAUDE_CODE_EFFORT_LEVEL beats the agent's effort frontmatter, which beats --effort and the settings that count for its own model.",
+      "rule_id": "agent-effort-order",
+      "rule_ids": [
+        "agent-effort-order"
+      ],
+      "scope": "agent",
+      "status": "overridden",
+      "value": "xhigh"
+    },
+    {
+      "agent": "scribe",
+      "file": null,
+      "key": "autoCompactWindow",
+      "layer": "default",
+      "model": "claude-haiku-4-5",
+      "reason": "Nothing sets an auto-compact window for the session, so scribe inherits the window tuned for the session's model. Its frontmatter can only lower that window. On Opus 5.5 that window is 1000000 tokens. Only Opus 5.5 was checked, so on any other model the dashboard can't say what the window is or whether the frontmatter lowers it. Run /autocompact in a session to see the session's window.",
+      "rule_id": "agent-auto-compact-window-default",
+      "rule_ids": [
+        "agent-auto-compact-window-default",
+        "agent-auto-compact-window"
+      ],
+      "scope": "agent",
+      "status": "default",
+      "value": 1000000
+    },
+    {
+      "agent": "scribe",
+      "file": null,
+      "key": "subagentPromptCacheTtl",
+      "layer": "default",
+      "reason": "Nothing sets the cache lifetime for scribe, so it gets five minutes on every plan.",
+      "rule_id": "subagent-prompt-cache-default",
+      "rule_ids": [
+        "subagent-prompt-cache-default",
+        "subagent-prompt-cache-ttl-order"
+      ],
+      "scope": "agent",
+      "status": "default",
+      "value": "5m"
+    }
+  ],
+  "files": [
+    {
+      "layer": "local",
+      "path": "projects/tidewater-reporting/.claude/settings.local.json",
+      "status": "ok"
+    },
+    {
+      "layer": "project",
+      "path": "projects/tidewater-reporting/.claude/settings.json",
+      "status": "ok"
+    },
+    {
+      "layer": "user",
+      "path": "config/settings.json",
+      "status": "ok"
+    }
+  ],
+  "installed": "2.1.310",
+  "local_file_display": null,
+  "no_user_settings": false,
+  "path_display": "projects/tidewater-reporting",
+  "project": "tidewater-reporting",
+  "rows": [
+    {
+      "agent": "@main",
+      "entries": [
+        0
+      ],
+      "rule_ids": [
+        "env-block-order"
+      ],
+      "scope": "main",
+      "setting": "env.ANTHROPIC_API_KEY"
+    },
+    {
+      "agent": "@main",
+      "entries": [
+        1,
+        2
+      ],
+      "rule_ids": [
+        "env-block-order"
+      ],
+      "scope": "main",
+      "setting": "env.CLAUDE_CODE_EFFORT_LEVEL"
+    },
+    {
+      "agent": "@main",
+      "entries": [
+        3
+      ],
+      "rule_ids": [
+        "model-main-session-order"
+      ],
+      "scope": "main",
+      "setting": "model"
+    },
+    {
+      "agent": "@main",
+      "entries": [
+        4
+      ],
+      "rule_ids": [
+        "model-settings-max-effort-per-model",
+        "model-settings-max-effort-values",
+        "max-effort-level-lowest-cap"
+      ],
+      "scope": "main",
+      "setting": "maxEffortLevel"
+    },
+    {
+      "agent": "@main",
+      "entries": [
+        5,
+        6,
+        7
+      ],
+      "rule_ids": [
+        "effort-lowered-by-cap",
+        "effort-level-layer-order",
+        "effort-level-user-settings-opus-5-5"
+      ],
+      "scope": "main",
+      "setting": "effortLevel"
+    },
+    {
+      "agent": "@main",
+      "entries": [
+        8
+      ],
+      "rule_ids": [
+        "auto-compact-window-default",
+        "auto-compact-window-order"
+      ],
+      "scope": "main",
+      "setting": "autoCompactWindow"
+    },
+    {
+      "agent": "@main",
+      "entries": [
+        9
+      ],
+      "rule_ids": [
+        "prompt-cache-default-by-plan",
+        "prompt-cache-ttl-order"
+      ],
+      "scope": "main",
+      "setting": "promptCacheTtl"
+    },
+    {
+      "agent": "@main",
+      "entries": [
+        10
+      ],
+      "rule_ids": [
+        "available-models-default",
+        "available-models-order"
+      ],
+      "scope": "main",
+      "setting": "availableModels"
+    },
+    {
+      "agent": "@main",
+      "entries": [
+        11
+      ],
+      "rule_ids": [
+        "always-thinking-default-always-on",
+        "always-thinking-default",
+        "always-thinking-order"
+      ],
+      "scope": "main",
+      "setting": "alwaysThinkingEnabled"
+    },
+    {
+      "agent": "@main",
+      "entries": [
+        12
+      ],
+      "rule_ids": [
+        "fallback-model-default",
+        "fallback-model-order"
+      ],
+      "scope": "main",
+      "setting": "fallbackModel"
+    },
+    {
+      "agent": "@main",
+      "entries": [
+        13,
+        14
+      ],
+      "rule_ids": [
+        "rules-files-listed"
+      ],
+      "scope": "main",
+      "setting": "rulesFile"
+    },
+    {
+      "agent": "builder",
+      "entries": [
+        15
+      ],
+      "rule_ids": [
+        "agent-file-location-order",
+        "agent-file-project-over-user"
+      ],
+      "scope": "agent",
+      "setting": "agentFile"
+    },
+    {
+      "agent": "reviewer",
+      "entries": [
+        16
+      ],
+      "rule_ids": [
+        "agent-file-location-order",
+        "agent-file-project-over-user"
+      ],
+      "scope": "agent",
+      "setting": "agentFile"
+    },
+    {
+      "agent": "scribe",
+      "entries": [
+        17
+      ],
+      "rule_ids": [
+        "agent-file-location-order",
+        "agent-file-project-over-user"
+      ],
+      "scope": "agent",
+      "setting": "agentFile"
+    },
+    {
+      "agent": "builder",
+      "entries": [
+        18
+      ],
+      "rule_ids": [
+        "subagent-model-order"
+      ],
+      "scope": "agent",
+      "setting": "model"
+    },
+    {
+      "agent": "builder",
+      "entries": [
+        19,
+        20,
+        21,
+        22
+      ],
+      "rule_ids": [
+        "agent-effort-lowered-by-cap",
+        "agent-effort-order"
+      ],
+      "scope": "agent",
+      "setting": "effort"
+    },
+    {
+      "agent": "builder",
+      "entries": [
+        23
+      ],
+      "rule_ids": [
+        "agent-auto-compact-window-default",
+        "agent-auto-compact-window"
+      ],
+      "scope": "agent",
+      "setting": "autoCompactWindow"
+    },
+    {
+      "agent": "builder",
+      "entries": [
+        24
+      ],
+      "rule_ids": [
+        "subagent-prompt-cache-default",
+        "subagent-prompt-cache-ttl-order"
+      ],
+      "scope": "agent",
+      "setting": "subagentPromptCacheTtl"
+    },
+    {
+      "agent": "reviewer",
+      "entries": [
+        25
+      ],
+      "rule_ids": [
+        "subagent-model-order"
+      ],
+      "scope": "agent",
+      "setting": "model"
+    },
+    {
+      "agent": "reviewer",
+      "entries": [
+        26,
+        27,
+        28,
+        29
+      ],
+      "rule_ids": [
+        "agent-effort-order",
+        "agent-effort-user-settings-opus-5-5"
+      ],
+      "scope": "agent",
+      "setting": "effort"
+    },
+    {
+      "agent": "reviewer",
+      "entries": [
+        30
+      ],
+      "rule_ids": [
+        "agent-auto-compact-window-default",
+        "agent-auto-compact-window"
+      ],
+      "scope": "agent",
+      "setting": "autoCompactWindow"
+    },
+    {
+      "agent": "reviewer",
+      "entries": [
+        31
+      ],
+      "rule_ids": [
+        "subagent-prompt-cache-default",
+        "subagent-prompt-cache-ttl-order"
+      ],
+      "scope": "agent",
+      "setting": "subagentPromptCacheTtl"
+    },
+    {
+      "agent": "scribe",
+      "entries": [
+        32
+      ],
+      "rule_ids": [
+        "subagent-model-order"
+      ],
+      "scope": "agent",
+      "setting": "model"
+    },
+    {
+      "agent": "scribe",
+      "entries": [
+        33,
+        34,
+        35,
+        36
+      ],
+      "rule_ids": [
+        "agent-effort-lowered-by-cap",
+        "agent-effort-order"
+      ],
+      "scope": "agent",
+      "setting": "effort"
+    },
+    {
+      "agent": "scribe",
+      "entries": [
+        37
+      ],
+      "rule_ids": [
+        "agent-auto-compact-window-default",
+        "agent-auto-compact-window"
+      ],
+      "scope": "agent",
+      "setting": "autoCompactWindow"
+    },
+    {
+      "agent": "scribe",
+      "entries": [
+        38
+      ],
+      "rule_ids": [
+        "subagent-prompt-cache-default",
+        "subagent-prompt-cache-ttl-order"
+      ],
+      "scope": "agent",
+      "setting": "subagentPromptCacheTtl"
+    }
+  ],
+  "shell_label": "session.json:shell_env",
+  "state": "ok"
+}

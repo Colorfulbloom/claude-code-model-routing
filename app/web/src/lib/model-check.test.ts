@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ModelCheck, ModelCheckRow } from "@/api/types";
-import { buildModelCheck, findingFor } from "@/lib/model-check";
+import { buildModelCheck, checkCounts, findingFor } from "@/lib/model-check";
 
 function row(over: Partial<ModelCheckRow>): ModelCheckRow {
   return {
@@ -194,6 +194,22 @@ describe("findingFor, by reason code and the params present", () => {
 });
 
 describe("buildModelCheck", () => {
+  it("carries the agent's setup item on a finding, or null when the server named none", () => {
+    const view = buildModelCheck({
+      in_effect_count: 0,
+      rows: [
+        row({ ...lowered, item_id: "agents:judge" }),
+        row({ ...lowered, agent: "builder", item_id: null }),
+        row({ ...lowered, agent: null }),
+      ],
+    });
+    expect(view.findings.map((f) => [f.agent, f.itemId])).toEqual([
+      ["judge", "agents:judge"],
+      ["builder", null],
+      ["Main session", null],
+    ]);
+  });
+
   it("lists findings, then counts the agents in effect", () => {
     const check: ModelCheck = {
       in_effect_count: 5,
@@ -251,6 +267,39 @@ describe("buildModelCheck", () => {
       findings: [],
       noFileLine: null,
       okLine: null,
+    });
+  });
+});
+
+describe("checkCounts, the k and n of the Summary question", () => {
+  const mixed: ModelCheck = {
+    in_effect_count: 1,
+    rows: [
+      row({ agent: "a", status: "in_effect", reason_code: "in_effect", params: {} }),
+      row({ agent: "b", status: "default", reason_code: "default", params: {} }),
+      row({ agent: "c" }),
+      row({ agent: "d", status: "overridden", reason_code: "pin_overridden" }),
+      row({ agent: "e", status: null, reason_code: "no_pin", params: {} }),
+      row({ agent: "f", status: null, reason_code: "unnamed_agent", params: {} }),
+    ],
+  };
+
+  it("counts only rows with a status, and k only those not in effect or at default", () => {
+    // n is a, b, c and d. k is c (lowered) and d (overridden).
+    expect(checkCounts(mixed)).toEqual({ checked: 4, notAsSet: 2 });
+  });
+
+  it("never lets k pass n, though the findings list also holds default, no_pin and unnamed rows", () => {
+    const { checked, notAsSet } = checkCounts(mixed);
+    expect(notAsSet).toBeLessThanOrEqual(checked);
+    expect(buildModelCheck(mixed).findings).toHaveLength(5);
+  });
+
+  it("gives 0 of 0 when no row has a status", () => {
+    const none = row({ status: null, reason_code: "no_pin", params: {} });
+    expect(checkCounts({ in_effect_count: 0, rows: [none, none] })).toEqual({
+      checked: 0,
+      notAsSet: 0,
     });
   });
 });

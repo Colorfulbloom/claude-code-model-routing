@@ -1,0 +1,108 @@
+.switch-group {
+  display: inline-grid;
+  gap: var(--space-1);
+  max-width: 100%;
+}
+
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 32px;
+  cursor: pointer;
+}
+
+.switch-track {
+  position: relative;
+  flex: none;
+  width: 40px;
+  height: 24px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+}
+
+.switch-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  background: var(--card-bg);
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+}
+
+/* On: the --accent track, and the thumb moves to the end. The position says it as well as the colour. */
+.switch[data-selected] .switch-track {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.switch[data-selected] .switch-thumb {
+  transform: translateX(16px);
+  border-color: var(--card-bg);
+}
+
+/* Disabled is a dashed track with a muted thumb, and a visible reason sits under it. */
+.switch[data-disabled] {
+  color: var(--text-muted);
+  cursor: default;
+}
+
+.switch[data-disabled] .switch-track {
+  background: var(--surface-2);
+  border-style: dashed;
+  border-color: var(--border-strong);
+}
+
+.switch[data-disabled] .switch-thumb {
+  background: var(--text-muted);
+  border-color: var(--text-muted);
+}
+
+.switch-reason {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.switch[data-focus-visible] .switch-track,
+.switch.is-focus .switch-track {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* Hover is a soft halo drawn as a shadow, so nothing moves. A disabled switch has none. */
+.switch.is-hover .switch-track {
+  box-shadow: 0 0 0 4px var(--nav-hover-bg);
+}
+
+.switch:has(input:focus-visible) .switch-track {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.switch:not([data-disabled]):hover .switch-track {
+  box-shadow: 0 0 0 4px var(--nav-hover-bg);
+}
+
+@media (forced-colors: active) {
+  .switch-track {
+    border-color: ButtonText;
+  }
+
+  .switch[data-selected] .switch-track {
+    background: Highlight;
+    border-color: Highlight;
+  }
+
+  .switch-thumb {
+    background: ButtonText;
+    border-color: ButtonText;
+  }
+
+  .switch[data-selected] .switch-thumb {
+    background: HighlightText;
+    border-color: HighlightText;
+  }
+}

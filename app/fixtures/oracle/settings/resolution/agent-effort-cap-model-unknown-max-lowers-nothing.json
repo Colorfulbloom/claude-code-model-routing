@@ -1,0 +1,416 @@
+{
+  "attention": [
+    {
+      "rows": [
+        {
+          "entry": 0,
+          "route": {
+            "agent": "@main",
+            "setting": "model"
+          }
+        },
+        {
+          "entry": 2,
+          "route": {
+            "agent": "@main",
+            "setting": "effortLevel"
+          }
+        },
+        {
+          "entry": 3,
+          "route": {
+            "agent": "@main",
+            "setting": "autoCompactWindow"
+          }
+        },
+        {
+          "entry": 4,
+          "route": {
+            "agent": "@main",
+            "setting": "promptCacheTtl"
+          }
+        },
+        {
+          "entry": 9,
+          "route": {
+            "agent": "probe",
+            "setting": "model"
+          }
+        },
+        {
+          "entry": 11,
+          "route": {
+            "agent": "probe",
+            "setting": "autoCompactWindow"
+          }
+        }
+      ],
+      "status": "unknown"
+    }
+  ],
+  "attention_equal": 0,
+  "config_dir_display": "config",
+  "config_file_display": "config/routing-dashboard.json",
+  "entries": [
+    {
+      "file": null,
+      "key": "model",
+      "layer": "default",
+      "reason": "Nothing the dashboard reads sets the model, so the session starts on Claude Code's default model. The account type decides it, unless ANTHROPIC_DEFAULT_MODEL, an organization default or a model recorded on the account applies. So the dashboard can't say which model it is. To check, run /status in a new session started in this project.",
+      "rule_id": "model-main-default",
+      "rule_ids": [
+        "model-main-default",
+        "model-main-session-order"
+      ],
+      "scope": "main",
+      "status": "unknown",
+      "value": null
+    },
+    {
+      "file": "config/settings.json",
+      "key": "maxEffortLevel",
+      "layer": "user",
+      "line": 2,
+      "reason": "The lowest cap applies. The cap in config/settings.json can't be raised from another file.",
+      "rule_id": "max-effort-level-lowest-cap",
+      "rule_ids": [
+        "max-effort-level-lowest-cap",
+        "max-effort-level-values"
+      ],
+      "scope": "main",
+      "status": "in_effect",
+      "value": "max"
+    },
+    {
+      "file": null,
+      "key": "effortLevel",
+      "layer": "default",
+      "reason": "Nothing the dashboard reads sets an effort level that counts. It can't name the default level either, because it doesn't know the session's model. Either nothing it reads sets a model, or that model isn't in its model list. To check, run /effort status in a new session started in this project.",
+      "rule_id": "effort-default-model-unknown",
+      "rule_ids": [
+        "effort-default-model-unknown",
+        "effort-level-layer-order"
+      ],
+      "scope": "main",
+      "status": "unknown",
+      "value": null
+    },
+    {
+      "file": null,
+      "key": "autoCompactWindow",
+      "layer": "default",
+      "reason": "Nothing the dashboard reads sets the auto-compact window, so Claude Code uses the window tuned for the model. On Opus 5.5 that window is 1000000 tokens. Only Opus 5.5 was checked, so for any other model the dashboard can't say what the window is. To check, run /autocompact in a new session started in this project.",
+      "rule_id": "auto-compact-window-default",
+      "rule_ids": [
+        "auto-compact-window-default",
+        "auto-compact-window-order"
+      ],
+      "scope": "main",
+      "status": "unknown",
+      "value": null
+    },
+    {
+      "file": null,
+      "key": "promptCacheTtl",
+      "layer": "default",
+      "reason": "Nothing the dashboard reads sets the main conversation's cache lifetime, so the plan decides it. On a subscription it's one hour within plan usage, five minutes once usage credits start. On an API key or a cloud provider it's five minutes. The dashboard can't tell when usage credits start. With no plan in the dashboard config, it can't tell the plan either. To check, run claude -p \"hello\" --output-format json in this project and read usage.cache_creation.",
+      "rule_id": "prompt-cache-default-by-plan",
+      "rule_ids": [
+        "prompt-cache-default-by-plan",
+        "prompt-cache-ttl-order"
+      ],
+      "scope": "main",
+      "status": "unknown",
+      "value": null
+    },
+    {
+      "file": null,
+      "key": "availableModels",
+      "layer": "default",
+      "reason": "Nothing sets a list, so every model is available.",
+      "rule_id": "available-models-default",
+      "rule_ids": [
+        "available-models-default",
+        "available-models-order"
+      ],
+      "scope": "main",
+      "status": "default",
+      "value": null
+    },
+    {
+      "file": null,
+      "key": "alwaysThinkingEnabled",
+      "layer": "default",
+      "reason": "Nothing sets extended thinking, so it's on by default for models that support it.",
+      "rule_id": "always-thinking-default",
+      "rule_ids": [
+        "always-thinking-default",
+        "always-thinking-order"
+      ],
+      "scope": "main",
+      "status": "default",
+      "value": "on"
+    },
+    {
+      "file": null,
+      "key": "fallbackModel",
+      "layer": "default",
+      "reason": "Nothing sets a chain, so a failed request isn't retried on another model.",
+      "rule_id": "fallback-model-default",
+      "rule_ids": [
+        "fallback-model-default",
+        "fallback-model-order"
+      ],
+      "scope": "main",
+      "status": "default",
+      "value": null
+    },
+    {
+      "agent": "probe",
+      "file": "config/agents/probe.md",
+      "key": "agentFile",
+      "layer": "user",
+      "line": 2,
+      "reason": "config/agents/probe.md defines probe. When agents in different places share a name, Claude Code uses the one from the highest place. From highest to lowest, those are managed settings, the --agents flag, the project, the user folder and a plugin.",
+      "rule_id": "agent-file-location-order",
+      "rule_ids": [
+        "agent-file-location-order",
+        "agent-file-project-over-user"
+      ],
+      "scope": "agent",
+      "status": "in_effect",
+      "value": null
+    },
+    {
+      "agent": "probe",
+      "file": null,
+      "key": "model",
+      "layer": "default",
+      "reason": "Nothing sets a model for probe, so it runs on the main session's model. When the dashboard can't tell that model, it can't name this one either. Run /status in a session to see the main model.",
+      "rule_id": "subagent-model-default",
+      "rule_ids": [
+        "subagent-model-default",
+        "subagent-model-order"
+      ],
+      "scope": "agent",
+      "status": "unknown",
+      "value": null
+    },
+    {
+      "agent": "probe",
+      "file": "config/agents/probe.md",
+      "key": "effort",
+      "layer": "agent",
+      "line": 4,
+      "reason": "config/agents/probe.md sets the effort for probe. CLAUDE_CODE_EFFORT_LEVEL beats the agent's effort frontmatter, which beats --effort and the settings that count for its own model.",
+      "rule_id": "agent-effort-order",
+      "rule_ids": [
+        "agent-effort-order"
+      ],
+      "scope": "agent",
+      "status": "in_effect",
+      "value": "high"
+    },
+    {
+      "agent": "probe",
+      "file": null,
+      "key": "autoCompactWindow",
+      "layer": "default",
+      "reason": "Nothing sets an auto-compact window for the session, so probe inherits the window tuned for the session's model. Its frontmatter can only lower that window. On Opus 5.5 that window is 1000000 tokens. Only Opus 5.5 was checked, so on any other model the dashboard can't say what the window is or whether the frontmatter lowers it. Run /autocompact in a session to see the session's window.",
+      "rule_id": "agent-auto-compact-window-default",
+      "rule_ids": [
+        "agent-auto-compact-window-default",
+        "agent-auto-compact-window"
+      ],
+      "scope": "agent",
+      "status": "unknown",
+      "value": null
+    },
+    {
+      "agent": "probe",
+      "file": null,
+      "key": "subagentPromptCacheTtl",
+      "layer": "default",
+      "reason": "Nothing sets the cache lifetime for probe, so it gets five minutes on every plan.",
+      "rule_id": "subagent-prompt-cache-default",
+      "rule_ids": [
+        "subagent-prompt-cache-default",
+        "subagent-prompt-cache-ttl-order"
+      ],
+      "scope": "agent",
+      "status": "default",
+      "value": "5m"
+    }
+  ],
+  "files": [
+    {
+      "layer": "user",
+      "path": "config/settings.json",
+      "status": "ok"
+    }
+  ],
+  "installed": null,
+  "local_file_display": null,
+  "no_user_settings": false,
+  "path_display": "project",
+  "project": "project",
+  "rows": [
+    {
+      "agent": "@main",
+      "entries": [
+        0
+      ],
+      "rule_ids": [
+        "model-main-default",
+        "model-main-session-order"
+      ],
+      "scope": "main",
+      "setting": "model"
+    },
+    {
+      "agent": "@main",
+      "entries": [
+        1
+      ],
+      "rule_ids": [
+        "max-effort-level-lowest-cap",
+        "max-effort-level-values"
+      ],
+      "scope": "main",
+      "setting": "maxEffortLevel"
+    },
+    {
+      "agent": "@main",
+      "entries": [
+        2
+      ],
+      "rule_ids": [
+        "effort-default-model-unknown",
+        "effort-level-layer-order"
+      ],
+      "scope": "main",
+      "setting": "effortLevel"
+    },
+    {
+      "agent": "@main",
+      "entries": [
+        3
+      ],
+      "rule_ids": [
+        "auto-compact-window-default",
+        "auto-compact-window-order"
+      ],
+      "scope": "main",
+      "setting": "autoCompactWindow"
+    },
+    {
+      "agent": "@main",
+      "entries": [
+        4
+      ],
+      "rule_ids": [
+        "prompt-cache-default-by-plan",
+        "prompt-cache-ttl-order"
+      ],
+      "scope": "main",
+      "setting": "promptCacheTtl"
+    },
+    {
+      "agent": "@main",
+      "entries": [
+        5
+      ],
+      "rule_ids": [
+        "available-models-default",
+        "available-models-order"
+      ],
+      "scope": "main",
+      "setting": "availableModels"
+    },
+    {
+      "agent": "@main",
+      "entries": [
+        6
+      ],
+      "rule_ids": [
+        "always-thinking-default",
+        "always-thinking-order"
+      ],
+      "scope": "main",
+      "setting": "alwaysThinkingEnabled"
+    },
+    {
+      "agent": "@main",
+      "entries": [
+        7
+      ],
+      "rule_ids": [
+        "fallback-model-default",
+        "fallback-model-order"
+      ],
+      "scope": "main",
+      "setting": "fallbackModel"
+    },
+    {
+      "agent": "probe",
+      "entries": [
+        8
+      ],
+      "rule_ids": [
+        "agent-file-location-order",
+        "agent-file-project-over-user"
+      ],
+      "scope": "agent",
+      "setting": "agentFile"
+    },
+    {
+      "agent": "probe",
+      "entries": [
+        9
+      ],
+      "rule_ids": [
+        "subagent-model-default",
+        "subagent-model-order"
+      ],
+      "scope": "agent",
+      "setting": "model"
+    },
+    {
+      "agent": "probe",
+      "entries": [
+        10
+      ],
+      "rule_ids": [
+        "agent-effort-order"
+      ],
+      "scope": "agent",
+      "setting": "effort"
+    },
+    {
+      "agent": "probe",
+      "entries": [
+        11
+      ],
+      "rule_ids": [
+        "agent-auto-compact-window-default",
+        "agent-auto-compact-window"
+      ],
+      "scope": "agent",
+      "setting": "autoCompactWindow"
+    },
+    {
+      "agent": "probe",
+      "entries": [
+        12
+      ],
+      "rule_ids": [
+        "subagent-prompt-cache-default",
+        "subagent-prompt-cache-ttl-order"
+      ],
+      "scope": "agent",
+      "setting": "subagentPromptCacheTtl"
+    }
+  ],
+  "shell_label": "session.json:shell_env",
+  "state": "ok"
+}

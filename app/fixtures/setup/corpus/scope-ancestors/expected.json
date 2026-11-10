@@ -1,0 +1,25 @@
+{
+  "case": "scope-ancestors",
+  "note": "work/parent is a git root, so the exact names CLAUDE.md, CLAUDE.local.md and .claude/settings.local.json are read there (owner answer 5). The decoy .claude/settings.json in the same folder is not read. Ancestor files show with a ../ display path and location parent (owner pick 6, November 9), the CLAUDE.local.md one in the project_local scope. Order is broadest first, CLAUDE.md before CLAUDE.local.md.",
+  "project": {"name": "Proj", "dir": "work/parent/proj"},
+  "parts": {
+    "settings": {
+      "items": [
+        {"id": "settings:effortLevel", "key": "effortLevel", "scope": null, "status": "unknown", "effective": {"value": null, "origin": "default"}, "sources": []},
+        {"id": "settings:env.REPO_FLAG", "key": "env.REPO_FLAG", "scope": "project_local", "status": "in_effect", "effective": {"value": "1", "origin": "set"}, "sources": [{"scope": "project_local", "key": "env.REPO_FLAG", "file": "../.claude/settings.local.json", "line": 3, "status": "in_effect"}]},
+        {"id": "settings:model", "key": "model", "scope": null, "status": "unknown", "effective": {"value": null, "origin": "default"}, "sources": []}
+      ],
+      "unreadable": []
+    },
+    "instructions": {
+      "items": [
+        {"id": "instructions:../CLAUDE.md", "key": "../CLAUDE.md", "scope": "project", "location": "parent", "status": "in_effect", "loads": {"kind": "always", "globs": []}, "imports": [], "sources": [{"scope": "project", "key": "file", "file": "../CLAUDE.md", "line": null, "status": "in_effect", "location": "parent"}]},
+        {"id": "instructions:../CLAUDE.local.md", "key": "../CLAUDE.local.md", "scope": "project_local", "location": "parent", "status": "in_effect", "loads": {"kind": "always", "globs": []}, "imports": [], "sources": [{"scope": "project_local", "key": "file", "file": "../CLAUDE.local.md", "line": null, "status": "in_effect", "location": "parent"}]},
+        {"id": "instructions:CLAUDE.md", "key": "CLAUDE.md", "scope": "project", "status": "in_effect", "loads": {"kind": "always", "globs": []}, "imports": [], "sources": [{"scope": "project", "key": "file", "file": "CLAUDE.md", "line": null, "status": "in_effect"}]}
+      ],
+      "unreadable": []
+    }
+  },
+  "problems": [],
+  "never": ["claude-haiku-5-5"]
+}

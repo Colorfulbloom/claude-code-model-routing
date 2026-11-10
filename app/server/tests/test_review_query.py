@@ -71,7 +71,8 @@ def test_totals_sum_the_cells_and_price_them(w: World) -> None:
     got = scan(w).total
     assert (got.input, got.output, got.cache_read) == (111, 26, 301)
     assert (got.cache_write_5m, got.cache_write_1h, got.thinking) == (51, 0, 0)
-    assert (got.requests, got.sessions, got.runs) == (3, 2, 0)
+    # Main counts as a run, once per session, so two sessions give two runs.
+    assert (got.requests, got.sessions, got.runs) == (3, 2, 2)
     assert got.tokens == 111 + 26 + 301 + 51
     assert got.hit_rate == pytest.approx(301 / (301 + 51 + 111))
     expected = (
@@ -215,14 +216,15 @@ def test_agents_count_runs_and_sessions(w: World) -> None:
     _dispatch(w)
     got = scan(w).by_agent
     assert set(got) == {"@main", "lead", "worker", "tied", "split", "@unnamed", "scout"}
-    assert got["@main"].sums.runs == 0
+    assert got["@main"].sums.runs == 1
     assert got["@main"].sums.sessions == 1
     assert got["lead"].sums.runs == 1
     assert got["worker"].sums.runs == 3
     assert got["worker"].sums.requests == 4
     assert got["tied"].sums.runs == 2
     assert got["@unnamed"].sums.runs == 1
-    assert scan(w).total.runs == 1 + 3 + 2 + 1 + 1 + 1
+    # The main session is one more run, on top of the six agent runs.
+    assert scan(w).total.runs == 1 + 1 + 3 + 2 + 1 + 1 + 1
 
 
 def test_agents_come_biggest_cost_first_then_tokens_then_key(w: World) -> None:
@@ -267,7 +269,7 @@ def test_main_counts_sessions_as_its_runs(w: World) -> None:
     w.add(500, "b", 1, 1, 0, 0, sid=S2, model=SONNET, effort="medium")
     w.add(400, "c", 1, 1, 0, 0, sid=S3)
     main = scan(w).by_agent["@main"]
-    assert main.sums.runs == 0
+    assert main.sums.runs == 3
     assert main.sums.sessions == 3
     assert main.ran_pairs == (
         rq.PairRuns(OPUS, "high", 2),
@@ -469,7 +471,7 @@ def test_a_session_counts_the_window_and_carries_its_whole_numbers(
     first = got[S1]
     assert first.started_before_range is True
     assert first.tokens == 11 + 11  # the window only
-    assert first.runs == 1
+    assert first.runs == 2  # the main run and the lead's run
     assert first.whole is not None
     assert first.whole.tokens == 110 + 11 + 11
     assert first.whole.cost == pytest.approx(
@@ -494,7 +496,7 @@ def test_a_session_row_lists_its_agents_by_cost(tmp_path: Path) -> None:
     finally:
         w.close()
     assert row.agents == ("big", "mid", "@main")
-    assert row.runs == 2
+    assert row.runs == 3  # two agent runs and the main run
 
 
 def test_a_session_row_carries_its_unpriced_requests(w: World) -> None:

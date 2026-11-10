@@ -1,0 +1,8 @@
+{
+  "enabledPlugins": {
+    "alpha@bartab-demo": true,
+    "beta@bartab-demo": true,
+    "gamma@bartab-demo": true,
+    "delta@bartab-demo": true
+  }
+}

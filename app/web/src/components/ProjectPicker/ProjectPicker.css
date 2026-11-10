@@ -35,10 +35,15 @@
   font-weight: var(--weight-semibold);
 }
 
+/* A long path is one line cut with an ellipsis, so a row stays a few lines tall and never runs
+   into the next. The full path is the title. */
 .pk-path {
-  overflow-wrap: anywhere;
+  min-width: 0;
+  overflow: hidden;
   font-family: var(--font-mono);
   font-size: var(--text-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .pk-state {

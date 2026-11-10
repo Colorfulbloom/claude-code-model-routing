@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "plugins": {
+    "routing-dashboard@bartab-demo": [
+      {"scope": "user", "installPath": "@@CONFIG@@/plugins/cache/bartab-demo/routing-dashboard/0.1.7", "version": "0.1.7"}
+    ],
+    "hivemind@bartab-demo": [
+      {"scope": "user", "installPath": "@@CONFIG@@/plugins/cache/bartab-demo/hivemind/0.1.3", "version": "0.1.3"}
+    ]
+  }
+}

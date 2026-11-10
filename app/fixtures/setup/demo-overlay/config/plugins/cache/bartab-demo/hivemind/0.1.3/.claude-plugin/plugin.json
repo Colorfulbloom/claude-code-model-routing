@@ -1,0 +1,7 @@
+{
+  "name": "hivemind",
+  "version": "0.1.3",
+  "description": "Manages HiveMind, the per-project memory your Claude Code agents share, from any session.",
+  "author": {"name": "Jorge Calderon"},
+  "license": "MIT"
+}

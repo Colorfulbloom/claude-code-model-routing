@@ -177,6 +177,17 @@ describe("the table", () => {
     expect(screen.getByText(/Prices as of November 8/)).toBeInTheDocument();
   });
 
+  it("says what a run is in a visible note, not in a title", async () => {
+    await open(reviewServer({ agents: () => agentsAnswer() }));
+    const table = await screen.findByRole("table", { name: "Agents" });
+    const note = screen.getByText(
+      "Runs counts each agent run, plus one for the main session in each session.",
+    );
+    expect(note).toBeVisible();
+    expect(table.compareDocumentPosition(note) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(within(table).getByRole("columnheader", { name: "Runs" })).not.toHaveAttribute("title");
+  });
+
   it("says a price disagreement under the note", async () => {
     const server = reviewServer({
       agents: () =>

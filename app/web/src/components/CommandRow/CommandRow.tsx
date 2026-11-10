@@ -9,6 +9,8 @@ export interface CommandRowProps {
   /** The command to show and copy. It comes from the bartab-command meta tag, never from the bundle. */
   command: string;
   copyLabel: string;
+  /** Names the button when several rows carry the same label, such as "Copy command for archive". */
+  ariaLabel?: string;
   /** Polite status shown after a copy, such as "Copied to clipboard". */
   copiedLabel: string;
   /** Copy is the primary action on the locked page. Elsewhere it stays secondary. */
@@ -27,6 +29,7 @@ export interface CommandRowProps {
 export function CommandRow({
   command,
   copyLabel,
+  ariaLabel,
   copiedLabel,
   primary = false,
   copied = false,
@@ -50,6 +53,7 @@ export function CommandRow({
       <code className="command-row-code">{command}</code>
       <Button
         variant={primary ? "primary" : "secondary"}
+        {...(ariaLabel !== undefined ? { ariaLabel } : {})}
         onPress={() => {
           void copy();
         }}

@@ -1,0 +1,14 @@
+{
+  "outputStyle": "review-voice",
+  "enabledMcpjsonServers": ["docs"],
+  "permissions": {
+    "deny": [
+      "Read(./.env.local)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {"hooks": [{"type": "command", "command": "echo local-start"}]}
+    ]
+  }
+}

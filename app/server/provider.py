@@ -17,9 +17,13 @@ from models import (
     LiveSessionsUnchanged,
     ModelList,
     PricesInfo,
+    ProblemList,
     ProjectList,
     ReviewRange,
     SessionList,
+    SetupMap,
+    SetupPart,
+    SetupPartAnswer,
     Summary,
     Timeline,
     Unchanged,
@@ -139,6 +143,32 @@ class Provider(Protocol):
         self, project: str, review_range: ReviewRange, etag: str | None
     ) -> ModelList | Unchanged:
         """Return the range's models with their kinds of cost.
+
+        Raises:
+            UnknownProjectError: When ``project`` is not a project key.
+        """
+        ...
+
+    def setup_map(self, project: str, etag: str | None) -> SetupMap | Unchanged:
+        """Return Your setup's map, or the short answer when ``etag`` matches.
+
+        Raises:
+            UnknownProjectError: When ``project`` is not a project key.
+        """
+        ...
+
+    def setup_part(
+        self, project: str, part: SetupPart, etag: str | None
+    ) -> SetupPartAnswer | Unchanged:
+        """Return one part's items, or the short answer when ``etag`` matches.
+
+        Raises:
+            UnknownProjectError: When ``project`` is not a project key.
+        """
+        ...
+
+    def problems(self, project: str, etag: str | None) -> ProblemList | Unchanged:
+        """Return the To fix feed, or the short answer when ``etag`` matches.
 
         Raises:
             UnknownProjectError: When ``project`` is not a project key.

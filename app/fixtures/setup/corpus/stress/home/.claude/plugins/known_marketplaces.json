@@ -1,0 +1,8 @@
+{
+  "bartab-demo": {
+    "source": {"source": "github", "repo": "example/bartab-demo"},
+    "installLocation": "@@CONFIG@@/plugins/marketplaces/bartab-demo",
+    "lastUpdated": "2026-11-01T00:00:00.000Z",
+    "autoUpdate": true
+  }
+}

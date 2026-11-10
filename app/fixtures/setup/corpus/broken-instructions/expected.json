@@ -1,0 +1,44 @@
+{
+  "case": "broken-instructions",
+  "note": "Imports load in depth-first order, so an imported file is an item right after its importer. Depth counts hops from the root file, and at most four hops load. A cycle reports once, at the import that closes it. An import outside the roots is listed as not_read, never opened (the decoy is work/parent/outside.md). Bad rules front matter loads the rule with no paths, so it is a Not as set row with code ignored.",
+  "project": {"name": "Proj", "dir": "work/parent/proj"},
+  "parts": {
+    "instructions": {
+      "items": [
+        {"id": "instructions:CLAUDE.md", "key": "CLAUDE.md", "scope": "project", "status": "in_effect", "loads": {"kind": "always", "globs": []}, "sources": [{"scope": "project", "key": "file", "file": "CLAUDE.md", "line": null, "status": "in_effect"}], "imports": [
+          {"target": "notes/a.md", "target_item": "instructions:notes/a.md", "depth": 1, "state": "read", "line": 3},
+          {"target": "notes/missing.md", "target_item": null, "depth": 1, "state": "missing", "line": 4},
+          {"target": "../outside.md", "target_item": null, "depth": 1, "state": "not_read", "line": 5},
+          {"target": "notes/h1.md", "target_item": "instructions:notes/h1.md", "depth": 1, "state": "read", "line": 6}]},
+        {"id": "instructions:notes/a.md", "key": "notes/a.md", "scope": "project", "status": "in_effect", "loads": {"kind": "always", "globs": []}, "sources": [{"scope": "project", "key": "file", "file": "notes/a.md", "line": null, "status": "in_effect"}], "imports": [
+          {"target": "b.md", "target_item": "instructions:notes/b.md", "depth": 2, "state": "read", "line": 2}]},
+        {"id": "instructions:notes/b.md", "key": "notes/b.md", "scope": "project", "status": "in_effect", "loads": {"kind": "always", "globs": []}, "sources": [{"scope": "project", "key": "file", "file": "notes/b.md", "line": null, "status": "in_effect"}], "imports": [
+          {"target": "a.md", "target_item": "instructions:notes/a.md", "depth": 3, "state": "cycle", "line": 2}]},
+        {"id": "instructions:notes/h1.md", "key": "notes/h1.md", "scope": "project", "status": "in_effect", "loads": {"kind": "always", "globs": []}, "sources": [{"scope": "project", "key": "file", "file": "notes/h1.md", "line": null, "status": "in_effect"}], "imports": [
+          {"target": "h2.md", "target_item": "instructions:notes/h2.md", "depth": 2, "state": "read", "line": 2}]},
+        {"id": "instructions:notes/h2.md", "key": "notes/h2.md", "scope": "project", "status": "in_effect", "loads": {"kind": "always", "globs": []}, "sources": [{"scope": "project", "key": "file", "file": "notes/h2.md", "line": null, "status": "in_effect"}], "imports": [
+          {"target": "h3.md", "target_item": "instructions:notes/h3.md", "depth": 3, "state": "read", "line": 2}]},
+        {"id": "instructions:notes/h3.md", "key": "notes/h3.md", "scope": "project", "status": "in_effect", "loads": {"kind": "always", "globs": []}, "sources": [{"scope": "project", "key": "file", "file": "notes/h3.md", "line": null, "status": "in_effect"}], "imports": [
+          {"target": "h4.md", "target_item": "instructions:notes/h4.md", "depth": 4, "state": "read", "line": 2}]},
+        {"id": "instructions:notes/h4.md", "key": "notes/h4.md", "scope": "project", "status": "in_effect", "loads": {"kind": "always", "globs": []}, "sources": [{"scope": "project", "key": "file", "file": "notes/h4.md", "line": null, "status": "in_effect"}], "imports": [
+          {"target": "h5.md", "target_item": null, "depth": 5, "state": "too_deep", "line": 2}]}
+      ],
+      "unreadable": [
+        {"file": "../outside.md", "scope": "project", "reason": "outside_scope"}
+      ]
+    },
+    "rules": {
+      "items": [
+        {"id": "rules:.claude/rules/bad.md", "key": ".claude/rules/bad.md", "scope": "project", "status": "in_effect", "loads": {"kind": "always", "globs": []}, "sources": [{"scope": "project", "key": "paths", "file": ".claude/rules/bad.md", "line": 2, "status": "in_effect"}]}
+      ],
+      "unreadable": []
+    }
+  },
+  "problems": [
+    {"id": "import_missing:instructions:CLAUDE.md:4", "group": "wont_load", "code": "import_missing", "part": "instructions", "item_id": "instructions:CLAUDE.md", "file": "CLAUDE.md", "line": 4},
+    {"id": "import_cycle:instructions:notes/b.md:2", "group": "wont_load", "code": "import_cycle", "part": "instructions", "item_id": "instructions:notes/b.md", "file": "notes/b.md", "line": 2},
+    {"id": "import_too_deep:instructions:notes/h4.md:2", "group": "wont_load", "code": "import_too_deep", "part": "instructions", "item_id": "instructions:notes/h4.md", "file": "notes/h4.md", "line": 2},
+    {"id": "ignored:rules:.claude/rules/bad.md:2", "group": "not_as_set", "code": "ignored", "part": "rules", "item_id": "rules:.claude/rules/bad.md", "file": ".claude/rules/bad.md", "line": 2},
+    {"id": "import_out_of_scope:instructions:CLAUDE.md:5", "group": "cant_tell", "code": "import_out_of_scope", "part": "instructions", "item_id": "instructions:CLAUDE.md", "file": "CLAUDE.md", "line": 5}
+  ]
+}

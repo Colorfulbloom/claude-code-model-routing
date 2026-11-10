@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { postStatus } from "@/app/harness";
 import { resetViewport } from "@/test/media";
 import { mount } from "@/test/mount";
+import { setupServer } from "@/test/setup-server";
 
 afterEach(() => {
   cleanup();
@@ -18,10 +19,7 @@ beforeEach(() => {
 const routes: [string, string][] = [
   ["#/p/builder/review/agents/new", "New agent"],
   ["#/p/builder/review/agents/reviewer/edit", "Edit agent"],
-  ["#/p/builder/setup", "Your setup"],
-  ["#/p/builder/setup/settings/effort", "Setup item"],
   ["#/p/builder/setup/settings/effort/edit", "Edit setup item"],
-  ["#/p/builder/to-fix", "To fix"],
   ["#/reference/decides", "How Claude Code decides"],
   ["#/reference/glossary", "Glossary"],
 ];
@@ -36,6 +34,21 @@ describe("routes", () => {
     const withProject = hash.startsWith("#/p/");
     await waitFor(() => {
       expect(document.title).toBe(withProject ? `${name}, Builder, Bar Tab` : `${name}, Bar Tab`);
+    });
+  });
+
+  it.each([
+    ["#/p/builder/setup", "Your setup"],
+    ["#/p/builder/setup/settings", "Settings"],
+    ["#/p/builder/setup/settings/effort", "Settings"],
+  ])("%s renders its own page, focused and announced", async (hash, name) => {
+    await mount(hash, { server: setupServer() });
+    const heading = await screen.findByRole("heading", { level: 1, name });
+    expect(heading).toHaveFocus();
+    expect(screen.getByRole("status")).toHaveTextContent(name);
+    expect(screen.queryByText("This page comes in a later release.")).toBeNull();
+    await waitFor(() => {
+      expect(document.title).toBe(`${name}, Builder, Bar Tab`);
     });
   });
 

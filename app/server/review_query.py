@@ -9,8 +9,10 @@ checks every rule below against its recorded answers.
 
 Rules taken from the old app
 
-* Runs. A run is a subagent run, ``(session, run id)`` of a cell whose run key is not
-  ``main``. Main is not a run (the old ``Agg.runs`` skips it), so ``@main`` has 0.
+* Runs. A run is any agent run, ``(session, run id)`` of a cell, the main session
+  included (its run key is ``main``, so it counts once per session). This is the one
+  meaning of "Runs" on every page. The old ``Agg.runs`` skipped main, so ``@main`` had
+  0 there, and ``test_differential_review.py`` pins the difference.
 * Sessions. Distinct sessions with a cell in the window.
 * Hit rate. Cache reads over cache reads, both cache writes and input, or None when
   that is 0 (``usage.py _Acc.finish``).
@@ -355,8 +357,7 @@ class _Acc:
             self.unpriced += entry.unpriced
             self.models.add(label)
         self.sessions.add(sid)
-        if run != MAIN_RUN:
-            self.runs.add((sid, run))
+        self.runs.add((sid, run))
 
     def merge(self, other: "_Acc") -> None:
         """Add another group's sums, runs, sessions and unpriced models to this one."""

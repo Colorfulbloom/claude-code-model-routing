@@ -97,7 +97,8 @@ const routes: RouteCase[] = [
   },
   {
     path: `${base}/setup/agents/scout`,
-    name: en.pg_surface,
+    // The surface page is named by its part, so this is the Agents page with scout picked.
+    name: en.sf_agents,
     hasProject: true,
     tab: "setup",
     side: en.nav_setup,

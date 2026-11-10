@@ -83,8 +83,15 @@ async function measureCell(page: Page, cell: Cell): Promise<Finding[]> {
         // React Aria's hidden native select is clipped to 1 px and is not a target.
         if (el.closest('[aria-hidden="true"]') !== null) continue;
         const disabled = el.matches(":disabled") || el.getAttribute("aria-disabled") === "true";
-        const rect = el.getBoundingClientRect();
-        const name = `${el.tagName.toLowerCase()}.${el.className.toString().split(" ")[0] ?? ""}`;
+        // A visually hidden checkbox or radio in a label (React Aria's Switch) is 1 px by design.
+        // The label is the target, and the ring is drawn on the part marked data-focus-box.
+        const labelled =
+          el instanceof HTMLInputElement &&
+          (el.type === "checkbox" || el.type === "radio") &&
+          el.closest("label") !== null;
+        const box: HTMLElement = labelled ? (el.closest("label") ?? el) : el;
+        const rect = box.getBoundingClientRect();
+        const name = `${box.tagName.toLowerCase()}.${box.className.toString().split(" ")[0] ?? ""}`;
         if (rect.width === 0 || rect.height === 0) continue;
         const inTabBar = el.closest(".tab-bar") !== null;
         const isButton = el.tagName === "BUTTON" || el.getAttribute("role") === "button";
@@ -115,7 +122,9 @@ async function measureCell(page: Page, cell: Cell): Promise<Finding[]> {
           await new Promise((done) => setTimeout(done, 25));
           if (document.activeElement !== el) continue;
         }
-        const style = getComputedStyle(el);
+        const style = getComputedStyle(
+          labelled ? (box.querySelector<HTMLElement>("[data-focus-box]") ?? box) : el,
+        );
         const width = parseFloat(style.outlineWidth);
         const visible = el.matches(":focus-visible");
         const drawn = style.outlineStyle !== "none" && width > 0;

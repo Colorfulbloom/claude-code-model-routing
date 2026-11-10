@@ -3,13 +3,16 @@
  * rest. Live shows each finding as a raised card with a title and its reason. Review passes
  * `compact` and gets the board's one-line rows, a chip and one sentence per finding.
  */
+import { useParams } from "react-router";
+import { Button } from "@/components/Button/Button";
 import { Card } from "@/components/Card/Card";
 import { RaisedFinding } from "@/components/RaisedFinding/RaisedFinding";
 import { SkeletonBones } from "@/components/SkeletonBones/SkeletonBones";
 import { StatusChip } from "@/components/StatusChip/StatusChip";
 import type { SettingStatus } from "@/components/StatusChip/StatusChip";
-import type { McView } from "@/lib/model-check";
+import type { McFinding, McView } from "@/lib/model-check";
 import { STATUS_WORDS } from "@/lib/model-check";
+import { setupItemPathFromId } from "@/lib/setup-routes";
 import { t } from "@/strings/t";
 import "./ModelCheckCard.css";
 
@@ -18,6 +21,30 @@ function variantFor(status: SettingStatus | null): "plain" | "check" | "warning"
   if (status === "lowered") return "check";
   if (status === null || status === "default") return "plain";
   return "warning";
+}
+
+/** One raised finding. `seeWhy` is the link to the agent's setup item, or null for a row with none. */
+function Finding({ finding, seeWhy }: { finding: McFinding; seeWhy: string | null }) {
+  return (
+    <RaisedFinding variant={variantFor(finding.status)}>
+      <h3 className="live-mc-title">
+        {finding.status !== null && (
+          <StatusChip status={finding.status}>{STATUS_WORDS[finding.status]}</StatusChip>
+        )}
+        <span>{finding.title}</span>
+      </h3>
+      <p className="live-mc-body muted">{finding.body}</p>
+      {seeWhy !== null && (
+        <Button
+          href={seeWhy}
+          ariaLabel={t("mc_see_why_aria", { agent: finding.agent })}
+          className="live-mc-why"
+        >
+          {t("mc_see_why")} <span aria-hidden="true">→</span>
+        </Button>
+      )}
+    </RaisedFinding>
+  );
 }
 
 /** `question` replaces the card's question line. Summary puts its count of agents there. */
@@ -34,6 +61,13 @@ export function ModelCheckCard({
   /** One grey row per finding, a chip and one sentence, with no reason and no edge. */
   compact?: boolean;
 }) {
+  const { project } = useParams();
+  // A finding whose row names a setup item links to that item's page. Rows with none show nothing.
+  const seeWhy = (finding: McFinding): string | null => {
+    if (project === undefined || finding.itemId === null) return null;
+    const path = setupItemPathFromId(project, finding.itemId);
+    return path === null ? null : `#${path}`;
+  };
   return (
     <Card title={t("mc_h")} question={question ?? t("mc_q")}>
       <div className="live-mc">
@@ -51,15 +85,7 @@ export function ModelCheckCard({
           </ul>
         ) : (
           view.findings.map((finding) => (
-            <RaisedFinding key={finding.id} variant={variantFor(finding.status)}>
-              <h3 className="live-mc-title">
-                {finding.status !== null && (
-                  <StatusChip status={finding.status}>{STATUS_WORDS[finding.status]}</StatusChip>
-                )}
-                <span>{finding.title}</span>
-              </h3>
-              <p className="live-mc-body muted">{finding.body}</p>
-            </RaisedFinding>
+            <Finding key={finding.id} finding={finding} seeWhy={seeWhy(finding)} />
           ))
         )}
         {view.noFileLine !== null && <p className="live-mc-line muted">{view.noFileLine}</p>}

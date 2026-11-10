@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "plugins": {
+    "alpha@bartab-demo": [
+      {"scope": "user", "installPath": "@@CONFIG@@/plugins/cache/bartab-demo/alpha/1.0.0", "version": "1.0.0"}
+    ],
+    "gamma@bartab-demo": [
+      {"scope": "user", "installPath": "@@CONFIG@@/plugins/cache/bartab-demo/gamma/1.0.0", "version": "1.0.0"}
+    ],
+    "delta@bartab-demo": [
+      {"scope": "user", "installPath": "@@HOME@@/elsewhere/delta", "version": "1.0.0"}
+    ]
+  }
+}

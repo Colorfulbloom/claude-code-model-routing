@@ -1,0 +1,22 @@
+{
+  "case": "broken-mcp",
+  "note": "enableAllProjectMcpServers in the project settings approves every .mcp.json server. A server whose entry is bad is invalid. A ${VAR} with no default reads as unknown, because the session's environment is not visible. A managed-mcp.json with bad JSON is json_invalid in the mcp part.",
+  "project": {"name": "Proj", "dir": "work/parent/proj"},
+  "parts": {
+    "mcp": {
+      "items": [
+        {"id": "mcp:empty", "key": "empty", "scope": "project", "status": "invalid", "sources": [{"scope": "project", "key": "mcpServers.empty", "file": ".mcp.json", "line": 3, "status": "invalid"}]},
+        {"id": "mcp:fine", "key": "fine", "scope": "project", "status": "in_effect", "sources": [{"scope": "project", "key": "mcpServers.fine", "file": ".mcp.json", "line": 6, "status": "in_effect"}]},
+        {"id": "mcp:templated", "key": "templated", "scope": "project", "status": "unknown", "sources": [{"scope": "project", "key": "mcpServers.templated", "file": ".mcp.json", "line": 5, "status": "unknown"}]},
+        {"id": "mcp:typeless", "key": "typeless", "scope": "project", "status": "invalid", "sources": [{"scope": "project", "key": "mcpServers.typeless", "file": ".mcp.json", "line": 4, "status": "invalid"}]}
+      ],
+      "unreadable": []
+    }
+  },
+  "problems": [
+    {"id": "mcp_bad_entry:mcp:empty:3", "group": "wont_load", "code": "mcp_bad_entry", "part": "mcp", "item_id": "mcp:empty", "file": ".mcp.json", "line": 3},
+    {"id": "mcp_bad_entry:mcp:typeless:4", "group": "wont_load", "code": "mcp_bad_entry", "part": "mcp", "item_id": "mcp:typeless", "file": ".mcp.json", "line": 4},
+    {"id": "json_invalid:managed/managed-mcp.json:1", "group": "wont_load", "code": "json_invalid", "part": "mcp", "item_id": null, "file": "managed/managed-mcp.json", "line": 1},
+    {"id": "env_not_visible:mcp:templated:5", "group": "cant_tell", "code": "env_not_visible", "part": "mcp", "item_id": "mcp:templated", "file": ".mcp.json", "line": 5}
+  ]
+}

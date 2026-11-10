@@ -17,6 +17,18 @@ function row(props: { primary?: boolean; copied?: boolean } = {}) {
 }
 
 describe("CommandRow", () => {
+  it("names the button when it has an aria label", () => {
+    render(
+      <CommandRow
+        command="/bartab"
+        copyLabel="Copy command"
+        copiedLabel="Copied to clipboard"
+        ariaLabel="Copy command for archive"
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Copy command for archive" })).toBeInTheDocument();
+  });
+
   it("lists every state", () => {
     expect(states).toEqual(["default", "copied"]);
   });

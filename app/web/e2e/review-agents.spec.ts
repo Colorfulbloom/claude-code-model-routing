@@ -444,6 +444,38 @@ test("the Agents rows read as the demo's four agents, with the check word beside
   await expect(page.getByText(/^Costs are estimates at API list prices/)).toHaveCount(1);
 });
 
+// A picked agent is its own page at 375, so the table is only on screen at 1440.
+for (const width of [1440]) {
+  test(`the picked Agents row keeps its text where the other rows have it, with the bar in the gutter at ${String(width)} wide`, async ({
+    page,
+    demo,
+  }) => {
+    await openAt(page, demo, `${agents("30d")}&agent=builder`, { width });
+    const table = page.getByRole("table", { name: en.ag_h });
+    const picked = table.locator("tr[data-agent='builder'] .review-agents-src");
+    const other = table.locator("tr[data-agent='@main'] .review-agents-src");
+    await expect(picked).toBeVisible();
+    const pickedBox = await picked.boundingBox();
+    const otherBox = await other.boundingBox();
+    expect(pickedBox).not.toBeNull();
+    expect(otherBox).not.toBeNull();
+    expect(pickedBox?.x).toBe(otherBox?.x);
+    // The picked fill starts where the dividers start (the first cell's left edge, the same in
+    // every row), and the bar is a 3px start border at that edge.
+    const pickedCell = await table.locator("tr[data-agent='builder'] th").boundingBox();
+    const otherCell = await table.locator("tr[data-agent='@main'] th").boundingBox();
+    expect(pickedCell?.x).toBe(otherCell?.x);
+    const bar = await table.locator("tr[data-agent='builder'] th").evaluate((el) => {
+      const style = getComputedStyle(el, "::before");
+      return { left: style.insetInlineStart, border: style.borderInlineStartWidth };
+    });
+    expect(bar).toEqual({ left: "0px", border: "3px" });
+    // The rows run the well's full width, so the fill edge sits on the well's inner edge.
+    const well = await page.locator(".review-table-well").boundingBox();
+    expect(pickedCell?.x).toBe((well?.x ?? 0) + 1);
+  });
+}
+
 test("the kinds chart's image carries the exact label, and its legend holds the same total", async ({
   page,
   demo,

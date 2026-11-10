@@ -1,0 +1,22 @@
+{
+  "case": "scope-memory",
+  "note": "Auto memory under home/.claude/projects/x/memory/ is never read or listed (owner answer 8). Its sentinel text is in secrets.json under never and must appear in no answer.",
+  "project": {"name": "Proj", "dir": "work/parent/proj"},
+  "parts": {
+    "settings": {
+      "items": [
+        {"id": "settings:effortLevel", "key": "effortLevel", "scope": null, "status": "default", "effective": {"value": "medium", "origin": "default"}, "sources": []},
+        {"id": "settings:model", "key": "model", "scope": "user", "status": "in_effect", "effective": {"value": "claude-sonnet-5-5", "origin": "set"}, "sources": [{"scope": "user", "key": "model", "file": "~/.claude/settings.json", "line": 2, "status": "in_effect"}]}
+      ],
+      "unreadable": []
+    },
+    "instructions": {
+      "items": [
+        {"id": "instructions:CLAUDE.md", "key": "CLAUDE.md", "scope": "project", "status": "in_effect", "loads": {"kind": "always", "globs": []}, "imports": [], "sources": [{"scope": "project", "key": "file", "file": "CLAUDE.md", "line": null, "status": "in_effect"}]}
+      ],
+      "unreadable": []
+    }
+  },
+  "problems": [],
+  "never": ["MEMORY.md"]
+}

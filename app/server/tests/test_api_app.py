@@ -88,10 +88,12 @@ def test_get_app_demo(client: Any, key_headers: dict[str, str]) -> None:
         "history",
         "running",
         "to_fix_count",
+        "to_fix",
         "editable_projects",
         "mode",
         "clock",
     }
+    assert body["to_fix"] == {"state": "ok", "count": 4, "etag": None}
     assert body["mode"] == "fixture"
     assert body["clock"] == {"kind": "real", "rate_n": None}
     assert body["claude_version"] == "2.1.310"
@@ -133,6 +135,7 @@ def test_get_app_without_project_has_null_count(
 ) -> None:
     body = client.get("/api/app", headers=key_headers).json()
     assert body["to_fix_count"] is None
+    assert body["to_fix"] == {"state": "unchecked", "count": None, "etag": None}
 
 
 @pytest.mark.parametrize(
@@ -149,6 +152,8 @@ def test_to_fix_count_per_project(
         "/api/app", params={"project": project}, headers=key_headers
     ).json()
     assert body["to_fix_count"] == count
+    assert body["to_fix"]["count"] == count
+    assert body["to_fix"]["state"] == ("unchecked" if count is None else "ok")
 
 
 @pytest.mark.parametrize("project", ["", "UPPER", "-lead", "a" * 64, "has space"])
@@ -174,7 +179,15 @@ def test_get_projects_demo(client: Any, key_headers: dict[str, str]) -> None:
     ]
     assert [p["running"] for p in projects] == [True, False, False]
     for project in projects:
-        assert set(project) == {"key", "name", "display_path", "state", "running"}
+        assert set(project) == {
+            "key",
+            "name",
+            "display_path",
+            "state",
+            "running",
+            "listed",
+        }
+        assert project["listed"] is True
         assert project["display_path"].startswith("/work/")
 
 

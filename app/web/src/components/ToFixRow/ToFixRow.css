@@ -1,0 +1,73 @@
+.tofix-row {
+  min-width: 0;
+  list-style: none;
+}
+
+.tofix-row-cause,
+.tofix-row-consequence,
+.tofix-row-note {
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+
+.tofix-row-location {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+/* The action sits a little apart from the sentences above it. */
+.tofix-row-box .button,
+.tofix-row-box .copy-path,
+.tofix-row-box .command-row,
+.tofix-row-cant {
+  margin-top: var(--space-2);
+}
+
+.tofix-row-box .command-row {
+  margin-bottom: 0;
+}
+
+.tofix-row-cant {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.tofix-row-action {
+  min-width: 0;
+}
+
+/* A copied command takes the row's width, as it did before the action had its own box. */
+.tofix-row[data-action="copy_command"] .tofix-row-action {
+  justify-self: stretch;
+}
+
+/* The action is a column at the end of the row above 720px, centred on the sentences. A copied
+   command is wide, so it stays under them. */
+@media (width > 720px) {
+  .tofix-row:not([data-action="copy_command"]) .raised-finding-body {
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: var(--space-5);
+    align-items: start;
+  }
+
+  .tofix-row:not([data-action="copy_command"]) .raised-finding-body > * {
+    grid-column: 1;
+  }
+
+  .tofix-row:not([data-action="copy_command"]) .raised-finding-body > .tofix-row-action {
+    grid-column: 2;
+    grid-row: 1 / span 3;
+    place-self: center end;
+  }
+
+  .tofix-row:not([data-action="copy_command"]) .tofix-row-action > * {
+    margin-top: 0;
+  }
+}
+
+/* A Couldn't read row leads with the ✕ glyph and has no start edge. The glyph has empty alt text. */
+.tofix-row-unreadable .raised-finding-title::before {
+  content: var(--status-invalid-mark) / "";
+  margin-inline-end: var(--space-2);
+  color: var(--status-invalid-fg);
+}

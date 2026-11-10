@@ -1,0 +1,65 @@
+{
+  "version": 2,
+  "plugins": {
+    "stress-plugin-with-a-long-name-for-the-list-00@bartab-demo": [
+      {"scope": "user", "installPath": "@@CONFIG@@/plugins/cache/bartab-demo/stress-plugin-with-a-long-name-for-the-list-00/1.0.0", "version": "1.0.0"}
+    ],
+    "stress-plugin-with-a-long-name-for-the-list-01@bartab-demo": [
+      {"scope": "user", "installPath": "@@CONFIG@@/plugins/cache/bartab-demo/stress-plugin-with-a-long-name-for-the-list-01/1.0.0", "version": "1.0.0"}
+    ],
+    "stress-plugin-with-a-long-name-for-the-list-02@bartab-demo": [
+      {"scope": "user", "installPath": "@@CONFIG@@/plugins/cache/bartab-demo/stress-plugin-with-a-long-name-for-the-list-02/1.0.0", "version": "1.0.0"}
+    ],
+    "stress-plugin-with-a-long-name-for-the-list-03@bartab-demo": [
+      {"scope": "user", "installPath": "@@CONFIG@@/plugins/cache/bartab-demo/stress-plugin-with-a-long-name-for-the-list-03/1.0.0", "version": "1.0.0"}
+    ],
+    "stress-plugin-with-a-long-name-for-the-list-04@bartab-demo": [
+      {"scope": "user", "installPath": "@@CONFIG@@/plugins/cache/bartab-demo/stress-plugin-with-a-long-name-for-the-list-04/1.0.0", "version": "1.0.0"}
+    ],
+    "stress-plugin-with-a-long-name-for-the-list-05@bartab-demo": [
+      {"scope": "user", "installPath": "@@CONFIG@@/plugins/cache/bartab-demo/stress-plugin-with-a-long-name-for-the-list-05/1.0.0", "version": "1.0.0"}
+    ],
+    "stress-plugin-with-a-long-name-for-the-list-06@bartab-demo": [
+      {"scope": "user", "installPath": "@@CONFIG@@/plugins/cache/bartab-demo/stress-plugin-with-a-long-name-for-the-list-06/1.0.0", "version": "1.0.0"}
+    ],
+    "stress-plugin-with-a-long-name-for-the-list-07@bartab-demo": [
+      {"scope": "user", "installPath": "@@CONFIG@@/plugins/cache/bartab-demo/stress-plugin-with-a-long-name-for-the-list-07/1.0.0", "version": "1.0.0"}
+    ],
+    "stress-plugin-with-a-long-name-for-the-list-08@bartab-demo": [
+      {"scope": "user", "installPath": "@@CONFIG@@/plugins/cache/bartab-demo/stress-plugin-with-a-long-name-for-the-list-08/1.0.0", "version": "1.0.0"}
+    ],
+    "stress-plugin-with-a-long-name-for-the-list-09@bartab-demo": [
+      {"scope": "user", "installPath": "@@CONFIG@@/plugins/cache/bartab-demo/stress-plugin-with-a-long-name-for-the-list-09/1.0.0", "version": "1.0.0"}
+    ],
+    "stress-plugin-with-a-long-name-for-the-list-10@bartab-demo": [
+      {"scope": "user", "installPath": "@@CONFIG@@/plugins/cache/bartab-demo/stress-plugin-with-a-long-name-for-the-list-10/1.0.0", "version": "1.0.0"}
+    ],
+    "stress-plugin-with-a-long-name-for-the-list-11@bartab-demo": [
+      {"scope": "user", "installPath": "@@CONFIG@@/plugins/cache/bartab-demo/stress-plugin-with-a-long-name-for-the-list-11/1.0.0", "version": "1.0.0"}
+    ],
+    "stress-plugin-with-a-long-name-for-the-list-12@bartab-demo": [
+      {"scope": "user", "installPath": "@@CONFIG@@/plugins/cache/bartab-demo/stress-plugin-with-a-long-name-for-the-list-12/1.0.0", "version": "1.0.0"}
+    ],
+    "stress-plugin-with-a-long-name-for-the-list-13@bartab-demo": [
+      {"scope": "user", "installPath": "@@CONFIG@@/plugins/cache/bartab-demo/stress-plugin-with-a-long-name-for-the-list-13/1.0.0", "version": "1.0.0"}
+    ],
+    "stress-plugin-with-a-long-name-for-the-list-14@bartab-demo": [
+      {"scope": "user", "installPath": "@@CONFIG@@/plugins/cache/bartab-demo/stress-plugin-with-a-long-name-for-the-list-14/1.0.0", "version": "1.0.0"}
+    ],
+    "stress-plugin-with-a-long-name-for-the-list-15@bartab-demo": [
+      {"scope": "user", "installPath": "@@CONFIG@@/plugins/cache/bartab-demo/stress-plugin-with-a-long-name-for-the-list-15/1.0.0", "version": "1.0.0"}
+    ],
+    "stress-plugin-with-a-long-name-for-the-list-16@bartab-demo": [
+      {"scope": "user", "installPath": "@@CONFIG@@/plugins/cache/bartab-demo/stress-plugin-with-a-long-name-for-the-list-16/1.0.0", "version": "1.0.0"}
+    ],
+    "stress-plugin-with-a-long-name-for-the-list-17@bartab-demo": [
+      {"scope": "user", "installPath": "@@CONFIG@@/plugins/cache/bartab-demo/stress-plugin-with-a-long-name-for-the-list-17/1.0.0", "version": "1.0.0"}
+    ],
+    "stress-plugin-with-a-long-name-for-the-list-18@bartab-demo": [
+      {"scope": "user", "installPath": "@@CONFIG@@/plugins/cache/bartab-demo/stress-plugin-with-a-long-name-for-the-list-18/1.0.0", "version": "1.0.0"}
+    ],
+    "stress-plugin-with-a-long-name-for-the-list-19@bartab-demo": [
+      {"scope": "user", "installPath": "@@CONFIG@@/plugins/cache/bartab-demo/stress-plugin-with-a-long-name-for-the-list-19/1.0.0", "version": "1.0.0"}
+    ]
+  }
+}

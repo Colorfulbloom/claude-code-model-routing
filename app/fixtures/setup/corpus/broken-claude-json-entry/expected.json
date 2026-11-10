@@ -1,0 +1,16 @@
+{
+  "case": "broken-claude-json-entry",
+  "note": "The file parses, but the listed project's entry under projects is a string. The user server still reads.",
+  "project": {"name": "Proj", "dir": "work/parent/proj"},
+  "parts": {
+    "mcp": {
+      "items": [
+        {"id": "mcp:notes", "key": "notes", "scope": "user", "status": "in_effect", "sources": [{"scope": "user", "key": "mcpServers.notes", "file": "~/.claude.json", "line": 3, "status": "in_effect"}]}
+      ],
+      "unreadable": []
+    }
+  },
+  "problems": [
+    {"id": "not_object:~/.claude.json:6", "group": "wont_load", "code": "not_object", "part": "mcp", "item_id": null, "file": "~/.claude.json", "line": 6}
+  ]
+}

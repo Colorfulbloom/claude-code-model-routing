@@ -1,0 +1,231 @@
+/*
+ * The surface pages (a-m4 boards p11, m4.css). Tokens only. The list and the inspector bring their
+ * own rules from the ListInspector component, so this file holds the page's spacing, the facts of
+ * each kind and the Couldn't read and unknown-item cards. Every class carries the setup- prefix,
+ * because page CSS is global (fact J-0ba9).
+ */
+.setup-surface > .list-inspector,
+.setup-surface > .setup-surface-card,
+.setup-surface > .setup-stale {
+  margin-top: var(--space-4);
+}
+
+.setup-surface > .page-header + .list-inspector {
+  margin-top: var(--space-4);
+}
+
+/* Names that are files, keys or rules read in the code font. */
+.setup-mono .item-name {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-regular);
+}
+
+/* The unknown-item card. */
+.setup-gone {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+  border-inline-start: 4px solid var(--border-strong);
+}
+
+.setup-gone-title {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+}
+
+/* The Couldn't read card over a partial list. */
+.setup-cr .raised-finding-title {
+  font-size: var(--text-md);
+}
+
+.setup-cr-list {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.setup-cr p,
+.setup-cr-list li {
+  overflow-wrap: anywhere;
+}
+
+/* The file in the cause reads in code, a little smaller than the sentence. */
+.setup-cr-path {
+  font-size: var(--text-sm);
+}
+
+/* Copy path comes last, after the cause and the fix. */
+.setup-cr-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.setup-small {
+  font-size: var(--text-sm);
+}
+
+.setup-code {
+  overflow-wrap: anywhere;
+}
+
+/* A hook's matcher breaks only after a bar. A name that fits on a line never splits. */
+.setup-code.setup-matcher {
+  overflow-wrap: break-word;
+}
+
+/* An instruction file's name is a file name, so the inspector heading reads in code. */
+.setup-surface[data-part="instructions"] .inspector-title {
+  font-family: var(--font-mono);
+  font-weight: var(--weight-regular);
+}
+
+/* Facts. */
+.setup-facts-section {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.setup-h3 {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+}
+
+.setup-facts {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.setup-fact {
+  display: grid;
+  grid-template-columns: 140px minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: baseline;
+}
+
+.setup-fact-label {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.setup-fact-value {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  align-items: baseline;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.setup-fact-value .model-swatch {
+  align-self: center;
+}
+
+.setup-names {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+}
+
+.setup-line {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+.setup-ignored,
+.setup-globs,
+.setup-contents,
+.setup-chain {
+  margin: 0;
+  padding: var(--space-1) 0;
+  list-style: none;
+}
+
+.setup-ignored-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  align-items: center;
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.setup-ignored-row:last-child {
+  border-bottom: 0;
+}
+
+.setup-ignored-value {
+  margin-inline-start: auto;
+}
+
+.setup-globs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  padding: var(--space-2) 0;
+}
+
+.setup-contents-row {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.setup-contents-row:last-child {
+  border-bottom: 0;
+}
+
+.setup-chain-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  color: var(--accent);
+}
+
+/* The import chain. Each row steps in by its depth. */
+.setup-chain-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-1) var(--space-3);
+  align-items: center;
+  padding: var(--space-2) 0 var(--space-2) calc(var(--d, 0) * 20px);
+  border-bottom: 1px solid var(--border);
+}
+
+.setup-chain-row:last-child {
+  border-bottom: 0;
+}
+
+.setup-chain-state {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  justify-content: flex-end;
+  text-align: end;
+}
+
+@media (width <= 720px) {
+  .setup-fact {
+    grid-template-columns: 104px minmax(0, 1fr);
+    gap: var(--space-2);
+  }
+
+  .setup-contents-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-1);
+  }
+
+  .setup-chain-state {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+    text-align: start;
+  }
+}

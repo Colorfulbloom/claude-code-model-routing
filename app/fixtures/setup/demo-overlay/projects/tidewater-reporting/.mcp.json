@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "ledger": {
+      "command": "npx",
+      "args": ["-y", "ledger-mcp"],
+      "env": {"LEDGER_API_KEY": "sk-live-FAKEDEMOENV0000006"}
+    },
+    "files": {
+      "type": "http",
+      "url": "https://files.example.test/mcp"
+    }
+  }
+}

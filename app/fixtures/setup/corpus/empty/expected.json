@@ -1,0 +1,15 @@
+{
+  "case": "empty",
+  "note": "Nothing is set anywhere. Settings always lists model and effortLevel (the setup map links to them), with origin default and no source when nothing sets them, and the status the resolver gives (unknown here, because no model is known). Any other part that is not listed is empty with reason none_found and no unreadable files.",
+  "project": {"name": "Proj", "dir": "work/parent/proj"},
+  "parts": {
+    "settings": {
+      "items": [
+        {"id": "settings:effortLevel", "key": "effortLevel", "scope": null, "status": "unknown", "effective": {"value": null, "origin": "default"}, "sources": []},
+        {"id": "settings:model", "key": "model", "scope": null, "status": "unknown", "effective": {"value": null, "origin": "default"}, "sources": []}
+      ],
+      "unreadable": []
+    }
+  },
+  "problems": []
+}

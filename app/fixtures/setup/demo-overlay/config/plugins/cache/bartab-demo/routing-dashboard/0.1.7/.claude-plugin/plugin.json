@@ -1,0 +1,7 @@
+{
+  "name": "routing-dashboard",
+  "version": "0.1.7",
+  "description": "Runs the Routing Dashboard, a local page of your Claude Code token usage and settings, from any session.",
+  "author": {"name": "Jorge Calderon"},
+  "license": "MIT"
+}

@@ -1,0 +1,42 @@
+/*
+ * The To fix page (a-m4 p12 boards, m4.css). Tokens only. The group card, the row and the empty
+ * card bring their own rules, so this file holds the spacing between the cards, the Show n more
+ * line and the notice sentence. Every class is prefixed with tofix-page, because this sheet is
+ * global (J-0ba9).
+ */
+.tofix-page > .tofix-page-group,
+.tofix-page > .empty-page,
+.tofix-page > .card,
+.tofix-page > .raised-finding {
+  margin-top: var(--space-4);
+}
+
+.tofix-page > .page-header + .tofix-page-group,
+.tofix-page > .page-header + .empty-page,
+.tofix-page > .page-header + .card,
+.tofix-page > .page-header + .raised-finding {
+  margin-top: 0;
+}
+
+.tofix-page-stale {
+  margin: var(--space-3) 0 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+/* Show n more is the last item in its group card. */
+.tofix-page-more {
+  display: flex;
+  list-style: none;
+}
+
+/* A notice is one sentence in a raised box, with no title and no action. */
+.tofix-page-notice {
+  padding: var(--space-3) var(--space-4);
+  background: var(--raised-bg);
+  border: 1px solid var(--raised-border);
+  border-radius: var(--radius-lg);
+  font-size: var(--text-sm);
+  list-style: none;
+  overflow-wrap: anywhere;
+}

@@ -11,6 +11,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { RefObject } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router";
 import { useApi, useAppInfo, usePrices, useProjects } from "@/api/client";
+import { toFixNav } from "@/api/setup";
 import { useActiveProject } from "@/app/active-project";
 import { hidesTabBar, livePath, projectHref, sidebarCurrent, tabCurrent } from "@/app/nav";
 import { pageName, parseRoute, routeForProject } from "@/app/routes";
@@ -35,6 +36,8 @@ import { footerLines } from "@/lib/history";
 import { stoppedSentence } from "@/lib/stopped";
 import { useIsDesktop } from "@/lib/media";
 import { projectItem } from "@/lib/projects";
+import { isSetupPart } from "@/lib/setup-routes";
+import { PART_NAMES } from "@/lib/setup-words";
 import { DEFAULT_RANGE, parseRange, readLastRange, reviewPath } from "@/lib/range";
 import { t, tn } from "@/strings/t";
 
@@ -62,6 +65,12 @@ export function Shell({ page, routeProject, pathname, mainRef, children }: Shell
   const projects = useProjects();
   const projectList = projects.data?.projects;
   const activeProject = useActiveProject(routeProject, { fallback: page !== "picker" });
+  // A setup item page is named by its part ("Instructions"), as the desktop h1 is.
+  const surfacePart = page === "surface" ? parseRoute(pathname)?.part : undefined;
+  const barTitle =
+    surfacePart !== undefined && isSetupPart(surfacePart)
+      ? PART_NAMES[surfacePart]()
+      : pageName(page);
   const app = useAppInfo(activeProject);
   const prices = usePrices();
   const conn = useSyncExternalStore(connection.subscribe, connection.getState);
@@ -101,8 +110,21 @@ export function Shell({ page, routeProject, pathname, mainRef, children }: Shell
   const projectName = items.find((item) => item.id === activeProject)?.name ?? activeProject;
   // Anything but the owner's own data gets the quiet mark, so demo numbers never pass for real ones.
   const demoMark = app.data !== undefined && app.data.mode !== "real" ? t("lv_demo") : null;
-  const toFix = app.data?.to_fix_count ?? 0;
-  const toFixName = toFix > 0 ? tn("tofix_aria", toFix) : undefined;
+  // Only an `ok` state shows a number. Unchecked and failed have their own accessible names and no
+  // number. Before the first app answer the link is plain "To fix".
+  const nav = toFixNav(app.data);
+  const toFix = nav.count ?? 0;
+  const toFixName =
+    app.data === undefined
+      ? undefined
+      : nav.state === "unchecked"
+        ? t("tofix_unchecked_aria")
+        : nav.state === "failed"
+          ? t("tofix_failed_aria")
+          : toFix > 0
+            ? tn("tofix_aria", toFix)
+            : undefined;
+  const toFixShowsCount = nav.state === "ok" && toFix > 0;
   const working =
     !conn.retrying && (app.data?.running.some((r) => r.project === activeProject) ?? false);
 
@@ -182,9 +204,8 @@ export function Shell({ page, routeProject, pathname, mainRef, children }: Shell
           label: t("nav_tofix"),
           icon: "tofix",
           current: sidebarCurrentId === "tofix",
-          ...(toFixName !== undefined
-            ? { end: t("tofix_count", { n: toFix }), name: toFixName }
-            : {}),
+          ...(toFixShowsCount ? { end: t("tofix_count", { n: toFix }) } : {}),
+          ...(toFixName !== undefined ? { name: toFixName } : {}),
         },
       ],
     },
@@ -239,9 +260,8 @@ export function Shell({ page, routeProject, pathname, mainRef, children }: Shell
       label: t("nav_tofix"),
       icon: "tofix",
       current: tabId === "tofix",
-      ...(toFixName !== undefined
-        ? { count: t("tofix_count", { n: toFix }), name: toFixName }
-        : {}),
+      ...(toFixShowsCount ? { count: t("tofix_count", { n: toFix }) } : {}),
+      ...(toFixName !== undefined ? { name: toFixName } : {}),
     },
     { id: "more", href: "#/more", label: t("nav_more"), icon: "more", current: tabId === "more" },
   ];
@@ -288,7 +308,7 @@ export function Shell({ page, routeProject, pathname, mainRef, children }: Shell
         />
       ) : (
         <TopBar
-          title={page === "picker" ? t("product") : pageName(page)}
+          title={page === "picker" ? t("product") : barTitle}
           {...(demoMark !== null ? { badge: demoMark } : {})}
           {...(page === "picker" || (activeProject !== null && projectName !== null)
             ? {

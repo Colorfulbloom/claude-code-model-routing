@@ -647,13 +647,20 @@ def test_ensure_demo_builds_once(
         (out / "config").mkdir(parents=True)
         (out / "truth.json").write_text("{}", encoding="utf-8")
 
+    overlays: list[Path] = []
     monkeypatch.setattr(serve.subprocess, "run", fake_run)
+    monkeypatch.setattr(
+        serve.fixture_provider, "apply_demo_setup_overlay", overlays.append
+    )
     first = serve.ensure_demo(tmp_path)
     second = serve.ensure_demo(tmp_path)
     assert first == second == tmp_path / "demo" / "config"
     assert len(calls) == 1
     assert calls[0][4:] == ["--now", serve.DEMO_NOW, "--tz", serve.DEMO_TZ]
     assert calls[0][0] == sys.executable
+    # The setup overlay goes on once per build, behind its marker file.
+    assert overlays == [tmp_path / "demo"]
+    assert (tmp_path / "demo" / serve.SETUP_OVERLAY_MARKER).is_file()
 
 
 def test_ensure_demo_rebuilds_an_interrupted_build(
@@ -669,6 +676,11 @@ def test_ensure_demo_rebuilds_an_interrupted_build(
         (Path(argv[3]) / "truth.json").write_text("{}", encoding="utf-8")
 
     monkeypatch.setattr(serve.subprocess, "run", fake_run)
+
+    def no_overlay(_demo: Path) -> None:
+        return None
+
+    monkeypatch.setattr(serve.fixture_provider, "apply_demo_setup_overlay", no_overlay)
     serve.ensure_demo(tmp_path)
     assert (tmp_path / "demo" / "truth.json").is_file()
 

@@ -16,6 +16,7 @@ describe("parseRoute", () => {
     ["/p/a/review/agents/builder/edit", "agent_edit", "a"],
     ["/p/a/review/models", "models", "a"],
     ["/p/a/setup", "setup", "a"],
+    ["/p/a/setup/settings", "surface", "a"],
     ["/p/a/setup/settings/effort", "surface", "a"],
     ["/p/a/setup/settings/effort/edit", "surface_edit", "a"],
     ["/p/a/to-fix", "to_fix", "a"],

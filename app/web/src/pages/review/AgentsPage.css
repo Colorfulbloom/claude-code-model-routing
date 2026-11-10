@@ -35,6 +35,129 @@
   color: var(--text);
 }
 
+/* The name is a link when the agent has a setup item. It keeps the name's weight. */
+.review-agents-link {
+  display: inline-block;
+}
+
+.review-agents-unchecked {
+  font-size: var(--text-sm);
+}
+
+/* The picked row: the chosen fill with a 3px start bar, and the name in the accent colour. */
+.review-agents-table .review-row.review-agents-picked > .review-cell {
+  background: var(--select-bg);
+}
+
+.review-agents-table .review-agents-picked .review-agents-link {
+  color: var(--accent);
+}
+
+/* With an agent picked the table keeps Agent, Check and Cost, at every width. */
+.review-agents-narrow .review-agents-wide {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The narrowed table shows the cost as a figure only, with no bar (a-m4 p12 boards). */
+.review-agents-narrow .share-bar-track {
+  display: none;
+}
+
+.review-table.review-agents-narrow .share-bar-table {
+  grid-template-columns: auto;
+  grid-template-areas: "value";
+}
+
+/* The table card and the inspector sit side by side at desktop width. */
+.review-agents-wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.review > .review-agents-wrap {
+  margin-top: var(--space-4);
+}
+
+.review > .scope-bar + .review-agents-wrap {
+  margin-top: 0;
+}
+
+.review-agents-wrap > .card,
+.review-agents-wrap > .inspector {
+  margin-top: 0;
+}
+
+.review-agents-inspector {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.review-agents-details {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+/* Each dt and dd pair sits in a div for its key, and the div takes no box of its own. */
+.review-agents-detail {
+  display: contents;
+}
+
+.review-agents-details dt {
+  color: var(--text-muted);
+}
+
+.review-agents-details dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.review-agents-ignored {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.review-agents-ignored li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-1) var(--space-3);
+  align-items: baseline;
+  font-size: var(--text-sm);
+}
+
+.review-agents-ignored code {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  overflow-wrap: anywhere;
+}
+
+.review-agents-open {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  color: var(--accent);
+}
+
+@media (width <= 720px) {
+  .review-agents-wrap {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 /* At 320 an unpriced cost ("at least ...") must wrap, or the table scrolls sideways. */
 @media (width <= 720px) {
   .review-agents-table .share-bar-value {
@@ -45,4 +168,14 @@
   .review-agents-ran {
     flex-wrap: wrap;
   }
+}
+
+/* A picked agent at phone width is its own page: the title leaves the screen, the h1 stays for readers. */
+.review > .scope-bar-bare .page-header-title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }

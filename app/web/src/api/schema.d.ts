@@ -140,6 +140,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/problems": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Problems */
+        get: operations["get_problems"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/projects": {
         parameters: {
             query?: never;
@@ -191,6 +208,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Setup */
+        get: operations["get_setup"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/setup/{part}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Setup Part */
+        get: operations["get_setup_part"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/summary": {
         parameters: {
             query?: never;
@@ -212,6 +263,32 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * AgentFacts
+         * @description Inspector facts for an agent file.
+         */
+        AgentFacts: {
+            /** Fields */
+            fields: components["schemas"]["AgentField"][];
+            /** Plugin */
+            plugin: string | null;
+        };
+        /**
+         * AgentField
+         * @description One front matter field of an agent file.
+         *
+         *     One front matter field. ``ignored`` for fields Claude Code ignores on a plugin
+         *     agent, which still carry their value and line.
+         */
+        AgentField: {
+            /** Ignored */
+            ignored: boolean;
+            /** Line */
+            line: number | null;
+            /** Name */
+            name: string;
+            value: components["schemas"]["MaskedText"] | null;
+        };
         /**
          * AgentList
          * @description Answer of ``GET /api/agents``. ``ran`` adds up to the Cost tile.
@@ -269,15 +346,22 @@ export interface components {
         /**
          * AgentNoRuns
          * @description An agent file with no run in the range.
+         *
+         *     ``item_id`` is the setup item of the agent (``agents:<name>``, or
+         *     ``agents:<plugin>:<name>`` for a plugin agent), and ``plugin`` the plugin's name.
          */
         AgentNoRuns: {
             /** Agent */
             agent: string;
+            /** Item Id */
+            item_id?: string | null;
+            /** Plugin */
+            plugin?: string | null;
             /**
              * Scope
              * @enum {string}
              */
-            scope: "user" | "project";
+            scope: "user" | "project" | "managed" | "plugin";
             set: components["schemas"]["SetPair"] | null;
             /** Set Reason */
             set_reason: ("no_file" | "sets_nothing" | "read_failed") | null;
@@ -295,10 +379,14 @@ export interface components {
             agent: string;
             /** Cost */
             cost: number | null;
+            /** Item Id */
+            item_id?: string | null;
             /** Params */
             params: {
                 [key: string]: string;
             };
+            /** Plugin */
+            plugin?: string | null;
             ran: components["schemas"]["RanPair"];
             /** Ran Pairs */
             ran_pairs: components["schemas"]["PairRuns"][];
@@ -316,7 +404,7 @@ export interface components {
              * Scope
              * @enum {string}
              */
-            scope: "user" | "project" | "main" | "unnamed" | "no_file";
+            scope: "user" | "project" | "managed" | "plugin" | "main" | "unnamed" | "no_file";
             /** Sessions */
             sessions: number;
             set: components["schemas"]["SetPair"] | null;
@@ -360,6 +448,7 @@ export interface components {
              * Format: date-time
              */
             server_time: string;
+            to_fix?: components["schemas"]["ToFix"];
             /** To Fix Count */
             to_fix_count: number | null;
         };
@@ -476,6 +565,31 @@ export interface components {
             rate_n: number | null;
         };
         /**
+         * Coded
+         * @description A code the page turns into words, with its string parameters.
+         */
+        Coded: {
+            /** Code */
+            code: string;
+            /** Params */
+            params: {
+                [key: string]: string;
+            };
+        };
+        /**
+         * Confidence
+         * @description How sure the dashboard is, and the Claude Code version a test ran on.
+         */
+        Confidence: {
+            /**
+             * Level
+             * @enum {string}
+             */
+            level: "tested" | "documented" | "assumed";
+            /** Tested On */
+            tested_on: string | null;
+        };
+        /**
          * CostChart
          * @description Answer of ``GET /api/cost-chart``. It never changes the tiles.
          */
@@ -574,6 +688,41 @@ export interface components {
             tokens: number;
         };
         /**
+         * Effective
+         * @description The value that runs and where it comes from.
+         *
+         *     The value that runs and where it comes from, so the page never parses a reason.
+         *     ``value`` is None for a union part or when nothing runs.
+         */
+        Effective: {
+            /** By Item */
+            by_item: string | null;
+            /**
+             * Origin
+             * @enum {string}
+             */
+            origin: "set" | "cap" | "default" | "unknown";
+            value: components["schemas"]["MaskedText"] | null;
+        };
+        /**
+         * EmptyInfo
+         * @description Why a part is empty, and the target of its empty state's action.
+         *
+         *     Why a part is empty, and the target of the empty state's action: a docs anchor URL
+         *     for ``docs``, or a full folder path for ``copy_path``.
+         */
+        EmptyInfo: {
+            /** Action */
+            action: ("docs" | "copy_path") | null;
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "none_found" | "not_visible";
+            /** Target */
+            target: string | null;
+        };
+        /**
          * EndedSession
          * @description The newest session in a project that is no longer running.
          */
@@ -606,6 +755,16 @@ export interface components {
             path: (string | number)[] | null;
         };
         /**
+         * GroupCount
+         * @description One group of a long part, in order, with its item count.
+         */
+        GroupCount: {
+            /** Count */
+            count: number;
+            /** Key */
+            key: string;
+        };
+        /**
          * HistoryInfo
          * @description What the store holds and how well it is kept.
          */
@@ -624,6 +783,43 @@ export interface components {
             pass_error: components["schemas"]["PassError"] | null;
             /** Unreadable Files */
             unreadable_files: number;
+        };
+        /**
+         * HookFacts
+         * @description Inspector facts for one hook handler.
+         */
+        HookFacts: {
+            command: components["schemas"]["MaskedText"] | null;
+            /** Event */
+            event: string;
+            /** Handler Type */
+            handler_type: string;
+            /** Matcher */
+            matcher: string | null;
+            /** Timeout */
+            timeout: number | null;
+        };
+        /**
+         * ImportRef
+         * @description One ``@import`` in an instruction file.
+         *
+         *     One ``@import`` in an instruction file. ``target_item`` is the target's item id when
+         *     the target is itself an item.
+         */
+        ImportRef: {
+            /** Depth */
+            depth: number;
+            /** Line */
+            line: number | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "read" | "missing" | "cycle" | "too_deep" | "not_read";
+            /** Target */
+            target: string;
+            /** Target Item */
+            target_item: string | null;
         };
         /**
          * Ingest
@@ -661,6 +857,71 @@ export interface components {
             code: "config_dir_missing" | "config_dir_unreadable" | "store_unwritable" | "store_damaged" | "store_newer" | "unexpected";
             /** File */
             file: string | null;
+        };
+        /**
+         * InstructionFacts
+         * @description Inspector facts for a CLAUDE.md or rules file.
+         */
+        InstructionFacts: {
+            /** Bytes */
+            bytes: number;
+            /** Imports */
+            imports: components["schemas"]["ImportRef"][];
+            /** Lines */
+            lines: number;
+        };
+        /**
+         * ItemCheck
+         * @description What the Model check says about an agent's own file, judged over no runs.
+         *
+         *     ``code`` and ``params`` are the Model check's reason code and params for the agent
+         *     (``model_check.judge_agent`` with an empty run list), so the Agents inspector says
+         *     what the Model check says. Set only for a project or user agent whose file loads
+         *     and sets a model or an effort.
+         */
+        ItemCheck: {
+            /** Code */
+            code: string;
+            /** Params */
+            params: {
+                [key: string]: string;
+            };
+        };
+        /**
+         * ItemFacts
+         * @description The part's extra inspector lines.
+         *
+         *     The part's extra inspector lines. Exactly one field is set, for the item's kind, or
+         *     none for a plain setting.
+         */
+        ItemFacts: {
+            agent?: components["schemas"]["AgentFacts"] | null;
+            hook?: components["schemas"]["HookFacts"] | null;
+            instruction?: components["schemas"]["InstructionFacts"] | null;
+            mcp?: components["schemas"]["McpFacts"] | null;
+            output_style?: components["schemas"]["OutputStyleFacts"] | null;
+            permission?: components["schemas"]["PermissionFacts"] | null;
+            plugin?: components["schemas"]["PluginFacts"] | null;
+            skill?: components["schemas"]["SkillFacts"] | null;
+        };
+        /**
+         * ItemReason
+         * @description Why the item resolves as it does.
+         *
+         *     Why the item resolves as it does. ``ref_item`` names another item the reason is
+         *     about (the cap that lowers it, the file that overrides it), or None.
+         */
+        ItemReason: {
+            /** Code */
+            code: string;
+            /** Params */
+            params: {
+                [key: string]: string;
+            };
+            /** Ref Item */
+            ref_item: string | null;
+            /** Rule Id */
+            rule_id: string | null;
         };
         /**
          * KindCosts
@@ -782,6 +1043,41 @@ export interface components {
             unchanged: true;
         };
         /**
+         * MaskedText
+         * @description A value that may hold a secret. ``masked`` is True when masking hid any part.
+         */
+        MaskedText: {
+            /** Masked */
+            masked: boolean;
+            /** Text */
+            text: string;
+        };
+        /**
+         * McpFacts
+         * @description Inspector facts for one MCP server.
+         *
+         *     Inspector facts for one MCP server. Env and headers show names and masked values.
+         *     ``approved`` is None when no approval applies.
+         */
+        McpFacts: {
+            /** Approved */
+            approved: boolean | null;
+            /** Args */
+            args: components["schemas"]["MaskedText"][];
+            command: components["schemas"]["MaskedText"] | null;
+            /** Env */
+            env: {
+                [key: string]: components["schemas"]["MaskedText"];
+            };
+            /** Headers */
+            headers: {
+                [key: string]: components["schemas"]["MaskedText"];
+            };
+            /** Transport */
+            transport: string;
+            url: components["schemas"]["MaskedText"] | null;
+        };
+        /**
          * MintRequest
          * @description Body of ``POST /api/access/mint``.
          */
@@ -826,6 +1122,8 @@ export interface components {
         ModelCheckRow: {
             /** Agent */
             agent: string | null;
+            /** Item Id */
+            item_id?: string | null;
             /** Mismatched Runs */
             mismatched_runs: number;
             /** Params */
@@ -971,6 +1269,16 @@ export interface components {
             tokens: number;
         };
         /**
+         * OutputStyleFacts
+         * @description Inspector facts for the output style setting or one style file.
+         */
+        OutputStyleFacts: {
+            /** Active */
+            active: string | null;
+            /** Builtin */
+            builtin: boolean;
+        };
+        /**
          * PairRuns
          * @description One model and effort pair the runs used, with its run count.
          */
@@ -999,6 +1307,50 @@ export interface components {
              * Format: date-time
              */
             since: string;
+        };
+        /**
+         * PermissionFacts
+         * @description Inspector facts for one permission rule, ``defaultMode`` or an extra folder.
+         */
+        PermissionFacts: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "allow" | "ask" | "deny" | "default_mode" | "directory";
+            /** Pattern */
+            pattern: string | null;
+            /** Tool */
+            tool: string | null;
+        };
+        /**
+         * PluginFacts
+         * @description Inspector facts for one plugin. ``contents`` lists the item ids it adds.
+         */
+        PluginFacts: {
+            /** Contents */
+            contents: string[];
+            /** Enabled */
+            enabled: components["schemas"]["PluginScopeState"][];
+            /** Marketplace */
+            marketplace: string | null;
+            /** Orphaned Versions */
+            orphaned_versions: string[];
+            /** Version */
+            version: string | null;
+        };
+        /**
+         * PluginScopeState
+         * @description Whether one scope's ``enabledPlugins`` turns the plugin on or off.
+         */
+        PluginScopeState: {
+            /** Enabled */
+            enabled: boolean;
+            /**
+             * Scope
+             * @enum {string}
+             */
+            scope: "managed" | "command_line" | "project_local" | "project" | "user" | "plugin" | "shell";
         };
         /**
          * PriceTier
@@ -1040,6 +1392,91 @@ export interface components {
             source: "model_pricing" | "litellm" | "last_good" | "bundled";
         };
         /**
+         * ProblemFix
+         * @description The one action a To fix row offers.
+         *
+         *     The one action a To fix row offers. ``target`` is an item id, a masked command or a
+         *     full path, by ``kind``.
+         */
+        ProblemFix: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "open_item" | "copy_command" | "copy_path" | "cant_fix_here";
+            /** Reason */
+            reason: string | null;
+            /** Target */
+            target: string | null;
+        };
+        /**
+         * ProblemList
+         * @description Answer of ``GET /api/problems``. ``counted`` equals ``to_fix.count``.
+         */
+        ProblemList: {
+            /** As Of */
+            as_of: string | null;
+            /** Counted */
+            counted: number;
+            /** Etag */
+            etag: string;
+            /** Project */
+            project: string;
+            /** Rows */
+            rows: components["schemas"]["ProblemRow"][];
+            /**
+             * Server Time
+             * Format: date-time
+             */
+            server_time: string;
+            /**
+             * Unchanged
+             * @constant
+             */
+            unchanged: false;
+        };
+        /**
+         * ProblemRow
+         * @description One row of the problems feed.
+         *
+         *     One row of the problems feed. ``id`` is stable across refetches. ``thing`` is the
+         *     display name the title names.
+         */
+        ProblemRow: {
+            /** Code */
+            code: string;
+            confidence: components["schemas"]["Confidence"];
+            /** File */
+            file: string | null;
+            fix: components["schemas"]["ProblemFix"];
+            /** Full Path */
+            full_path: string | null;
+            /**
+             * Group
+             * @enum {string}
+             */
+            group: "couldnt_read" | "wont_load" | "not_as_set" | "cant_tell" | "notice";
+            /** Id */
+            id: string;
+            /** Item Id */
+            item_id: string | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "read_failure" | "problem" | "cant_tell" | "notice";
+            /** Line */
+            line: number | null;
+            /** Params */
+            params: {
+                [key: string]: string;
+            };
+            /** Part */
+            part: ("settings" | "agents" | "instructions" | "rules" | "skills" | "hooks" | "permissions" | "mcp" | "plugins" | "output_style") | null;
+            /** Thing */
+            thing: string;
+        };
+        /**
          * Project
          * @description One project in the picker.
          */
@@ -1048,6 +1485,8 @@ export interface components {
             display_path: string;
             /** Key */
             key: string;
+            /** Listed */
+            listed: boolean;
             /** Name */
             name: string;
             /** Running */
@@ -1077,6 +1516,26 @@ export interface components {
             mixed: boolean;
             /** Model */
             model: string | null;
+        };
+        /**
+         * ReadOnly
+         * @description Why an item can't change here and who owns it.
+         *
+         *     ``command`` is the ``claude mcp`` command for a user or local MCP server, masked.
+         *     For a plugin item ``params`` names the plugin and the page words how to change
+         *     it (update or disable the plugin).
+         */
+        ReadOnly: {
+            /**
+             * Code
+             * @enum {string}
+             */
+            code: "managed" | "plugin" | "claude_json_command" | "command_line" | "not_visible";
+            command: components["schemas"]["MaskedText"] | null;
+            /** Params */
+            params: {
+                [key: string]: string;
+            };
         };
         /**
          * ReviewSession
@@ -1184,6 +1643,22 @@ export interface components {
             project: string;
             /** Session */
             session: string;
+        };
+        /**
+         * ScopeReach
+         * @description A scope that could set this item.
+         *
+         *     A scope that could set this item, and whether the server can see it. A Command line
+         *     entry appears only for an item that has a flag.
+         */
+        ScopeReach: {
+            /**
+             * Scope
+             * @enum {string}
+             */
+            scope: "managed" | "command_line" | "project_local" | "project" | "user" | "plugin" | "shell";
+            /** Visible */
+            visible: boolean;
         };
         /**
          * Segment
@@ -1295,6 +1770,242 @@ export interface components {
             value: string;
         };
         /**
+         * SetupItem
+         * @description One item on a surface page. The inspector reads every field.
+         *
+         *     ``key`` is the raw key or name, and ``label_known`` says whether the page has a
+         *     label for it; when not, the page shows ``key`` (open-ended settings keys never
+         *     fail the closed-enum test). ``not_read`` is set when the item's file lies outside
+         *     the allowed roots, a state apart from Couldn't read and Unknown. ``may_change``
+         *     is True when a file the part couldn't read could change this item's answer.
+         *     ``usage`` is set for agents and model and effort settings, over the last 30 days.
+         *     ``real_path`` is the target's display path when the file is a symlink. For an
+         *     agent, ``status`` is the outcome of what runs (the Model check's word for the file's
+         *     model and effort over no runs), and the load status stays in ``reason``; ``check``
+         *     carries the Model check's code and params when that outcome was judged.
+         */
+        SetupItem: {
+            /** Applies */
+            applies: ("now" | "new_session" | "restart" | "reload_plugins") | null;
+            check?: components["schemas"]["ItemCheck"] | null;
+            confidence: components["schemas"]["Confidence"];
+            effective: components["schemas"]["Effective"] | null;
+            facts: components["schemas"]["ItemFacts"];
+            /**
+             * Feature
+             * @constant
+             */
+            feature: "core";
+            /** Group */
+            group: string | null;
+            /** Id */
+            id: string;
+            /** Key */
+            key: string;
+            /** Label Known */
+            label_known: boolean;
+            loads: components["schemas"]["SetupLoads"] | null;
+            /** Location */
+            location?: "parent" | null;
+            /** May Change */
+            may_change: boolean;
+            /** Name */
+            name: string;
+            /** Not Read */
+            not_read: ("outside_scope" | "plugin_outside_plugins") | null;
+            /** Order */
+            order: number;
+            /**
+             * Part
+             * @enum {string}
+             */
+            part: "settings" | "agents" | "instructions" | "rules" | "skills" | "hooks" | "permissions" | "mcp" | "plugins" | "output_style";
+            /** Reach */
+            reach: components["schemas"]["ScopeReach"][];
+            read_only_reason: components["schemas"]["ReadOnly"] | null;
+            /** Real Path */
+            real_path: string | null;
+            reason: components["schemas"]["ItemReason"] | null;
+            /** Risk Tier */
+            risk_tier: ("safe" | "risky") | null;
+            /** Scope */
+            scope: ("managed" | "command_line" | "project_local" | "project" | "user" | "plugin" | "shell") | null;
+            /** Sources */
+            sources: components["schemas"]["SetupSource"][];
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "in_effect" | "overridden" | "ignored" | "lowered" | "invalid" | "default" | "unknown";
+            usage: components["schemas"]["Coded"] | null;
+            /** Winner */
+            winner: number | null;
+            /** Writable */
+            writable: boolean;
+        };
+        /**
+         * SetupLoads
+         * @description When an instruction or rules file loads. ``globs`` only for ``on_demand``.
+         */
+        SetupLoads: {
+            /** Globs */
+            globs: string[];
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "always" | "on_demand" | "when_no_claude_md";
+        };
+        /**
+         * SetupMap
+         * @description Answer of ``GET /api/setup``.
+         *
+         *     ``server_started_at`` dates the shell scope. ``listed`` is False for a project
+         *     that is not on Bar Tab's list; its project scopes then read "Not read here" with
+         *     a notice (owner, November 9).
+         */
+        SetupMap: {
+            /** As Of */
+            as_of: string | null;
+            /** Etag */
+            etag: string;
+            /**
+             * Listed
+             * @default true
+             */
+            listed: boolean;
+            /** Notices */
+            notices: components["schemas"]["Coded"][];
+            /** Parts */
+            parts: components["schemas"]["SetupPartRow"][];
+            /** Project */
+            project: string;
+            /**
+             * Server Started At
+             * Format: date-time
+             */
+            server_started_at: string;
+            /**
+             * Server Time
+             * Format: date-time
+             */
+            server_time: string;
+            /**
+             * Unchanged
+             * @constant
+             */
+            unchanged: false;
+        };
+        /**
+         * SetupPartAnswer
+         * @description Answer of ``GET /api/setup/{part}``.
+         */
+        SetupPartAnswer: {
+            /** As Of */
+            as_of: string | null;
+            empty: components["schemas"]["EmptyInfo"] | null;
+            /** Etag */
+            etag: string;
+            /** Groups */
+            groups: components["schemas"]["GroupCount"][];
+            /** Items */
+            items: components["schemas"]["SetupItem"][];
+            /**
+             * Part
+             * @enum {string}
+             */
+            part: "settings" | "agents" | "instructions" | "rules" | "skills" | "hooks" | "permissions" | "mcp" | "plugins" | "output_style";
+            /** Project */
+            project: string;
+            /**
+             * Server Time
+             * Format: date-time
+             */
+            server_time: string;
+            /**
+             * Unchanged
+             * @constant
+             */
+            unchanged: false;
+            /** Unreadable */
+            unreadable: components["schemas"]["UnreadableFile"][];
+        };
+        /**
+         * SetupPartRow
+         * @description One row of the setup map.
+         *
+         *     One row of the setup map. ``summary`` carries the facts the drawn summary uses in
+         *     ``params`` (effective model and effort, agents with no recent runs, on-demand
+         *     globs). ``scopes`` is always present, so the Switch flips with no fetch.
+         */
+        SetupPartRow: {
+            /** Counted Problems */
+            counted_problems: number;
+            empty: components["schemas"]["EmptyInfo"] | null;
+            /**
+             * Part
+             * @enum {string}
+             */
+            part: "settings" | "agents" | "instructions" | "rules" | "skills" | "hooks" | "permissions" | "mcp" | "plugins" | "output_style";
+            /** Scopes */
+            scopes: components["schemas"]["SetupScopeCell"][];
+            /** Statuses */
+            statuses: components["schemas"]["StatusCount"][];
+            summary: components["schemas"]["Coded"];
+            /** Unreadable */
+            unreadable: boolean;
+        };
+        /**
+         * SetupScopeCell
+         * @description One part in one scope, for "Show where each comes from".
+         */
+        SetupScopeCell: {
+            /**
+             * Scope
+             * @enum {string}
+             */
+            scope: "managed" | "command_line" | "project_local" | "project" | "user" | "plugin" | "shell";
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "set" | "not_set" | "not_visible" | "unreadable";
+            summary: components["schemas"]["Coded"] | null;
+        };
+        /**
+         * SetupSource
+         * @description One place an item is set, in top-wins order.
+         *
+         *     ``key`` is what sets it there: a settings key path (``effortLevel``), an env
+         *     name (``env.CLAUDE_CODE_EFFORT_LEVEL``), a flag (``--effort``) or a front matter
+         *     key. ``value`` is None for a union part.
+         */
+        SetupSource: {
+            /** File */
+            file: string | null;
+            /** Full Path */
+            full_path: string | null;
+            /** Key */
+            key: string;
+            /** Line */
+            line: number | null;
+            /** Location */
+            location?: "parent" | null;
+            /** Plugin */
+            plugin: string | null;
+            /**
+             * Scope
+             * @enum {string}
+             */
+            scope: "managed" | "command_line" | "project_local" | "project" | "user" | "plugin" | "shell";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "in_effect" | "overridden" | "ignored" | "lowered" | "invalid" | "default" | "unknown";
+            value: components["schemas"]["MaskedText"] | null;
+        };
+        /**
          * ShareTile
          * @description A share from 0 to 1, such as the cache share. ``change_abs`` is in shares.
          */
@@ -1305,6 +2016,22 @@ export interface components {
             prior: number | null;
             /** Value */
             value: number | null;
+        };
+        /**
+         * SkillFacts
+         * @description Inspector facts for a skill or legacy command.
+         *
+         *     Inspector facts for a skill or legacy command. ``invoke`` is the slash form, with
+         *     the plugin namespace when there is one.
+         */
+        SkillFacts: {
+            description: components["schemas"]["MaskedText"] | null;
+            /** Invoke */
+            invoke: string;
+            /** Legacy Command */
+            legacy_command: boolean;
+            /** Namespace */
+            namespace: string | null;
         };
         /**
          * StateAt
@@ -1318,6 +2045,19 @@ export interface components {
             at: string;
             /** State */
             state: string;
+        };
+        /**
+         * StatusCount
+         * @description How many items of a part carry one status.
+         */
+        StatusCount: {
+            /** Count */
+            count: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "in_effect" | "overridden" | "ignored" | "lowered" | "invalid" | "default" | "unknown";
         };
         /**
          * Summary
@@ -1623,6 +2363,25 @@ export interface components {
             unpriced: components["schemas"]["Unpriced"];
         };
         /**
+         * ToFix
+         * @description The nav's To fix count.
+         *
+         *     The nav's To fix count. ``state`` is ``unchecked`` before the first problems pass
+         *     and ``failed`` when it couldn't run; ``count`` is None then. ``etag`` is the
+         *     problems answer's etag, so the nav and the To fix page agree.
+         */
+        ToFix: {
+            /** Count */
+            count: number | null;
+            /** Etag */
+            etag: string | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "ok" | "unchecked" | "failed";
+        };
+        /**
          * Together
          * @description Siblings launched within 5 s of each other share a key.
          */
@@ -1661,6 +2420,31 @@ export interface components {
             models: string[];
             /** Requests */
             requests: number;
+        };
+        /**
+         * UnreadableFile
+         * @description A file a collector could not read, or was not allowed to.
+         *
+         *     ``problem`` is the id of its To fix row, or None for a "not read here" file.
+         *     ``part`` is the setup part the file feeds; a collector that serves several parts
+         *     sets it so the setup map can split one ``Collected.unreadable`` list.
+         */
+        UnreadableFile: {
+            /** File */
+            file: string;
+            /** Full Path */
+            full_path: string | null;
+            /** Part */
+            part?: ("settings" | "agents" | "instructions" | "rules" | "skills" | "hooks" | "permissions" | "mcp" | "plugins" | "output_style") | null;
+            /** Problem */
+            problem: string | null;
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "permission" | "not_utf8" | "too_large" | "vanished" | "folder_unlistable" | "outside_scope" | "plugin_outside_plugins";
+            /** Scope */
+            scope: ("managed" | "command_line" | "project_local" | "project" | "user" | "plugin" | "shell") | null;
         };
         /**
          * Window
@@ -2094,6 +2878,65 @@ export interface operations {
             };
         };
     };
+    get_problems: {
+        parameters: {
+            query?: {
+                project?: string | null;
+                etag?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProblemList"] | components["schemas"]["Unchanged"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     get_projects: {
         parameters: {
             query?: never;
@@ -2216,6 +3059,127 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Timeline"] | components["schemas"]["Unchanged"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    get_setup: {
+        parameters: {
+            query?: {
+                project?: string | null;
+                etag?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SetupMap"] | components["schemas"]["Unchanged"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    get_setup_part: {
+        parameters: {
+            query?: {
+                project?: string | null;
+                etag?: string | null;
+            };
+            header?: never;
+            path: {
+                /** @description One of the ten setup parts. */
+                part: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SetupPartAnswer"] | components["schemas"]["Unchanged"];
                 };
             };
             /** @description Bad Request */

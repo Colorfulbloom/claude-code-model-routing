@@ -1,0 +1,9 @@
+{
+  "model": "claude-opus-5-5",
+  "permissions": {
+    "allow": [
+      "Bash(git status"
+    ]
+  },
+  "outputStyle": "ghost"
+}

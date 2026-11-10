@@ -26,7 +26,7 @@ import json.decoder
 import os
 import re
 from collections.abc import Callable, Iterable, Mapping
-from typing import Any, cast
+from typing import Any, Protocol, cast
 
 import agent_frontmatter
 import agent_md
@@ -185,19 +185,64 @@ def _read_bytes(path: str) -> tuple[bytes | None, str]:
         return None, "unreadable"
 
 
+class FileAccess(Protocol):
+    """How the settings collector reaches the disk.
+
+    The default (``DiskAccess``) opens files itself, as the old app does. The setup
+    read side (``collect_settings``) passes an object that replays what it already
+    read through ``read_scope``, so ``collect`` opens nothing of its own there.
+    """
+
+    def read(self, path: str) -> tuple[bytes | None, str]:
+        """Return (bytes, status). Status is "ok", "missing" or "unreadable"."""
+        ...
+
+    def listdir(self, folder: str) -> list[str]:
+        """Return the entry names of a folder, or raise OSError as os.listdir does."""
+        ...
+
+    def isfile(self, path: str) -> bool:
+        """True when the path is a regular file."""
+        ...
+
+
+class DiskAccess:
+    """The default ``FileAccess``: the real disk."""
+
+    def read(self, path: str) -> tuple[bytes | None, str]:
+        """Read one file from the disk."""
+        return _read_bytes(path)
+
+    def listdir(self, folder: str) -> list[str]:
+        """List one folder on the disk."""
+        return os.listdir(folder)
+
+    def isfile(self, path: str) -> bool:
+        """Check one path on the disk."""
+        return os.path.isfile(path)
+
+
+_DISK = DiskAccess()
+
+
 def _read_settings_file(
-    layer: str, path: str, managed: bool, overlay: dict[str, bytes] | None = None
+    layer: str,
+    path: str,
+    managed: bool,
+    overlay: dict[str, bytes] | None = None,
+    access: FileAccess = _DISK,
 ) -> tuple[Record | None, dict[str, Any] | None, Where | None]:
     """Return (record, data, where). record is None for a missing file.
 
     data and where are None unless the record's status is "ok". data is not
     masked yet. A path in overlay ({path: bytes}) is read from that map and
     not from the disk, and counts as present even when no such file exists.
+    ``access`` reads everything else.
     """
     if overlay is not None and path in overlay:
         raw, status = overlay[path], "ok"
     else:
-        raw, status = _read_bytes(path)
+        raw, status = access.read(path)
     if status == "missing":
         return None, None, None
     if status == "unreadable":
@@ -236,12 +281,14 @@ def _read_settings_file(
     return {"layer": layer, "path": path, "status": "ok", "line": None}, data, where
 
 
-def _managed_paths(managed_dir: str) -> tuple[list[str], Record | None]:
+def _managed_paths(
+    managed_dir: str, access: FileAccess = _DISK
+) -> tuple[list[str], Record | None]:
     """Return (paths in merge order, a record for an unlistable folder or None)."""
     paths = [os.path.join(managed_dir, MANAGED_FILE)]
     folder = os.path.join(managed_dir, MANAGED_FOLDER)
     try:
-        names = os.listdir(folder)
+        names = access.listdir(folder)
     except (FileNotFoundError, NotADirectoryError):
         return paths, None
     except OSError:
@@ -253,7 +300,7 @@ def _managed_paths(managed_dir: str) -> tuple[list[str], Record | None]:
         }
     for name in sorted(names):
         full = os.path.join(folder, name)
-        if name.endswith(".json") and not name.startswith(".") and os.path.isfile(full):
+        if name.endswith(".json") and not name.startswith(".") and access.isfile(full):
             paths.append(full)
     return paths, None
 
@@ -350,6 +397,7 @@ def collect_settings(
     managed_dir: str | None,
     overlay: dict[str, bytes] | None = None,
     local_path: str | None = None,
+    access: FileAccess = _DISK,
 ) -> Record:
     """Read the settings files.
 
@@ -368,15 +416,19 @@ def collect_settings(
     reads that one file. Otherwise the project's file (the leftover) and local_path
     (the root file) are both read, each with its own record in "files", and merge
     into one "local" source with the root file on top.
+
+    access reaches the disk (see FileAccess). The default is the real disk.
     """
     start_local = os.path.join(project_dir, ".claude", "settings.local.json")
     two_locals = local_path is not None and local_path != start_local
     files: list[Any] = []
     managed: list[Any] = []  # (data, where) of each ok managed file, in merge order
     if managed_dir is not None:
-        paths, folder_record = _managed_paths(managed_dir)
+        paths, folder_record = _managed_paths(managed_dir, access)
         for path in paths:
-            record, data, where = _read_settings_file("managed", path, True, overlay)
+            record, data, where = _read_settings_file(
+                "managed", path, True, overlay, access
+            )
             if record is None:
                 continue
             files.append(record)
@@ -395,7 +447,7 @@ def collect_settings(
     ):
         if path is None:
             continue
-        record, data, where = _read_settings_file(layer, path, False, overlay)
+        record, data, where = _read_settings_file(layer, path, False, overlay, access)
         if record is None:
             continue
         files.append(record)
@@ -522,16 +574,17 @@ def collect(
     overlay: dict[str, bytes] | None = None,
     reuse: Record | None = None,
     local_path: str | None = None,
+    access: FileAccess = _DISK,
 ) -> Record:
     """Run every collector. `rules` is the rules.json document.
 
     overlay is {path: bytes}, passed to collect_settings. reuse is an earlier
     collect() result: its agents and rules_files are taken as they are and those
     two collectors do not run. settings, settings_files and env always run.
-    local_path is passed to collect_settings.
+    local_path and access are passed to collect_settings.
     """
     settings = collect_settings(
-        config_dir, project_dir, managed_dir, overlay, local_path
+        config_dir, project_dir, managed_dir, overlay, local_path, access
     )
     names = [v["name"] for v in rules.get("variables", [])]
     return {

@@ -4,6 +4,7 @@ import { SONNET, agentRow, agentsAnswer, noRuns, setPair } from "@/test/review-t
 import {
   buildAgents,
   checkStatus,
+  isUnchecked,
   ranCell,
   runsOf,
   setCell,
@@ -58,6 +59,19 @@ describe("the source line", () => {
     expect(sourceLine("project")).toEqual({ text: "Shared project", description: null });
     expect(sourceLine("main")).toEqual({ text: "Settings", description: null });
     expect(sourceLine("unnamed")).toEqual({ text: "Runs with no agent type", description: null });
+  });
+
+  it("names a plugin agent's plugin and a managed agent as Managed", () => {
+    expect(sourceLine("plugin", "lint-kit")).toEqual({
+      text: "Plugin lint-kit",
+      description: null,
+    });
+    expect(sourceLine("managed")).toEqual({ text: "Managed", description: null });
+  });
+
+  it("falls back to an unknown source for a plugin row with no plugin name", () => {
+    expect(sourceLine("plugin").text).toBe("Source unknown");
+    expect(sourceLine("plugin", "").text).toBe("Source unknown");
   });
 
   it("says the source is unknown for no file, and explains it", () => {
@@ -171,6 +185,43 @@ describe("the rows", () => {
     expect(view.rows.find((row) => row.key === "builder")?.runs).toBe(5);
   });
 
+  it("give a row with a setup item its link key, and keep a plugin agent apart from a file agent", () => {
+    const view = buildAgents(
+      agentsAnswer({
+        ran: [
+          agentRow({ agent: "linter", item_id: "agents:linter" }),
+          agentRow({
+            agent: "linter",
+            scope: "plugin",
+            plugin: "lint-kit",
+            item_id: "agents:lint-kit:linter",
+            status: null,
+            reason_code: "agent_source_unchecked",
+          }),
+          agentRow({ agent: "@main", scope: "main" }),
+        ],
+        never_ran: [],
+      }),
+    );
+    expect(view.rows.map((row) => [row.id, row.itemKey])).toEqual([
+      ["agents:linter", "linter"],
+      ["agents:lint-kit:linter", "lint-kit:linter"],
+      ["@main", null],
+    ]);
+    expect(view.rows[1]).toMatchObject({
+      source: { text: "Plugin lint-kit", description: null },
+      unchecked: true,
+      check: null,
+    });
+    expect(view.rows[0]?.unchecked).toBe(false);
+  });
+
+  it("marks a managed agent and a source the check does not cover as not checked", () => {
+    expect(isUnchecked({ scope: "managed", reason_code: null })).toBe(true);
+    expect(isUnchecked({ scope: "user", reason_code: "agent_source_unchecked" })).toBe(true);
+    expect(isUnchecked({ scope: "project", reason_code: "ran_differs" })).toBe(false);
+  });
+
   it("list the agent files that did not run with their source and setup", () => {
     const view = buildAgents(
       agentsAnswer({ never_ran: [noRuns({ set: null, set_reason: "read_failed" })] }),
@@ -178,6 +229,8 @@ describe("the rows", () => {
     expect(view.neverRan).toEqual([
       {
         key: "migrator",
+        id: "migrator",
+        itemKey: null,
         name: "migrator",
         source: { text: "Shared project", description: null },
         set: { text: null, why: "read_failed" },

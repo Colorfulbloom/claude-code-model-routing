@@ -8,13 +8,21 @@ import { agentList, costChart, modelList, sessionList, summary } from "@/test/re
 export const INSTANCE = "inst-1";
 
 export const PROJECTS: Project[] = [
-  { key: "builder", name: "Builder", display_path: "/work/builder", state: "ok", running: true },
+  {
+    key: "builder",
+    name: "Builder",
+    display_path: "/work/builder",
+    state: "ok",
+    running: true,
+    listed: true,
+  },
   {
     key: "driftwood",
     name: "Driftwood",
     display_path: "/work/driftwood",
     state: "ok",
     running: false,
+    listed: true,
   },
   {
     key: "saltmarsh",
@@ -22,6 +30,7 @@ export const PROJECTS: Project[] = [
     display_path: "/work/saltmarsh",
     state: "no_claude_folder",
     running: false,
+    listed: true,
   },
   {
     key: "harbor",
@@ -29,6 +38,7 @@ export const PROJECTS: Project[] = [
     display_path: "/work/old/harbor-notes",
     state: "folder_not_found",
     running: false,
+    listed: true,
   },
 ];
 
@@ -169,6 +179,20 @@ export function fakeServer(
       if (path.startsWith("/api/sessions?")) {
         // The Session review Select list, empty, so a page that asks for it does not read app JSON.
         return Promise.resolve(new Response(JSON.stringify(sessionList([]))));
+      }
+      // The To fix feed, empty, so the To fix route mounts as its empty card. The To fix page tests
+      // use tofix.ts for rows of their own.
+      if (path.startsWith("/api/problems?")) {
+        const body = {
+          project: new URL(path, "http://x").searchParams.get("project") ?? "",
+          server_time: "2026-11-10T15:00:00Z",
+          as_of: "2026-11-10T15:00:00Z",
+          etag: "problems-empty",
+          unchanged: false,
+          rows: [],
+          counted: 0,
+        };
+        return Promise.resolve(new Response(JSON.stringify(body)));
       }
       const body = path.startsWith("/api/projects")
         ? { projects: server.projects }

@@ -1,0 +1,22 @@
+{
+  "case": "scope-symlink",
+  "note": "A symlinked single file pointing outside the roots is followed and shows its real path (owner answer 7). A symlinked folder pointing outside is not followed and is listed as not read here, with no item and no row. real_path_endswith is matched against the display path of the target. A path outside the roots shows its last part only, never an absolute path.",
+  "project": {"name": "Proj", "dir": "work/parent/proj"},
+  "parts": {
+    "agents": {
+      "items": [
+        {"id": "agents:linked", "key": "linked", "scope": "user", "status": "in_effect", "real_path_endswith": "linked-agent.md", "sources": [{"scope": "user", "key": "name", "file": "~/.claude/agents/linked.md", "line": 2, "status": "in_effect"}]},
+        {"id": "agents:local", "key": "local", "scope": "user", "status": "in_effect", "sources": [{"scope": "user", "key": "name", "file": "~/.claude/agents/local.md", "line": 2, "status": "in_effect"}]}
+      ],
+      "unreadable": []
+    },
+    "skills": {
+      "items": [],
+      "unreadable": [
+        {"file": "~/.claude/skills/ext", "scope": "user", "reason": "outside_scope"}
+      ],
+      "empty": "none_found"
+    }
+  },
+  "problems": []
+}

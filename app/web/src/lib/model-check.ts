@@ -27,6 +27,10 @@ export interface McFinding {
   statusWord: string | null;
   title: string;
   body: string;
+  /** The agent's name as the page says it, for the See why link's accessible name. */
+  agent: string;
+  /** The setup item of the agent this row is about, or null when the server named none. */
+  itemId: string | null;
   /** The board's one-line sentence for the compact Review card, where a key covers the reason. */
   oneLine?: string;
 }
@@ -275,6 +279,8 @@ export function buildModelCheck(check: ModelCheck): McView {
       id: `${row.agent ?? "main"}-${row.reason_code ?? "none"}`,
       status: row.status,
       statusWord: row.status === null ? null : STATUS_WORDS[row.status],
+      agent: agentName(row),
+      itemId: row.item_id ?? null,
       ...found,
     });
   }
@@ -289,4 +295,15 @@ export function buildModelCheck(check: ModelCheck): McView {
     noFileLine: noFile.length === 0 ? null : t("mc_nofile_list", { list: nameList(noFile) }),
     okLine,
   };
+}
+
+/**
+ * The two numbers of "{k} of {n} agents didn't run as set", both from the rows that have a status.
+ * A row with no status (no agent file, no pin, no agent type) was not checked, so it is in neither
+ * number. A row in effect or at its default ran as set, so it is in n only. Task 21 item 11.
+ */
+export function checkCounts(check: ModelCheck): { checked: number; notAsSet: number } {
+  const checked = check.rows.filter((row) => row.status !== null);
+  const notAsSet = checked.filter((row) => row.status !== "in_effect" && row.status !== "default");
+  return { checked: checked.length, notAsSet: notAsSet.length };
 }

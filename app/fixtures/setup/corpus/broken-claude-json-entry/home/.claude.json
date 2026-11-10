@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "notes": {"command": "node", "args": ["notes.js"]}
+  },
+  "projects": {
+    "@@PROJECT@@": "not an object"
+  }
+}

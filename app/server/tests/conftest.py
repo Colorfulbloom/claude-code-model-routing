@@ -3,6 +3,7 @@
 import asyncio
 import ipaddress
 import os
+import shutil
 import socket
 import subprocess
 import sys
@@ -247,6 +248,26 @@ def long_demo_build(tmp_path_factory: pytest.TempPathFactory) -> Path:
         timeout=180,
         capture_output=True,
     )
+    return out
+
+
+SETUP_CORPUS = REPO_ROOT / "app" / "fixtures" / "setup" / "corpus"
+
+
+@pytest.fixture(scope="session")
+def setup_corpus(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """Copy the committed setup corpus once per test process and return the copy.
+
+    The corpus (m4-build.md section 4, task 2) is copied with its symlinks kept as
+    links, into the pytest temp folder, which sits outside every repo (fact T-c826).
+    Files that git can't hold (mode 000, invalid UTF-8, over the cap) are made by the
+    tests that need them, in their own ``tmp_path``. Treat this copy as read only.
+    """
+    if not SETUP_CORPUS.is_dir():
+        msg = f"setup corpus missing at {SETUP_CORPUS}; build it with build_corpus.py"
+        raise FileNotFoundError(msg)
+    out = tmp_path_factory.mktemp("setup-corpus") / "corpus"
+    shutil.copytree(SETUP_CORPUS, out, symlinks=True)
     return out
 
 

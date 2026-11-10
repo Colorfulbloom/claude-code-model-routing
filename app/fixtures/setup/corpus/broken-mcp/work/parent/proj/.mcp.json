@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "empty": {"env": {"A": "b"}},
+    "typeless": {"url": "https://api.example.test/mcp"},
+    "templated": {"command": "node", "args": ["${MCP_TOKEN_FILE}"]},
+    "fine": {"command": "node", "args": ["ok.js"]}
+  }
+}

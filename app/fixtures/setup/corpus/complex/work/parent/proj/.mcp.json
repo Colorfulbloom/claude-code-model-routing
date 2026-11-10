@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "docs": {
+      "command": "npx",
+      "args": ["-y", "docs-mcp", "--secret", "FAKECOMPLEXSECRETFLAG0000004"],
+      "env": {"DOCS_API_KEY": "sk-live-FAKECOMPLEXENV0000003"}
+    }
+  }
+}
