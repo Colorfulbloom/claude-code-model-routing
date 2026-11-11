@@ -8,17 +8,24 @@
   font-size: var(--text-xs);
 }
 
+/* A line stays on one row while it fits, which is every line with a same-day time. A line with a
+   date, such as "Backup failed at September 30, 12:59 PM", is wider than the column, so it wraps
+   onto a second row. The time is the part that matters, so it is never cut off with an ellipsis.
+   text-wrap pretty keeps a lone "PM" off the last row, and overflow-wrap anywhere breaks a word
+   that is wider than the column by itself, such as a long Claude Code version. */
 .sidebar-footer-line {
-  overflow: hidden;
   line-height: 1.45;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
 }
 
+/* The mark sits in its own column, so a second row lines up under the text, not under the mark. */
 .sidebar-footer-line.is-warn {
+  display: flex;
+  gap: 5px;
   color: var(--status-overridden-fg);
 }
 
 .sidebar-footer-mark {
-  margin-right: 5px;
+  flex: none;
 }

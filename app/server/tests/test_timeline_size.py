@@ -4,8 +4,10 @@ An eight-hour session with 200 runs goes into a temp store. The timeline must bu
 under 100 ms (the median of 20 builds after a warm-up, so one slow build on a busy
 runner does not fail it), and its gzip body must stay under 200 KB (the exit of M2,
 plan section 6). Both numbers are printed, with the 95th percentile and the slowest
-build. Under CI, which GitHub sets, the time budget is three times looser because the
-runners have two shared vCPUs. The size limit stays the same.
+build. Under CI, which GitHub sets, the time budget is the CI limit from
+``timing_policy`` (ten times looser) because the runners have two shared vCPUs. The size
+limit stays the same. The test carries the ``timing`` marker, so the python 3.11
+coverage job deselects it and the python 3.14 job runs it.
 """
 
 import gzip
@@ -22,6 +24,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # tests/ is not on sys.path
 import timeline_helpers as t
+import timing_policy
 
 import model_check
 import timeline
@@ -32,7 +35,6 @@ SESSION_SECONDS = 8 * 3600
 REQUESTS_PER_RUN = 6
 BUILDS = 20
 MEDIAN_LIMIT_MS = 100.0
-CI_SLACK = 3.0  # a two-vCPU shared runner is a few times slower than a laptop
 GZIP_LIMIT_BYTES = 200 * 1024
 AGENTS = ("scout", "worker", "reviewer", "builder", "scribe", "planner", "tester")
 
@@ -128,6 +130,7 @@ CHILD = (
 
 
 @pytest.mark.slow
+@pytest.mark.timing
 def test_an_eight_hour_session_with_200_runs_builds_fast_and_stays_small(
     tmp_path: Path,
 ) -> None:
@@ -161,6 +164,6 @@ def test_an_eight_hour_session_with_200_runs_builds_fast_and_stays_small(
         f"gzip {result['gzip_bytes'] / 1024:.1f} KB"
     )
     assert result["runs"] >= RUNS
-    limit = MEDIAN_LIMIT_MS * (CI_SLACK if os.environ.get("CI") else 1.0)
-    assert result["median_ms"] < limit
+    limit = timing_policy.limit(MEDIAN_LIMIT_MS)
+    assert result["median_ms"] < limit, f"median {result['median_ms']:.0f} ms, {limit=}"
     assert result["gzip_bytes"] < GZIP_LIMIT_BYTES

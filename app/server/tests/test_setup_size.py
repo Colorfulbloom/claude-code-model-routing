@@ -12,10 +12,14 @@ signatures and answers ``unchanged``. The plan's targets (m4-build section 2, ta
 are a cold 95th percentile under 300 ms for the map and each part, and a warm signature
 check under 20 ms. The numbers are printed first and then the targets are asserted, so
 a miss still shows what it measured. Under CI, which GitHub sets, the test takes more
-calls and asserts the median, under a looser CI limit (``CI_COLD_LIMIT_MS`` and
-``CI_WARM_LIMIT_MS``), because a two-vCPU runner can slow one call and the 95th
-percentile of a few calls is just the slowest, as in ``test_review_size.py``. A local
-run still asserts the 95th percentile against the strict targets.
+calls and asserts the median, under the CI limit from ``timing_policy`` (ten times the
+target), because a two-vCPU runner can slow one call and the 95th percentile of a few
+calls is just the slowest, as in ``test_review_size.py``. A local run still asserts the
+95th percentile against the strict targets. Python 3.11 under coverage measured about
+6 times the local time (run 42924464933 on 05070dc: warm median 88 ms against about
+15 ms locally on stress, and cold median 1070 ms against 173 to 196 ms locally on
+plugins30), so the python 3.11 job deselects these ``timing`` tests and the python
+3.14 job runs them.
 """
 
 import json
@@ -32,25 +36,19 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # tests/ is not on sys.path
 import setup_api_helpers as sah
 import setup_case_helpers as sc
+import timing_policy
 
 import claude_json
 import fixture_provider
 from models import SETUP_PARTS
 
-IN_CI = bool(os.environ.get("CI"))  # GitHub sets it
+IN_CI = timing_policy.in_ci()
 CALLS = int(os.environ.get("SETUP_SIZE_CALLS", "15" if IN_CI else "10"))
 WARM_CALLS = 3 * CALLS  # a warm call is a few milliseconds, so more of them are cheap
+# The targets guard speed on the owner's machine, not on a runner. Under CI the limits
+# are these targets through timing_policy.limit, so 3000 ms cold and 200 ms warm.
 COLD_TARGET_P95_MS = 300.0
 WARM_TARGET_MS = 20.0
-# CI limits. The targets guard speed on the owner's machine, not on a runner. Python
-# 3.11 under coverage on a two-vCPU runner measured about 6 times the local time (run
-# 42924464933 on 05070dc: warm median 88 ms against about 15 ms locally on stress, and
-# cold median 1070 ms against 173 to 196 ms locally on plugins30). A flat 3 times slack
-# failed both. Each CI limit is one number with about 2.3 times headroom over that run
-# (the slowest warm median was 89 ms, the slowest cold median 1087 ms). It still
-# catches a real slowdown of several times, and the local run keeps the strict targets.
-CI_COLD_LIMIT_MS = 2500.0
-CI_WARM_LIMIT_MS = 200.0
 PLUGINS = 30
 # Worlds known to miss the warm target (about 42 ms against 20 ms on 30 plugins).
 WARM_MISSES = frozenset({"plugins30"})
@@ -231,6 +229,7 @@ def measured(
 
 
 @pytest.mark.slow
+@pytest.mark.timing
 def test_every_route_answers_on_both_worlds(
     measured: tuple[str, dict[str, dict[str, float]]],
 ) -> None:
@@ -239,6 +238,7 @@ def test_every_route_answers_on_both_worlds(
 
 
 @pytest.mark.slow
+@pytest.mark.timing
 def test_a_cold_read_stays_under_the_target(
     measured: tuple[str, dict[str, dict[str, float]]],
 ) -> None:
@@ -246,12 +246,13 @@ def test_a_cold_read_stays_under_the_target(
     stat, label = (
         ("cold_median_ms", "median") if IN_CI else ("cold_p95_ms", "95th percentile")
     )
-    limit = CI_COLD_LIMIT_MS if IN_CI else COLD_TARGET_P95_MS
+    limit = timing_policy.limit(COLD_TARGET_P95_MS)
     over = {n: r[stat] for n, r in rows.items() if r[stat] >= limit}
     assert not over, f"{name}: cold {label} at or over {limit:.0f} ms: {over}"
 
 
 @pytest.mark.slow
+@pytest.mark.timing
 def test_a_matching_signature_check_stays_under_the_target(
     measured: tuple[str, dict[str, dict[str, float]]],
 ) -> None:
@@ -259,7 +260,7 @@ def test_a_matching_signature_check_stays_under_the_target(
     stat, label = (
         ("warm_median_ms", "median") if IN_CI else ("warm_p95_ms", "95th percentile")
     )
-    limit = CI_WARM_LIMIT_MS if IN_CI else WARM_TARGET_MS
+    limit = timing_policy.limit(WARM_TARGET_MS)
     over = {n: r[stat] for n, r in rows.items() if r[stat] >= limit}
     if over and name in WARM_MISSES:
         # Reported to the owner (m4-build task 10). A cache is new work, so it waits

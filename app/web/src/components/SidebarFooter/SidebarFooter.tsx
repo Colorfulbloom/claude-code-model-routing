@@ -16,8 +16,9 @@ export interface SidebarFooterProps {
 }
 
 /**
- * The sidebar footer (components.md entry 53). Muted 12px lines, each on one line with an
- * ellipsis. They are plain text, never links and never live regions. The notice line announces.
+ * The sidebar footer (components.md entry 53). Muted 12px lines, each on one row while it fits. A
+ * line with a date wraps onto a second row, so a time is never cut off. They are plain text,
+ * never links and never live regions. The notice line announces.
  */
 export function SidebarFooter({ lines, className }: SidebarFooterProps) {
   return (

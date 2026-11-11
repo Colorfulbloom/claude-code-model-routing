@@ -3,14 +3,24 @@
 The regex ``_USERINFO.sub`` retried at every letter of a long run of scheme
 characters, so one long line in an agent field took minutes to mask. Every secret
 here is made up.
+
+The timing test is the guard for that denial-of-service fix. Locally a 1 MiB line must
+mask in under a second (the linear scan takes 0.03 to 0.09 s). Under CI the limit comes
+from ``timing_policy`` and is 10 s, because python 3.11 under coverage took 1.01 s on
+the worst line. The quadratic regex took about 480 s on 1 MiB, so 10 s still fails it.
 """
 
 import re
+import sys
 import time
+from pathlib import Path
 
 import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # tests/ is not on sys.path
+import timing_policy
 
 import collect
 import masking
@@ -65,17 +75,22 @@ def test_mask_url_matches_the_regex_on_any_text(url: str) -> None:
     assert masking.mask_url(url) == _reference(url)
 
 
+@pytest.mark.timing
 @pytest.mark.parametrize(
     "text",
     [
-        "a" * 1_048_576,
-        "a1" * 524_288,
-        "a" * 1_048_000 + "://u",
-        "a://" * 262_144,
-        ("a" * 1000 + "://" + "b" * 1000 + ":") * 500,
+        pytest.param("a" * 1_048_576, id="one-run-of-letters"),
+        pytest.param("a1" * 524_288, id="letters-and-digits"),
+        pytest.param("a" * 1_048_000 + "://u", id="long-run-then-a-scheme"),
+        pytest.param("a://" * 262_144, id="many-schemes"),
+        pytest.param(
+            ("a" * 1000 + "://" + "b" * 1000 + ":") * 500, id="many-user-and-host-runs"
+        ),
     ],
 )
 def test_one_mebibyte_line_masks_in_well_under_a_second(text: str) -> None:
     started = time.monotonic()
     masking.mask_url(text)
-    assert time.monotonic() - started < 1.0
+    took = time.monotonic() - started
+    limit = timing_policy.limit(1.0)
+    assert took < limit, f"masking took {took:.2f} s, limit {limit:.0f} s"

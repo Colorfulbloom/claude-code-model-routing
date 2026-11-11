@@ -4,7 +4,9 @@ The real store writer runs on a temp tree. The test appends a request to a runni
 session's transcript 20 times and polls the provider's timeline until the new request
 shows. The median lag must stay under 1.5 s and the worst under 2.0 s (the exit of
 M2, plan section 6). The numbers are printed. The page's own 1 s poll comes on top and
-is measured in the browser.
+is measured in the browser. Under CI the limits come from ``timing_policy``, and the
+test carries the ``timing`` marker, so the python 3.11 coverage job deselects it. The
+10 s wait for each request still fails first, so on CI a lag of 10 s is the ceiling.
 """
 
 import json
@@ -19,6 +21,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # tests/ is not on sys.path
 import ingest_helpers as h
+import timing_policy
 
 import store_provider
 from models import Timeline
@@ -90,6 +93,7 @@ def wait_for_output(
 
 
 @pytest.mark.slow
+@pytest.mark.timing
 def test_a_new_request_reaches_the_timeline_within_two_seconds(
     tmp_path: Path, provider: store_provider.StoreProvider
 ) -> None:
@@ -108,5 +112,5 @@ def test_a_new_request_reaches_the_timeline_within_two_seconds(
         f"live latency over {APPENDS} appends: median {median * 1000:.0f} ms, "
         f"worst {max(lags) * 1000:.0f} ms, best {min(lags) * 1000:.0f} ms"
     )
-    assert median < MEDIAN_LIMIT_S
-    assert max(lags) < WORST_LIMIT_S
+    assert median < timing_policy.limit(MEDIAN_LIMIT_S)
+    assert max(lags) < timing_policy.limit(WORST_LIMIT_S)

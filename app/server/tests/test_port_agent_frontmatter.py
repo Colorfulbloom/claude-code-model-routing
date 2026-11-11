@@ -27,8 +27,11 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # tests/ is not on sys.path
 import port_helpers as helpers
+import timing_policy
 
 import agent_frontmatter as af
 from json_shapes import is_dict
@@ -221,9 +224,11 @@ class RejectedShapesTest(unittest.TestCase):
         fields, errors = af.read_frontmatter(doc(r"description: 'a \x41 b'"))
         self.assertEqual((fields, errors), ({"description": r"a \x41 b"}, []))
 
+    @pytest.mark.timing
     def test_long_flow_list_stays_linear(self) -> None:
         # A list item that is not at its start never opens a quote, so 200k quotes after
-        # "a" used to cost a join of the item for each one (8 seconds at 80k).
+        # "a" used to cost a join of the item for each one (8 seconds at 80k, so about 50
+        # at 200k). The CI limit is 10 s, which still fails that.
         for text in (
             "tools: [a" + "'" * 200000 + "]",
             "tools: [a" + '"' * 200000 + "]",
@@ -231,7 +236,7 @@ class RejectedShapesTest(unittest.TestCase):
         ):
             start = time.monotonic()
             af.read_frontmatter(doc(text))
-            self.assertLess(time.monotonic() - start, 1.0)
+            self.assertLess(time.monotonic() - start, timing_policy.limit(1.0))
 
     def test_text_after_a_closing_quote(self) -> None:
         self.rejected(doc('description: "a" b'), "after a closing quote")

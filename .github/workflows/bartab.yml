@@ -31,6 +31,16 @@ jobs:
       fail-fast: false
       matrix:
         python: ["3.11", "3.14"]
+        include:
+          # The tests marked timing assert wall-clock limits, which
+          # app/server/tests/timing_policy.py sets. Both jobs run under coverage on
+          # two shared vCPUs, but 3.11 uses coverage's C tracer and measured 4 to 12
+          # times slower than a laptop (run 42928016422: two timing tests failed with
+          # 5280 passed). 3.14 uses sys.monitoring, ran the same tests 2.4 times
+          # faster, and passed them. So 3.11 skips the timing tests and 3.14 is the
+          # job that holds the limits. Every other test runs on both.
+          - python: "3.11"
+            pytest_marks: '-m "not timing"'
     env:
       # app/.python-version pins 3.13 for local work. UV_PYTHON overrides it so
       # every uv command in this job uses the matrix interpreter.
@@ -52,7 +62,7 @@ jobs:
         run: uv run --frozen ruff format --check .
       - name: Pytest with coverage
         working-directory: app
-        run: uv run --frozen pytest -n auto --cov --cov-report=term-missing
+        run: uv run --frozen pytest -n auto --cov --cov-report=term-missing ${{ matrix.pytest_marks }}
 
   web:
     # Pyright lives in the npm scripts but reads the Python environment at

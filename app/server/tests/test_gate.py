@@ -2,11 +2,16 @@
 
 import asyncio
 import json
+import sys
 import time
+from pathlib import Path
 from typing import Any
 
 import pytest
 from starlette.types import ASGIApp
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # tests/ is not on sys.path
+import timing_policy
 
 import gate
 import main
@@ -270,7 +275,8 @@ def test_short_body_that_never_completes_is_refused_within_about_3_seconds(
     elapsed = time.monotonic() - started
     assert result.status is not None
     assert _is_refused(result.status)
-    assert elapsed < 4.0
+    # The gate's own timer is 3 s, so this is a wait, not CPU work (see timing_policy).
+    assert elapsed < timing_policy.wait_limit(4.0)
 
 
 def test_body_timeout_is_configurable(
@@ -288,7 +294,7 @@ def test_body_timeout_is_configurable(
         )
     )
     assert result.status == 408
-    assert time.monotonic() - started < 1.0
+    assert time.monotonic() - started < timing_policy.wait_limit(1.0)
 
 
 @pytest.mark.parametrize(
