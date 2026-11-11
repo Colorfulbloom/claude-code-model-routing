@@ -1,9 +1,19 @@
 import { Link } from "react-aria-components";
+import { HelpButton } from "@/components/HelpButton/HelpButton";
+import type { HelpId } from "@/strings/help";
 import { cx } from "../cx";
 import { SkeletonBones } from "../SkeletonBones/SkeletonBones";
 import "./Tile.css";
 
-export const states = ["default", "proof", "unpriced", "loading", "link"] as const;
+export const states = [
+  "default",
+  "proof",
+  "unpriced",
+  "loading",
+  "link",
+  "help",
+  "link-help",
+] as const;
 
 export interface TileProps {
   label: string;
@@ -21,12 +31,16 @@ export interface TileProps {
   loading?: { label: string };
   /** Makes the whole tile a link to a page. Tiles only open a page, never act. */
   href?: string;
+  /** A "?" at the end of the label row that opens this help entry. `values` are the numbers on the tile. */
+  help?: { id: HelpId; values?: Readonly<Record<string, string>> };
   className?: string;
 }
 
 /**
  * One headline number with its comparison and a small proof graphic (components.md entry 18). The
- * proof hides at 720 px and below. A tile that opens a page is a link.
+ * proof hides at 720 px and below. A tile that opens a page puts only its label in the link and
+ * stretches the link over the whole tile, so the link's name is the label and the numbers follow
+ * as plain text. The "?" is a sibling of that link, above it, so it never sits inside a link.
  */
 export function Tile({
   label,
@@ -37,13 +51,33 @@ export function Tile({
   proof,
   loading,
   href,
+  help,
   className,
 }: TileProps) {
-  const body = (
-    <>
+  const classes = cx(
+    "tile",
+    href !== undefined && "tile-link",
+    help !== undefined && "tile-has-help",
+    className,
+  );
+  return (
+    <div className={classes}>
       <span className="tile-label">
-        {label}
+        {href === undefined ? (
+          label
+        ) : (
+          <Link className="tile-link-label" href={href}>
+            {label}
+          </Link>
+        )}
         {qualifier !== undefined && <span className="tile-qualifier">{qualifier}</span>}
+        {help !== undefined && (
+          <HelpButton
+            className="tile-help"
+            help={help.id}
+            {...(help.values === undefined ? {} : { values: help.values })}
+          />
+        )}
       </span>
       {loading !== undefined ? (
         <SkeletonBones
@@ -61,15 +95,6 @@ export function Tile({
           {proof !== undefined && <span className="tile-proof">{proof}</span>}
         </>
       )}
-    </>
+    </div>
   );
-  const classes = cx("tile", href !== undefined && "tile-link", className);
-  if (href !== undefined) {
-    return (
-      <Link className={classes} href={href}>
-        {body}
-      </Link>
-    );
-  }
-  return <div className={classes}>{body}</div>;
 }

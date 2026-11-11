@@ -7,7 +7,8 @@ export const states = ["default", "problem"] as const;
 
 export interface HistoryRow {
   id: string;
-  label: string;
+  /** The row's name. A row with a help entry passes a help term. */
+  label: React.ReactNode;
   value: string;
   /** A ▲ value in the overridden colour. */
   warn?: boolean;

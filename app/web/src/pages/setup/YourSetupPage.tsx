@@ -12,9 +12,13 @@
  */
 import { useParams, useSearchParams } from "react-router";
 import { useProjects } from "@/api/client";
+import { useRules } from "@/api/rules";
+import type { RulesCard } from "@/api/rules";
 import { useSetupMap } from "@/api/setup";
 import type { SetupMap } from "@/api/types";
 import { Card } from "@/components/Card/Card";
+import { HelpButton } from "@/components/HelpButton/HelpButton";
+import { NoticeLine } from "@/components/NoticeLine/NoticeLine";
 import { PageHeader } from "@/components/PageHeader/PageHeader";
 import { ScopeLabel } from "@/components/ScopeLabel/ScopeLabel";
 import { StatusChip } from "@/components/StatusChip/StatusChip";
@@ -22,7 +26,9 @@ import { Switch } from "@/components/Switch/Switch";
 import { clockShort } from "@/lib/clock";
 import { mapRows } from "@/lib/setup-map";
 import { scopeMeaning, SCOPE_NAMES } from "@/lib/setup-words";
-import { t } from "@/strings/t";
+import { decidesHref } from "@/pages/reference/reference-routes";
+import { gapOf } from "@/pages/reference/rules-view";
+import { t, tn } from "@/strings/t";
 import { SetupMapTable } from "./SetupMapTable";
 import { SetupBones, SetupError, SetupStale } from "./SetupStates";
 import "./YourSetupPage.css";
@@ -51,6 +57,7 @@ function UnlistedNotice({ project }: { project: string }) {
   return (
     <p className="setup-notice">
       <StatusChip status="unknown">{t("status_unknown")}</StatusChip>
+      <HelpButton help="setup.unlisted" />
       <span>{t("su_unlisted", { project })}</span>
       {/* "How a project gets on the list" opens the project picker at the app's root (owner,
           November 10). */}
@@ -61,8 +68,44 @@ function UnlistedNotice({ project }: { project: string }) {
   );
 }
 
+interface VersionGapNoticeProps {
+  /** The `version_gap` notice's params: installed, checked_on and due, all as text. */
+  params: Readonly<Record<string, string>>;
+  rules: RulesCard;
+}
+
+/**
+ * The notice that the Claude Code the owner runs is newer than the version Bar Tab's rules were
+ * checked on. It says "its rules" when every rule is due on one version, and how many are due
+ * otherwise (the same rule as How Claude Code decides). Its link opens that page with only the due
+ * rules. The count comes from the rules when they have loaded, so the link and the page agree, and
+ * the notice waits for them, so its words never change after it appears.
+ */
+function VersionGapNotice({ params, rules }: VersionGapNoticeProps) {
+  if (rules.loading) return null;
+  const installed = params.installed ?? "";
+  const gap = rules.answer === undefined ? null : gapOf(rules.answer);
+  const due = gap?.due ?? Number(params.due ?? "0");
+  const checkedOn = gap?.checkedOn ?? params.checked_on ?? "";
+  return (
+    <NoticeLine
+      className="setup-version-gap"
+      statusWord={t("status_unknown")}
+      link={{
+        label: tn("dc_gap_link", due),
+        href: decidesHref({}, { q: "", confidence: "all", due: true }),
+      }}
+    >
+      {gap?.all === true
+        ? t("su_n_version_gap", { installed, checked_on: checkedOn })
+        : tn("su_n_version_gap_some", due, { installed, due })}
+    </NoticeLine>
+  );
+}
+
 function YourSetupProject({ project }: { project: string }) {
   const card = useSetupMap(project);
+  const rules = useRules();
   const projects = useProjects();
   const [scopesOn, setScopes] = useScopesParam();
   const projectName = projects.data?.projects.find((p) => p.key === project)?.name ?? project;
@@ -93,13 +136,26 @@ function YourSetupProject({ project }: { project: string }) {
         title={t("su_h1")}
         sub={t("su_sub", { project: projectName })}
         controls={
-          <Switch selected={scopesOn} onChange={setScopes}>
-            {t("su_switch")}
-          </Switch>
+          <>
+            <Switch selected={scopesOn} onChange={setScopes}>
+              {t("su_switch")}
+            </Switch>
+            <HelpButton help="setup.scopes" />
+          </>
         }
       />
       {answer?.listed === false && <UnlistedNotice project={projectName} />}
-      <Card title={title} question={t("su_card_q")} className="setup-map-card">
+      {answer?.notices.map((notice) =>
+        notice.code === "version_gap" ? (
+          <VersionGapNotice key={notice.code} params={notice.params} rules={rules} />
+        ) : null,
+      )}
+      <Card
+        title={title}
+        question={t("su_card_q")}
+        right={<HelpButton help="setup.card" />}
+        className="setup-map-card"
+      >
         {body}
       </Card>
     </div>

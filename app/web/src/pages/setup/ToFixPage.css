@@ -18,6 +18,27 @@
   margin-top: 0;
 }
 
+/* At 720 px and under the page "?" sits at the end of the title line, as it does wider, not alone on
+   a row under the subtitle. The text block leaves room for it. */
+@media (width <= 720px) {
+  .tofix-page > .page-header {
+    position: relative;
+  }
+
+  .tofix-page > .page-header .page-header-text {
+    box-sizing: border-box;
+    width: 100%;
+    padding-right: var(--space-6);
+  }
+
+  .tofix-page > .page-header .page-header-controls {
+    position: absolute;
+    top: -2px;
+    right: 0;
+    width: auto;
+  }
+}
+
 .tofix-page-stale {
   margin: var(--space-3) 0 0;
   color: var(--text-muted);

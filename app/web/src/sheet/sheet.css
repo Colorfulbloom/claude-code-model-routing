@@ -118,6 +118,81 @@
   width: 100%;
 }
 
+/* The help components. An open state draws its panel in place under the trigger, 360px wide, so the
+   cell is a little wider than the panel and no overlay covers another cell. */
+.sheet-cell[data-component="HelpButton"],
+.sheet-cell[data-component="HelpTerm"],
+.sheet-cell[data-component="HelpPanel"],
+.sheet-cell[data-component="HelpEntry"] {
+  width: min(100%, 400px);
+}
+
+.sheet-cell[data-component="SearchField"] {
+  width: min(100%, 560px);
+}
+
+.sheet-help-row {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.hp-sheet-open {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: end;
+  width: 100%;
+}
+
+.sheet-cell[data-component="HelpTerm"] .hp-sheet-open {
+  justify-items: start;
+}
+
+.sheet-cell[data-component="HelpTerm"] .hp-arrow-inline {
+  right: auto;
+  left: 18px;
+}
+
+.sheet-hp-card {
+  padding: var(--space-4);
+  background: var(--card-bg);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+}
+
+.sheet-hp-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.sheet-hp-table th,
+.sheet-hp-table td {
+  padding: var(--space-1) var(--space-3);
+  border-bottom: 1px solid var(--border);
+  font-weight: var(--weight-regular);
+  text-align: left;
+}
+
+.sheet-hp-table th {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.sheet-hp-table .sheet-hp-num {
+  text-align: right;
+}
+
+.sheet-tray-frame .hp-tray.hp-inline {
+  border: 0;
+  border-radius: 0;
+}
+
+.sheet-search {
+  display: grid;
+  gap: var(--space-3);
+  width: 100%;
+}
+
 /* A narrow box that shows wrapping without a viewport change. */
 .sheet-narrow {
   width: 180px;

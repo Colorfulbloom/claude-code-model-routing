@@ -192,6 +192,14 @@ function expectedAt(answer: Answer, minute: number) {
 /** Two minutes on the ended answer where the session still has runs to start and fold. */
 const SAMPLE_MINUTES = [6, 15, 24];
 
+/**
+ * The "?" buttons a Tab walk meets on the way from the Session Select to the line: the Session
+ * totals entry on the Read from cache tile and the Runs tile, then the timeline's own, which sits
+ * after the Go to end button in the card header.
+ */
+const TOTALS_HELP = fill(en.hp_trigger, { title: "Session totals" });
+const TIMELINE_HELP = fill(en.hp_trigger, { title: "Who worked when" });
+
 /** Presses Tab, then Shift+Tab, until the locator holds focus, so a walk fails with its step. */
 async function reach(page: Page, target: Locator, max = 40): Promise<void> {
   await expect(target).toHaveCount(1);
@@ -425,8 +433,13 @@ test.describe("many scenario, ended", () => {
       await expect(
         page.getByRole("button", { name: new RegExp(`^${en.rv_session_scope}`) }),
       ).toBeFocused();
+      // The one Session totals "?" button on the tiles, then Go to end, then the timeline "?".
+      await page.keyboard.press("Tab");
+      await expect(page.getByRole("button", { name: TOTALS_HELP })).toBeFocused();
       await page.keyboard.press("Tab");
       await expect(page.getByRole("button", { name: en.sr_to_end })).toBeFocused();
+      await page.keyboard.press("Tab");
+      await expect(page.getByRole("button", { name: TIMELINE_HELP })).toBeFocused();
       await page.keyboard.press("Tab");
       const line = slider(page);
       await expect(line).toBeFocused();
@@ -778,11 +791,16 @@ test.describe("busy scenario, replay with the keyboard only", () => {
       );
       expect(step).toBeGreaterThan(1);
 
-      // The Session Select, then the line. At the end there is no Go to end button.
+      // The Session Select, the two Session totals "?" buttons, the timeline "?", then the line.
+      // At the end there is no Go to end button.
       await page.keyboard.press("Tab");
       await expect(
         page.getByRole("button", { name: new RegExp(`^${en.rv_session_scope}`) }),
       ).toBeFocused();
+      await page.keyboard.press("Tab");
+      await expect(page.getByRole("button", { name: TOTALS_HELP })).toBeFocused();
+      await page.keyboard.press("Tab");
+      await expect(page.getByRole("button", { name: TIMELINE_HELP })).toBeFocused();
       await page.keyboard.press("Tab");
       const line = slider(page);
       await expect(line).toBeFocused();
@@ -845,6 +863,10 @@ test.describe("busy scenario, replay with the keyboard only", () => {
       await page.keyboard.press("Tab");
       await expect(page.getByRole("link", { name: en.rv_open_live })).toBeFocused();
       await page.keyboard.press("Tab");
+      await expect(page.getByRole("button", { name: TOTALS_HELP })).toBeFocused();
+      await page.keyboard.press("Tab");
+      await expect(page.getByRole("button", { name: TIMELINE_HELP })).toBeFocused();
+      await page.keyboard.press("Tab");
       const line = slider(page);
       await expect(line).toBeFocused();
       const max = Number(await line.getAttribute("max"));
@@ -865,7 +887,10 @@ test.describe("busy scenario, replay with the keyboard only", () => {
       await expect(back).toBeVisible();
       await expect(back).toMatchAriaSnapshot(`- button "${en.sr_to_now}"`);
 
-      // The button sits before the line, so Shift+Tab reaches it. Tab alone wraps through the page.
+      // The button sits two stops before the line, because the timeline "?" comes between them, so
+      // Shift+Tab twice reaches it. Tab alone wraps through the page.
+      await page.keyboard.press("Shift+Tab");
+      await expect(page.getByRole("button", { name: TIMELINE_HELP })).toBeFocused();
       await page.keyboard.press("Shift+Tab");
       await expect(back).toBeFocused();
       await page.keyboard.press("Enter");

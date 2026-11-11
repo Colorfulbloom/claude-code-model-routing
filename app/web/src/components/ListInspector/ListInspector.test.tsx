@@ -490,3 +490,22 @@ describe("ListInspector additions for the setup pages", () => {
     expect(details.compareDocumentPosition(where) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });
+
+describe("help in the inspector", () => {
+  it("marks the status word on the pill's button, and gives Where and Why a term", async () => {
+    const user = userEvent.setup();
+    render(<ListInspector {...props()} />);
+    const region = screen.getByRole("region", { name: "Effort" });
+    expect(
+      within(region).getByRole("button", { name: "Where it's set, top wins" }),
+    ).toHaveAttribute("data-help-id", "setup.where");
+    expect(within(region).getByRole("heading", { level: 3, name: "Why" })).toBeInTheDocument();
+    expect(within(region).getByRole("button", { name: "Why" })).toHaveAttribute(
+      "data-help-id",
+      "setup.why",
+    );
+    await user.click(within(region).getByRole("button", { name: "About Status" }));
+    const dialog = await screen.findByRole("dialog", { name: "Status" });
+    expect(within(dialog).getByText("Shown here").closest(".hp-row")).toHaveTextContent("Lowered");
+  });
+});

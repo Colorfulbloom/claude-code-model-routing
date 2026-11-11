@@ -1,6 +1,24 @@
 import { describe, expect, it } from "vitest";
-import { buildRequests, buildTiles, requestTime } from "@/lib/live-tiles";
+import { buildRequests, buildTiles, requestTime, tileHelpValues } from "@/lib/live-tiles";
 import { bucket, NOW, run, sessionOf, timeline } from "@/test/timelines";
+
+describe("tileHelpValues", () => {
+  it("hands the help entry the text as the tile shows it", () => {
+    const { cost, cache } = buildTiles(timeline());
+    expect(tileHelpValues(cost)).toEqual({ value: "$8.28", delta: "$0.44 in the last minute" });
+    expect(tileHelpValues(cache)).toEqual({ value: "78%", delta: "81% in the last minute" });
+  });
+
+  it("adds the note when the tile has one and leaves out an empty or missing part", () => {
+    expect(tileHelpValues({ value: "$1.00", delta: "", note: "3 requests have no price" })).toEqual(
+      { value: "$1.00", note: "3 requests have no price" },
+    );
+    expect(tileHelpValues({ value: "5", delta: "Same as 5", note: null })).toEqual({
+      value: "5",
+      delta: "Same as 5",
+    });
+  });
+});
 
 describe("buildTiles while running", () => {
   const tiles = buildTiles(timeline());

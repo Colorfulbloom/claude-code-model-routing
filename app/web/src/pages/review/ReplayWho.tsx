@@ -10,6 +10,7 @@ import type { Timeline } from "@/api/types";
 import { postStatus } from "@/app/harness";
 import { Button } from "@/components/Button/Button";
 import { Card } from "@/components/Card/Card";
+import { HelpButton } from "@/components/HelpButton/HelpButton";
 import { ReplayLine } from "@/components/ReplayLine/ReplayLine";
 import { SkeletonBones } from "@/components/SkeletonBones/SkeletonBones";
 import { StackedBars } from "@/components/StackedBars/StackedBars";
@@ -72,7 +73,12 @@ export function ReplayWho({ timeline, replay, serverMs }: ReplayWhoProps) {
     <Card
       title={t("sr_tl_h")}
       className="live-who sreview-who"
-      {...(replay.atEnd ? {} : { right: toEnd })}
+      right={
+        <span className="sreview-card-end">
+          {!replay.atEnd && toEnd}
+          <HelpButton help="review.timeline" />
+        </span>
+      }
     >
       <div className="live-who-body sreview-stage" ref={stage}>
         <div

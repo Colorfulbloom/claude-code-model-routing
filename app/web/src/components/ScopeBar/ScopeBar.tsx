@@ -1,5 +1,6 @@
 import { Button } from "../Button/Button";
 import { cx } from "../cx";
+import { HelpButton } from "../HelpButton/HelpButton";
 import { PageHeader } from "../PageHeader/PageHeader";
 import { Select, type SelectOption } from "../Select/Select";
 import "./ScopeBar.css";
@@ -69,15 +70,18 @@ export function ScopeBar(props: ScopeBarProps) {
   const { title, sub, pages, className } = props;
   const controls =
     props.form === "range" ? (
-      <Select
-        label={props.range.label}
-        items={props.range.options}
-        value={props.range.value}
-        onChange={props.range.onChange}
-        heading={props.range.label}
-        rangePopover
-        className={cx("scope-bar-range", props.range.className)}
-      />
+      <>
+        <Select
+          label={props.range.label}
+          items={props.range.options}
+          value={props.range.value}
+          onChange={props.range.onChange}
+          heading={props.range.label}
+          rangePopover
+          className={cx("scope-bar-range", props.range.className)}
+        />
+        <HelpButton help="shell.range" />
+      </>
     ) : (
       <>
         <Button

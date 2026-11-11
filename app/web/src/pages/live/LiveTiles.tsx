@@ -3,9 +3,14 @@ import { Ring } from "@/components/Ring/Ring";
 import { RunDots } from "@/components/RunDots/RunDots";
 import { Spark } from "@/components/Spark/Spark";
 import { Tile } from "@/components/Tile/Tile";
+import { tileHelpValues } from "@/lib/live-tiles";
 import type { TilesView } from "@/lib/live-tiles";
 import { t } from "@/strings/t";
 
+/*
+ * Each "?" takes the numbers the tile shows, so a poll that moves a number updates the open
+ * popover in place. The Tile renders the trigger under one stable position, whatever the tile holds.
+ */
 export function LiveTiles({ view }: { view: TilesView }) {
   return (
     <div className="tiles">
@@ -16,19 +21,27 @@ export function LiveTiles({ view }: { view: TilesView }) {
         delta={view.cost.delta}
         {...(view.cost.note !== null ? { note: view.cost.note } : {})}
         proof={<Spark values={view.cost.spark} />}
+        help={{ id: "live.spent", values: tileHelpValues(view.cost) }}
       />
-      <Tile label={t("t_tokens")} value={view.tokens.value} delta={view.tokens.delta} />
+      <Tile
+        label={t("t_tokens")}
+        value={view.tokens.value}
+        delta={view.tokens.delta}
+        help={{ id: "live.tokens", values: tileHelpValues(view.tokens) }}
+      />
       <Tile
         label={t("t_cache")}
         value={view.cache.value}
         delta={view.cache.delta}
         proof={<Ring percent={view.cache.percent} />}
+        help={{ id: "live.cache", values: tileHelpValues(view.cache) }}
       />
       <Tile
         label={view.agents.label}
         value={view.agents.value}
         delta={view.agents.delta}
         proof={<RunDots working={view.agents.working} finished={view.agents.finished} />}
+        help={{ id: "live.agents", values: tileHelpValues(view.agents) }}
       />
     </div>
   );

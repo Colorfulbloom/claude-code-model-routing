@@ -9,6 +9,7 @@
 import { useId } from "react";
 import { Link } from "react-aria-components";
 import type { ReviewRange } from "@/api/types";
+import { HelpTerm } from "@/components/HelpTerm/HelpTerm";
 import { ModelSwatch } from "@/components/ModelSwatch/ModelSwatch";
 import { ShareBar } from "@/components/ShareBar/ShareBar";
 import { StatusChip } from "@/components/StatusChip/StatusChip";
@@ -16,6 +17,7 @@ import { Well } from "@/components/Well/Well";
 import { cx } from "@/components/cx";
 import { formatCost } from "@/lib/format";
 import { STATUS_WORDS } from "@/lib/model-check";
+import { useIsDesktop } from "@/lib/media";
 import { reviewPath } from "@/lib/range";
 import { useRowLink } from "@/lib/row-link";
 import type { AgentRowView, AgentsView, NoRunsView, SetCell } from "@/lib/review-agents";
@@ -82,8 +84,10 @@ function CheckCell({ row }: { row: AgentRowView }) {
   if (row.unchecked) {
     return (
       <>
-        <span className="muted review-agents-unchecked" aria-describedby={noteId}>
-          {t("ag_chk_unchecked")}
+        <span className="muted review-agents-unchecked">
+          <HelpTerm help="agents.unchecked" describedBy={noteId}>
+            {t("ag_chk_unchecked")}
+          </HelpTerm>
         </span>
         <span id={noteId} className="sr-only">
           {t("ag_chk_unchecked_aria")}
@@ -171,6 +175,7 @@ export function AgentsTable({
   view: AgentsView;
   links: AgentLinks;
 }) {
+  const wide = useIsDesktop() && links.picked === null;
   return (
     <Well variant="list" className="review-table-well">
       <table
@@ -184,19 +189,39 @@ export function AgentsTable({
         <thead>
           <tr>
             <th scope="col" className="review-th">
-              {t("ag_col_agent")}
+              <HelpTerm help="agents.source">{t("ag_col_agent")}</HelpTerm>
+            </th>
+            {/* Set to, Ran with and Runs are clipped at 720px and below and with an agent picked.
+                They stay plain text then, so no focus stop sits where nobody can see it. */}
+            <th scope="col" className="review-th review-hp review-agents-wide">
+              {wide ? (
+                <HelpTerm help="agents.cols" line={t("ag_col_set")}>
+                  {t("ag_col_set")}
+                </HelpTerm>
+              ) : (
+                t("ag_col_set")
+              )}
             </th>
             <th scope="col" className="review-th review-hp review-agents-wide">
-              {t("ag_col_set")}
-            </th>
-            <th scope="col" className="review-th review-hp review-agents-wide">
-              {t("ag_col_ran")}
+              {wide ? (
+                <HelpTerm help="agents.cols" line={t("ag_col_ran")}>
+                  {t("ag_col_ran")}
+                </HelpTerm>
+              ) : (
+                t("ag_col_ran")
+              )}
             </th>
             <th scope="col" className="review-th">
-              {t("ag_col_check")}
+              <HelpTerm help="agents.check">{t("ag_col_check")}</HelpTerm>
             </th>
             <th scope="col" className="review-th review-end review-hp review-agents-wide">
-              {t("ag_col_runs")}
+              {wide ? (
+                <HelpTerm help="agents.cols" line={t("ag_col_runs")}>
+                  {t("ag_col_runs")}
+                </HelpTerm>
+              ) : (
+                t("ag_col_runs")
+              )}
             </th>
             <th scope="col" className="review-th review-end">
               {t("ag_col_cost")}

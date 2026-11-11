@@ -201,8 +201,36 @@ describe("a working session", () => {
     const requests = screen.getByRole("region", { name: "Latest requests" });
     expect(within(requests).getAllByRole("row")).toHaveLength(6);
     expect(within(requests).getByText(/Prices as of November 8\./)).toBeInTheDocument();
-    expect(within(requests).getByText(/On a subscription you pay a flat fee/)).toBeInTheDocument();
+    // The foot says "estimates, not your bill" once, through foot_est. The subscription sentence
+    // lives in the Spent so far help entry now.
+    expect(within(requests).getAllByText(/^Costs are estimates at API list prices/)).toHaveLength(
+      1,
+    );
+    expect(within(requests).queryByText(/On a subscription you pay a flat fee/)).toBeNull();
     expect(within(requests).queryByText(/disagree/)).toBeNull();
+  });
+
+  it("puts a help button on every tile, card and chart, and on the status and notices", async () => {
+    const server = serverWith();
+    await mount("#/p/builder/live?session=s1", { server });
+    await screen.findByRole("heading", { level: 1, name: "feature/quarter-close" });
+    const ids = [...document.querySelectorAll("[data-help-id]")].map((node) =>
+      node.getAttribute("data-help-id"),
+    );
+    expect(ids).toEqual(
+      expect.arrayContaining([
+        "live.spent",
+        "live.tokens",
+        "live.cache",
+        "live.agents",
+        "live.who",
+        "live.modelcheck",
+        "live.requests",
+        "live.status",
+      ]),
+    );
+    expect(screen.getByRole("button", { name: "About Spent so far" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "About Who is working" })).toBeInTheDocument();
   });
 
   it("adds the price disagreement line under Prices as of", async () => {
@@ -462,6 +490,52 @@ describe("a hidden tab", () => {
       expect(requested(server, "/timeline")).toBe(timelineCalls + 1);
     });
     expect(requested(server, "/live/sessions")).toBe(listCalls + 1);
+  }, 15_000);
+});
+
+describe("an open help popover", () => {
+  it("stays open, keeps focus and shows the new number when a poll moves the value", async () => {
+    const first = timeline();
+    const server = serverWith();
+    const user = userEvent.setup();
+    await mount("#/p/builder/live?session=s1", { server });
+    await screen.findByRole("heading", { level: 1, name: "feature/quarter-close" });
+    await user.click(screen.getByRole("button", { name: "About Read from cache" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("78%")).toBeInTheDocument();
+    expect(dialog.contains(document.activeElement)).toBe(true);
+    // A new answer, with a new etag and a new share, arrives by the next poll.
+    server.timelines.s1 = timeline({
+      etag: "etag-b",
+      totals: { ...first.totals, hit_rate: 0.9 },
+    });
+    const calls = requested(server, "/timeline");
+    const set = (value: "hidden" | "visible") => {
+      Object.defineProperty(document, "visibilityState", { configurable: true, value });
+      document.dispatchEvent(new Event("visibilitychange"));
+    };
+    act(() => {
+      set("hidden");
+    });
+    act(() => {
+      set("visible");
+    });
+    await waitFor(() => {
+      expect(requested(server, "/timeline")).toBeGreaterThan(calls);
+    });
+    await waitFor(() => {
+      expect(within(screen.getByRole("dialog")).getByText("90%")).toBeInTheDocument();
+    });
+    const still = screen.getByRole("dialog");
+    expect(still).toBe(dialog);
+    expect(still.contains(document.activeElement)).toBe(true);
+    // The page behind an open popover is hidden from the tree, so the trigger is found by its id.
+    // It is the same element, still expanded, so the poll never swapped it.
+    expect(document.querySelectorAll('[data-help-id="live.cache"]')).toHaveLength(1);
+    expect(document.querySelector('[data-help-id="live.cache"]')).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
   }, 15_000);
 });
 

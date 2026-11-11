@@ -13,11 +13,14 @@ import { useHarness } from "@/app/harness";
 import { pageName } from "@/app/routes";
 import type { PageId } from "@/app/routes";
 import { Shell } from "@/app/Shell";
+import { takeReturnFocus, triggerSelector } from "@/components/HelpEntry/origin";
 import { LivePage } from "@/pages/LivePage";
 import { MorePage } from "@/pages/MorePage";
 import { PickerPage } from "@/pages/PickerPage";
 import type { RouteContext } from "@/pages/PickerPage";
 import { Placeholder } from "@/pages/Placeholder";
+import { DecidesPage } from "@/pages/reference/DecidesPage";
+import { GlossaryPage } from "@/pages/reference/GlossaryPage";
 import { AgentsPage } from "@/pages/review/AgentsPage";
 import { ModelsPage } from "@/pages/review/ModelsPage";
 import { SessionReviewPage } from "@/pages/review/SessionReviewPage";
@@ -29,6 +32,9 @@ import { YourSetupPage } from "@/pages/setup/YourSetupPage";
 import { isSetupPart } from "@/lib/setup-routes";
 import { PART_NAMES } from "@/lib/setup-words";
 import { t } from "@/strings/t";
+
+/** How long Back to {page} waits for the "?" it names to appear on a page that is still loading. */
+const RETURN_FOCUS_WAIT_MS = 4000;
 
 interface RouteHandle {
   page: PageId;
@@ -52,7 +58,14 @@ function RouteLayout() {
   const part = matches.map((m) => m.params.part).find((p) => p !== undefined) ?? null;
   const name =
     page === "surface" && part !== null && isSetupPart(part) ? PART_NAMES[part]() : pageName(page);
-  const focusId = page === "surface" ? pathname.split("/").slice(0, 5).join("/") : pathname;
+  // The Reference pages move focus to their own target (a setting, a rule or a term), so a change of
+  // target is no route change for focus, as picking an item on a surface page is none.
+  const focusId =
+    page === "surface"
+      ? pathname.split("/").slice(0, 5).join("/")
+      : page === "decides" || page === "glossary"
+        ? pathname.split("/").slice(0, 3).join("/")
+        : pathname;
   const title =
     projectName === null
       ? t("title_bare", { page: name })
@@ -68,6 +81,34 @@ function RouteLayout() {
     title,
     status: name,
   });
+
+  // Back to {page} from the Glossary names the "?" that opened it. Once the page is up, focus goes
+  // back to that trigger. The page may still be loading, so the wait is a few seconds at most, and
+  // a trigger that never comes leaves focus on the h1 the harness set.
+  useEffect(() => {
+    const help = takeReturnFocus(pathname);
+    const main = mainRef.current;
+    if (help === null || main === null) return undefined;
+    const selector = triggerSelector(help);
+    const focusIt = (): boolean => {
+      const el = main.querySelector<HTMLElement>(selector);
+      if (el === null) return false;
+      el.focus();
+      return document.activeElement === el;
+    };
+    if (focusIt()) return undefined;
+    const watch = new MutationObserver(() => {
+      if (focusIt()) watch.disconnect();
+    });
+    watch.observe(main, { childList: true, subtree: true });
+    const stop = setTimeout(() => {
+      watch.disconnect();
+    }, RETURN_FOCUS_WAIT_MS);
+    return () => {
+      watch.disconnect();
+      clearTimeout(stop);
+    };
+  }, [pathname, mainRef]);
 
   useEffect(() => {
     api.access.saveRoute(`${pathname}${search}`);
@@ -106,6 +147,10 @@ function route(path: string, id: PageId): RouteObject {
         <SurfacePage />
       ) : id === "to_fix" ? (
         <ToFixPage />
+      ) : id === "decides" ? (
+        <DecidesPage />
+      ) : id === "glossary" ? (
+        <GlossaryPage />
       ) : (
         <Placeholder page={id} />
       ),
@@ -139,8 +184,10 @@ export function appRoutes(access: Access): RouteObject[] {
         route("/p/:project/setup/:part/:item", "surface"),
         route("/p/:project/setup/:part/:item/edit", "surface_edit"),
         route("/p/:project/to-fix", "to_fix"),
-        route("/reference/decides", "decides"),
-        route("/reference/glossary", "glossary"),
+        // One route each, so a change of setting, rule or term never remounts the page. The page
+        // reads the segments itself (parseRoute), and any other depth lands on the picker.
+        route("/reference/decides/*", "decides"),
+        route("/reference/glossary/*", "glossary"),
         route("/more", "more"),
         // Unknown routes land on the picker rather than a blank page.
         { path: "*", loader: () => redirect("/") },

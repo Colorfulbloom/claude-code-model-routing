@@ -1,0 +1,456 @@
+/*
+ * The Reference pages (m5.css from the designer's pass 13, tokens only). The list and the inspector
+ * bring their own rules from ListInspector.css, and the search field its own from SearchField.css,
+ * so this file holds the tool row, the rules, the docs lines and the Glossary. Page CSS is global,
+ * so every class carries the ref- prefix (fact J-0ba9).
+ */
+.ref-page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+}
+
+/* The tool row. The search field's parts join this row, so the count can sit at the far end. */
+.ref-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+  align-items: flex-end;
+}
+
+.ref-tools .search {
+  display: contents;
+}
+
+.ref-tools .search-field {
+  flex: 1 1 340px;
+  max-width: none;
+}
+
+.ref-tools .ref-confidence {
+  flex: none;
+  order: 2;
+}
+
+.ref-count-bone {
+  width: 120px;
+}
+
+.ref-tools .search-count,
+.ref-tools .ref-count-bone {
+  order: 3;
+  margin: 0 0 9px auto;
+  padding: 0;
+  white-space: nowrap;
+}
+
+.ref-split {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+
+@media (width > 720px) {
+  .ref-split {
+    grid-template-columns: 300px minmax(0, 1fr);
+  }
+
+  .ref-split > .ref-list {
+    position: sticky;
+    top: var(--space-4);
+    max-height: 868px;
+    overflow: auto;
+  }
+}
+
+.ref-list-count {
+  grid-row: 1;
+  align-self: start;
+}
+
+/* The setting key gets the whole row under the name, so it wraps only when it cannot fit on a line
+   of its own. The count sits beside the name instead of spanning both lines. */
+.ref-list .item-value {
+  grid-column: 1 / -1;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+/* The setting page. */
+.ref-key {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-regular);
+  overflow-wrap: anywhere;
+}
+
+.ref-setting .inspector-head {
+  align-items: baseline;
+}
+
+/* The body is a grid, so a rule's long doc address would set its column wider than the card. */
+.ref-setting .inspector-body {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.ref-sub {
+  font-size: var(--text-sm);
+}
+
+.ref-os-h {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  align-items: center;
+  margin-bottom: var(--space-2);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+}
+
+.ref-os-n {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-regular);
+}
+
+.ref-os-link {
+  color: var(--text);
+}
+
+.ref-os-link:hover {
+  color: var(--accent);
+}
+
+.ref-os + .ref-os {
+  margin-top: 0;
+}
+
+.ref-none-line {
+  font-size: var(--text-sm);
+}
+
+/* A rule row. The route's target takes the chosen fill and a 3px start bar, drawn as a border on a
+   pseudo-element so forced colours keep it (box-shadow is dropped there). */
+.ref-rules {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ref-rule {
+  position: relative;
+  scroll-margin-top: var(--space-5);
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--border);
+}
+
+.ref-rule:first-child {
+  border-top: 0;
+}
+
+.ref-rule:focus {
+  outline: none;
+}
+
+.ref-rule-on {
+  margin-inline: calc(-1 * var(--space-4));
+  padding-inline: var(--space-4);
+  background: var(--select-bg);
+  border-top-color: transparent;
+}
+
+.ref-rule-on::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  border-inline-start: 3px solid var(--accent);
+}
+
+.ref-rule-on + .ref-rule {
+  border-top-color: transparent;
+}
+
+.ref-rule-sentence {
+  color: var(--text);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.ref-rule-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  align-items: center;
+  margin-top: 6px;
+  font-size: var(--text-sm);
+}
+
+.ref-rule-id {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  overflow-wrap: anywhere;
+}
+
+.ref-due {
+  color: var(--status-overridden-fg);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+}
+
+.ref-rule-found {
+  margin-top: var(--space-1);
+  font-size: var(--text-sm);
+}
+
+.ref-nodocs {
+  margin-top: 6px;
+  font-size: var(--text-sm);
+}
+
+/* The docs line. */
+.ref-docs {
+  margin-top: 6px;
+  font-size: var(--text-sm);
+}
+
+.ref-docs-trigger {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  min-height: 28px;
+  padding: 0;
+  background: none;
+  border: 0;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: var(--text-sm);
+}
+
+.ref-docs-trigger:hover {
+  text-decoration: underline;
+}
+
+.ref-docs-chevron::before {
+  content: "\25B8" / "";
+  display: inline-block;
+  font-size: var(--text-xs);
+}
+
+.ref-docs-trigger[aria-expanded="true"] .ref-docs-chevron::before {
+  content: "\25BE" / "";
+}
+
+.ref-quotes {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+  margin: 6px 0 0;
+  padding: var(--space-3);
+  list-style: none;
+}
+
+.ref-quote {
+  margin: 0;
+  padding-inline-start: 10px;
+  border-inline-start: 3px solid var(--border-strong);
+  color: var(--text);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.ref-doclink {
+  display: inline-block;
+  min-height: 24px;
+  padding: 4px 0 0 13px;
+  overflow-wrap: anywhere;
+}
+
+.ref-doclink .mono {
+  font-size: var(--text-xs);
+}
+
+/* The unknown-target card and the load error. */
+.ref-gone {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+  border-inline-start: 4px solid var(--border-strong);
+}
+
+.ref-gone-title {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+}
+
+.ref-bones {
+  display: grid;
+  gap: var(--space-3);
+}
+
+@media (width <= 720px) {
+  .ref-tools .search-field {
+    flex-basis: 100%;
+  }
+
+  .ref-tools .ref-confidence {
+    flex: 1 1 140px;
+  }
+
+  .ref-tools .search-count,
+  .ref-tools .ref-count-bone {
+    flex-basis: 100%;
+    margin: 0;
+  }
+
+  .ref-rule-on {
+    margin-inline: calc(-1 * var(--space-3));
+    padding-inline: var(--space-3);
+  }
+}
+
+/* The Glossary. */
+.ref-jump {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.ref-jump-chip {
+  min-height: 32px;
+  padding: 0 var(--space-3);
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  color: var(--text);
+  cursor: pointer;
+  font-size: var(--text-sm);
+}
+
+.ref-jump-chip:hover {
+  background: var(--nav-hover-bg);
+}
+
+.ref-gl {
+  margin: 0;
+  padding: 0;
+}
+
+.ref-term {
+  position: relative;
+  scroll-margin-top: var(--space-5);
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: baseline;
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--border);
+}
+
+.ref-term:first-child {
+  border-top: 0;
+}
+
+.ref-term dt {
+  color: var(--text);
+  font-weight: var(--weight-semibold);
+  overflow-wrap: anywhere;
+}
+
+.ref-term dt:focus {
+  outline: none;
+}
+
+.ref-term dd {
+  margin: 0;
+  color: var(--text);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.ref-term-on {
+  margin-inline: calc(-1 * var(--space-4));
+  padding-inline: var(--space-4);
+  background: var(--select-bg);
+  border-top-color: transparent;
+}
+
+.ref-term-on::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  border-inline-start: 3px solid var(--accent);
+}
+
+.ref-term-on + .ref-term {
+  border-top-color: transparent;
+}
+
+.ref-see {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+/* The small label that starts the related-term links, in the same row. */
+.ref-see-label {
+  margin-right: var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+}
+
+.ref-section-head:focus,
+.ref-section-head h2:focus {
+  outline: none;
+}
+
+.ref-section-on > .card-header {
+  position: relative;
+  margin-inline: calc(-1 * var(--space-5));
+  padding-inline: var(--space-5);
+  background: var(--select-bg);
+}
+
+.ref-section-on > .card-header::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  border-inline-start: 3px solid var(--accent);
+}
+
+.ref-stack {
+  display: grid;
+  gap: var(--space-4);
+}
+
+@media (width <= 1100px) {
+  .ref-term {
+    grid-template-columns: 180px minmax(0, 1fr);
+  }
+}
+
+@media (width <= 720px) {
+  .ref-term {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-1);
+  }
+
+  .ref-term-on {
+    margin-inline: calc(-1 * var(--space-3));
+    padding-inline: var(--space-3);
+  }
+
+  .ref-jump-chip {
+    min-height: 32px;
+  }
+}
+
+/* Scroll targets clear the top of the viewport. The rule and term rows set theirs above. */
+.ref-setting,
+.ref-section {
+  scroll-margin-top: var(--space-5);
+}

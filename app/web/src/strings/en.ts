@@ -78,7 +78,6 @@ export const en = {
   fr_s3: "Read your usage history",
   fr_done: "Done",
   fr_now: "In progress",
-  fr_next: "Next",
   fr_counting: "Counting files",
   fr_size: "{d} of {t}",
   fr_local: "This step reads files on this computer, so it doesn't need an internet connection.",
@@ -258,9 +257,6 @@ export const en = {
   rq_model: "Model",
   rq_tokens: "Tokens",
   rq_cost: "Cost",
-  rq_f_est: "Costs are estimates at API list prices, not your bill.",
-  rq_f_prices: "Prices as of {date}",
-  rq_f_sub: "On a subscription you pay a flat fee, so this is what the same use costs on the API.",
   rq_f_disagree: "Two price sources disagree on {model}, so its costs may be off.",
 
   // Session switching and empty states
@@ -447,7 +443,6 @@ export const en = {
   ch_none_later: "Nothing later yet",
   ch_norec: "No records before {date}",
   ch_now: "Now",
-  ch_open: "So far",
   ch_kinds: "Made of",
   ch_kinds_link: "See what each model's cost is made of",
   ch_unpriced_one: "{n} request on {model} has no price, so it's left out of these bars.",
@@ -473,7 +468,6 @@ export const en = {
   rv_who_h: "Where the money went",
   rv_who_q: "Which agents cost the most?",
   rv_chk_h: "Model check",
-  rv_chk_q: "Did each agent run on the model and effort it's set to?",
   rv_top_h: "Most expensive sessions",
   rv_top_q: "Open one to replay it",
   mc_sum_n_one: "{k} of {n} agent didn't run as set",
@@ -610,7 +604,6 @@ export const en = {
   // by that code, and sl_ and hk_ev_ keep Claude Code's camelCase spelling. {where} is built from
   // loc_line or loc_file.
   // Shell and nav
-  tofix_none_sr: "To fix, none",
   tofix_unchecked_aria: "To fix, not checked yet",
   tofix_failed_aria: "To fix, couldn't check",
   an_copied: "Copied",
@@ -675,6 +668,13 @@ export const en = {
   su_unlisted:
     "{project} isn't on Bar Tab's project list, so Bar Tab doesn't read its project files. Only your user and managed setup shows here.",
   su_unlisted_link: "How a project gets on the list",
+  // The version_gap notice above the map (M5 task 3b). Its link reuses dc_gap_link_*.
+  su_n_version_gap:
+    "You run Claude Code {installed}, but Bar Tab checked its rules on {checked_on}. If Claude Code changed how it decides, a status here may be wrong.",
+  su_n_version_gap_some_one:
+    "You run Claude Code {installed}. Bar Tab checked {due} rule on an older version, so a status that uses it may be wrong.",
+  su_n_version_gap_some_other:
+    "You run Claude Code {installed}. Bar Tab checked {due} rules on an older version, so a status that uses one may be wrong.",
   su_ld: "Loading your setup",
 
   // Scopes and scope cells
@@ -803,11 +803,9 @@ export const en = {
   sp_gone_b: "It may have been renamed or removed since you opened it.",
 
   // Inspector, shared
-  in_region_aria: "Details for {item}",
   in_details_h: "Details",
   in_where_h: "Where it's set, top wins",
   in_why_h: "Why",
-  in_raw: "Show as written",
   in_copy: "Copy path",
   in_runs: "Runs with {value}",
   in_runs_model: "Runs on {value}",
@@ -827,13 +825,11 @@ export const en = {
   in_nset_shell: "Not set when Bar Tab started",
   in_shell_note:
     "Bar Tab reads your shell's values once, when it starts. A terminal you open later can have different ones.",
-  in_raw_key: "Bar Tab has no name for this setting, so it shows the key as written.",
   in_masked: "Bar Tab hides values that look like secrets.",
   in_masked_aria: "hidden value",
   in_link: "This file links to {path}.",
   in_may_change:
     "Bar Tab couldn't read a file that can set this, so the answer may change once it can.",
-  nr_outside_scope: "Not read here. It's outside the folders Bar Tab reads.",
   ap_now: "Applies right away",
   ap_new_session: "Applies to new sessions",
   ap_restart: "Applies after you restart Claude Code",
@@ -913,7 +909,6 @@ export const en = {
   hk_f_matcher: "Matches",
   hk_f_cmd: "Command",
   hk_f_type: "Does",
-  hk_f_url: "URL",
   hk_f_timeout: "Timeout",
   hk_ty_command: "Runs a command",
   hk_ty_http: "Sends an HTTP request",
@@ -966,7 +961,6 @@ export const en = {
   st_runs_default: "Claude writes in the default style",
   st_set: "Nothing sets an output style, so Claude Code uses its default.",
   st_builtin: "Built in",
-  st_file_unused: "Not in use",
 
   // Agents setup half and See why
   ag_q_picked: "Every agent in this project, including ones that didn't run",
@@ -1162,12 +1156,12 @@ export const en = {
 
   // Reason codes, the inspector Why line (ItemReason.code), and the causes behind Couldn't read
   rs_in_effect: "This is the value that applies.",
-  rs_overridden: "A higher scope sets it too, and that one wins.",
-  rs_ignored: "Claude Code doesn't read it from here.",
+  rs_overridden: "Another setting wins over this one.",
+  rs_ignored: "Claude Code doesn't use it here, so it has no effect.",
   rs_ignored_excluded: "{setting} skips this file with the pattern {pattern}.",
   rs_lowered: "A cap lowers it.",
   rs_invalid: "Claude Code doesn't accept this value.",
-  rs_default: "Nothing sets it, so Claude Code's default applies.",
+  rs_default: "Claude Code's default applies, because nothing sets it or it's set to the default.",
   rs_unknown: "Bar Tab can't tell which value applies.",
   rs_agent_loads: "Claude Code loads this agent from {file}.",
   rs_agent_overrides:
@@ -1223,11 +1217,9 @@ export const en = {
   em_mcp:
     "No MCP servers found. A server you add with claude mcp add, or in .mcp.json, shows up in this list.",
   em_plugins: "No plugins installed. A plugin you install shows up in this list.",
-  em_output_style: "",
   em_a_copy_folder: "Copy folder path",
   em_a_copy_file: "Copy file path",
   em_a_docs: "Open the docs",
-  em_a_docs_aria: "Open Claude Code's docs on {part}",
   em_nv: "Bar Tab can't see where this part is set, so it can't list anything here.",
 
   // Task 15, Your setup and the surface pages. Reviewed by tech-writer November 10.
@@ -1255,6 +1247,323 @@ export const en = {
   hk_or: "{list} or {last}",
   sl_ms_entry: "{model} ({fields})",
   sl_ms_field: "{label} {value}",
+
+  // Help popovers (M5). Draft labels from the designer, final words from the task 2 deck.
+  hp_trigger: "About {title}",
+  hp_numbers: "What each one means",
+  hp_reading: "How to read it",
+  hp_list_status: "The status words",
+  hp_list_scopes: "The scopes",
+  hp_list_confidence: "The confidence words",
+  hp_list_project_state: "The project states",
+  hp_this_column: "This column",
+  hp_this_setting: "Shown here",
+  hp_glossary_link: "{term} in the glossary",
+  hp_close: "Close",
+  // Meanings for the shared lists (lists.ts), from the task 2 deck
+  cf_tested: "Checked by a test on the Claude Code version the rule names.",
+  cf_documented: "Claude Code's docs say so, and the rule links the page.",
+  cf_assumed:
+    "Neither the docs nor a test backs the whole rule yet, so read it as a careful guess.",
+  sc_shell_def: "Environment variables, read once when Bar Tab started",
+  pk_state_ok_d:
+    "The folder and its .claude folder are both there, so it opens with its usage and its full setup.",
+
+  // How Claude Code decides (M5). Group names per rules.json key (a dot becomes an underscore),
+  // then one sentence per rule, keyed rl_<rule_id> (tech-writer, November 10).
+  rg_model: "Model",
+  rg_effortLevel: "Effort level",
+  rg_effort: "Agent effort",
+  rg_modelSettings: "Effort per model",
+  rg_maxEffortLevel: "Effort cap",
+  rg_modelSettings_maxEffortLevel: "Effort cap per model",
+  rg_autoCompactWindow: "Auto-compact window",
+  rg_modelSettings_autoCompactWindow: "Auto-compact window per model",
+  rg_promptCacheTtl: "Cache lifetime",
+  rg_subagentPromptCacheTtl: "Agent cache lifetime",
+  rg_alwaysThinkingEnabled: "Extended thinking",
+  rg_fallbackModel: "Fallback models",
+  rg_availableModels: "Available models",
+  rg_agentFile: "Agent files",
+  rg_settingsFile: "Settings files",
+  rg_env: "Settings env block",
+  rg_rulesFile: "Rules files",
+  "rl_effort-level-user-settings-opus-5-5":
+    "Opus 5.5 and later models ignore a top-level effortLevel in user settings and take that file's level only from modelSettings.",
+  "rl_model-main-session-order":
+    "--model beats ANTHROPIC_MODEL, which beats the model key in any settings file, managed settings included.",
+  "rl_model-main-default":
+    "With no model set, the session starts on Claude Code's default, which depends on your account type, so Bar Tab can't name it.",
+  "rl_env-block-order":
+    "An env block in settings overwrites the same variable from your shell, and the highest settings file that sets it wins.",
+  "rl_effort-level-layer-order":
+    "CLAUDE_CODE_EFFORT_LEVEL beats --effort, which beats every settings file, and the highest file with a level that counts for the model wins.",
+  "rl_model-settings-effort-per-model":
+    "Each model's effort comes from the highest settings file that sets a level for it, in modelSettings or a top-level effortLevel that applies.",
+  "rl_max-effort-level-lowest-cap":
+    "When several files set maxEffortLevel, the lowest cap applies, so no file can raise a cap set in another.",
+  "rl_max-effort-level-replaced-in-file":
+    "A modelSettings cap replaces the top-level maxEffortLevel for that one model, but only within the settings source that sets both.",
+  "rl_max-effort-level-default":
+    "With no maxEffortLevel in any settings file, Bar Tab sees no cap, but a Claude Enterprise admin can cap effort per role.",
+  "rl_prompt-cache-ttl-order":
+    "CLAUDE_CODE_PROMPT_CACHE_TTL beats promptCacheTtl in any settings file, the highest file wins, and only 5m or 1h counts.",
+  "rl_subagent-prompt-cache-ttl-order":
+    "CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL beats subagentPromptCacheTtl in settings, which beats an agent's experimental.cacheTtl, and only 5m or 1h counts.",
+  "rl_auto-compact-window-order":
+    "CLAUDE_CODE_AUTO_COMPACT_WINDOW beats --autocompact, which beats autoCompactWindow in settings, and the highest file wins.",
+  "rl_subagent-model-order":
+    "An agent's model in its frontmatter, inherit included, beats CLAUDE_CODE_SUBAGENT_MODEL, which beats the main session's model.",
+  "rl_subagent-model-force":
+    "With CLAUDE_CODE_SUBAGENT_MODEL_FORCE on, agents run on CLAUDE_CODE_SUBAGENT_MODEL and Claude Code ignores the frontmatter model.",
+  "rl_subagent-model-force-alone":
+    "With only CLAUDE_CODE_SUBAGENT_MODEL_FORCE on, agents run on the main session's model and Claude Code ignores the frontmatter model.",
+  "rl_subagent-model-default":
+    "With no model set for an agent, it runs on the main session's model, so Bar Tab can name it only when it knows that model.",
+  "rl_effort-env-auto-sends-none":
+    "Setting CLAUDE_CODE_EFFORT_LEVEL to auto or unset sends no effort level, so the API's default for the model applies.",
+  "rl_effort-level-user-settings-model-unknown":
+    "When Bar Tab doesn't know the session's model, it can't say whether a top-level effortLevel in user settings counts.",
+  "rl_effort-env-empty-ignored":
+    "An empty CLAUDE_CODE_EFFORT_LEVEL counts as not set, so the next source decides the effort.",
+  "rl_agent-effort-env-empty-ignored":
+    "An empty CLAUDE_CODE_EFFORT_LEVEL counts as not set, so the next source decides an agent's effort.",
+  "rl_effort-default-model-unknown":
+    "When no effort level counts and Bar Tab doesn't know the session's model, it can't name the default level.",
+  "rl_effort-default-no-effort-support":
+    "Haiku 4.5 doesn't support effort, so Claude Code sends no level and there's no default to show.",
+  "rl_effort-default-by-model":
+    "When no effort level counts, the session runs at the model's own default level.",
+  "rl_effort-level-settings-values":
+    "Settings files take low, medium, high or xhigh for effortLevel, so Claude Code skips any other value, max included.",
+  "rl_model-settings-effort-values":
+    "A modelSettings effort entry takes low, medium, high or xhigh, and Claude Code skips any other value for that model.",
+  "rl_effort-flag-values":
+    "--effort takes low, medium, high, xhigh or max, and Claude Code warns and ignores any other level.",
+  "rl_effort-lowered-by-cap":
+    "When maxEffortLevel is set, a higher effort runs at the cap, whether it comes from a variable, a flag, a file or the default.",
+  "rl_effort-lowered-by-cap-model-unknown":
+    "When Bar Tab doesn't know the model, it applies the top-level maxEffortLevel cap, though a modelSettings cap could change it.",
+  "rl_effort-lowered-unsupported-level":
+    "A level the model lacks runs at the highest level it has below that, so xhigh runs as high on Opus 4.6.",
+  "rl_effort-ignored-no-effort-support":
+    "Haiku 4.5 doesn't support effort, so any effort level set for it has no effect.",
+  "rl_agent-effort-order":
+    "CLAUDE_CODE_EFFORT_LEVEL beats an agent's effort frontmatter, which beats --effort and the settings that count for the agent's model.",
+  "rl_agent-effort-lowered-by-cap":
+    "When maxEffortLevel caps an agent's model, a higher effort for that agent runs at the cap.",
+  "rl_agent-effort-lowered-by-cap-model-unknown":
+    "When Bar Tab can't tell an agent's model, it applies the top-level maxEffortLevel cap, though a modelSettings cap could change it.",
+  "rl_agent-effort-lowered-unsupported-level":
+    "When an agent's model lacks the level set, the agent runs at the highest level the model has below it.",
+  "rl_agent-effort-user-settings-opus-5-5":
+    "An agent on Opus 5.5 or later ignores a top-level effortLevel in user settings and takes a level only from modelSettings.",
+  "rl_agent-effort-user-settings-model-unknown":
+    "When Bar Tab can't tell an agent's model, it can't say whether a top-level effortLevel in user settings counts for it.",
+  "rl_agent-effort-default-model-unknown":
+    "When no effort level counts for an agent and Bar Tab can't tell its model, it can't name the default level.",
+  "rl_agent-effort-default-no-effort-support":
+    "An agent on Haiku 4.5 gets no effort level, because that model doesn't support effort.",
+  "rl_agent-effort-default-by-model":
+    "When no effort level counts for an agent's model, the agent runs at that model's default level.",
+  "rl_model-settings-name-matching":
+    "A modelSettings entry matches its model by canonical name, alias, date suffix, [1m] or a provider ID, and within one file a canonical-name entry beats an alias entry.",
+  "rl_model-settings-max-effort-per-model":
+    "A modelSettings cap replaces that file's top-level maxEffortLevel for one model, and across files the lowest cap still applies.",
+  "rl_max-effort-level-values":
+    "maxEffortLevel takes low, medium, high, xhigh or max, where max sets no cap, and Claude Code skips any other value.",
+  "rl_model-settings-max-effort-values":
+    "A modelSettings cap takes low, medium, high, xhigh or max, and Claude Code skips any other value for that model.",
+  "rl_model-settings-auto-compact-window":
+    "A per-model autoCompactWindow beats the top-level one in the same file, but across files the highest file still wins.",
+  "rl_prompt-cache-force-5m":
+    "FORCE_PROMPT_CACHING_5M forces a five-minute cache for the main conversation, whatever any other variable or settings file sets.",
+  "rl_subagent-prompt-cache-force-5m":
+    "FORCE_PROMPT_CACHING_5M forces a five-minute cache for agents too, whatever their settings or frontmatter say.",
+  "rl_prompt-cache-enable-1h":
+    "ENABLE_PROMPT_CACHING_1H asks for a one-hour cache for the main conversation when no other variable or settings file sets one.",
+  "rl_subagent-prompt-cache-enable-1h":
+    "ENABLE_PROMPT_CACHING_1H asks for a one-hour cache for agents when no other variable, settings file or experimental.cacheTtl sets one.",
+  "rl_prompt-cache-default-by-plan":
+    "With nothing setting it, your plan decides the main conversation's cache lifetime, one hour on a subscription within plan usage and five minutes otherwise.",
+  "rl_subagent-prompt-cache-default":
+    "With nothing setting it, an agent's cache lasts five minutes on every plan, subscriptions included.",
+  "rl_auto-compact-window-empty":
+    "Claude Code ignores an empty CLAUDE_CODE_AUTO_COMPACT_WINDOW, so the next source sets the auto-compact window.",
+  "rl_auto-compact-window-values":
+    "Claude Code moves a CLAUDE_CODE_AUTO_COMPACT_WINDOW value into the 100000 to 1000000 range and ignores a settings value below 100000.",
+  "rl_auto-compact-window-default":
+    "With nothing setting it, Claude Code uses the window tuned for the model, 1000000 tokens on Opus 5.5.",
+  "rl_agent-auto-compact-window":
+    "CLAUDE_CODE_AUTO_COMPACT_WINDOW beats an agent's frontmatter, and otherwise the frontmatter can only lower the window the session would use.",
+  "rl_agent-auto-compact-window-values":
+    "An agent's frontmatter window takes 100000 to 1000000 as a plain number, and Claude Code ignores anything else, 200k included.",
+  "rl_agent-auto-compact-window-default":
+    "With nothing setting a window, an agent inherits the one tuned for the session's model, which its frontmatter can only lower.",
+  "rl_agent-file-location-order":
+    "When agents share a name, Claude Code uses the one from the highest place, from managed settings down to a plugin.",
+  "rl_agent-file-project-over-user":
+    "When a project agent and a user agent share a name, the project agent wins.",
+  "rl_agent-file-nested-closest":
+    "When nested .claude/agents folders define the same name, the one closest to the working directory wins.",
+  "rl_agent-file-same-name-one-tree":
+    "When two files in one agents folder share a name, Claude Code loads only one, in filesystem read order.",
+  "rl_agent-file-reader-rejected":
+    "Some agent files load in Claude Code even though Bar Tab can't read their frontmatter safely, so their values stay unknown.",
+  "rl_agent-file-reader-rejected-untested":
+    "When Bar Tab rejects frontmatter in a form nobody has tested, it can't say whether Claude Code loads the file.",
+  "rl_agent-file-skipped":
+    "Claude Code loads only .md agent files with a name and a description, and skips one whose frontmatter it can't parse.",
+  "rl_agent-file-unknown-field":
+    "Claude Code ignores a frontmatter field it doesn't recognize, and the agent still loads.",
+  "rl_settings-file-unreadable":
+    "When Bar Tab can't read a managed settings file, it can't see its values, and Claude Code may start without that policy too.",
+  "rl_settings-file-unreadable-untested":
+    "When Bar Tab can't read a user, project or local settings file, it can't tell whether Claude Code reads it.",
+  "rl_settings-file-managed-unparsed":
+    "Claude Code refuses to start while a managed settings file isn't a valid JSON object.",
+  "rl_settings-file-unparsed-skipped":
+    "Claude Code skips a whole user, project or local settings file that isn't a valid JSON object.",
+  "rl_rules-files-listed":
+    "Claude Code loads every .md file in the user and project rules folders, user rules first, and neither set overrides the other.",
+  "rl_always-thinking-no-effect":
+    "Fable 5 and later models always think, so alwaysThinkingEnabled false and MAX_THINKING_TOKENS=0 have no effect on them.",
+  "rl_always-thinking-model-unknown":
+    "When Bar Tab doesn't know the session's model, it can't say whether a setting that turns thinking off works.",
+  "rl_always-thinking-value-wrong":
+    "When alwaysThinkingEnabled isn't true or false, or MAX_THINKING_TOKENS isn't a whole number, Bar Tab can't say what happens.",
+  "rl_always-thinking-order":
+    "MAX_THINKING_TOKENS beats alwaysThinkingEnabled for one session, and among settings files the highest one wins.",
+  "rl_always-thinking-default-always-on":
+    "Fable 5 and later models always think, so nothing can turn thinking off for them.",
+  "rl_always-thinking-default":
+    "With nothing setting it, extended thinking is on for every model that supports it.",
+  "rl_fallback-model-chain-limits":
+    "Claude Code removes duplicates from a fallback chain, drops models outside the allowed list and keeps at most three.",
+  "rl_fallback-model-chain-unclear":
+    "Bar Tab can't always tell which models stay in a fallback chain, such as when an entry is default or a provider ID.",
+  "rl_fallback-model-value-wrong":
+    "When fallbackModel isn't a list of model names, Bar Tab can't say what Claude Code does with it.",
+  "rl_fallback-model-order":
+    "--fallback-model beats every settings file, and Claude Code takes the whole chain from the highest file, with no merging.",
+  "rl_fallback-model-default":
+    "With no fallback chain set, a failed request isn't retried on another model.",
+  "rl_available-models-managed-empty":
+    "An empty availableModels list in managed settings blocks every named model selection.",
+  "rl_available-models-value-wrong":
+    "When availableModels isn't a list of model names, Bar Tab can't say what Claude Code does with it.",
+  "rl_available-models-order":
+    "A managed availableModels list applies as it is, and without one Claude Code combines the lists from your other files.",
+  "rl_available-models-default":
+    "With no availableModels list in any settings file, every model is available.",
+
+  // How Claude Code decides (M5 task 3b). Direction C, a settings list and a page per setting.
+  dc_sub: "The rules Bar Tab uses to work out which value Claude Code runs with",
+  dc_gap_all_one:
+    "You run Claude Code {installed}, but Bar Tab checked its {due} rule on {checked_on}. If Claude Code changed how it decides, the rule may be out of date.",
+  dc_gap_all_other:
+    "You run Claude Code {installed}, but Bar Tab checked all {due} rules on {checked_on}. If Claude Code changed how it decides, some may be out of date.",
+  dc_gap_some_one:
+    "You run Claude Code {installed}. Bar Tab checked {due} rule on an older version, so it may be out of date.",
+  dc_gap_some_other:
+    "You run Claude Code {installed}. Bar Tab checked {due} rules on an older version, so they may be out of date.",
+  dc_gap_link_one: "Show the rule to re-check",
+  dc_gap_link_other: "Show the {n} rules to re-check",
+  dc_search_label: "Search rules",
+  dc_search_ph: "A setting, a rule id or any word",
+  // The SearchField clear button and the no-results button, on both Reference pages
+  sf_clear: "Clear search",
+  dc_conf_label: "Confidence",
+  dc_conf_all: "All",
+  dc_count_one: "{n} rule",
+  dc_count_other: "{n} rules",
+  dc_count_of: "{n} of {total} rules",
+  dc_count_ann_one: "{n} rule shown",
+  dc_count_ann_other: "{n} rules shown",
+  dc_count_ann_of: "{n} of {total} rules shown",
+  dc_count_ann_none: "No rules match",
+  dc_loading: "Loading rules",
+  dc_list_of: "{n} of {total}",
+  dc_results_one: "{n} rule in {g} setting",
+  dc_results_other_one_setting: "{n} rules in {g} setting",
+  dc_results_other: "{n} rules in {g} settings",
+  dc_set_sub_one: "{n} rule. Applies to {scopes}.",
+  dc_set_sub_other: "{n} rules. Applies to {scopes}.",
+  dc_scope_main: "the main session",
+  dc_scope_agent: "agents",
+  dc_scope_model: "each model",
+  dc_order_h: "Where Claude Code looks, top wins",
+  dc_q_invalid: "When Claude Code won't accept the value",
+  dc_q_lowered: "When a cap lowers it",
+  dc_q_ignored: "When Claude Code skips it",
+  dc_q_overridden: "When another source wins",
+  dc_q_unknown: "When Bar Tab can't tell",
+  dc_q_in_effect: "Which value applies",
+  dc_q_default: "When nothing sets it",
+  dc_checked: "Checked on {version}, {date}",
+  dc_due_mark: "Due for a re-check",
+  dc_docs_one: "Show the line from the docs",
+  dc_docs_other: "Show the {n} lines from the docs",
+  dc_new_tab: "opens in a new tab",
+  dc_nodocs_tested: "No docs line. Bar Tab's test is the source.",
+  dc_nodocs_assumed: "No docs line covers this case.",
+  dc_found_in_docs: "Found in a line from the docs",
+  dc_none_h: "No rules match “{query}”",
+  dc_none_b: "Try a setting name such as effortLevel, a rule id, or a word from the docs.",
+  dc_none_glossary: "Look it up in the Glossary",
+  dc_err_h: "Bar Tab couldn't load the rules",
+  dc_err_b: "The Bar Tab server didn't send them. Try again in a moment.",
+  dc_gone_rule_h: "There's no rule called {id}",
+  dc_gone_setting_h: "There's no setting called {key}",
+  dc_gone_link: "Show every setting",
+  dc_due_all_one:
+    "Showing the {due} rule. Bar Tab checked it on {checked_on}, before the {installed} you run.",
+  dc_due_all_other:
+    "Showing all {due} rules. Bar Tab checked each one on {checked_on}, before the {installed} you run.",
+  dc_due_some_one:
+    "Showing the {due} rule Bar Tab checked on a version older than your {installed}.",
+  dc_due_some_other:
+    "Showing the {due} rules Bar Tab checked on a version older than your {installed}.",
+  dc_due_show_all: "Show all rules",
+  dc_due_none_h: "No rules are due",
+  dc_due_none_b: "Bar Tab checked every rule on Claude Code {installed} or later.",
+
+  // Glossary (M5 task 3b). Direction A. The list section headings are the glossary.ts terms.
+  gl_sub: "The words Bar Tab uses, and what each one means",
+  gl_search_label: "Search the glossary",
+  gl_search_ph: "A word you saw in Bar Tab",
+  gl_count_one: "{n} entry",
+  gl_count_other: "{n} entries",
+  gl_count_of: "{n} of {total} entries",
+  gl_count_ann_one: "{n} entry shown",
+  gl_count_ann_other: "{n} entries shown",
+  gl_count_ann_of: "{n} of {total} entries shown",
+  gl_count_ann_none: "No entries match",
+  gl_status_q: "How a setting or item stands",
+  gl_scopes_q: "Where a value can be set. The first five rank highest first.",
+  gl_conf_q: "How sure Bar Tab is of a rule",
+  gl_terms_h: "Terms",
+  gl_terms_q: "Every other word, A to Z",
+  gl_none_h: "No entries match “{query}”",
+  gl_none_b: "Try a shorter word, or search the rules if it names a setting.",
+  gl_none_rules: "Search the rules for “{query}”",
+  gl_gone_h: "There's no glossary entry called {id}",
+  gl_see: "See also",
+  // Search counts each rule once, though a rule with several outcomes shows under each one
+  dc_results_note:
+    "Some rules can lead to more than one status, so they show under each one. The total counts each rule once.",
+
+  // The inspector Why line, when its rule is due (M5 task 3b)
+  in_older: "Older than your {installed}",
+  in_rule_link: "See the rule {id}",
+
+  // Order ladder layer names. managed, local, project, user and plugin reuse the sc_ names.
+  ly_env: "Environment variables",
+  ly_flag: "Launch flag",
+  ly_cli: "--settings file",
+  ly_agent: "Agent file",
+  ly_default: "Claude Code's default",
+  ly_default_agent: "The main session's model",
 } as const;
 
 export type StringKey = keyof typeof en;

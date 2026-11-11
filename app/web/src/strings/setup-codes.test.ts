@@ -231,7 +231,8 @@ describe("setup codes have strings", () => {
   it("has names for every part", () => {
     expect(missing(parts.map((p) => `sf_${p}`))).toEqual([]);
     expect(missing(parts.map((p) => `sp_sub_${p}`))).toEqual([]);
-    expect(missing(parts.map((p) => `em_${p}`))).toEqual([]);
+    // An empty output style list means the default applies, so PART_EMPTY uses st_set there.
+    expect(missing(parts.filter((p) => p !== "output_style").map((p) => `em_${p}`))).toEqual([]);
     expect(missing(parts.map((p) => `su_cell_${p}_one`))).toEqual([]);
     expect(missing(parts.map((p) => `su_cell_${p}_other`))).toEqual([]);
   });
@@ -268,7 +269,7 @@ describe("setup codes have strings", () => {
   });
 
   it("has a line for every notice code", () => {
-    expect(setOf("NOTICE_CODES")).toEqual(["project_not_listed", "rows_no_usage"]);
-    expect(missing(["su_unlisted", ...plural("pc_rows_no_usage")])).toEqual([]);
+    expect(setOf("NOTICE_CODES")).toEqual(["project_not_listed", "rows_no_usage", "version_gap"]);
+    expect(missing(["su_unlisted", ...plural("pc_rows_no_usage"), "su_n_version_gap"])).toEqual([]);
   });
 });

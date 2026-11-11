@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { pageName, parseRoute, routeForProject } from "@/app/routes";
+import { pageName, parentPageName, parseRoute, routeForProject } from "@/app/routes";
 
 describe("parseRoute", () => {
   it.each([
@@ -30,6 +30,59 @@ describe("parseRoute", () => {
     expect(parseRoute("/nope")).toBeNull();
     expect(parseRoute("/p/a")).toBeNull();
     expect(parseRoute("/reference/other")).toBeNull();
+    expect(parseRoute("/reference")).toBeNull();
+  });
+
+  it("reads the setting and rule segments of How Claude Code decides, with no project", () => {
+    expect(parseRoute("/reference/decides/effortLevel")).toEqual({
+      page: "decides",
+      project: null,
+      rest: "",
+      setting: "effortLevel",
+    });
+    expect(
+      parseRoute(
+        "/reference/decides/modelSettings.maxEffortLevel/model-settings-max-effort-values",
+      ),
+    ).toEqual({
+      page: "decides",
+      project: null,
+      rest: "",
+      setting: "modelSettings.maxEffortLevel",
+      rule: "model-settings-max-effort-values",
+    });
+    expect(parseRoute("/reference/decides/a/b?q=cache&due=1")?.rule).toBe("b");
+    expect(parseRoute("/reference/decides/a/b/c")).toBeNull();
+  });
+
+  it("reads the term id of the Glossary, including list item targets", () => {
+    expect(parseRoute("/reference/glossary/cache-write")?.id).toBe("cache-write");
+    expect(parseRoute("/reference/glossary/status-in_effect")?.id).toBe("status-in_effect");
+    expect(
+      parseRoute("/reference/glossary/scope-managed?from=%2Fp%2Fa%2Flive&help=live.cache")?.id,
+    ).toBe("scope-managed");
+    expect(parseRoute("/reference/glossary/a/b")).toBeNull();
+  });
+
+  it("keeps the text of a malformed escape", () => {
+    expect(parseRoute("/reference/glossary/%E0%A4%A")?.id).toBe("%E0%A4%A");
+  });
+
+  it("names a detail page by its parent's nav name", () => {
+    expect(parentPageName("session")).toBe("Sessions");
+    expect(parentPageName("agent_edit")).toBe("Agents");
+    expect(parentPageName("agent_new")).toBe("Agents");
+    expect(parentPageName("surface")).toBe("Your setup");
+    expect(parentPageName("surface_edit")).toBe("Your setup");
+    expect(parentPageName("live")).toBe("Live");
+    expect(parentPageName("to_fix")).toBe("To fix");
+  });
+
+  it("keeps a Reference route as it is when the project changes", () => {
+    const no = vi.fn(() => false);
+    expect(routeForProject("/reference/decides/effortLevel/x", "b", no)).toBe(
+      "/reference/decides/effortLevel/x",
+    );
   });
 
   it("ignores the query", () => {

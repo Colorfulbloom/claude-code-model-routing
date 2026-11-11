@@ -1,6 +1,7 @@
 import { Dialog, Modal, ModalOverlay } from "react-aria-components";
 import { Button } from "../Button/Button";
 import { cx } from "../cx";
+import { HelpButton } from "../HelpButton/HelpButton";
 import { SelectList, type SelectOption } from "../Select/Select";
 import "./ProjectPicker.css";
 
@@ -99,7 +100,10 @@ export function ProjectPicker({
   return (
     <section className={cx("pk", className)}>
       <header className="pk-head">
-        <Heading className="pk-heading">{heading}</Heading>
+        <div className="pk-title">
+          <Heading className="pk-heading">{heading}</Heading>
+          <HelpButton help="shell.projectstate" />
+        </div>
         {closeLabel !== undefined && onClose !== undefined && (
           <Button variant="icon" ariaLabel={closeLabel} onPress={onClose} className="pk-close">
             {"✕"}

@@ -179,6 +179,53 @@ describe("a full answer", () => {
   });
 });
 
+describe("help", () => {
+  it("puts a button on every tile, card and chart, with the unit in the chart's name", async () => {
+    const server = reviewServer({ summary: () => summaryAnswer(), chart: () => chartAnswer() });
+    await open(server);
+    await screen.findByRole("img", { name: /Bar chart of cost per day/ });
+    for (const name of [
+      "About Cost",
+      "About Sessions",
+      "About Tokens",
+      "About Read from cache",
+      "About Where the money went",
+      "About Model check",
+      "About Most expensive sessions",
+      "About Cost per day",
+    ]) {
+      expect(screen.getByRole("button", { name })).toBeInTheDocument();
+    }
+  });
+
+  it("hands a tile's popover the numbers on the tile", async () => {
+    const server = reviewServer({ summary: () => summaryAnswer(), chart: () => chartAnswer() });
+    const user = userEvent.setup();
+    await open(server);
+    await user.click(await screen.findByRole("button", { name: "About Read from cache" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByRole("heading", { level: 2, name: "Read from cache" })).toBeTruthy();
+    expect(within(dialog).getByText("80%")).toBeInTheDocument();
+    expect(within(dialog).getByText("Up 10 points from 70%")).toBeInTheDocument();
+  });
+
+  it("hands the cost chart's popover the kind totals from the Made of line", async () => {
+    const server = reviewServer({ summary: () => summaryAnswer(), chart: () => chartAnswer() });
+    const user = userEvent.setup();
+    await open(server);
+    await screen.findByText("Made of");
+    const made = need(document.querySelector(".review-kinds"));
+    const totals = [...made.querySelectorAll("b.num")].map((node) => node.textContent);
+    expect(totals).toHaveLength(4);
+    await user.click(screen.getByRole("button", { name: "About Cost per day" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByRole("heading", { level: 2, name: "Cost per day" })).toBeTruthy();
+    for (const total of totals) {
+      expect(within(dialog).getAllByText(need(total)).length).toBeGreaterThan(0);
+    }
+  });
+});
+
 describe("card errors", () => {
   it("shows an error on the model check alone, with Try again, when its part failed", async () => {
     const server = reviewServer({

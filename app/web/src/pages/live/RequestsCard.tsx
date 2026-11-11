@@ -1,5 +1,6 @@
 /* Latest requests: five rows of the eight the server sends, and the price footer. */
 import { Card } from "@/components/Card/Card";
+import { HelpButton } from "@/components/HelpButton/HelpButton";
 import { ModelSwatch } from "@/components/ModelSwatch/ModelSwatch";
 import { TableWell } from "@/components/TableWell/TableWell";
 import type { TableColumn, TableRowData } from "@/components/TableWell/TableWell";
@@ -47,7 +48,7 @@ export function RequestsCard({
     },
   }));
   return (
-    <Card title={t("rq_h")} question={t("rq_q")}>
+    <Card title={t("rq_h")} question={t("rq_q")} right={<HelpButton help="live.requests" />}>
       <TableWell
         label={t("rq_h")}
         columns={columns}
@@ -56,8 +57,7 @@ export function RequestsCard({
       />
       {prices !== null && (
         <div className="live-rq-foot">
-          <p>{`${t("rq_f_est")} ${t("rq_f_prices", { date: dateWords(prices.asOf) })}.`}</p>
-          <p>{t("rq_f_sub")}</p>
+          <p>{t("foot_est", { date: dateWords(prices.asOf) })}</p>
           {prices.disagree !== null && (
             <p className="live-rq-warn">
               <span aria-hidden="true">{"▲ "}</span>

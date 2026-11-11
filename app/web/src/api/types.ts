@@ -89,3 +89,12 @@ export type SetupPart = SetupItem["part"];
 export type ProblemList = Schemas["ProblemList"];
 export type ProblemRow = Schemas["ProblemRow"];
 export type ToFix = Schemas["ToFix"];
+
+/** GET /api/rules?etag=, the full answer and the short one. The answer is global, with no project. */
+export type RulesAnswer = Schemas["RulesAnswer"];
+export type RulesUnchanged = Schemas["RulesUnchanged"];
+export type RuleRow = Schemas["RuleRow"];
+export type RuleQuote = Schemas["RuleQuote"];
+export type RuleConfidence = RuleRow["confidence"];
+/** `rules_version_gap` on /api/app, and the data behind the version-gap notice. */
+export type VersionGap = Schemas["VersionGap"];

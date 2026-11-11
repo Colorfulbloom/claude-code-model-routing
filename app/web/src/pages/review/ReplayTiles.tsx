@@ -1,4 +1,9 @@
-/* The four tiles of Session review, from the tile view that lib/replay-view.ts builds at the line. */
+/*
+ * The four tiles of Session review, from the tile view that lib/replay-view.ts builds at the line.
+ * The one Session totals entry explains the figure under each number, the Ring and the dots. Two
+ * triggers with one name read as a mistake, so its one "?" sits on the first tile that draws a
+ * Ring, the cache tile.
+ */
 import { Ring } from "@/components/Ring/Ring";
 import { RunDots } from "@/components/RunDots/RunDots";
 import { Tile } from "@/components/Tile/Tile";
@@ -21,6 +26,7 @@ export function ReplayTiles({ view }: { view: ReplayTilesView }) {
         value={view.cache.value}
         delta={view.cache.delta}
         proof={<Ring percent={view.cache.percent} />}
+        help={{ id: "review.tiles" }}
       />
       <Tile
         label={view.runs.label}

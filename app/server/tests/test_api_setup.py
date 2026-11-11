@@ -231,7 +231,12 @@ def test_an_unlisted_project_reads_not_read_here_with_a_notice(
     with sah.served(world, tmp_path) as api:
         body = api.ok(path("setup"))
         assert body["listed"] is False
-        assert [n["code"] for n in body["notices"]] == ["project_not_listed"]
+        # The fixture scenario reports 2.1.310, so the version gap follows.
+        assert [n["code"] for n in body["notices"]] == [
+            "project_not_listed",
+            "version_gap",
+        ]
+        assert body["notices"][1]["params"]["due"] == "84"
         for part in body["parts"]:
             cells = {c["scope"]: c["state"] for c in part["scopes"]}
             assert cells["project"] == "not_visible"

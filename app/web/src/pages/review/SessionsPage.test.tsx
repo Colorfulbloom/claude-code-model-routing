@@ -320,3 +320,91 @@ describe("the range and the pages", () => {
     expect(links[1]).toHaveAttribute("aria-current", "page");
   });
 });
+
+describe("help", () => {
+  const early = () =>
+    reviewServer({
+      sessions: () =>
+        sessionList([
+          {
+            day: "2026-10-11",
+            sessions: [
+              sessionAt("early", "2026-10-09T17:00:00Z", { started_before_range: true, cost: 2.5 }),
+            ],
+          },
+        ]),
+    });
+
+  it("puts a term on Runs only and keeps each header's name", async () => {
+    await open(early());
+    const table = await screen.findByRole("table", { name: "Sessions" });
+    const heads = within(table).getAllByRole("columnheader").slice(0, 5);
+    expect(heads.map((h) => h.textContent)).toEqual([
+      "Session",
+      "Agents",
+      "Runs",
+      "Tokens",
+      "Cost",
+    ]);
+    expect(
+      heads.map((h) => within(h).queryByRole("button")?.getAttribute("data-help-id") ?? null),
+    ).toEqual([null, null, "sessions.cols", null, null]);
+  });
+
+  it("marks the header's own line when its term opens", async () => {
+    const user = userEvent.setup();
+    await open(early());
+    const table = await screen.findByRole("table", { name: "Sessions" });
+    await user.click(within(table).getByRole("button", { name: "Runs" }));
+    const dialog = await screen.findByRole("dialog", { name: "Sessions table" });
+    expect(within(dialog).getByText("This column")).toBeInTheDocument();
+    expect(within(dialog).getByText("This column").closest(".hp-row")).toHaveTextContent("Runs");
+  });
+
+  it("opens Started earlier from its pill, and a click inside the popover leaves the page alone", async () => {
+    const user = userEvent.setup();
+    await open(early());
+    const before = window.location.hash;
+    await user.click(await screen.findByRole("button", { name: "Started earlier" }));
+    const dialog = await screen.findByRole("dialog", { name: "Started earlier" });
+    await user.click(within(dialog).getByRole("heading", { level: 2 }));
+    expect(window.location.hash).toBe(before);
+    expect(screen.getByRole("dialog", { name: "Started earlier" })).toBeInTheDocument();
+  });
+
+  it("explains the share bar from a button on the card", async () => {
+    const user = userEvent.setup();
+    await open(early());
+    await user.click(await screen.findByRole("button", { name: "About Share bar" }));
+    expect(await screen.findByRole("dialog", { name: "Share bar" })).toBeInTheDocument();
+  });
+});
+
+describe("help at phone width", () => {
+  it("keeps the clipped headers as plain text, so no focus stop hides in them", async () => {
+    await open(
+      reviewServer({
+        sessions: () =>
+          sessionList([{ day: "2026-11-09", sessions: [sessionAt("a", "2026-11-09T14:00:00Z")] }]),
+      }),
+      "?range=30d",
+      375,
+    );
+    const table = await screen.findByRole("table", { name: "Sessions" });
+    const heads = within(table).getAllByRole("columnheader").slice(0, 5);
+    expect(heads.map((h) => h.textContent)).toEqual([
+      "Session",
+      "Agents",
+      "Runs",
+      "Tokens",
+      "Cost",
+    ]);
+    expect(heads.map((h) => within(h).queryByRole("button") !== null)).toEqual([
+      false,
+      false,
+      false,
+      false,
+      false,
+    ]);
+  });
+});

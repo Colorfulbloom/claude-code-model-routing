@@ -49,6 +49,7 @@ import collect_skills
 import model_catalog
 import problems as problems_mod
 import read_scope
+import rules_reference
 import setup_codes
 import setup_items
 from model_check import STATUS_ORDER
@@ -153,6 +154,8 @@ class SetupRequest:
         usage: Fetches the store's run counts. Called by the map and part answers
             only, once per read (the Agents page and To fix never need it).
         transcripts: Fetches the unreadable transcripts. Called on a cold read only.
+        claude_version: The Claude Code version ``/api/app`` reports, or "". It is the
+            provider's own value, so the version gap notice and the app answer agree.
     """
 
     project: str
@@ -162,6 +165,7 @@ class SetupRequest:
     as_of: datetime | None
     usage: Callable[[], SetupUsage | None]
     transcripts: Callable[[], problems_mod.Transcripts]
+    claude_version: str = ""
 
 
 @dataclass
@@ -226,6 +230,7 @@ def _context_key(req: SetupRequest) -> tuple[object, ...]:
         ctx.real_mode,
         tuple(sorted(ctx.shell_env.items())),
         req.version,
+        req.claude_version,
     )
 
 
@@ -573,13 +578,27 @@ def _part_rows(  # noqa: PLR0913 - the pieces the map reads
     return out
 
 
-def _notices(rows: Sequence[ProblemRow], *, listed: bool) -> list[Coded]:
+def _notices(
+    rows: Sequence[ProblemRow], *, listed: bool, installed: str = ""
+) -> list[Coded]:
     found: list[Coded] = []
     if not listed:
         found.append(Coded(code="project_not_listed", params={}))
     found.extend(
         Coded(code=r.code, params=r.params) for r in rows if r.group == "notice"
     )
+    gap = rules_reference.version_gap(installed)
+    if gap is not None:
+        found.append(
+            Coded(
+                code="version_gap",
+                params={
+                    "installed": gap.installed,
+                    "checked_on": gap.checked_on,
+                    "due": str(gap.due),
+                },
+            )
+        )
     return found
 
 
@@ -634,7 +653,7 @@ def build_bundle(req: SetupRequest) -> Bundle:
             listed=req.listed,
             known=False,
         ),
-        notices=_notices(rows, listed=req.listed),
+        notices=_notices(rows, listed=req.listed, installed=req.claude_version),
         agent_items=list(items["agents"]),
     )
 

@@ -127,6 +127,7 @@ class AppInfo(_Response):
     editable_projects: list[str]
     mode: "AppMode"
     clock: "ClockInfo"
+    rules_version_gap: "VersionGap | None" = None
 
 
 class PriceTier(_Response):
@@ -1430,3 +1431,77 @@ class ProblemList(_SetupAnswer):
 
     rows: list[ProblemRow]
     counted: int
+
+
+# --------------------------------------------------------------------- Rules (M5)
+# Rules are global, so these answers carry no project. The page owns every word:
+# a rule's sentence and group name are keyed in en.ts by ``rule_id`` and ``key``.
+
+RuleScope = Literal["main", "agent", "model"]
+
+
+class VersionGap(_Response):
+    """The Claude Code that ran last is newer than the rules' checked version.
+
+    ``installed`` is the newest session's version (demo: ``session.json``).
+    ``checked_on`` is the oldest ``verified_on.claude_version`` across ``rules.json``
+    and ``agent_fields.json``. ``due`` counts the rules checked on a version older
+    than ``installed``, for "Show the {n} rules to re-check".
+    """
+
+    installed: str
+    checked_on: str
+    due: int
+
+
+class RuleQuote(_Response):
+    """Verbatim docs text that backs a rule, and the docs section it comes from."""
+
+    doc_url: str
+    quote: str
+
+
+class RuleVerified(_Response):
+    """The Claude Code version and the date a rule was checked on."""
+
+    claude_version: str
+    date: str
+
+
+class RuleRow(_Response):
+    """One rule from ``rules.json``. ``due`` is True when ``installed`` is newer.
+
+    ``outcomes`` are the distinct ``conditions[].status`` values, in the order they
+    first appear in the file, so a setting page can say what each rule can lead to.
+    """
+
+    rule_id: str
+    key: str
+    scope: RuleScope
+    combine: str
+    layer_order: list[str]
+    confidence: ConfidenceLevel
+    verified_on: RuleVerified
+    due: bool
+    outcomes: list[ModelCheckStatus]
+    quotes: list[RuleQuote]
+    experiment: str | None
+
+
+class RulesAnswer(_Response):
+    """Answer of ``GET /api/rules``. ``rules`` are sorted by ``rule_id``."""
+
+    server_time: datetime
+    etag: str
+    unchanged: Literal[False]
+    installed: str | None
+    checked_on: str
+    rules: list[RuleRow]
+
+
+class RulesUnchanged(_Response):
+    """The short answer of ``GET /api/rules`` when the asked etag still matches."""
+
+    server_time: datetime
+    etag: str
+    unchanged: Literal[True]

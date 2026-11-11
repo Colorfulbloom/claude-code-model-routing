@@ -20,6 +20,8 @@ export interface ToFixGroupProps {
   ariaLabel?: string;
   /** The question slot after the count, such as "Not counted. The dashboard can't tell which value wins." */
   note?: string;
+  /** The "?" for the group's rows, at the end of the header row. */
+  help?: React.ReactNode;
   /** `li` elements, usually ToFixRow. */
   children: React.ReactNode;
   className?: string;
@@ -37,6 +39,7 @@ export function ToFixGroup({
   count,
   ariaLabel,
   note,
+  help,
   children,
   className,
 }: ToFixGroupProps) {
@@ -58,6 +61,7 @@ export function ToFixGroup({
         </h2>
         {counted && count !== undefined && <span className="card-count num">{count}</span>}
         {note !== undefined && <span className="card-question">{note}</span>}
+        {help !== undefined && <span className="card-right">{help}</span>}
       </header>
       <ul className="tofix-rows">{children}</ul>
     </section>

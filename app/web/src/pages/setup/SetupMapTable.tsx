@@ -5,9 +5,11 @@
  * the summary. With the Switch on, a row's scope chips sit under its summary (owner decision 1).
  */
 import { Link } from "react-aria-components";
+import { HelpTerm } from "@/components/HelpTerm/HelpTerm";
 import { ScopeChip } from "@/components/ScopeChip/ScopeChip";
 import { StatusChip } from "@/components/StatusChip/StatusChip";
 import { Well } from "@/components/Well/Well";
+import { useIsDesktop } from "@/lib/media";
 import type { MapRowView } from "@/lib/setup-map";
 import { setupPartPath } from "@/lib/setup-routes";
 import { t } from "@/strings/t";
@@ -69,19 +71,34 @@ export function SetupMapTable({
   rows: MapRowView[];
   scopes: boolean;
 }) {
+  const desktop = useIsDesktop();
   return (
     <Well variant="list" className="setup-map-well">
       <table className="setup-map" aria-label={t("su_card_h")}>
         <thead>
           <tr>
+            {/* At 720px and below the header row is clipped, so Runs and Status stay plain text and
+                never hold a focus stop nobody can see. */}
             <th scope="col" className="setup-map-th">
               {t("su_col_what")}
             </th>
             <th scope="col" className="setup-map-th">
-              {t("su_col_runs")}
+              {desktop ? (
+                <HelpTerm help="setup.map" line={t("su_col_runs")}>
+                  {t("su_col_runs")}
+                </HelpTerm>
+              ) : (
+                t("su_col_runs")
+              )}
             </th>
             <th scope="col" className="setup-map-th">
-              {t("su_col_status")}
+              {desktop ? (
+                <HelpTerm help="setup.map" line={t("su_col_status")}>
+                  {t("su_col_status")}
+                </HelpTerm>
+              ) : (
+                t("su_col_status")
+              )}
             </th>
           </tr>
         </thead>

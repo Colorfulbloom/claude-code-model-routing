@@ -1,0 +1,95 @@
+/* The order ladder: pills joined by a chevron at 721px and up, a vertical well at 720px and under. */
+.order-ladder {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-sm);
+}
+
+.order-ladder-layer {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 28px;
+  padding: 0 var(--space-3) 0 var(--space-1);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+}
+
+/* Each pill but the last keeps its chevron in its own end margin, so a wrapped line ends with a
+   chevron and never starts with one. It is generated content with empty alt text, so nothing reads
+   it. */
+.order-ladder-layer:not(:last-child) {
+  margin-inline-end: var(--space-5);
+}
+
+.order-ladder-layer:not(:last-child)::after {
+  content: "\203A" / "";
+  position: absolute;
+  inset-inline-end: calc(-1 * var(--space-5) / 2 - 3px);
+  color: var(--text-muted);
+}
+
+.order-ladder-n {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.order-ladder-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Phones, and the sheet's vertical cell: one layer to a line inside a well. */
+.order-ladder.is-vertical {
+  display: grid;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  background: var(--inset-bg);
+  border: 1px solid var(--inset-border);
+  border-radius: var(--radius-lg);
+}
+
+.order-ladder.is-vertical .order-ladder-layer {
+  min-height: 26px;
+  margin-inline-end: 0;
+  padding: 0;
+  border: 0;
+}
+
+.order-ladder.is-vertical .order-ladder-layer::after {
+  content: none;
+}
+
+@media (width <= 720px) {
+  .order-ladder {
+    display: grid;
+    gap: 2px;
+    padding: var(--space-2) var(--space-3);
+    background: var(--inset-bg);
+    border: 1px solid var(--inset-border);
+    border-radius: var(--radius-lg);
+  }
+
+  .order-ladder .order-ladder-layer {
+    min-height: 26px;
+    margin-inline-end: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .order-ladder .order-ladder-layer::after {
+    content: none;
+  }
+}

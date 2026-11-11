@@ -17,8 +17,10 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # tests/ is not on sys.path
 import setup_api_helpers as sah
 import setup_case_helpers as sc
+import version_helpers as vh
 
 import claude_json
+import rules_reference
 import setup_answers
 import setup_codes
 from models import (
@@ -198,6 +200,45 @@ def test_a_listed_project_has_no_not_listed_notice(
     tmp_path_factory: pytest.TempPathFactory,
 ) -> None:
     assert the_map("typical", tmp_path_factory).notices == []
+
+
+@pytest.mark.parametrize(("version", "gap"), vh.CASES)
+def test_the_map_notes_a_version_gap_for_each_installed_version(
+    version: str, gap: bool, tmp_path_factory: pytest.TempPathFactory
+) -> None:
+    found = the_map("typical", tmp_path_factory, claude_version=version)
+    if not gap:
+        assert found.notices == []
+        return
+    checked_on = rules_reference.build_answer(None, NOW).checked_on
+    due = sum(row.due for row in rules_reference.build_answer(version, NOW).rules)
+    assert [(n.code, n.params) for n in found.notices] == [
+        (
+            "version_gap",
+            {"installed": version, "checked_on": checked_on, "due": str(due)},
+        )
+    ]
+
+
+def test_the_version_gap_notice_follows_the_unlisted_notice(
+    tmp_path_factory: pytest.TempPathFactory,
+) -> None:
+    found = the_map("scope-unlisted", tmp_path_factory, claude_version="2.1.310")
+    assert [n.code for n in found.notices] == ["project_not_listed", "version_gap"]
+
+
+def test_a_new_installed_version_drops_the_cached_read(
+    tmp_path_factory: pytest.TempPathFactory,
+) -> None:
+    ctx = sah.materialized(tmp_path_factory, "typical")
+    claude_json.clear_cache()
+    svc = service()
+    before = svc.setup_map(sah.request_of(ctx), None, NOW)
+    after = svc.setup_map(sah.request_of(ctx, claude_version="2.1.310"), None, NOW)
+    assert isinstance(before, SetupMap)
+    assert isinstance(after, SetupMap)
+    assert before.notices == []
+    assert [n.code for n in after.notices] == ["version_gap"]
 
 
 @pytest.mark.skipif(ROOT, reason="mode 000 files read fine as root")

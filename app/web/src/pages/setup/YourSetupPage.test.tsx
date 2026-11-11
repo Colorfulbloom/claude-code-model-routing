@@ -198,3 +198,48 @@ describe("a project that is not on the list", () => {
     expect(settings).toHaveTextContent("Shared project Not read here");
   });
 });
+
+describe("help", () => {
+  it("puts a term on What applies and Status and marks the Status line when it opens", async () => {
+    const user = userEvent.setup();
+    await open(setupServer({ map: () => setupMap(rows()) }));
+    const table = await screen.findByRole("table", { name: "What shapes a session" });
+    const heads = within(table).getAllByRole("columnheader");
+    expect(heads.map((h) => h.textContent)).toEqual(["Part", "What applies", "Status"]);
+    expect(
+      heads.map((h) => within(h).queryByRole("button")?.getAttribute("data-help-id") ?? null),
+    ).toEqual([null, "setup.map", "setup.map"]);
+    await user.click(within(table).getByRole("button", { name: "Status" }));
+    const dialog = await screen.findByRole("dialog", { name: "Your setup table" });
+    expect(within(dialog).getByText("This column").closest(".hp-row")).toHaveTextContent("Status");
+  });
+
+  it("has a button on the card and one beside the Switch", async () => {
+    await open(setupServer({ map: () => setupMap(rows()) }));
+    await screen.findByRole("table", { name: "What shapes a session" });
+    expect(screen.getByRole("button", { name: "About What shapes a session" })).toHaveAttribute(
+      "data-help-id",
+      "setup.card",
+    );
+    expect(screen.getByRole("button", { name: "About Scopes" })).toHaveAttribute(
+      "data-help-id",
+      "setup.scopes",
+    );
+  });
+
+  it("explains the unlisted notice from a button beside its pill", async () => {
+    await open(setupServer({ map: () => setupMap(rows(), { listed: false }) }));
+    expect(
+      await screen.findByRole("button", { name: "About Project not on the list" }),
+    ).toHaveAttribute("data-help-id", "setup.unlisted");
+  });
+});
+
+describe("help at phone width", () => {
+  it("keeps the clipped header row as plain text, and keeps the card's button", async () => {
+    await open(setupServer({ map: () => setupMap(rows()) }), "", 375);
+    const table = await screen.findByRole("table", { name: "What shapes a session" });
+    expect(within(table).queryAllByRole("button")).toHaveLength(0);
+    expect(screen.getByRole("button", { name: "About What shapes a session" })).toBeInTheDocument();
+  });
+});

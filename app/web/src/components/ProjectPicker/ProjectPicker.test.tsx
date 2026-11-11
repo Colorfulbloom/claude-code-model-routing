@@ -102,7 +102,18 @@ describe("ProjectPicker", () => {
       screen.getByText("A project appears here after you use Claude Code in it."),
     ).toBeInTheDocument();
     expect(screen.queryByRole("listbox")).toBeNull();
-    expect(screen.queryByRole("button")).toBeNull();
+    // The only button is the "?" beside the heading. There is nothing to copy or pick.
+    expect(
+      screen.getAllByRole("button").map((button) => button.getAttribute("aria-label")),
+    ).toEqual(["About Project state"]);
+  });
+
+  it("puts a Project state help button beside the heading", () => {
+    render(picker({}));
+    const heading = screen.getByRole("heading", { name: "Projects" });
+    const help = screen.getByRole("button", { name: "About Project state" });
+    expect(help).toHaveAttribute("aria-haspopup", "dialog");
+    expect(heading.parentElement).toBe(help.parentElement);
   });
 
   it("shows a polite loading line", () => {

@@ -32,13 +32,14 @@ from setup_contract import SetupContext
 JSON_HEADERS = {"Accept-Encoding": "identity"}
 
 
-def request_of(
+def request_of(  # noqa: PLR0913 - one keyword per piece of a request
     ctx: SetupContext,
     *,
     listed: bool | None = None,
     version: str = "",
     usage: setup_answers.SetupUsage | None = None,
     transcripts: problems.Transcripts | None = None,
+    claude_version: str = "",
 ) -> setup_answers.SetupRequest:
     """Return a request for ``ctx``. ``listed`` defaults to "there is a project"."""
     return setup_answers.SetupRequest(
@@ -49,6 +50,7 @@ def request_of(
         as_of=None,
         usage=lambda: usage,
         transcripts=lambda: transcripts or problems.Transcripts(),
+        claude_version=claude_version,
     )
 
 

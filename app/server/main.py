@@ -27,6 +27,7 @@ import api_app
 import api_dev
 import api_live
 import api_review
+import api_rules
 import api_setup
 import csp
 import errors
@@ -215,6 +216,7 @@ def build_app(settings: Settings) -> FastAPI:
     app.include_router(api_live.build_router(provider))
     app.include_router(api_review.build_router(provider))
     app.include_router(api_setup.build_router(provider))
+    app.include_router(api_rules.build_router(provider))
     app.add_middleware(api_live.ApiGzipMiddleware)
     if settings.test_clock:
         if settings.data_clock is None or settings.data_clock.kind != "test":

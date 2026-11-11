@@ -11,6 +11,7 @@ import { useParams, useSearchParams } from "react-router";
 import { useProjects } from "@/api/client";
 import { useModels } from "@/api/review";
 import { Card } from "@/components/Card/Card";
+import { HelpButton } from "@/components/HelpButton/HelpButton";
 import { useRangeParam } from "@/lib/range";
 import { KINDS_SECTION, buildModelRows } from "@/lib/review-models";
 import { t } from "@/strings/t";
@@ -98,7 +99,11 @@ function ModelsProject({ project }: { project: string }) {
           <CostFoot prices={answer.prices} />
         </Card>
         <div id={KINDS_ID} ref={kinds} className="review-models-kinds">
-          <Card title={kindsTitle} question={t("md_kind_q")}>
+          <Card
+            title={kindsTitle}
+            question={t("md_kind_q")}
+            right={<HelpButton help="models.kinds" />}
+          >
             {models.failed && <StaleLine updatedAt={models.updatedAt} />}
             <ModelsKinds answer={answer} range={range} />
           </Card>

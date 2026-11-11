@@ -49,6 +49,10 @@ class Provider(Protocol):
         """Return the answer for ``GET /api/app``."""
         ...
 
+    def claude_version(self) -> str:
+        """Return the Claude Code version ``/api/app`` reports, or "" when unknown."""
+        ...
+
     def projects(self) -> ProjectList:
         """Return the answer for ``GET /api/projects``."""
         ...

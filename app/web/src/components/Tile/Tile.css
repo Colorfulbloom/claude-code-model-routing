@@ -1,4 +1,5 @@
 .tile {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 2px var(--space-3);
@@ -55,13 +56,60 @@
   padding-bottom: var(--space-2);
 }
 
-.tile-link {
+/* A tile that opens a page. The link holds the label only and its ::after fills the tile, so the whole
+   tile is the target. The value, delta and note are plain text under that layer. The "?" is a
+   sibling with a higher layer, so a press on it never reaches the link. */
+.tile-link-label {
+  /* The real target is the whole tile through ::after. The label box is still 24px tall, so it
+     meets the target size on its own, and a negative margin keeps the label row at its height. */
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  margin-block: -3px;
+  color: inherit;
   text-decoration: none;
 }
 
-.tile-link:hover,
+.tile-link-label::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: var(--radius-xl);
+}
+
+.tile-link-label:hover {
+  text-decoration: underline;
+}
+
+.tile-link:has(.tile-link-label:hover),
 .tile-link.is-hover {
   background: var(--nav-hover-bg);
+}
+
+/* Focus shows on the whole tile, not on the label alone. The :has() sits on the tile itself and is
+   not nested in another :has(), because a nested one is invalid and drops the rule with no error.
+   The link keeps a transparent outline of the same width, so it still reports a ring to the sheet
+   check, and so forced colors can show it. */
+.tile-link:has(.tile-link-label:focus-visible) {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.tile-link-label:focus-visible {
+  outline-color: transparent;
+}
+
+/* The "?" sits at the tile's top right, level with the label, over the link layer. */
+.tile .tile-help {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  z-index: 2;
+}
+
+.tile-has-help .tile-label {
+  padding-right: calc(24px + var(--space-2));
 }
 
 @media (width <= 720px) {
@@ -82,5 +130,20 @@
 
   .tile-proof {
     display: none;
+  }
+
+  .tile .tile-help {
+    top: var(--space-2);
+    right: var(--space-2);
+  }
+}
+
+@media (forced-colors: active) {
+  .tile-link:has(.tile-link-label:focus-visible) {
+    outline-color: Highlight;
+  }
+
+  .tile-link-label:focus-visible {
+    outline-style: none;
   }
 }

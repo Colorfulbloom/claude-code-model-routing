@@ -14,11 +14,13 @@
   margin-top: var(--space-3);
 }
 
-/* Phone: the Range trigger fills the line under the title, as the board draws it. */
+/* Phone: the Range trigger fills the line under the title, as the board draws it, and leaves room
+   for the "?" beside it. */
 @media (width <= 720px) {
   .scope-bar-range {
     display: grid;
-    width: 100%;
+    flex: 1 1 0;
+    min-width: 0;
   }
 
   .scope-bar-range .select-btn {

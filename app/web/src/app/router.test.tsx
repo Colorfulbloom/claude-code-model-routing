@@ -1,6 +1,8 @@
 import { cleanup, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { postStatus } from "@/app/harness";
+import { parseRoute } from "@/app/routes";
+import { rulesServer } from "@/test/rules-server";
 import { resetViewport } from "@/test/media";
 import { mount } from "@/test/mount";
 import { setupServer } from "@/test/setup-server";
@@ -20,8 +22,6 @@ const routes: [string, string][] = [
   ["#/p/builder/review/agents/new", "New agent"],
   ["#/p/builder/review/agents/reviewer/edit", "Edit agent"],
   ["#/p/builder/setup/settings/effort/edit", "Edit setup item"],
-  ["#/reference/decides", "How Claude Code decides"],
-  ["#/reference/glossary", "Glossary"],
 ];
 
 describe("routes", () => {
@@ -66,6 +66,31 @@ describe("routes", () => {
     await waitFor(() => {
       expect(document.title).toBe(`${name}, Builder, Bar Tab`);
     });
+  });
+
+  it.each([
+    ["#/reference/decides", "How Claude Code decides"],
+    ["#/reference/decides/effortLevel", "How Claude Code decides"],
+    ["#/reference/glossary", "Glossary"],
+  ])("%s renders its own page with no project, titled and announced", async (hash, name) => {
+    await mount(hash, { server: rulesServer() });
+    const heading = await screen.findByRole("heading", { level: 1, name });
+    // The route's own status line comes first. The search field has a second one.
+    expect(screen.getAllByRole("status")[0]).toHaveTextContent(name);
+    expect(screen.queryByText("This page comes in a later release.")).toBeNull();
+    await waitFor(() => {
+      expect(document.title).toBe(`${name}, Bar Tab`);
+    });
+    // A plain load focuses the h1. A route with a target focuses the target, which the page does.
+    if (!hash.endsWith("effortLevel")) expect(heading).toHaveFocus();
+  });
+
+  it("keeps the Reference pages out of the project swap", async () => {
+    await mount("#/reference/decides/effortLevel/effort-lowered-by-cap", {
+      server: rulesServer(),
+    });
+    await screen.findByRole("heading", { level: 1, name: "How Claude Code decides" });
+    expect(parseRoute("/reference/decides/effortLevel/effort-lowered-by-cap")?.project).toBeNull();
   });
 
   it("renders Session review for an unknown session as its gone state, focused and announced", async () => {

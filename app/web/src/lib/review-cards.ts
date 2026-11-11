@@ -266,6 +266,20 @@ export interface KindEntry {
   total: string;
 }
 
+/**
+ * The kind totals as the cost chart's help entry takes them, by its `ref` names. Each total is the
+ * text on the "Made of" line, so the popover repeats what the line shows.
+ */
+export function kindHelpValues(kinds: readonly KindEntry[]): Record<string, string> {
+  const names = {
+    input: "k_input",
+    output: "k_output",
+    cache_read: "k_cread",
+    cache_write: "k_cwrite",
+  } as const;
+  return Object.fromEntries(kinds.map((entry) => [names[entry.kind], entry.total]));
+}
+
 /** The "Made of" totals, biggest first. A total with unpriced requests behind it reads "at least". */
 function kindsFor(chart: CostChart): KindEntry[] {
   const least = chart.unpriced.requests > 0;

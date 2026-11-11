@@ -3,6 +3,8 @@ import { Link } from "react-aria-components";
 import { CommandRow } from "../CommandRow/CommandRow";
 import { CopyPath } from "../CopyPath/CopyPath";
 import { cx } from "../cx";
+import { HelpButton } from "../HelpButton/HelpButton";
+import { HelpTerm } from "../HelpTerm/HelpTerm";
 import { RaisedFinding } from "../RaisedFinding/RaisedFinding";
 import { ScopeLabel } from "../ScopeLabel/ScopeLabel";
 import { StatusChip } from "../StatusChip/StatusChip";
@@ -53,8 +55,18 @@ export interface InspectorProps {
   details?: React.ReactNode;
   /** Words for the where-set well. The rows come in the order the top one wins. */
   where?: { title: string; rows: ScopeRow[]; maskedLabel: string };
-  /** The Why block, raised, with an optional confidence line. */
-  why?: { title: string; body: React.ReactNode; confidence?: string };
+  /**
+   * The Why block, raised, with an optional confidence line. `older` joins the confidence line
+   * after a ▲ when the rule behind the reason was checked on an older Claude Code, and `link` is
+   * the line after it that opens that rule.
+   */
+  why?: {
+    title: string;
+    body: React.ReactNode;
+    confidence?: string;
+    older?: string;
+    link?: { label: React.ReactNode; href: string };
+  };
   usage?: React.ReactNode;
   /** A finding the page raises about the item, such as Couldn't read, above the facts. */
   finding?: React.ReactNode;
@@ -130,7 +142,12 @@ export function Inspector({
         <h2 className="inspector-title" id={headingId} ref={ref} tabIndex={-1}>
           {title}
         </h2>
-        {status !== undefined && <StatusChip status={status.status}>{status.label}</StatusChip>}
+        {status !== undefined && (
+          <>
+            <StatusChip status={status.status}>{status.label}</StatusChip>
+            <HelpButton help="setup.inspector.status" word={status.status} />
+          </>
+        )}
       </header>
       <div className="inspector-body">
         {finding}
@@ -151,6 +168,7 @@ export function Inspector({
               <LockIcon />
               <span className="sr-only">{readOnly.lockLabel}. </span>
               {readOnly.reason}
+              <HelpButton help="setup.readonly" />
             </p>
             {readOnly.command !== undefined && (
               <CommandRow
@@ -174,7 +192,9 @@ export function Inspector({
         {details}
         {where !== undefined && (
           <div className="inspector-where">
-            <h3 className="inspector-h3">{where.title}</h3>
+            <h3 className="inspector-h3">
+              <HelpTerm help="setup.where">{where.title}</HelpTerm>
+            </h3>
             <Well variant="list">
               <ul className="where-list">
                 {where.rows.map((row) => (
@@ -200,10 +220,28 @@ export function Inspector({
           </div>
         )}
         {why !== undefined && (
-          <RaisedFinding title={why.title} className="inspector-why">
+          <RaisedFinding className="inspector-why">
+            <h3 className="raised-finding-title">
+              <HelpTerm help="setup.why">{why.title}</HelpTerm>
+            </h3>
             <p>{why.body}</p>
             {why.confidence !== undefined && (
-              <p className="inspector-small muted">{why.confidence}</p>
+              <p className="inspector-small muted">
+                {why.confidence}
+                {why.older !== undefined && (
+                  <span className="inspector-older">
+                    {" "}
+                    <span aria-hidden="true">{"▲"}</span> {why.older}
+                  </span>
+                )}
+              </p>
+            )}
+            {why.link !== undefined && (
+              <p className="inspector-small inspector-rule-link">
+                <Link href={why.link.href}>
+                  {why.link.label} <span aria-hidden="true">{"→"}</span>
+                </Link>
+              </p>
             )}
           </RaisedFinding>
         )}

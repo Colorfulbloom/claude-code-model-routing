@@ -8,6 +8,7 @@ import type { LiveFeed } from "@/api/live";
 import type { Timeline } from "@/api/types";
 import { postStatus } from "@/app/harness";
 import { Button } from "@/components/Button/Button";
+import { HelpButton } from "@/components/HelpButton/HelpButton";
 import { clockMedium, clockShort } from "@/lib/clock";
 import { formatDuration } from "@/lib/duration";
 import { axisFor, buildChart } from "@/lib/live-chart";
@@ -126,6 +127,8 @@ export function LiveSession({
         {...(session.branch === null ? { titleMuted: true } : {})}
         sub={sub}
         when={when}
+        stateHelp={<HelpButton help="live.status" word={word} />}
+        whenHelp={<HelpButton help="live.notices" />}
         select={select}
         pause={
           ended
@@ -137,7 +140,7 @@ export function LiveSession({
       <LiveTiles view={buildTiles(answer)} />
       <WhoCard chart={chart} lane={lane} />
       <div className="grid-two live-lower">
-        <ModelCheckCard view={buildModelCheck(answer.model_check)} />
+        <ModelCheckCard help="live.modelcheck" view={buildModelCheck(answer.model_check)} />
         <RequestsCard
           rows={buildRequests(answer)}
           prices={{

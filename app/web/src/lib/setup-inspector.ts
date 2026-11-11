@@ -416,7 +416,7 @@ export function readOnlyView(item: SetupItem): ReadOnlyView | null {
 export function notReadView(item: SetupItem): { body: string } | null {
   if (item.not_read === null) return null;
   return {
-    body: item.not_read === "plugin_outside_plugins" ? t("pl_outside") : t("nr_outside_scope"),
+    body: item.not_read === "plugin_outside_plugins" ? t("pl_outside") : t("ins_imp_not_read"),
   };
 }
 

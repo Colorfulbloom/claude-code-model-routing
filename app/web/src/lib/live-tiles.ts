@@ -124,3 +124,22 @@ export function buildRequests(timeline: Timeline): RequestRow[] {
     };
   });
 }
+
+/**
+ * The values a tile hands its help entry, by the `ref` names the entries use (value, delta, note).
+ * Each is the text as it reads on the tile. An empty or missing one is left out, so the entry draws
+ * no blank line beside its label.
+ */
+export function tileHelpValues(tile: {
+  value: string;
+  delta: string;
+  note?: string | null;
+}): Record<string, string> {
+  return {
+    ...(tile.value === "" ? {} : { value: tile.value }),
+    ...(tile.delta === "" ? {} : { delta: tile.delta }),
+    ...(tile.note === undefined || tile.note === null || tile.note === ""
+      ? {}
+      : { note: tile.note }),
+  };
+}

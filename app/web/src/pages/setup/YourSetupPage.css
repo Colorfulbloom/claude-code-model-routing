@@ -28,7 +28,8 @@
 }
 
 .setup-page > .setup-map-card,
-.setup-page > .setup-notice {
+.setup-page > .setup-notice,
+.setup-page > .setup-version-gap {
   margin-top: var(--space-4);
 }
 

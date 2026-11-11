@@ -1,5 +1,6 @@
 /* "Who is working": the tokens-per-minute chart over the lane rows, in one card (entries 20 and 22). */
 import { Card } from "@/components/Card/Card";
+import { HelpButton } from "@/components/HelpButton/HelpButton";
 import { SkeletonBones } from "@/components/SkeletonBones/SkeletonBones";
 import { StackedBars } from "@/components/StackedBars/StackedBars";
 import { TimelineLane } from "@/components/TimelineLane/TimelineLane";
@@ -15,7 +16,12 @@ export function WhoCard({
   lane: Pick<TimelineLaneProps, "axis" | "items" | "note" | "label">;
 }) {
   return (
-    <Card title={t("tl_h")} question={t("tl_q")} className="live-who">
+    <Card
+      title={t("tl_h")}
+      question={t("tl_q")}
+      className="live-who"
+      right={<HelpButton help="live.who" />}
+    >
       <div className="live-who-body">
         <StackedBars
           bars={chart.bars}

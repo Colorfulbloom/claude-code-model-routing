@@ -362,10 +362,37 @@ test("a range change is said through the route status and keeps the focus on the
 test("the Summary tiles match their accessibility snapshot", async ({ page, demo }) => {
   await openAt(page, demo, summary("30d"), { width: 1440 });
   await expect(page.getByRole("img", { name: THIRTY_DAY_IMAGE })).toBeVisible();
-  // The four tiles read as one run of text: each label, value and change against the period before.
-  await expect(page.locator(".tiles")).toMatchAriaSnapshot(
-    "- text: CostAPI-rate estimate $319.62 Up 36% from $234.52 Sessions 53 Up 39% from 38 Tokens 117M Up 34% from 87.7M Read from cache 78% Little change from 78%",
-  );
+  // The four tiles read as text: each label, value and change against the period before. Each
+  // label is followed by its "?" button, named About and the label.
+  await expect(page.locator(".tiles")).toMatchAriaSnapshot(`
+    - text: CostAPI-rate estimate
+    - button "About Cost"
+    - text: $319.62 Up 36% from $234.52 Sessions
+    - button "About Sessions"
+    - text: 53 Up 39% from 38 Tokens
+    - button "About Tokens"
+    - text: 117M Up 34% from 87.7M Read from cache
+    - button "About Read from cache"
+    - text: 78% Little change from 78%
+  `);
+});
+
+test("the Cost per day popover stays inside the window and its dialog scrolls", async ({
+  page,
+  demo,
+}) => {
+  await openAt(page, demo, summary("30d"), { width: 1440 });
+  await expect(page.getByRole("img", { name: THIRTY_DAY_IMAGE })).toBeVisible();
+  await page.getByRole("button", { name: "About Cost per day" }).click();
+  const popover = page.locator('[data-rac][role="dialog"]');
+  await expect(popover).toBeVisible();
+  const box = await page.locator(".hp-pop").boundingBox();
+  if (box === null) throw new Error("the popover has no box");
+  expect(box.y).toBeGreaterThanOrEqual(0);
+  expect(box.y + box.height).toBeLessThanOrEqual(900);
+  // The inner dialog is the part that scrolls, so a tall entry never pushes the card past the edge.
+  const overflow = await popover.evaluate((el) => getComputedStyle(el).overflowY);
+  expect(["auto", "scroll"]).toContain(overflow);
 });
 
 test("the Range Select lists six presets with their windows", async ({ page, demo }) => {

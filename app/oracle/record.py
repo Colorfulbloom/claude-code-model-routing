@@ -3,7 +3,7 @@
 
 Run from the repo root with the system Python:
 
-    /usr/bin/python3 app/oracle/record.py [--only usage|live|long|settings]
+    /usr/bin/python3 app/oracle/record.py [--only usage|live|long|settings|rules]
 
 Usage part. It builds the demo set into a temp folder outside the repo, builds a
 context with dashboard/server.py fixture_context, and calls the old
@@ -28,6 +28,11 @@ above the originals) and calls it once on each copy. The answer minus its rules 
 models tables goes to app/fixtures/oracle/settings/demo/<project>.json and
 resolution/<folder>.json. --settings-out writes somewhere else, for the byte-stability
 test. A temp path in a payload is replaced by /work/settings, and the manifest says so.
+
+Rules part (M5). It builds the demo into a temp folder and calls the old
+api_settings.rules in process twice, once with the demo's session.json
+claude_version (2.1.310) and once with it removed. The answers go to
+app/fixtures/oracle/rules/with-version.json and no-version.json.
 
 No server starts and no port opens. Python 3.9 standard library only. The old code
 is imported and run, never changed.
@@ -921,11 +926,81 @@ def _record_settings(out: Path = SETTINGS_OUT) -> None:
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+RULES_OUT = REPO / "app" / "fixtures" / "oracle" / "rules"
+
+
+def _record_rules() -> None:
+    """Record the old /api/rules answer twice, with the demo's version and with none.
+
+    The first answer runs on the demo build, where session.json names Claude Code
+    2.1.310. The second runs on a copy of that build with the version removed, so
+    installed is null. The answers hold no build path, so nothing is replaced.
+    """
+    api_settings = _old("api_settings")
+    resolve = _old("resolve")
+    server = _old("server")
+    rules = resolve.load_rules()
+    fields = resolve.load_agent_fields()
+    tmp = Path(tempfile.mkdtemp(prefix="oracle-")).resolve()
+    try:
+        folder = tmp / "demo"
+        subprocess.run(  # noqa: S603
+            [sys.executable, str(BUILD_SCRIPT), str(folder), "--now", NOW, "--tz", TZ],
+            check=True,
+            capture_output=True,
+        )
+        session_path = folder / "session.json"
+        session = json.loads(session_path.read_text(encoding="utf-8"))
+        answers: dict[str, dict[str, Any]] = {}
+        for name, with_version in (("with-version", True), ("no-version", False)):
+            if not with_version:
+                session.pop("claude_version", None)
+                _write(session_path, _dumps(session))
+            ctx = server.fixture_context(str(folder), None, None, rules, fields)
+            status, answer = api_settings.rules(ctx, {})
+            if status != HTTP_OK:
+                msg = f"rules answered {status} for {name}"
+                raise RuntimeError(msg)
+            answers[name] = answer
+        RULES_OUT.mkdir(parents=True, exist_ok=True)
+        files = {f"{name}.json": _dumps(answer) for name, answer in answers.items()}
+        keep = {*files, "manifest.json"}
+        for stale in RULES_OUT.glob("*.json"):
+            if stale.name not in keep:
+                stale.unlink()
+        for name, text in files.items():
+            _write(RULES_OUT / name, text)
+        version = sys.version_info
+        manifest = {
+            "build_args": {
+                "now": NOW,
+                "script": "tests/fixtures/demo/build_demo.py",
+                "tz": TZ,
+            },
+            "cases": {
+                "no-version.json": "session.json without claude_version",
+                "with-version.json": "session.json claude_version as built (2.1.310)",
+            },
+            "files": sorted(keep),
+            "old_call": (
+                "api_settings.rules(server.fixture_context(folder, None, None, rules,"
+                " fields), {}), in process"
+            ),
+            "old_commit": _git(
+                "log", "-1", "--format=%H", OLD_COMMIT_REF, "--", "dashboard"
+            ),
+            "python": f"{version[0]}.{version[1]}.{version[2]}",
+        }
+        _write(RULES_OUT / "manifest.json", _dumps(manifest))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def main() -> int:
     """Run the chosen recorders. Return the exit code."""
     parser = argparse.ArgumentParser(description="Record the old app's answers.")
     parser.add_argument(
-        "--only", choices=("usage", "live", "long", "settings"), default=None
+        "--only", choices=("usage", "live", "long", "settings", "rules"), default=None
     )
     parser.add_argument(
         "--settings-out",
@@ -942,6 +1017,8 @@ def main() -> int:
         _record_long()
     if args.only in (None, "settings"):
         _record_settings(args.settings_out)
+    if args.only in (None, "rules"):
+        _record_rules()
     return 0
 
 

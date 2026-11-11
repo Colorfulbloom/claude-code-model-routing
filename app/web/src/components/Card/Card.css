@@ -50,4 +50,14 @@
     padding: var(--space-3) var(--space-4) var(--space-4);
     border-radius: var(--radius-lg);
   }
+
+  /* The question takes its own line, so the right slot (the "?") stays on the title's line. */
+  .card-right {
+    order: 2;
+  }
+
+  .card-question {
+    flex-basis: 100%;
+    order: 3;
+  }
 }

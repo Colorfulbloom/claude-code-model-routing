@@ -6,6 +6,7 @@
 import { useParams } from "react-router";
 import { Button } from "@/components/Button/Button";
 import { Card } from "@/components/Card/Card";
+import { HelpButton } from "@/components/HelpButton/HelpButton";
 import { RaisedFinding } from "@/components/RaisedFinding/RaisedFinding";
 import { SkeletonBones } from "@/components/SkeletonBones/SkeletonBones";
 import { StatusChip } from "@/components/StatusChip/StatusChip";
@@ -47,14 +48,19 @@ function Finding({ finding, seeWhy }: { finding: McFinding; seeWhy: string | nul
   );
 }
 
-/** `question` replaces the card's question line. Summary puts its count of agents there. */
+/**
+ * `question` replaces the card's question line. Summary puts its count of agents there. `help` is
+ * the entry the card's "?" opens, which each page names as a literal id.
+ */
 export function ModelCheckCard({
   view,
+  help,
   question,
   note,
   compact = false,
 }: {
   view: McView;
+  help: "live.modelcheck" | "summary.modelcheck";
   question?: string;
   /** A line above the findings, such as the stale-refresh line. */
   note?: React.ReactNode;
@@ -69,7 +75,7 @@ export function ModelCheckCard({
     return path === null ? null : `#${path}`;
   };
   return (
-    <Card title={t("mc_h")} question={question ?? t("mc_q")}>
+    <Card title={t("mc_h")} question={question ?? t("mc_q")} right={<HelpButton help={help} />}>
       <div className="live-mc">
         {note}
         {compact ? (

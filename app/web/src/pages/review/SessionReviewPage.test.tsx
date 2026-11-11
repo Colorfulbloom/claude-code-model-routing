@@ -1,5 +1,6 @@
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { t } from "@/strings/t";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SessionList } from "@/api/types";
 import { postStatus } from "@/app/harness";
@@ -79,6 +80,32 @@ describe("the header", () => {
     const link = await screen.findByRole("link", { name: "Open in Live" });
     expect(link).toHaveAttribute("href", "#/p/builder/live?session=s1");
     expect(screen.getByText(/still running$/)).toBeInTheDocument();
+  });
+});
+
+describe("help", () => {
+  it("puts a button on the state, the totals and the timeline, and keeps the line's keys", async () => {
+    await mount(`${base}?range=30d`, { server: serverWith(replaySession()) });
+    await ready();
+    expect(screen.getByRole("button", { name: "About Session states" })).toBeInTheDocument();
+    // One entry for the Ring and the dots, with one "?" on the first tile that draws one.
+    expect(screen.getAllByRole("button", { name: "About Session totals" })).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "About Who worked when" })).toBeInTheDocument();
+    // The slider is still the only slider, and the "?" buttons are not it.
+    expect(screen.getAllByRole("slider")).toHaveLength(1);
+  });
+
+  it("marks the session's state line in the states popover as Shown here", async () => {
+    const user = userEvent.setup();
+    await mount(`${base}?range=30d`, { server: serverWith(replaySession()) });
+    await ready();
+    await user.click(screen.getByRole("button", { name: "About Session states" }));
+    const dialog = await screen.findByRole("dialog", { name: "Session states" });
+    const marked = within(dialog).getByText(t("hp_this_setting")).closest(".hp-row");
+    expect(marked).not.toBeNull();
+    const word = ["Working", "Idle", "Ended"].find((w) => marked?.textContent?.startsWith(w));
+    expect(word).toBeDefined();
+    expect(document.querySelector(".live-state")).toHaveTextContent(word ?? "");
   });
 });
 

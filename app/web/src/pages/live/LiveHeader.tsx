@@ -26,6 +26,10 @@ export interface LiveHeaderProps {
   pause: { label: string; onPress: () => void } | null;
   /** A link above the title, such as Session review's way back to Sessions. */
   back?: React.ReactNode;
+  /** The "?" for the run state. Its page names the entry, because Live and Session review differ. */
+  stateHelp?: React.ReactNode;
+  /** The "?" for the time line, shown only while the time line is. */
+  whenHelp?: React.ReactNode;
 }
 
 export function LiveHeader({
@@ -37,6 +41,8 @@ export function LiveHeader({
   select,
   pause,
   back,
+  stateHelp,
+  whenHelp,
 }: LiveHeaderProps) {
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
@@ -49,6 +55,7 @@ export function LiveHeader({
         {back}
         <div className="live-state">
           {state !== null && <RunStateGlyph state={state.kind}>{state.word}</RunStateGlyph>}
+          {state !== null && stateHelp}
           <h1
             ref={heading}
             tabIndex={-1}
@@ -61,7 +68,12 @@ export function LiveHeader({
       </div>
       <div className="live-controls">
         {select}
-        {when !== null && <span className="live-when">{when}</span>}
+        {when !== null && (
+          <span className="live-when">
+            {when}
+            {whenHelp}
+          </span>
+        )}
         {pause !== null && <Button onPress={pause.onPress}>{pause.label}</Button>}
       </div>
     </header>

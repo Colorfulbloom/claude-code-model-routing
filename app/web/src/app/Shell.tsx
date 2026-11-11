@@ -16,6 +16,8 @@ import { useActiveProject } from "@/app/active-project";
 import { hidesTabBar, livePath, projectHref, sidebarCurrent, tabCurrent } from "@/app/nav";
 import { pageName, parseRoute, routeForProject } from "@/app/routes";
 import type { PageId } from "@/app/routes";
+import { HelpButton } from "@/components/HelpButton/HelpButton";
+import { HelpTerm } from "@/components/HelpTerm/HelpTerm";
 import { NewTabLine } from "@/components/NewTabLine/NewTabLine";
 import {
   projectOption,
@@ -109,7 +111,10 @@ export function Shell({ page, routeProject, pathname, mainRef, children }: Shell
   const items = (projectList ?? []).map(projectItem);
   const projectName = items.find((item) => item.id === activeProject)?.name ?? activeProject;
   // Anything but the owner's own data gets the quiet mark, so demo numbers never pass for real ones.
-  const demoMark = app.data !== undefined && app.data.mode !== "real" ? t("lv_demo") : null;
+  const demoMark =
+    app.data !== undefined && app.data.mode !== "real" ? (
+      <HelpTerm help="shell.demo">{t("lv_demo")}</HelpTerm>
+    ) : null;
   // Only an `ok` state shows a number. Unchecked and failed have their own accessible names and no
   // number. Before the first app answer the link is plain "To fix".
   const nav = toFixNav(app.data);
@@ -206,6 +211,7 @@ export function Shell({ page, routeProject, pathname, mainRef, children }: Shell
           current: sidebarCurrentId === "tofix",
           ...(toFixShowsCount ? { end: t("tofix_count", { n: toFix }) } : {}),
           ...(toFixName !== undefined ? { name: toFixName } : {}),
+          help: <HelpButton help="shell.nav" />,
         },
       ],
     },
@@ -341,7 +347,8 @@ export function Shell({ page, routeProject, pathname, mainRef, children }: Shell
             <p className="shell-updated muted">
               {conn.lastAnswerAt === null
                 ? t("updated_never")
-                : t("updated_at", { time: clockMedium(conn.lastAnswerAt) })}
+                : t("updated_at", { time: clockMedium(conn.lastAnswerAt) })}{" "}
+              <HelpButton help="shell.updated" />
             </p>
           )}
           {children}

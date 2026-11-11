@@ -219,6 +219,23 @@
   font-size: var(--text-sm);
 }
 
+/* The Why line's older-version mark, in the overridden colour as on How Claude Code decides. */
+.inspector-older {
+  color: var(--status-overridden-fg);
+  font-weight: var(--weight-medium);
+}
+
+.inspector-rule-link a {
+  display: inline-flex;
+  gap: var(--space-1);
+  align-items: center;
+  min-height: 24px;
+}
+
+.inspector-rule-link code {
+  font-size: var(--text-xs);
+}
+
 .inspector-actions {
   display: flex;
   flex-wrap: wrap;

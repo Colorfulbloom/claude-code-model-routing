@@ -18,6 +18,7 @@ docs/design/usage-stack/**/shots/
 /app/.venv/
 /app/.data/
 /app/.coverage
+/.coverage
 /app/web/node_modules/
 /app/web/playwright-report/
 /app/web/test-results/

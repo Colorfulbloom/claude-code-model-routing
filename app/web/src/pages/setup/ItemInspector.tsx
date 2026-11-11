@@ -10,10 +10,12 @@
  * Review. Its where-set well lists its own files only (`whereRows`).
  */
 import { useAgents } from "@/api/review";
+import { useRules } from "@/api/rules";
 import type { SetupItem } from "@/api/types";
 import { postStatus } from "@/app/harness";
 import { Button } from "@/components/Button/Button";
 import { CopyPath } from "@/components/CopyPath/CopyPath";
+import { HelpTerm } from "@/components/HelpTerm/HelpTerm";
 import { Inspector } from "@/components/ListInspector/Inspector";
 import type { InspectorProps } from "@/components/ListInspector/Inspector";
 import { agentCheckView } from "@/lib/agent-check";
@@ -34,6 +36,8 @@ import {
   whereRows,
   whyView,
 } from "@/lib/setup-inspector";
+import { decidesHref } from "@/pages/reference/reference-routes";
+import { ruleTarget } from "@/pages/reference/rules-view";
 import { t } from "@/strings/t";
 import { AgentCallout } from "./AgentCallout";
 import { InspectorFacts } from "./InspectorFacts";
@@ -47,6 +51,20 @@ export interface ItemInspectorProps {
   startedAt: string | null;
   /** The ListInspector's heading ref and phone props, passed through. */
   inspector?: Pick<InspectorProps, "headingRef" | "focusOnMount" | "back">;
+}
+
+const ID_MARK = "⁣";
+
+/** "See the rule {id}" with the id in the code font. The arrow is drawn after it. */
+function ruleLinkLabel(id: string): React.ReactNode {
+  const [before = "", after = ""] = t("in_rule_link", { id: ID_MARK }).split(ID_MARK);
+  return (
+    <>
+      {before}
+      <code className="mono setup-rule-id">{id}</code>
+      {after}
+    </>
+  );
 }
 
 /** The inspector of one item. An agent's also reads its runs and cost over 30 days. */
@@ -91,6 +109,9 @@ function ItemInspectorView({
   const notRead = notReadView(item);
   const where = whereRows(item, startedAt);
   const why = whyView(item);
+  // The rule behind the reason, for the Why line's link and its older-version mark.
+  const rules = useRules();
+  const rule = ruleTarget(item.reason?.rule_id, rules.answer);
   // The agent's run line with cost replaces the server's runs-only line once /api/agents answers.
   const usage = agentUsage ?? usageLine(item);
   const applies = appliesLine(item);
@@ -148,7 +169,24 @@ function ItemInspectorView({
       ? { where: { title: t("in_where_h"), rows: where, maskedLabel: t("in_masked_word") } }
       : {}),
     ...(why !== null
-      ? { why: { title: t("in_why_h"), body: why.body, confidence: why.confidence } }
+      ? {
+          why: {
+            title: t("in_why_h"),
+            body: why.body,
+            confidence: why.confidence,
+            ...(rule === null
+              ? {}
+              : {
+                  ...(rule.due && rule.installed !== null
+                    ? { older: t("in_older", { installed: rule.installed }) }
+                    : {}),
+                  link: {
+                    label: ruleLinkLabel(rule.id),
+                    href: decidesHref({ setting: rule.key, rule: rule.id }),
+                  },
+                }),
+          },
+        }
       : {}),
     ...(usage !== null ? { usage } : {}),
     ...(copy !== null || agentsLink !== null
@@ -173,7 +211,11 @@ function ItemInspectorView({
       {where.some((r) => r.id.startsWith("shell")) && (
         <p className="inspector-small muted">{t("in_shell_note")}</p>
       )}
-      {applies !== null && <p className="inspector-small muted">{applies}</p>}
+      {applies !== null && (
+        <p className="inspector-small muted">
+          <HelpTerm help="setup.applies">{applies}</HelpTerm>
+        </p>
+      )}
       {masked && <p className="inspector-small muted">{t("in_masked")}</p>}
     </Inspector>
   );

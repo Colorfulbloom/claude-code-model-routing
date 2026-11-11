@@ -10,13 +10,6 @@
   font-size: var(--text-sm);
 }
 
-.notice-line-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  white-space: nowrap;
-}
-
 .notice-line-link {
   margin-left: auto;
 }

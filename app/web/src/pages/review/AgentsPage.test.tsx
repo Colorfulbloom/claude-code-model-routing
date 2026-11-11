@@ -315,3 +315,38 @@ describe("the range", () => {
     expect(screen.getByText("Loading agents")).toBeInTheDocument();
   });
 });
+
+describe("help", () => {
+  it("puts a term on the headers that need one and leaves Cost plain", async () => {
+    await open(reviewServer({ agents: () => agentsAnswer() }));
+    const table = await screen.findByRole("table", { name: "Agents" });
+    const heads = within(table).getAllByRole("columnheader").slice(0, 6);
+    expect(
+      heads.map((h) => within(h).queryByRole("button")?.getAttribute("data-help-id") ?? null),
+    ).toEqual(["agents.source", "agents.cols", "agents.cols", "agents.check", "agents.cols", null]);
+    expect(heads.map((h) => h.textContent)).toEqual([
+      "Agent",
+      "Set to",
+      "Ran with",
+      "Check",
+      "Runs",
+      "Cost",
+    ]);
+  });
+
+  it("marks Set to in the grouped entry and opens Check with the status words", async () => {
+    const user = userEvent.setup();
+    await open(reviewServer({ agents: () => agentsAnswer() }));
+    const table = await screen.findByRole("table", { name: "Agents" });
+    await user.click(within(table).getByRole("button", { name: "Set to" }));
+    const grouped = await screen.findByRole("dialog", { name: "Agents table" });
+    expect(within(grouped).getByText("This column").closest(".hp-row")).toHaveTextContent("Set to");
+    await user.keyboard("{Escape}");
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+    await user.click(within(table).getByRole("button", { name: "Check" }));
+    const check = await screen.findByRole("dialog", { name: "Check" });
+    expect(within(check).getByText("In effect")).toBeInTheDocument();
+  });
+});

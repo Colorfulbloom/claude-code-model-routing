@@ -1,11 +1,20 @@
 """Tests for the app-wide reads and for the key rule on every route."""
 
 import re
+import sys
+from collections.abc import Callable
+from contextlib import AbstractContextManager
+from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 import pytest
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # tests/ is not on sys.path
+import version_helpers as vh
+
 import main
+import rules_reference
 
 PATH_PARAM = re.compile(r"\{[^}]+\}")
 
@@ -92,6 +101,12 @@ def test_get_app_demo(client: Any, key_headers: dict[str, str]) -> None:
         "editable_projects",
         "mode",
         "clock",
+        "rules_version_gap",
+    }
+    assert body["rules_version_gap"] == {
+        "installed": "2.1.310",
+        "checked_on": rules_reference.build_answer(None, datetime.now(UTC)).checked_on,
+        "due": 84,
     }
     assert body["to_fix"] == {"state": "ok", "count": 4, "etag": None}
     assert body["mode"] == "fixture"
@@ -221,6 +236,33 @@ def test_get_prices_demo(client: Any, key_headers: dict[str, str]) -> None:
         "cache_write_5m",
         "cache_write_1h",
     }
+
+
+@pytest.mark.parametrize(("version", "gap"), vh.CASES)
+def test_rules_version_gap_for_each_installed_version(
+    open_client: Callable[..., AbstractContextManager[Any]],
+    tmp_path: Path,
+    dist_dir: Path,
+    version: str,
+    gap: bool,
+) -> None:
+    settings, state = vh.scenario_settings(tmp_path, dist_dir, version)
+    with open_client(main.create_app(settings)) as client:
+        body = client.get("/api/app", headers={"X-Bartab-Key": state.read_key}).json()
+    assert body["claude_version"] == version
+    if gap:
+        checked_on = rules_reference.build_answer(None, datetime.now(UTC)).checked_on
+        due = sum(
+            row.due
+            for row in rules_reference.build_answer(version, datetime.now(UTC)).rules
+        )
+        assert body["rules_version_gap"] == {
+            "installed": version,
+            "checked_on": checked_on,
+            "due": due,
+        }
+    else:
+        assert body["rules_version_gap"] is None
 
 
 def test_get_prices_needs_the_key(client: Any) -> None:

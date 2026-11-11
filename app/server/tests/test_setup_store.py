@@ -126,7 +126,11 @@ def test_projects_say_which_are_listed(world: World) -> None:
     assert all(p["listed"] is True for p in rows.values())
     body = world.ok(path("setup"))
     assert body["listed"] is True
-    assert body["notices"] == []
+    # The demo build's session.json says 2.1.310, and the rules were checked earlier.
+    assert [n["code"] for n in body["notices"]] == ["version_gap"]
+    assert body["notices"][0]["params"]["installed"] == "2.1.310"
+    assert body["notices"][0]["params"]["checked_on"]
+    assert body["notices"][0]["params"]["due"] == "84"
 
 
 # ------------------------------------------------------------- app's To fix

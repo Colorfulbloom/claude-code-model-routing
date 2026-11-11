@@ -41,8 +41,13 @@ describe("ScopeBar", () => {
     );
     expect(screen.getByRole("heading", { level: 1, name: "Summary" })).toBeInTheDocument();
     expect(screen.getByText("October 10 to November 8")).toBeInTheDocument();
-    const button = screen.getByRole("button", { name: /Range/ });
+    const button = screen.getByRole("button", { name: /^Range/ });
     expect(button).toHaveTextContent("Last 30 days");
+    // The "?" sits beside the Range Select, as its own button.
+    expect(screen.getByRole("button", { name: "About Range" })).toHaveAttribute(
+      "aria-haspopup",
+      "dialog",
+    );
     await user.click(button);
     expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual(
       options.map((option) => option.label),
@@ -61,7 +66,7 @@ describe("ScopeBar", () => {
       />,
     );
     expect(document.querySelector(".scope-bar-range")).not.toBeNull();
-    await user.click(screen.getByRole("button", { name: /Range/ }));
+    await user.click(screen.getByRole("button", { name: /^Range/ }));
     const popover = document.querySelector(".select-popover");
     expect(popover).toHaveClass("select-popover-range");
     expect(popover?.querySelector(".select-heading")).toHaveTextContent("Range");

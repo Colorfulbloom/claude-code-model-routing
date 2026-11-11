@@ -1,0 +1,117 @@
+.search {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  align-items: flex-end;
+  min-width: 0;
+}
+
+.search-field {
+  display: grid;
+  gap: var(--space-1);
+  flex: 1 1 240px;
+  min-width: 0;
+  max-width: 420px;
+}
+
+.search-label {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 36px;
+  padding: 0 40px 0 var(--space-3);
+  background: var(--card-bg);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  color: var(--text);
+  font: inherit;
+
+  /* The browser's own clear mark would double ours. */
+  appearance: none;
+}
+
+.search-input::-webkit-search-cancel-button,
+.search-input::-webkit-search-decoration {
+  display: none;
+}
+
+.search-input::placeholder {
+  color: var(--text-muted);
+  opacity: 1;
+}
+
+.search-input:hover,
+.search-input.is-hover {
+  background: var(--nav-hover-bg);
+}
+
+/* The clear button: a 32px target at the end of the box, with the mark drawn small. It shows only
+   when there is text. */
+.search-clear {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 2px;
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin-block: auto;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  line-height: 1;
+}
+
+.search-clear:hover {
+  background: var(--nav-hover-bg);
+  color: var(--text);
+}
+
+.search-field[data-empty] .search-clear {
+  display: none;
+}
+
+.search-count {
+  margin: 0;
+  padding-bottom: var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+/* A match, in the designer's mark tokens (tokens.css): a fill and a 2px edge under the text. The text
+   keeps the page's own color, so it holds AA on the fill. Forced colors drops the fill and the
+   shadow, so it swaps in the browser's mark colors and a real underline. */
+.search-mark {
+  padding: 0 1px;
+  background: var(--m5-mark-bg);
+  border-radius: 2px;
+  box-shadow: inset 0 -2px 0 var(--m5-mark-edge);
+  color: var(--text);
+}
+
+@media (forced-colors: active) {
+  .search-input {
+    border-color: ButtonText;
+  }
+
+  .search-mark {
+    background: Mark;
+    box-shadow: none;
+    color: MarkText;
+    text-decoration: underline;
+  }
+}

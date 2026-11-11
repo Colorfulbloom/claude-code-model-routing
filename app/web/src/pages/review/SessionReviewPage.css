@@ -64,6 +64,13 @@
   }
 }
 
+/* The card header's right slot holds the jump to the end and the "?" together. */
+.sreview-card-end {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 @media (forced-colors: active) {
   .sreview-chart .bars-plot::before {
     border-left-color: CanvasText;

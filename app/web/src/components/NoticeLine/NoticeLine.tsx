@@ -1,5 +1,6 @@
 import { Link } from "react-aria-components";
 import { cx } from "../cx";
+import { StatusChip, type SettingStatus } from "../StatusChip/StatusChip";
 import "./NoticeLine.css";
 
 export const states = ["default", "with-link"] as const;
@@ -29,9 +30,9 @@ export function NoticeLine({
 }: NoticeLineProps) {
   return (
     <p className={cx("notice-line", className)} role={role}>
-      <span className="notice-line-status glyph" data-glyph={status}>
+      <StatusChip className="notice-line-status" status={status.replace("-", "_") as SettingStatus}>
         {statusWord}
-      </span>
+      </StatusChip>
       <span className="notice-line-text">{children}</span>
       {link !== undefined && (
         <Link className="notice-line-link" href={link.href}>

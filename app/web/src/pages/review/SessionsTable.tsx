@@ -8,9 +8,11 @@ import { useId } from "react";
 import { Link } from "react-aria-components";
 import type { ReviewRange } from "@/api/types";
 import { Badge } from "@/components/Badge/Badge";
+import { HelpTerm } from "@/components/HelpTerm/HelpTerm";
 import { RunStateGlyph } from "@/components/RunStateGlyph/RunStateGlyph";
 import { ShareBar } from "@/components/ShareBar/ShareBar";
 import { Well } from "@/components/Well/Well";
+import { useIsDesktop } from "@/lib/media";
 import { reviewPath } from "@/lib/range";
 import { useRowLink } from "@/lib/row-link";
 import type { SessionGroup, SessionRowView } from "@/lib/review-cards";
@@ -53,7 +55,9 @@ function Row({
         )}
         {row.startedEarlier && (
           <>
-            <Badge className="review-before">{t("ss_before")}</Badge>
+            <Badge className="review-before">
+              <HelpTerm help="sessions.before">{t("ss_before")}</HelpTerm>
+            </Badge>
             <span id={noteId} className="sr-only">
               {t("ss_before_aria")}
             </span>
@@ -88,6 +92,7 @@ export function SessionsTable({
   project: string;
   range: ReviewRange;
 }) {
+  const desktop = useIsDesktop();
   return (
     <Well variant="list" className="review-table-well">
       <table className="review-table" aria-label={label}>
@@ -96,11 +101,19 @@ export function SessionsTable({
             <th scope="col" className="review-th">
               {t("ss_col_session")}
             </th>
+            {/* At 720px and below Runs is clipped, so it stays plain text and never holds a focus
+                stop nobody can see. */}
             <th scope="col" className="review-th review-hp">
               {t("ss_col_agents")}
             </th>
             <th scope="col" className="review-th review-end review-hp">
-              {t("ss_col_runs")}
+              {desktop ? (
+                <HelpTerm help="sessions.cols" line={t("ss_col_runs")}>
+                  {t("ss_col_runs")}
+                </HelpTerm>
+              ) : (
+                t("ss_col_runs")
+              )}
             </th>
             <th scope="col" className="review-th review-end review-hp">
               {t("ss_col_tokens")}

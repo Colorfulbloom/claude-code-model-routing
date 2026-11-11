@@ -453,3 +453,31 @@ describe("the project in the route", () => {
     expect(server.calls).toContain("/api/problems?project=builder");
   });
 });
+
+describe("help", () => {
+  it("puts the groups button in the header and one rows button in each group's header", async () => {
+    const user = userEvent.setup();
+    await open(setupServer({ problems: () => problemList(oneOfEach()) }));
+    await screen.findByRole("heading", { name: "Won't load, 2" });
+    const groups = screen.getByRole("button", { name: "About Problem groups" });
+    expect(groups).toHaveAttribute("data-help-id", "fix.groups");
+    expect(groups.closest(".page-header")).not.toBeNull();
+    const rows = screen.getAllByRole("button", { name: "About Problem row" });
+    expect(rows.length).toBeGreaterThan(1);
+    for (const button of rows) {
+      expect(button).toHaveAttribute("data-help-id", "fix.rows");
+      expect(button.closest(".card-header")).not.toBeNull();
+      expect(button.closest(".page-header")).toBeNull();
+    }
+    expect(new Set(rows.map((button) => button.closest("section"))).size).toBe(rows.length);
+    await user.click(groups);
+    const dialog = await screen.findByRole("dialog", { name: "Problem groups" });
+    expect(within(dialog).getByText("Notices")).toBeInTheDocument();
+  });
+
+  it("leaves both buttons out when there are no rows at all", async () => {
+    await open(setupServer({ problems: () => problemList([]) }));
+    await screen.findByRole("heading", { level: 1, name: "To fix" });
+    expect(screen.queryByRole("button", { name: /^About Problem/ })).toBeNull();
+  });
+});

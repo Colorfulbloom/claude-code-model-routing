@@ -16,6 +16,8 @@ export interface SidebarItem {
   end?: React.ReactNode;
   /** Full accessible name when the end slot holds a count, such as "To fix, 4 items". */
   name?: string;
+  /** A help "?" for the item. It sits beside the link, never inside it. */
+  help?: React.ReactNode;
   /** Extra classes. The component sheet uses is-hover and is-focus to force a state. */
   className?: string;
 }
@@ -30,8 +32,8 @@ export interface SidebarProps {
   /** Accessible name of the nav landmark. */
   label: string;
   brand: string;
-  /** A quiet mark after the brand, such as "Demo data". Left out on real data. */
-  badge?: string;
+  /** A quiet mark after the brand, such as "Demo data". Left out on real data. It may be a help term. */
+  badge?: React.ReactNode;
   /** The project Select goes here. */
   projectSlot?: React.ReactNode;
   groups: SidebarGroup[];
@@ -71,7 +73,7 @@ export function Sidebar({
               aria-labelledby={group.heading !== undefined ? headingId : undefined}
             >
               {group.items.map((item) => (
-                <li key={item.id}>
+                <li key={item.id} className={cx(item.help !== undefined && "sidebar-has-help")}>
                   <Link
                     className={cx("sidebar-link", item.className)}
                     href={item.href}
@@ -82,6 +84,7 @@ export function Sidebar({
                     <span className="sidebar-label">{item.label}</span>
                     {item.end !== undefined && <span className="sidebar-end">{item.end}</span>}
                   </Link>
+                  {item.help !== undefined && <span className="sidebar-help">{item.help}</span>}
                 </li>
               ))}
             </ul>

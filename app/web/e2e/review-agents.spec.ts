@@ -725,14 +725,22 @@ for (const width of WIDTHS) {
 
     const places: Place[] = [];
     const all = page.getByRole("link", { name: /^All \d+ sessions$/ });
+    const insideStops: boolean[] = [];
     for (let press = 0; press < 40; press++) {
       await page.keyboard.press("Tab");
-      places.push(await placeAgainst(card));
+      const place = await placeAgainst(card);
+      places.push(place);
+      // Whether a stop inside the card is a help trigger, the card's one intended stop.
+      if (place === "inside") {
+        insideStops.push(
+          await page.evaluate(() => document.activeElement?.matches("[data-help-id]") === true),
+        );
+      }
       if (await all.evaluate((el) => el === document.activeElement).catch(() => false)) break;
     }
-    // Stops before the card, none inside it, then the stops after it, in that order.
+    // Stops before the card, only the card's help trigger inside it, then the stops after it.
     expect(places[0]).toBe("before");
-    expect(places).not.toContain("inside");
+    expect(insideStops).toEqual([true]);
     expect(places.at(-1)).toBe("after");
     expect(places.lastIndexOf("before")).toBeLessThan(places.indexOf("after"));
     await expect(all).toBeFocused();

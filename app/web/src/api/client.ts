@@ -21,6 +21,8 @@ import type {
   ProblemList,
   ProjectsAnswer,
   ReviewRange,
+  RulesAnswer,
+  RulesUnchanged,
   SessionList,
   SetupMap,
   SetupPart,
@@ -138,6 +140,11 @@ export interface ApiClient {
     etag: string | null,
     signal?: AbortSignal,
   ) => Promise<ProblemList | Unchanged>;
+  /**
+   * The rules reference. The answer is global, so it takes no project. A matching etag gets the
+   * short `unchanged` body.
+   */
+  getRules: (etag: string | null, signal?: AbortSignal) => Promise<RulesAnswer | RulesUnchanged>;
 }
 
 export interface ApiClientOptions {
@@ -296,6 +303,10 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     },
     getProblems(project, etag, signal) {
       return request<ProblemList | Unchanged>(`/api/problems?${setupQuery(project, etag)}`, signal);
+    },
+    getRules(etag, signal) {
+      const query = etag === null ? "" : `?etag=${encodeURIComponent(etag)}`;
+      return request<RulesAnswer | RulesUnchanged>(`/api/rules${query}`, signal);
     },
   };
 }

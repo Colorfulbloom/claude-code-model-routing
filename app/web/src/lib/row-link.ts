@@ -40,7 +40,8 @@ export function useRowLink(): RowLinkProps {
   ) => {
     const row = event.currentTarget;
     const target = event.target;
-    if (!(target instanceof Element) || event.defaultPrevented) return;
+    // A help popover opens in a portal, so its clicks still bubble here through React's tree.
+    if (!(target instanceof Element) || !row.contains(target) || event.defaultPrevented) return;
     const own = target.closest(OWN_CLICK);
     if (own !== null && row.contains(own)) return;
     const start = down.current;

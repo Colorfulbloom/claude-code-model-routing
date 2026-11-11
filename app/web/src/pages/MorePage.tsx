@@ -6,6 +6,7 @@
 import { useAppInfo, usePrices } from "@/api/client";
 import type { AppInfo, PricesAnswer } from "@/api/types";
 import { useActiveProject } from "@/app/active-project";
+import { HelpTerm } from "@/components/HelpTerm/HelpTerm";
 import { HistoryCard } from "@/components/HistoryCard/HistoryCard";
 import type { HistoryFinding, HistoryRow } from "@/components/HistoryCard/HistoryCard";
 import { MoreCard } from "@/components/MoreCard/MoreCard";
@@ -65,12 +66,24 @@ export function historyCardParts(
   return { findings, rows };
 }
 
+/** The Prices and Last backup labels open their help entries. Every other label stays plain. */
+function withHelp(row: HistoryRow): HistoryRow {
+  if (row.id === "prices") {
+    return { ...row, label: <HelpTerm help="shell.prices">{row.label}</HelpTerm> };
+  }
+  if (row.id === "backup") {
+    return { ...row, label: <HelpTerm help="shell.backup">{row.label}</HelpTerm> };
+  }
+  return row;
+}
+
 export function MorePage() {
   const project = useActiveProject(null);
   const app = useAppInfo(project);
   const prices = usePrices();
-  const card =
+  const parts =
     app.data === undefined ? null : historyCardParts(app.data, prices.data, app.data.server_time);
+  const card = parts === null ? null : { ...parts, rows: parts.rows.map(withHelp) };
   return (
     <>
       <PageHeader title={t("more_h1")} />

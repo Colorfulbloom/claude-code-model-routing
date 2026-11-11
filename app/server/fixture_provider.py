@@ -23,6 +23,7 @@ from pydantic import BaseModel, ConfigDict
 
 import problems
 import projects as projects_mod
+import rules_reference
 import setup_answers
 import store_provider
 import timeline
@@ -376,6 +377,10 @@ class FixtureProvider:
             ]
         )
 
+    def claude_version(self) -> str:
+        """Return the scenario's Claude Code version."""
+        return self._data.claude_version
+
     def app_info(self, instance: str, project: str | None) -> AppInfo:
         """Return the app-wide facts.
 
@@ -397,6 +402,7 @@ class FixtureProvider:
             server_time=self.now(),
             instance=instance,
             claude_version=self._data.claude_version,
+            rules_version_gap=rules_reference.version_gap(self._data.claude_version),
             as_of=self._before(self._data.as_of_ago),
             pass_running_since=self._before(self._data.pass_running_since_ago),
             etag=self._data.etag,
@@ -529,6 +535,7 @@ class FixtureProvider:
             listed=ctx.project_dir is not None,
             version="",
             as_of=None,
+            claude_version=self._data.claude_version,
             usage=lambda: None,
             transcripts=problems.Transcripts,
         )

@@ -1,0 +1,51 @@
+/* The term is the text itself. The box is at least 32px each way for the target size, and a negative
+   block margin keeps the line the text sits on from growing. */
+.help-term {
+  display: inline-flex;
+  align-items: center;
+  min-width: 32px;
+  min-height: 32px;
+  margin: -6px 0;
+  padding: 0;
+  background: none;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: inherit;
+  text-decoration: underline dotted var(--border-strong);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 4px;
+}
+
+.help-term:hover,
+.help-term.is-hover {
+  color: var(--text);
+  text-decoration-color: var(--text);
+}
+
+.help-term:focus-visible,
+.help-term.is-focus {
+  border-radius: 2px;
+  outline-offset: 1px;
+}
+
+/* Open: a solid accent underline and accent text. The underline is the cue that is not colour. */
+.help-term[aria-expanded="true"],
+.help-term.is-open {
+  color: var(--accent);
+  text-decoration: underline solid var(--accent) 2px;
+}
+
+@media (forced-colors: active) {
+  .help-term {
+    color: LinkText;
+    text-decoration-color: LinkText;
+  }
+
+  .help-term[aria-expanded="true"],
+  .help-term.is-open {
+    color: Highlight;
+    text-decoration-color: Highlight;
+  }
+}

@@ -98,9 +98,19 @@ async function footerRows(page: Page): Promise<FooterRow[]> {
   return page.locator(".sidebar-footer-line").evaluateAll((els) =>
     els.map((el) => ({
       text: (el.textContent ?? "").trim(),
-      rows: Math.round(
-        el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight),
-      ),
+      // Every line is at least 32 px tall, so its height no longer counts rows. Count the distinct
+      // tops of the line's text instead.
+      rows: (() => {
+        const tops = new Set<number>();
+        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+        for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
+          if ((node.textContent ?? "").trim() === "") continue;
+          const range = document.createRange();
+          range.selectNodeContents(node);
+          for (const rect of range.getClientRects()) tops.add(Math.round(rect.top));
+        }
+        return tops.size;
+      })(),
       clipped: el.scrollWidth > el.clientWidth || el.scrollHeight > el.clientHeight,
     })),
   );

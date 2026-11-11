@@ -1,0 +1,80 @@
+/* The target is a 32px box (40px on a touch screen and at 720px and under) with a 24px circle drawn
+   inside. A negative margin keeps the layout space at 24px, so the target grows over the gap
+   around it and never moves the label beside it. */
+.help-button {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  margin: -4px;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 50%;
+  color: var(--text-muted);
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+.help-button:focus-visible,
+.help-button.is-focus {
+  outline-offset: -2px;
+}
+
+.help-button-mark {
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: 24px;
+  height: 24px;
+  background: var(--card-bg);
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  line-height: 1;
+}
+
+.help-button:hover .help-button-mark,
+.help-button.is-hover .help-button-mark {
+  background: var(--nav-hover-bg);
+  color: var(--text);
+}
+
+/* Open: the chosen fill, an accent ring made from the border plus an inset line, and an accent mark. */
+.help-button[aria-expanded="true"] .help-button-mark,
+.help-button.is-open .help-button-mark {
+  background: var(--select-bg);
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+  color: var(--accent);
+}
+
+@media (pointer: coarse), (width <= 720px) {
+  .help-button {
+    width: 40px;
+    height: 40px;
+    margin: -8px;
+  }
+}
+
+@media (forced-colors: active) {
+  .help-button {
+    color: ButtonText;
+  }
+
+  .help-button-mark {
+    background: ButtonFace;
+    border-color: ButtonText;
+  }
+
+  /* Open is a thick Highlight ring. A Highlight fill would lose the mark, because the browser paints a
+     Canvas backplate behind the text and white text on it vanishes. */
+  .help-button[aria-expanded="true"] .help-button-mark,
+  .help-button.is-open .help-button-mark {
+    border: 3px solid Highlight;
+    color: CanvasText;
+  }
+}

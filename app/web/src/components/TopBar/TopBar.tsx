@@ -7,8 +7,8 @@ export const states = ["default", "with-project", "project-open"] as const;
 export interface TopBarProps {
   /** The page name. The page h1 stays in the main content. */
   title: string;
-  /** A quiet mark after the title, such as "Demo data". Left out on real data. */
-  badge?: string;
+  /** A quiet mark after the title, such as "Demo data". Left out on real data. It may be a help term. */
+  badge?: React.ReactNode;
   /** The project button. Its visible name is its accessible name, so a screen reader hears what is on screen. */
   project?: {
     name: string;

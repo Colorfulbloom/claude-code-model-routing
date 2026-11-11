@@ -11,6 +11,7 @@ import { usePrices, useProjects } from "@/api/client";
 import { useSessions } from "@/api/review";
 import { Button } from "@/components/Button/Button";
 import { Card } from "@/components/Card/Card";
+import { HelpButton } from "@/components/HelpButton/HelpButton";
 import { dateWords } from "@/lib/clock";
 import { modelLabel } from "@/lib/models";
 import { useRangeParam } from "@/lib/range";
@@ -72,7 +73,11 @@ function SessionsProject({ project }: { project: string }) {
   } else {
     const groups = buildSessionGroups(sessions.days, head.window.tz, head.window.end);
     content = (
-      <Card title={title} count={String(sessions.count)}>
+      <Card
+        title={title}
+        count={String(sessions.count)}
+        right={<HelpButton help="sessions.share" />}
+      >
         {sessions.failed && <StaleLine updatedAt={sessions.updatedAt} />}
         <SessionsTable label={title} groups={groups} project={project} range={range} />
         <div className="review-pgfoot">

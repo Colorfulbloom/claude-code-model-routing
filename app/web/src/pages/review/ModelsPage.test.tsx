@@ -247,3 +247,57 @@ describe("the range", () => {
     expect(screen.getByText("Loading models")).toBeInTheDocument();
   });
 });
+
+describe("help", () => {
+  it("puts a term on Share and From cache only, marking the column the entry explains", async () => {
+    const user = userEvent.setup();
+    await open(reviewServer({ models: () => modelsAnswer() }));
+    const table = await screen.findByRole("table", { name: "Models" });
+    const heads = within(table).getAllByRole("columnheader");
+    expect(heads.map((h) => h.textContent)).toEqual([
+      "Model",
+      "Cost",
+      "Share",
+      "Tokens",
+      "From cache",
+      "Used by",
+    ]);
+    expect(
+      heads.map((h) => within(h).queryByRole("button")?.getAttribute("data-help-id") ?? null),
+    ).toEqual([null, null, "models.cols", null, "models.cols", null]);
+    await user.click(within(table).getByRole("button", { name: "From cache" }));
+    const dialog = await screen.findByRole("dialog", { name: "Models table" });
+    expect(within(dialog).getByText("This column").closest(".hp-row")).toHaveTextContent(
+      "From cache",
+    );
+  });
+
+  it("has a button on the kinds card and one beside the chart's legend", async () => {
+    await open(reviewServer({ models: () => modelsAnswer() }));
+    await screen.findByRole("table", { name: "Models" });
+    expect(screen.getByRole("button", { name: "About What the cost is made of" })).toHaveAttribute(
+      "data-help-id",
+      "models.kinds",
+    );
+    expect(screen.getByRole("button", { name: "About Cost kinds" })).toHaveAttribute(
+      "data-help-id",
+      "models.chart",
+    );
+  });
+});
+
+describe("help at phone width", () => {
+  it("keeps every header plain text, so no focus stop hides in a clipped one", async () => {
+    await open(reviewServer({ models: () => modelsAnswer() }), "?range=30d", 375);
+    const table = await screen.findByRole("table", { name: "Models" });
+    const heads = within(table).getAllByRole("columnheader");
+    expect(heads.map((h) => within(h).queryByRole("button") !== null)).toEqual([
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+    ]);
+  });
+});

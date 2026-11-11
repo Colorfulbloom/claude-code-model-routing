@@ -7,6 +7,7 @@ import type { ReviewRange, Summary } from "@/api/types";
 import type { SummaryCard } from "@/api/review";
 import { Button } from "@/components/Button/Button";
 import { Card } from "@/components/Card/Card";
+import { HelpButton } from "@/components/HelpButton/HelpButton";
 import { ShareBar } from "@/components/ShareBar/ShareBar";
 import { Well } from "@/components/Well/Well";
 import { reviewPath } from "@/lib/range";
@@ -17,6 +18,7 @@ import "../LivePage.css";
 import { ModelCheckCard, ModelCheckLoading } from "../live/ModelCheckCard";
 import { CardBones, CardError, StaleLine } from "./CardStates";
 import { SessionsTable } from "./SessionsTable";
+import "./SummaryCards.css";
 
 export function MoneyCard({ card }: { card: SummaryCard }) {
   const answer = card.answer;
@@ -53,7 +55,7 @@ export function MoneyCard({ card }: { card: SummaryCard }) {
     );
   }
   return (
-    <Card title={title} question={t("rv_who_q")}>
+    <Card title={title} question={t("rv_who_q")} right={<HelpButton help="summary.who" />}>
       {card.failed && <StaleLine updatedAt={card.updatedAt} />}
       {body}
     </Card>
@@ -74,7 +76,7 @@ function checkWords(answer: Summary): {
     ...base,
     okLine: found > 0 && rest > 0 ? tn("mc_ok_rest", rest) : base.okLine,
   };
-  return { view, question: found > 0 ? tn("mc_sum_n", checked, { k: found }) : t("rv_chk_q") };
+  return { view, question: found > 0 ? tn("mc_sum_n", checked, { k: found }) : t("mc_q") };
 }
 
 export function SummaryCheckCard({ card }: { card: SummaryCard }) {
@@ -84,7 +86,7 @@ export function SummaryCheckCard({ card }: { card: SummaryCard }) {
     if (card.error === null)
       return <ModelCheckLoading label={t("ld_line", { card: title.toLowerCase() })} />;
     return (
-      <Card title={title} question={t("rv_chk_q")}>
+      <Card title={title} question={t("mc_q")} right={<HelpButton help="summary.modelcheck" />}>
         <CardError card={title} onRetry={card.retry} />
       </Card>
     );
@@ -92,7 +94,7 @@ export function SummaryCheckCard({ card }: { card: SummaryCard }) {
   const words = card.modelCheckError === null ? checkWords(answer) : null;
   if (words === null) {
     return (
-      <Card title={title} question={t("rv_chk_q")}>
+      <Card title={title} question={t("mc_q")} right={<HelpButton help="summary.modelcheck" />}>
         {card.failed && <StaleLine updatedAt={card.updatedAt} />}
         <CardError card={title} onRetry={card.retry} />
       </Card>
@@ -100,6 +102,7 @@ export function SummaryCheckCard({ card }: { card: SummaryCard }) {
   }
   return (
     <ModelCheckCard
+      help="summary.modelcheck"
       compact
       view={words.view}
       question={words.question}
@@ -120,7 +123,7 @@ export function TopSessionsCard({
   const answer = card.answer;
   const title = t("rv_top_h");
   let body: React.ReactNode;
-  let right: React.ReactNode = undefined;
+  let all: React.ReactNode = undefined;
   if (answer === undefined) {
     body =
       card.error === null ? (
@@ -138,15 +141,22 @@ export function TopSessionsCard({
         range={range}
       />
     );
-    right = (
+    all = (
       <Button variant="quiet" href={`#${reviewPath(project, "sessions", range)}`}>
         {tn("top_all", answer.session_count)}
         <span aria-hidden="true">{" →"}</span>
       </Button>
     );
   }
+  // The "?" keeps one place while the link to all sessions comes and goes.
+  const right = (
+    <span className="review-card-end">
+      {all}
+      <HelpButton help="summary.top" />
+    </span>
+  );
   return (
-    <Card title={title} question={t("rv_top_q")} {...(right !== undefined ? { right } : {})}>
+    <Card title={title} question={t("rv_top_q")} right={right}>
       {card.failed && <StaleLine updatedAt={card.updatedAt} />}
       {body}
     </Card>

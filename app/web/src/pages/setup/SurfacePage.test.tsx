@@ -576,3 +576,174 @@ describe("on a phone", () => {
     ).toBeInTheDocument();
   });
 });
+
+describe("help", () => {
+  const facts = setupItem("hooks", "x").facts;
+  const text = (value: string) => ({ text: value, masked: false });
+  const inspector = () =>
+    waitFor(() => need(document.querySelector<HTMLElement>("section.inspector")));
+
+  it("gives the status pill a button that marks its word, and Where and Why a term", async () => {
+    const user = userEvent.setup();
+    await open(setupServer({ part: (p) => partAnswer(p, [effort]) }), "settings/effortLevel");
+    const region = await inspector();
+    await user.click(within(region).getByRole("button", { name: "About Status" }));
+    const dialog = await screen.findByRole("dialog", { name: "Status" });
+    expect(within(dialog).getByText("Shown here").closest(".hp-row")).toHaveTextContent("Lowered");
+    // The status words link goes to the Glossary's Status words section (GlossaryPage.test.tsx
+    // checks that route lands on it).
+    const statusLink = within(dialog).getByRole("link", { name: /Status words/ });
+    expect(statusLink.getAttribute("href")).toMatch(/^#\/reference\/glossary\/status-words(\?|$)/);
+    await user.keyboard("{Escape}");
+    expect(
+      within(region).getByRole("button", { name: "Where it's set, top wins" }),
+    ).toHaveAttribute("data-help-id", "setup.where");
+    expect(within(region).getByRole("button", { name: "Why" })).toHaveAttribute(
+      "data-help-id",
+      "setup.why",
+    );
+  });
+
+  it("gives a read-only box a button", async () => {
+    const managed = setupItem("settings", "availableModels", {
+      read_only_reason: { code: "managed", params: {}, command: null },
+      sources: [source({ scope: "managed", key: "availableModels" })],
+    });
+    await open(setupServer({ part: (p) => partAnswer(p, [managed]) }), "settings/availableModels");
+    const region = await screen.findByRole("region", { name: "Allowed models" });
+    expect(within(region).getByRole("button", { name: "About Can't change here" })).toHaveAttribute(
+      "data-help-id",
+      "setup.readonly",
+    );
+  });
+
+  it("gives the When a change applies line a term", async () => {
+    const item = setupItem("settings", "model", { applies: "now" });
+    await open(setupServer({ part: (p) => partAnswer(p, [item]) }), "settings/model");
+    const region = await inspector();
+    expect(within(region).getByRole("button", { name: "Applies right away" })).toHaveAttribute(
+      "data-help-id",
+      "setup.applies",
+    );
+  });
+
+  it("gives the Couldn't read card a button", async () => {
+    const agent = setupItem("agents", "builder", { group: "ran" });
+    const server = setupServer({
+      part: (p) =>
+        partAnswer(p, [agent], {
+          unreadable: [
+            {
+              file: "~/agents/notes.md",
+              full_path: "/home/me/agents/notes.md",
+              part: "agents",
+              problem: "p1",
+              reason: "permission",
+              scope: "user",
+            },
+          ],
+        }),
+    });
+    await open(server, "agents");
+    const card = await screen.findByRole("alert");
+    expect(within(card).getByRole("button", { name: "About Couldn't read" })).toHaveAttribute(
+      "data-help-id",
+      "setup.unread",
+    );
+  });
+
+  it("puts a term on the field labels of hooks, permissions, MCP servers and plugins", async () => {
+    const cases = [
+      {
+        item: setupItem("hooks", "h", {
+          facts: {
+            ...facts,
+            hook: {
+              event: "PreToolUse",
+              handler_type: "command",
+              matcher: "Bash",
+              command: text("make check"),
+              timeout: 30,
+            },
+          },
+        }),
+        part: "hooks/h",
+        region: "h",
+        label: "Event",
+        id: "setup.hooks",
+      },
+      {
+        item: setupItem("permissions", "p", {
+          facts: { ...facts, permission: { kind: "allow", tool: "Bash", pattern: null } },
+        }),
+        part: "permissions/p",
+        region: "p",
+        label: "Tool",
+        id: "setup.permissions",
+      },
+      {
+        item: setupItem("mcp", "m", {
+          facts: {
+            ...facts,
+            mcp: {
+              transport: "stdio",
+              command: text("node server.js"),
+              url: null,
+              args: [],
+              env: {},
+              headers: {},
+              approved: true,
+            },
+          },
+        }),
+        part: "mcp/m",
+        region: "m",
+        label: "Approved",
+        id: "setup.mcp",
+      },
+      {
+        item: setupItem("plugins", "pl", {
+          facts: {
+            ...facts,
+            plugin: {
+              version: "1.0.0",
+              marketplace: null,
+              contents: [],
+              enabled: [{ scope: "user", enabled: true }],
+              orphaned_versions: ["0.9.0"],
+            },
+          },
+        }),
+        part: "plugins/pl",
+        region: "pl",
+        label: "Old versions on disk",
+        id: "setup.plugins",
+      },
+    ];
+    for (const c of cases) {
+      await open(setupServer({ part: (p) => partAnswer(p, [c.item]) }), c.part);
+      const region = await inspector();
+      expect(within(region).getByRole("button", { name: c.label })).toHaveAttribute(
+        "data-help-id",
+        c.id,
+      );
+      cleanup();
+    }
+  });
+
+  it("gives the Imports heading a term", async () => {
+    const file = setupItem("instructions", "CLAUDE.md", {
+      loads: { kind: "always", globs: [] },
+      facts: {
+        ...facts,
+        instruction: { lines: 4, bytes: 40, imports: [] },
+      },
+    });
+    await open(setupServer({ part: (p) => partAnswer(p, [file]) }), "instructions/CLAUDE.md");
+    const region = await screen.findByRole("region", { name: "CLAUDE.md" });
+    expect(within(region).getByRole("button", { name: "Imports, in load order" })).toHaveAttribute(
+      "data-help-id",
+      "setup.imports",
+    );
+  });
+});

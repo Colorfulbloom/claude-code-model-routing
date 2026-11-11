@@ -194,6 +194,19 @@ export function fakeServer(
         };
         return Promise.resolve(new Response(JSON.stringify(body)));
       }
+      // The rules reference, empty, so the Reference route mounts as a page with no rules. The
+      // Reference page tests use rules-server.ts for the real rules.
+      if (path.startsWith("/api/rules")) {
+        const body = {
+          server_time: "2026-11-10T15:00:00Z",
+          etag: "rules-empty",
+          unchanged: false,
+          installed: null,
+          checked_on: "",
+          rules: [],
+        };
+        return Promise.resolve(new Response(JSON.stringify(body)));
+      }
       const body = path.startsWith("/api/projects")
         ? { projects: server.projects }
         : path.startsWith("/api/prices")

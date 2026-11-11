@@ -82,6 +82,23 @@
   color: var(--accent);
 }
 
+/* A help "?" sits at the right edge of its row, over padding the link keeps free for it. */
+.sidebar-has-help {
+  position: relative;
+}
+
+.sidebar-has-help .sidebar-link {
+  padding-right: 40px;
+}
+
+.sidebar-help {
+  position: absolute;
+  top: 50%;
+  right: var(--space-2);
+  display: inline-flex;
+  transform: translateY(-50%);
+}
+
 /* The demo mark sits on the brand line, after the wordmark, at regular weight. */
 .sidebar .brand {
   display: flex;

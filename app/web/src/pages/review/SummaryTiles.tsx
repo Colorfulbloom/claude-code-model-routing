@@ -1,23 +1,45 @@
 /* The four Summary tiles: cost, sessions, tokens and the cache share, each compared as the range says. */
 import type { Summary } from "@/api/types";
 import { Tile } from "@/components/Tile/Tile";
+import { tileHelpValues } from "@/lib/live-tiles";
 import { buildSummaryTiles } from "@/lib/review-view";
+import type { TileView } from "@/lib/review-view";
+import type { HelpId } from "@/strings/help";
 import { t } from "@/strings/t";
 import { CardError } from "./CardStates";
 
+/** One tile of the four, by its place in the list. Its "?" gets the numbers the tile shows. */
+function SummaryTile({
+  tiles,
+  index,
+  help,
+}: {
+  tiles: readonly TileView[];
+  index: number;
+  help: Extract<HelpId, `summary.${string}`>;
+}) {
+  const tile = tiles[index];
+  if (tile === undefined) return null;
+  return (
+    <Tile
+      label={tile.label}
+      {...(tile.qualifier !== undefined ? { qualifier: tile.qualifier } : {})}
+      value={tile.value}
+      delta={tile.delta}
+      {...(tile.note !== undefined ? { note: tile.note } : {})}
+      help={{ id: help, values: tileHelpValues(tile) }}
+    />
+  );
+}
+
 export function SummaryTiles({ summary }: { summary: Summary }) {
+  const tiles = buildSummaryTiles(summary);
   return (
     <div className="tiles">
-      {buildSummaryTiles(summary).map((tile) => (
-        <Tile
-          key={tile.label}
-          label={tile.label}
-          {...(tile.qualifier !== undefined ? { qualifier: tile.qualifier } : {})}
-          value={tile.value}
-          delta={tile.delta}
-          {...(tile.note !== undefined ? { note: tile.note } : {})}
-        />
-      ))}
+      <SummaryTile tiles={tiles} index={0} help="summary.cost" />
+      <SummaryTile tiles={tiles} index={1} help="summary.sessions" />
+      <SummaryTile tiles={tiles} index={2} help="summary.tokens" />
+      <SummaryTile tiles={tiles} index={3} help="summary.cache" />
     </div>
   );
 }

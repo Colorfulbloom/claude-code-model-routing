@@ -6,6 +6,7 @@
  * with the chart's label. The legend and the rows' text sit outside it.
  */
 import type { ModelList, ReviewRange } from "@/api/types";
+import { HelpButton } from "@/components/HelpButton/HelpButton";
 import { Well } from "@/components/Well/Well";
 import { ModelSwatch } from "@/components/ModelSwatch/ModelSwatch";
 import { buildKindLegend, buildKindRows, kindsImageLabel } from "@/lib/review-models";
@@ -17,17 +18,20 @@ export function ModelsKinds({ answer, range }: { answer: ModelList; range: Revie
   const rows = buildKindRows(answer);
   return (
     <>
-      <ul className="review-models-legend">
-        {legend.map((entry) => (
-          <li key={entry.kind} data-kind={entry.kind}>
-            <i
-              className={`review-models-kp review-models-kp${String(entry.pattern)}`}
-              aria-hidden="true"
-            />
-            {entry.label} <b className="num">{entry.total}</b>
-          </li>
-        ))}
-      </ul>
+      <div className="review-models-legendrow">
+        <ul className="review-models-legend">
+          {legend.map((entry) => (
+            <li key={entry.kind} data-kind={entry.kind}>
+              <i
+                className={`review-models-kp review-models-kp${String(entry.pattern)}`}
+                aria-hidden="true"
+              />
+              {entry.label} <b className="num">{entry.total}</b>
+            </li>
+          ))}
+        </ul>
+        <HelpButton help="models.chart" />
+      </div>
       <p className="review-models-note">{t("kind_legend_note")}</p>
       <Well className="review-models-well">
         <div role="img" aria-label={kindsImageLabel(answer, range)}>

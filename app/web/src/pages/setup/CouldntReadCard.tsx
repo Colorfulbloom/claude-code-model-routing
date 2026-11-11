@@ -8,6 +8,7 @@
 import type { SetupPartAnswer } from "@/api/types";
 import { postStatus } from "@/app/harness";
 import { CopyPath } from "@/components/CopyPath/CopyPath";
+import { HelpButton } from "@/components/HelpButton/HelpButton";
 import { RaisedFinding } from "@/components/RaisedFinding/RaisedFinding";
 import { codeWord } from "@/lib/setup-words";
 import { t, tn } from "@/strings/t";
@@ -70,7 +71,9 @@ export function CouldntReadCard({ files }: { files: readonly UnreadableFile[] })
           <p>{t("cr_b")}</p>
         </>
       )}
-      <p className="muted setup-small">{t("cr_fix")}</p>
+      <p className="muted setup-small">
+        {t("cr_fix")} <HelpButton help="setup.unread" />
+      </p>
       {copies.length > 0 && (
         <div className="setup-cr-actions">
           {copies.map(({ file, path }) => (

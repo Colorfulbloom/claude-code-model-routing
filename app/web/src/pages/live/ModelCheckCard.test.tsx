@@ -27,11 +27,26 @@ function lowered(over: Partial<ModelCheckRow>): ModelCheckRow {
 function show(rows: ModelCheckRow[], compact = false) {
   const view = buildModelCheck({ in_effect_count: 0, rows });
   const router = createMemoryRouter(
-    [{ path: "/p/:project/live", element: <ModelCheckCard view={view} compact={compact} /> }],
+    [
+      {
+        path: "/p/:project/live",
+        element: <ModelCheckCard help="live.modelcheck" view={view} compact={compact} />,
+      },
+    ],
     { initialEntries: ["/p/builder/live"] },
   );
   render(<RouterProvider router={router} />);
 }
+
+describe("Help", () => {
+  it("puts one About button in the card header, named for the card", () => {
+    show([lowered({ item_id: "agents:judge" })]);
+    const card = screen.getByRole("region", { name: "Model check" });
+    const help = within(card).getByRole("button", { name: "About Model check" });
+    expect(help).toHaveAttribute("aria-haspopup", "dialog");
+    expect(help.closest(".card-header")).not.toBeNull();
+  });
+});
 
 describe("See why", () => {
   it("links a finding with a setup item to that item's page, named for the agent", () => {

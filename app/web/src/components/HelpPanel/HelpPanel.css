@@ -1,0 +1,178 @@
+/* The popover: a 360px card under the trigger with a notch that points at it. The popover itself
+   never scrolls, because the notch sits outside its box. The dialog inside scrolls. */
+.hp-pop {
+  display: flex;
+  flex-direction: column;
+  width: 360px;
+  max-width: calc(100vw - 24px);
+  background: var(--card-bg);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  color: var(--text);
+}
+
+.hp-dialog {
+  min-height: 0;
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  overflow: auto;
+  border-radius: inherit;
+  outline: none;
+}
+
+.hp-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.hp-title {
+  margin-right: auto;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight);
+}
+
+/* The notch. React Aria sets its left offset, and the placement says which edge it sits on. The 8px
+   high shape overlaps the popover's border by 1px, so its fill hides the border under it. */
+.hp-arrow {
+  position: absolute;
+  top: -7px;
+  line-height: 0;
+}
+
+.hp-arrow svg {
+  display: block;
+  fill: var(--card-bg);
+  stroke: var(--border-strong);
+  stroke-width: 1px;
+}
+
+.hp-pop[data-placement="top"] .hp-arrow {
+  top: auto;
+  bottom: -7px;
+}
+
+.hp-pop[data-placement="top"] .hp-arrow svg {
+  transform: rotate(180deg);
+}
+
+/* The sheet draws the popover in place, with the notch at the right, under a trigger. */
+.hp-inline.hp-pop {
+  position: relative;
+  max-width: 100%;
+}
+
+.hp-arrow-inline {
+  right: 18px;
+}
+
+.hp-scrim {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-end;
+  width: 100vw;
+  height: var(--visual-viewport-height, 100vh);
+  background: var(--scrim);
+}
+
+/* The tray: a bottom sheet with a grip and a Close button. It slides up unless motion is reduced. */
+.hp-tray {
+  width: 100%;
+  max-height: 82vh;
+  overflow: auto;
+  padding: var(--space-2) var(--space-4) calc(var(--space-5) + env(safe-area-inset-bottom));
+  background: var(--card-bg);
+  border-top: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  color: var(--text);
+  outline: none;
+}
+
+.hp-tray .hp-dialog {
+  padding: 0;
+  overflow: visible;
+}
+
+.hp-tray.hp-inline {
+  max-height: none;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+}
+
+.hp-grip {
+  width: 36px;
+  height: 4px;
+  margin: 0 auto var(--space-3);
+  background: var(--border-strong);
+  border-radius: 2px;
+}
+
+.hp-close {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  background: var(--card-bg);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  color: var(--text);
+  font-size: var(--text-lg);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.hp-close:hover {
+  background: var(--nav-hover-bg);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .hp-tray[data-entering] {
+    animation: hp-tray-in 160ms ease-out;
+  }
+
+  .hp-scrim[data-entering] {
+    animation: hp-scrim-in 160ms linear;
+  }
+}
+
+@keyframes hp-tray-in {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+}
+
+@keyframes hp-scrim-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Forced colors drops shadows and fills. The border, the notch and the grip stay as system colors. */
+@media (forced-colors: active) {
+  .hp-pop,
+  .hp-tray {
+    background: Canvas;
+    border-color: CanvasText;
+    color: CanvasText;
+  }
+
+  .hp-arrow svg {
+    fill: Canvas;
+    stroke: CanvasText;
+  }
+
+  .hp-grip {
+    background: CanvasText;
+  }
+
+  .hp-close {
+    border-color: ButtonText;
+  }
+}

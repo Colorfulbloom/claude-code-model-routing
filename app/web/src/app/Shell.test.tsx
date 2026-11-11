@@ -353,6 +353,77 @@ describe("top bar and tab bar at 375", () => {
   });
 });
 
+describe("help spots in the shell", () => {
+  it("makes the Demo data mark a help term that keeps its words", async () => {
+    await mount("#/p/builder/live");
+    const nav = await screen.findByRole("navigation", { name: "Main" });
+    const mark = await within(nav).findByRole("button", { name: "Demo data" });
+    expect(mark).toHaveAttribute("data-help-id", "shell.demo");
+    expect(mark.closest(".badge")).not.toBeNull();
+  });
+
+  it("puts the To fix help beside the link, never inside it", async () => {
+    await mount("#/p/builder/live");
+    const link = await screen.findByRole("link", { name: "To fix, 4 items" });
+    const help = screen.getByRole("button", { name: "About To fix count" });
+    expect(link.contains(help)).toBe(false);
+    expect(help.closest("li")).toBe(link.closest("li"));
+  });
+
+  it("makes the prices and backup footer lines help terms and leaves the rest plain", async () => {
+    await mount("#/p/builder/live");
+    const nav = await screen.findByRole("navigation", { name: "Main" });
+    await within(nav).findByText("Prices as of October 28");
+    const prices = within(nav).getByRole("button", { name: "Prices as of October 28" });
+    expect(prices).toHaveAttribute("data-help-id", "shell.prices");
+    const backup = within(nav).getByRole("button", { name: /^Last backup / });
+    expect(backup).toHaveAttribute("data-help-id", "shell.backup");
+    const footer = nav.querySelector(".sidebar-footer");
+    expect(footer?.querySelectorAll("button")).toHaveLength(2);
+  });
+
+  it("puts a help button after the Updated line while calls fail", async () => {
+    const { connection } = await mount("#/p/builder/live", { width: 375 });
+    await screen.findByRole("link", { name: "To fix, 4 items" });
+    act(() => {
+      connection.recordFailure();
+    });
+    const line = screen.getByText(/^Updated \d{1,2}:\d{2}:\d{2}/);
+    expect(within(line).getByRole("button", { name: "About Updated" })).toBeInTheDocument();
+  });
+
+  it("gives the More rows for prices and backup a help term", async () => {
+    await mount("#/more", { width: 375 });
+    const card = await screen.findByRole("region", { name: "Your history" });
+    await within(card).findByText("October 28");
+    expect(within(card).getByRole("button", { name: "Prices as of" })).toHaveAttribute(
+      "data-help-id",
+      "shell.prices",
+    );
+    expect(within(card).getByRole("button", { name: "Last backup" })).toHaveAttribute(
+      "data-help-id",
+      "shell.backup",
+    );
+    const labels = [...card.querySelectorAll("dt")].map((el) => el.textContent);
+    expect(labels).toEqual(["Updated", "History since", "Last backup", "Prices as of"]);
+  });
+
+  it("opens the Project state help from the tray's heading", async () => {
+    const user = userEvent.setup();
+    await mount("#/p/builder/live", { width: 375 });
+    await user.click(await screen.findByRole("button", { name: "Builder" }));
+    const tray = await screen.findByRole("dialog", { name: "Projects" });
+    const help = within(tray).getByRole("button", { name: "About Project state" });
+    await user.click(help);
+    // The help tray opens over the project tray, so it is the last dialog.
+    const top = (await screen.findAllByRole("dialog")).at(-1);
+    if (top === undefined) throw new Error("no dialog");
+    expect(
+      within(top).getByRole("heading", { level: 2, name: "Project state" }),
+    ).toBeInTheDocument();
+  });
+});
+
 describe("More page", () => {
   it("shows Reference links and both versions at phone width", async () => {
     await mount("#/more", { width: 375 });

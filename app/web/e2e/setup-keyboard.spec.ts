@@ -300,6 +300,17 @@ test("at 1440 the auto-picked item is in the address with no history entry, so B
 /* ---------- snapshots ---------- */
 
 test.describe("accessibility snapshots", () => {
+  test("the version gap notice row on Your setup", async ({ page, demo }) => {
+    await openAt(page, demo, path.setup, 1440);
+    const notice = page.locator(".setup-version-gap");
+    await expect(notice).toBeVisible();
+    await expect(notice).toMatchAriaSnapshot(`
+      - paragraph:
+        - text: /^${en.status_unknown} You run Claude Code \\S+, but Bar Tab checked .+ on \\S+\\. /
+        - link /^Show the \\d+ rules to re-check$/
+    `);
+  });
+
   test("the map, with the Switch off and then on by key", async ({ page, demo }) => {
     await openAt(page, demo, path.setup, 1440);
     const toggle = page.getByRole("switch", { name: en.su_switch });

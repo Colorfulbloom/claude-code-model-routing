@@ -61,6 +61,19 @@ import {
   type ToFixGroupState,
   type ToFixRowState,
 } from "./setup-samples";
+import {
+  HelpButtonDemo,
+  HelpEntryDemo,
+  HelpPanelDemo,
+  HelpTermDemo,
+  SearchFieldDemo,
+  type HelpButtonState,
+  type HelpEntryState,
+  type HelpPanelState,
+  type HelpTermState,
+  type SearchFieldState,
+} from "./help-samples";
+import { OrderLadderDemo, type OrderLadderState } from "./reference-samples";
 import { SelectDemo } from "./SelectDemo";
 import { W } from "./words";
 
@@ -975,6 +988,33 @@ export const manifest: ManifestEntry[] = [
       />
     ),
   },
+  {
+    component: "Tile",
+    state: "help",
+    render: () => (
+      <Tile
+        label={W.t_cache}
+        value="78%"
+        delta={W.t_cache_d}
+        proof={<Ring percent={78} />}
+        help={{ id: "live.cache", values: { value: "78%", delta: "81%" } }}
+      />
+    ),
+  },
+  {
+    component: "Tile",
+    state: "link-help",
+    render: () => (
+      <Tile
+        label={W.t_cache}
+        value="78%"
+        delta={W.t_cache_d}
+        proof={<Ring percent={78} />}
+        href="#cache"
+        help={{ id: "live.cache", values: { value: "78%", delta: "81%" } }}
+      />
+    ),
+  },
   // TableWell
   {
     component: "TableWell",
@@ -1367,4 +1407,48 @@ export const manifest: ManifestEntry[] = [
       </span>
     ),
   },
+  // HelpButton
+  ...(
+    [
+      "closed",
+      "open-popover",
+      "open-with-values",
+      "line-marked",
+      "word-marked",
+    ] as HelpButtonState[]
+  ).map((state) => ({
+    component: "HelpButton",
+    state,
+    render: () => <HelpButtonDemo state={state} />,
+  })),
+  // HelpTerm
+  ...(["closed", "open", "in-header"] as HelpTermState[]).map((state) => ({
+    component: "HelpTerm",
+    state,
+    render: () => <HelpTermDemo state={state} />,
+  })),
+  // HelpPanel
+  ...(["popover", "tray"] as HelpPanelState[]).map((state) => ({
+    component: "HelpPanel",
+    state,
+    render: () => <HelpPanelDemo state={state} />,
+  })),
+  // HelpEntry
+  ...(["full", "list-status", "list-scopes", "no-glossary"] as HelpEntryState[]).map((state) => ({
+    component: "HelpEntry",
+    state,
+    render: () => <HelpEntryDemo state={state} />,
+  })),
+  // SearchField
+  ...(["empty", "typed", "no-results"] as SearchFieldState[]).map((state) => ({
+    component: "SearchField",
+    state,
+    render: () => <SearchFieldDemo state={state} />,
+  })),
+  // OrderLadder
+  ...(["row", "wrapped", "vertical", "single"] as OrderLadderState[]).map((state) => ({
+    component: "OrderLadder",
+    state,
+    render: () => <OrderLadderDemo state={state} />,
+  })),
 ];

@@ -8,6 +8,7 @@
  */
 import { Link } from "react-aria-components";
 import type { SetupItem } from "@/api/types";
+import { HelpTerm } from "@/components/HelpTerm/HelpTerm";
 import { ValueText } from "@/components/ListInspector/ValueText";
 import { ModelSwatch } from "@/components/ModelSwatch/ModelSwatch";
 import { StatusChip } from "@/components/StatusChip/StatusChip";
@@ -35,7 +36,7 @@ function agentFieldLabel(name: string): string {
 }
 
 /** Label and value pairs in a definition list. */
-function Dl({ rows }: { rows: { key: string; label: string; value: React.ReactNode }[] }) {
+function Dl({ rows }: { rows: { key: string; label: React.ReactNode; value: React.ReactNode }[] }) {
   return (
     <dl className="setup-facts">
       {rows.map((row) => (
@@ -48,7 +49,7 @@ function Dl({ rows }: { rows: { key: string; label: string; value: React.ReactNo
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ title, children }: { title: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="setup-facts-section">
       <h3 className="setup-h3">{title}</h3>
@@ -105,7 +106,7 @@ function AgentFacts({ item }: { item: SetupItem }) {
   return (
     <>
       {ignored.length > 0 && (
-        <Section title={t("ag_ignored_h")}>
+        <Section title={<HelpTerm help="agents.inspector">{t("ag_ignored_h")}</HelpTerm>}>
           <p className="setup-small muted">{t("ag_ignored_b")}</p>
           <Well variant="list">
             <ul className="setup-ignored">
@@ -126,7 +127,7 @@ function AgentFacts({ item }: { item: SetupItem }) {
         </Section>
       )}
       {shown.length > 0 && (
-        <Section title={t("in_details_h")}>
+        <Section title={<HelpTerm help="agents.inspector">{t("in_details_h")}</HelpTerm>}>
           <Dl
             rows={shown.map((f) => {
               const text = f.value?.text ?? "";
@@ -173,7 +174,7 @@ function InstructionFacts({ item, project, scopes }: Props) {
   const facts = item.facts.instruction;
   if (facts === null || facts === undefined) return null;
   return (
-    <Section title={t("ins_imports_h")}>
+    <Section title={<HelpTerm help="setup.imports">{t("ins_imports_h")}</HelpTerm>}>
       <Well variant="list">
         <ol className="setup-chain">
           <li className="setup-chain-row" style={{ "--d": 0 } as React.CSSProperties}>
@@ -257,7 +258,7 @@ function HookFacts({ item }: { item: SetupItem }) {
   const rows = [
     {
       key: "event",
-      label: t("hk_f_event"),
+      label: <HelpTerm help="setup.hooks">{t("hk_f_event")}</HelpTerm>,
       value: (
         <>
           <span>{codeWord("hk_ev_", facts.event)}</span> <Code text={facts.event} />
@@ -266,7 +267,7 @@ function HookFacts({ item }: { item: SetupItem }) {
     },
     {
       key: "matcher",
-      label: t("hk_f_matcher"),
+      label: <HelpTerm help="setup.hooks">{t("hk_f_matcher")}</HelpTerm>,
       value:
         facts.matcher === null || facts.matcher === "" ? (
           <span>{t("hk_no_matcher")}</span>
@@ -276,7 +277,7 @@ function HookFacts({ item }: { item: SetupItem }) {
     },
     {
       key: "type",
-      label: t("hk_f_type"),
+      label: <HelpTerm help="setup.hooks">{t("hk_f_type")}</HelpTerm>,
       value: <span>{codeWord("hk_ty_", facts.handler_type)}</span>,
     },
     ...(facts.command !== null
@@ -292,7 +293,7 @@ function HookFacts({ item }: { item: SetupItem }) {
       ? [
           {
             key: "timeout",
-            label: t("hk_f_timeout"),
+            label: <HelpTerm help="setup.hooks">{t("hk_f_timeout")}</HelpTerm>,
             value: <span>{t("hk_timeout_v", { n: facts.timeout })}</span>,
           },
         ]
@@ -312,7 +313,15 @@ function PermissionFacts({ item }: { item: SetupItem }) {
     const mode = item.effective?.value?.text;
     return mode === undefined ? null : (
       <Section title={t("in_details_h")}>
-        <Dl rows={[{ key: "mode", label: t("pm_f_mode"), value: <span>{mode}</span> }]} />
+        <Dl
+          rows={[
+            {
+              key: "mode",
+              label: <HelpTerm help="setup.permissions">{t("pm_f_mode")}</HelpTerm>,
+              value: <span>{mode}</span>,
+            },
+          ]}
+        />
       </Section>
     );
   }
@@ -328,7 +337,11 @@ function PermissionFacts({ item }: { item: SetupItem }) {
     <Section title={t("in_details_h")}>
       <Dl
         rows={[
-          { key: "tool", label: t("pm_f_tool"), value: <span>{tool}</span> },
+          {
+            key: "tool",
+            label: <HelpTerm help="setup.permissions">{t("pm_f_tool")}</HelpTerm>,
+            value: <span>{tool}</span>,
+          },
           {
             key: "match",
             label: t("pm_f_match"),
@@ -353,7 +366,7 @@ function McpFacts({ item }: { item: SetupItem }) {
   const rows = [
     {
       key: "transport",
-      label: t("mc_f_transport"),
+      label: <HelpTerm help="setup.mcp">{t("mc_f_transport")}</HelpTerm>,
       value: <span>{codeWord("mc_t_", facts.transport)}</span>,
     },
     ...(facts.command !== null
@@ -429,7 +442,7 @@ function McpFacts({ item }: { item: SetupItem }) {
       ? [
           {
             key: "approved",
-            label: t("mc_f_approved"),
+            label: <HelpTerm help="setup.mcp">{t("mc_f_approved")}</HelpTerm>,
             value: <span>{facts.approved ? t("mc_yes") : t("mc_no")}</span>,
           },
         ]
@@ -456,7 +469,7 @@ function PluginFacts({ item, project, scopes }: Props) {
       ? [
           {
             key: "enabled",
-            label: t("pl_f_enabled"),
+            label: <HelpTerm help="setup.plugins">{t("pl_f_enabled")}</HelpTerm>,
             value: (
               <span className="setup-names">
                 {facts.enabled.map((s) => (
@@ -473,7 +486,7 @@ function PluginFacts({ item, project, scopes }: Props) {
       ? [
           {
             key: "orphaned",
-            label: t("pl_f_orphaned"),
+            label: <HelpTerm help="setup.plugins">{t("pl_f_orphaned")}</HelpTerm>,
             value: (
               <span className="setup-names">
                 {facts.orphaned_versions.map((v) => (

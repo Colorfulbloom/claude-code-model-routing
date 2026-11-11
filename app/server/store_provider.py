@@ -38,6 +38,7 @@ import projects
 import review_answers
 import review_query
 import review_windows
+import rules_reference
 import server_zone
 import setup_answers
 import setup_store
@@ -621,6 +622,7 @@ class StoreProvider:
         with self._reader() as conn:
             marker = review_answers.pass_marker(conn)
             as_of = timeline.as_of(conn, now)
+            installed = self._version or _newest_claude_version(conn)
         check_dir = self._check_dir(item)
         listed = item.listed and check_dir is not None
         ctx = SetupContext(
@@ -662,6 +664,7 @@ class StoreProvider:
             listed=listed,
             version=f"{marker or ''}|{day}",
             as_of=as_of,
+            claude_version=installed,
             usage=usage,
             transcripts=transcripts,
         )
@@ -1048,6 +1051,11 @@ class StoreProvider:
             retry_at=snap.retry_at,
         )
 
+    def claude_version(self) -> str:
+        """Return what ``/api/app`` reports: the demo's version, else the newest's."""
+        with self._reader() as conn:
+            return self._version or _newest_claude_version(conn)
+
     def app_info(self, instance: str, project: str | None) -> AppInfo:
         """Return the app-wide facts.
 
@@ -1078,6 +1086,7 @@ class StoreProvider:
             server_time=self.now(),
             instance=instance,
             claude_version=version,
+            rules_version_gap=rules_reference.version_gap(version),
             as_of=as_of,
             pass_running_since=status.pass_running_since,
             etag=etag,

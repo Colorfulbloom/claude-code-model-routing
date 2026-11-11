@@ -1,0 +1,19 @@
+{
+  "build_args": {
+    "now": "2026-10-30T18:00",
+    "script": "tests/fixtures/demo/build_demo.py",
+    "tz": "America/New_York"
+  },
+  "cases": {
+    "no-version.json": "session.json without claude_version",
+    "with-version.json": "session.json claude_version as built (2.1.310)"
+  },
+  "files": [
+    "manifest.json",
+    "no-version.json",
+    "with-version.json"
+  ],
+  "old_call": "api_settings.rules(server.fixture_context(folder, None, None, rules, fields), {}), in process",
+  "old_commit": "e9ff175dc63a60cdbaa8c64466e50a28e04ce664",
+  "python": "3.13.17"
+}

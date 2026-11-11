@@ -12,6 +12,7 @@ describe("NoticeLine", () => {
   it("shows the status word with the sentence", () => {
     render(<NoticeLine statusWord="Unknown">Version gap.</NoticeLine>);
     expect(screen.getByText("Unknown")).toHaveAttribute("data-glyph", "unknown");
+    expect(screen.getByText("Unknown")).toHaveClass("status-chip", "status-chip-unknown");
     expect(screen.getByText("Version gap.")).toBeInTheDocument();
     expect(screen.queryByRole("status")).toBeNull();
   });

@@ -1,0 +1,6 @@
+/* The card header's right slot when it holds a link and the "?" together. */
+.review-card-end {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}

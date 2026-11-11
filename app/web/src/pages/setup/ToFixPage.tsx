@@ -19,6 +19,7 @@ import { postStatus } from "@/app/harness";
 import { Button } from "@/components/Button/Button";
 import { Card } from "@/components/Card/Card";
 import { EmptyState } from "@/components/EmptyState/EmptyState";
+import { HelpButton } from "@/components/HelpButton/HelpButton";
 import { PageHeader } from "@/components/PageHeader/PageHeader";
 import { RaisedFinding } from "@/components/RaisedFinding/RaisedFinding";
 import { SkeletonBones } from "@/components/SkeletonBones/SkeletonBones";
@@ -165,6 +166,7 @@ function GroupCard({
         count={String(rows.length)}
         {...(counted ? { ariaLabel: t("fx_g_aria", { group: title, n: rows.length }) } : {})}
         note={spec.question()}
+        {...(spec.kind !== "notices" ? { help: <HelpButton help="fix.rows" /> } : {})}
       >
         {visible.map((row) => (
           <ProblemRowView key={row.id} row={row} project={project} />
@@ -248,7 +250,15 @@ function ToFixProject({ project }: { project: string }) {
 
   return (
     <div className="tofix-page" aria-busy={answer === undefined && problems.error === null}>
-      <PageHeader title={t("fx_h1")} {...(sub !== undefined ? { sub } : {})} />
+      <PageHeader
+        title={t("fx_h1")}
+        {...(sub !== undefined ? { sub } : {})}
+        {...(answer !== undefined && answer.rows.length > 0
+          ? {
+              controls: <HelpButton help="fix.groups" />,
+            }
+          : {})}
+      />
       {body}
     </div>
   );

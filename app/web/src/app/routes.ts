@@ -70,6 +70,38 @@ export interface ParsedRoute {
   name?: string;
   part?: string;
   item?: string;
+  /** How Claude Code decides: the setting key of #/reference/decides/<key>, and the rule id after it. */
+  setting?: string;
+  rule?: string;
+}
+
+/**
+ * The page whose nav name a link back to it carries. A detail page answers with its parent's, so a
+ * glossary link from a session says "Back to Sessions" and one from a setup item says "Back to
+ * Your setup".
+ */
+export function parentPageName(id: PageId): string {
+  switch (id) {
+    case "session":
+      return pageName("sessions");
+    case "agent_new":
+    case "agent_edit":
+      return pageName("agents");
+    case "surface":
+    case "surface_edit":
+      return pageName("setup");
+    default:
+      return pageName(id);
+  }
+}
+
+/** decodeURIComponent that keeps the text as it is when the escape is malformed. */
+function decoded(text: string): string {
+  try {
+    return decodeURIComponent(text);
+  } catch {
+    return text;
+  }
 }
 
 /** Reads a hash path such as /p/builder/review/agents/new. Returns null for an unknown route. */
@@ -82,9 +114,21 @@ export function parseRoute(path: string): ParsedRoute | null {
   const none = (page: PageId): ParsedRoute => ({ page, project: null, rest: "" });
   if (segs.length === 0) return none("picker");
   if (segs[0] === "more" && segs.length === 1) return none("more");
-  if (segs[0] === "reference" && segs.length === 2) {
-    if (segs[1] === "decides") return none("decides");
-    if (segs[1] === "glossary") return none("glossary");
+  if (segs[0] === "reference") {
+    // Reference routes take no project. Decides takes a setting key and then a rule id, and the
+    // Glossary takes a term id.
+    const [, page, first, second] = segs;
+    if (page === "decides" && segs.length <= 4) {
+      const route = none("decides");
+      if (first !== undefined) route.setting = decoded(first);
+      if (second !== undefined) route.rule = decoded(second);
+      return route;
+    }
+    if (page === "glossary" && segs.length <= 3) {
+      const route = none("glossary");
+      if (first !== undefined) route.id = decoded(first);
+      return route;
+    }
     return null;
   }
   if (segs[0] !== "p" || segs.length < 3) return null;

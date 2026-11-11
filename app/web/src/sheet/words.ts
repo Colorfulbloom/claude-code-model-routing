@@ -299,6 +299,23 @@ export const W = {
     "The dashboard couldn't open a file with a very long name in a folder with an even longer name",
   sheet_tofix_long_cause:
     "File permissions on /work/home/projects/tidewater-reporting/.claude/agents/a-very-long-agent-file-name.md block reading.",
+  // Help components and the search field (M5). Sample words for the sheet's cells.
+  sheet_hp_th_agent: "Agent",
+  sheet_hp_th_check: "Check",
+  sheet_hp_th_cost: "Cost",
+  sheet_hp_td_agent: "builder",
+  sheet_hp_td_cost: "$240.85",
+  sheet_hp_td_agent_2: "scout",
+  sheet_hp_td_cost_2: "$0.84",
+  sheet_hp_where: "Where it's set, top wins",
+  sheet_search_label: "Search rules",
+  sheet_search_clear: "Clear search",
+  sheet_search_count_some: "2 of 3 rules",
+  sheet_search_count_none: "0 of 3 rules",
+  sheet_search_none: "No rules match zzz",
+  sheet_search_rule_1: "Effort cap lowers the effort",
+  sheet_search_rule_2: "Cache lifetime follows the plan",
+  sheet_search_rule_3: "A cache read costs less than fresh input",
   // Sheet chrome
   sheet_theme: "Theme",
   sheet_theme_light: "Light",

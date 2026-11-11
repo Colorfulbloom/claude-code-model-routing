@@ -8,6 +8,7 @@ import {
   buildTopSessions,
   chartWindowLabel,
   earlierWindowLabel,
+  kindHelpValues,
   laterWindowLabel,
   rangeUnit,
   sharePercent,
@@ -119,6 +120,18 @@ describe("the cost chart", () => {
       ["Cache read", "$1.00"],
     ]);
     expect(view.bars.every((bar) => bar.kinds === undefined)).toBe(true);
+  });
+
+  it("hands the help entry each kind total under its ref, as the Made of line shows it", () => {
+    const view = buildCostChart(
+      thirtyDays({ kinds: { input: 5, output: 9, cache_read: 1, cache_write: 7 } }),
+    );
+    expect(kindHelpValues(view.kinds)).toEqual({
+      k_input: "$5.00",
+      k_output: "$9.00",
+      k_cread: "$1.00",
+      k_cwrite: "$7.00",
+    });
   });
 
   it("labels the x axis at the first and last bars", () => {

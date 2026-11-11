@@ -14,14 +14,24 @@
    text-wrap pretty keeps a lone "PM" off the last row, and overflow-wrap anywhere breaks a word
    that is wider than the column by itself, such as a long Claude Code version. */
 .sidebar-footer-line {
+  /* Every line is as tall as a help term's 32px target, so the plain lines and the two term lines
+     (prices, backup) sit on one rhythm. The text is centred in that height. */
+  display: flex;
+  align-items: center;
+  min-height: 32px;
   line-height: 1.45;
   overflow-wrap: anywhere;
   text-wrap: pretty;
 }
 
+/* A help term here keeps its 32px target but takes no negative margin, so its line grows to hold
+   it and two terms on neighbouring lines never overlap. */
+.sidebar-footer-line .help-term {
+  margin: 0;
+}
+
 /* The mark sits in its own column, so a second row lines up under the text, not under the mark. */
 .sidebar-footer-line.is-warn {
-  display: flex;
   gap: 5px;
   color: var(--status-overridden-fg);
 }

@@ -130,6 +130,7 @@
   --diff-del-bg: var(--status-invalid-bg); --diff-del-fg: var(--status-invalid-fg);
   --code-line: var(--nav-active-bg);
   --accent-hover: #174a96;   /* primary button hover; text-on-accent 8.55 */
+  --m5-mark-bg: #fff0a8; --m5-mark-edge: #8a6d00;   /* search match (designer, M5): text on mark-bg 14.42, edge on mark-bg 4.28 (non-text) */
   --agent-red: var(--status-invalid-fg); --agent-blue: var(--cat-1); --agent-green: var(--cat-2); --agent-yellow: var(--cat-3);
   --agent-purple: var(--status-lowered-fg); --agent-orange: var(--status-overridden-fg); --agent-pink: var(--cat-4); --agent-cyan: #0e7c86;
 }
@@ -158,6 +159,7 @@
     --chart-grid: var(--border); --chart-axis: var(--text-muted);
     --inset-bg: #171b21; --raised-bg: #1e232a; --raised-border: #3a414a;
     --accent-hover: #a9caff; --agent-cyan: #5fc9d1;
+  --m5-mark-bg: #4d3b00; --m5-mark-edge: #e0b84a;   /* text on mark-bg 8.98, edge on mark-bg 5.73 */
   }
 }
 
@@ -184,6 +186,7 @@
   --chart-grid: var(--border); --chart-axis: var(--text-muted);
   --inset-bg: #171b21; --raised-bg: #1e232a; --raised-border: #3a414a;
   --accent-hover: #a9caff; --agent-cyan: #5fc9d1;
+  --m5-mark-bg: #4d3b00; --m5-mark-edge: #e0b84a;   /* text on mark-bg 8.98, edge on mark-bg 5.73 */
 }
 
 body { background: var(--bg); color: var(--text); font: var(--text-md)/var(--leading-body) var(--font-sans); }

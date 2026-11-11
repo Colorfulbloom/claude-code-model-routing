@@ -14,6 +14,7 @@ import type { CostChart } from "@/api/types";
 import type { ReviewRange } from "@/api/types";
 import { Button } from "@/components/Button/Button";
 import { Card } from "@/components/Card/Card";
+import { HelpButton } from "@/components/HelpButton/HelpButton";
 import { ModelSwatch } from "@/components/ModelSwatch/ModelSwatch";
 import { Pager } from "@/components/Pager/Pager";
 import { StackedBars } from "@/components/StackedBars/StackedBars";
@@ -25,6 +26,7 @@ import {
   chartHeading,
   chartWindowLabel,
   earlierWindowLabel,
+  kindHelpValues,
   laterWindowLabel,
   rangeUnit,
 } from "@/lib/review-cards";
@@ -152,9 +154,10 @@ export function CostChartCard({ project, range }: { project: string; range: Revi
           </p>
         )}
         <div className="review-foot">
-          {view.unpricedLines.map((line) => (
+          {view.unpricedLines.map((line, index) => (
             <p key={line} className="review-unpriced">
               {line}
+              {index === 0 && <HelpButton help="summary.unpriced" />}
             </p>
           ))}
           <p>{t("foot_est", { date: dateWords(answer.prices.as_of) })}</p>
@@ -170,7 +173,18 @@ export function CostChartCard({ project, range }: { project: string; range: Revi
   }
 
   return (
-    <Card title={heading} question={t("ch_q")} className="review-cost">
+    <Card
+      title={heading}
+      question={t("ch_q")}
+      className="review-cost"
+      right={
+        <HelpButton
+          help="summary.costchart"
+          unit={unit}
+          {...(view?.hasCost === true ? { values: kindHelpValues(view.kinds) } : {})}
+        />
+      }
+    >
       <div ref={root} className="review-cost-body">
         {chart.failed && <StaleLine updatedAt={chart.updatedAt} />}
         {shown !== undefined && range !== "all" && (

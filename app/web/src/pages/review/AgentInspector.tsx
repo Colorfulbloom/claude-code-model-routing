@@ -13,6 +13,7 @@ import type { AgentList, ReviewRange, SetupItem } from "@/api/types";
 import { Button } from "@/components/Button/Button";
 import { Card } from "@/components/Card/Card";
 import { CopyPath } from "@/components/CopyPath/CopyPath";
+import { HelpTerm } from "@/components/HelpTerm/HelpTerm";
 import { Inspector } from "@/components/ListInspector/Inspector";
 import type { InspectorReadOnly } from "@/components/ListInspector/Inspector";
 import { ValueText } from "@/components/ListInspector/ValueText";
@@ -148,7 +149,9 @@ function Details({ item }: { item: SetupItem }) {
   if (fields.length === 0) return null;
   return (
     <div>
-      <h3 className="inspector-h3">{t("in_details_h")}</h3>
+      <h3 className="inspector-h3">
+        <HelpTerm help="agents.inspector">{t("in_details_h")}</HelpTerm>
+      </h3>
       <dl className="review-agents-details">
         {fields.map((field) => {
           const text = field.value?.text ?? "";
@@ -183,7 +186,9 @@ function Ignored({ item }: { item: SetupItem }) {
   const file = item.sources.find((s) => s.key === "name")?.file ?? "";
   return (
     <div>
-      <h3 className="inspector-h3">{t("ag_ignored_h")}</h3>
+      <h3 className="inspector-h3">
+        <HelpTerm help="agents.inspector">{t("ag_ignored_h")}</HelpTerm>
+      </h3>
       <p className="muted review-agents-ignored-note">{t("ag_ignored_b")}</p>
       <ul className="review-agents-ignored">
         {fields.map((field) => (

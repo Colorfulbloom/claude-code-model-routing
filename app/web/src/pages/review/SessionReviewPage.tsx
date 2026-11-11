@@ -16,6 +16,7 @@ import { usePageVisible, useReviewTimelineFeed } from "@/api/live";
 import { useSessions } from "@/api/review";
 import { projectHref } from "@/app/nav";
 import { Button } from "@/components/Button/Button";
+import { HelpButton } from "@/components/HelpButton/HelpButton";
 import { RaisedFinding } from "@/components/RaisedFinding/RaisedFinding";
 import { RunStateGlyph } from "@/components/RunStateGlyph/RunStateGlyph";
 import { clockMedium, clockShort, dayLong } from "@/lib/clock";
@@ -184,6 +185,7 @@ function SessionReview({ project, id }: { project: string; id: string }) {
         {...(session.branch === null ? { titleMuted: true } : {})}
         sub={sub}
         when={null}
+        stateHelp={<HelpButton help="review.status" word={stateWord(session.state)} />}
         select={select}
         pause={null}
       />

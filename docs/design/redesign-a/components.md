@@ -181,12 +181,17 @@ Each entry lists purpose, anatomy, states, variants, tokens, mapping, keyboard, 
 - Copy keys. `rv_range_lab`, `rv_range`, `ed_saveto`, `ed_saveto_v`, `rf_conf`, `rf_conf_all`.
 
 ### 15. Search field
-- Purpose. Filters a long list in place (rules on How Claude Code decides).
-- States. Default, focus-visible (ring on the input), filled with a clear button, empty result (a line under the field plus "Clear search").
-- Tokens. `--card-bg`, `--border-strong`, `--text`, `--radius-md`.
-- Mapping. RAC SearchField. The result count is announced politely.
-- Keyboard. Esc clears.
-- Copy keys. `rf_search`, `cs_search_empty`, `cs_search_clear`.
+- Purpose. Filters a long list in place, on How Claude Code decides and on the Glossary.
+- Anatomy (built in M5, `components/SearchField/`). A visible label above the field, then the input, at least 36 px high. A clear button sits at the end of the box as a 32 px target and shows only when there is text. The count sits beside the field as plain text.
+- Props. `label` (the visible label, and the field's name), `value`, `onChange`, `clearLabel` (the clear button's name), `placeholder` (a hint that never replaces the label), `count` (visible text, not a live region), `announce` (what a screen reader hears), `delay` (default 600 ms), `className`.
+- States. Default, hover (`--nav-hover-bg`), focus-visible (the shared ring on the input), filled with a clear button, and empty result. The page draws the empty result, with "Clear search" (`sf_clear`) as its button.
+- Tokens. `--card-bg`, `--border-strong`, `--text`, `--text-muted`, `--radius-md`, `--nav-hover-bg`. A match uses `--m5-mark-bg` for the fill and `--m5-mark-edge` for a 2 px line under the text.
+- Mapping. RAC SearchField. One visually hidden `role="status"` region, which is polite, says `announce` once typing pauses for `delay` ms. It speaks only when the text differs from the last announcement. It says nothing on first render or on a route change. A page that loads its data first passes no text until the data arrives, and that first text is the baseline, so it is never announced. The visible count is not a live region.
+- Matching (`match.ts`). `matches(query, text)` folds both sides the same way, lower case and then NFKD with combining marks removed, so "cafe" finds "Café". It splits the query on whitespace and needs every word, in any order. An empty query matches everything. `matchFields(query, fields)` matches across named fields and returns the set of fields with a hit, or null for no match. `highlight(text, query)` returns strings and `<mark>` elements, never HTML.
+- Keyboard. Esc clears and focus stays in the field. Enter does nothing.
+- Forced colors. The input border is `ButtonText`. A match uses `Mark` and `MarkText` with a real underline.
+- Copy keys. `dc_search_label`, `dc_search_ph`, `gl_search_label`, `gl_search_ph`, `sf_clear`, and the counts `dc_count_*` and `gl_count_*`.
+- Sheet. "SearchField" (empty, typed, no results).
 
 ### 16. Switch
 - Purpose. Turns a view option on or off with an immediate effect and no Save. It's used once, for "Show where each comes from". Its state lives in the URL query.
@@ -213,6 +218,8 @@ Each entry lists purpose, anatomy, states, variants, tokens, mapping, keyboard, 
 - Phone. 2 per row.
 - Copy keys. `rv_t_*`, `st_*` tile words.
 - Sheet. "Tile".
+- Link form (M5). With `href`, the Link holds only the label, so the link's name is the label. The link's `::after` stretches over the whole tile, and the value, delta, note and proof follow as plain text. Focus shows as one ring on the whole tile, from `.tile-link:has(.tile-link-label:focus-visible)`. That `:has()` sits on the tile itself, because a nested `:has()` is invalid CSS and the browser drops the whole rule. The link keeps an outline of the same width, made transparent, so the sheet check still finds a ring. In forced colors the tile's ring turns `Highlight` and the link's own outline goes away.
+- Help (M5). An optional `help` prop (`id`, and `values` with the numbers on the tile) draws the "?" (entry 54) at the tile's top right, level with the label. It sits beside the link, never inside it, on a higher layer (`z-index` 2 over the link's 1). So a press on it opens help and never follows the link. The label keeps room on its right for it. Sheet states "help" and "link-help".
 
 ### 19. Share bar
 - Purpose. Shows each row's share of a total (cost by agent, model share in a table).
@@ -671,4 +678,47 @@ Source is in `m2.js`, `m2.css` and `m2.html` in this folder, and the words are i
 ### Session Select (14 and 51)
 - Reuses component 51's popover at 1440 and tray at 375, with "This project" and "Other projects" groups and a "See all sessions" link at least 26px tall.
 - The M0 `.proj` button (51) and the Select lose their mismatched `aria-label`, so the visible label is the accessible name.
+
+## M5 help round (November 10)
+
+Direction A from the designer's help round, built in M5 task 7. The words live in the registry (`strings/help.ts`), the shared lists (`strings/lists.ts`) and the Glossary (`strings/glossary.ts`). The components below hold no copy of their own beyond the `hp_*` strings.
+
+The designer's notes set where each trigger goes. Tiles, cards and charts get the full "?" (entry 54). Column headers and inspector field labels get the term form (entry 55). A status pill that repeats down a column gets no trigger, and its column header carries the status words. A pill shown once in a view gets the full "?" beside it.
+
+### 54. Help button
+- Purpose. The "?" that opens one help entry. Use it on tiles, cards and charts, and once beside a status pill that appears once in a view.
+- Anatomy. A 24 px circle inside a 32 px target. The target grows to 40 px on a touch screen (`pointer: coarse`) and at 720 px and under. A negative margin keeps the layout space at 24 px, so the target grows over the gap around it and never moves the label beside it.
+- Props. `help` (a registry id), `values` (what the spot shows now, keyed by each line's `ref`), `line` (the label of the line to mark "This column"), `word` (the id of a list item to mark "Shown here"), `unit` (picks the title from the entry's `titleByUnit`), `sheetOpen` (component sheet only), `className`.
+- States. Closed, hover (`--nav-hover-bg` and `--text`), open (the `--select-bg` fill, an accent ring and an accent mark), with values, line marked, word marked.
+- Name. "About {title}" (`hp_trigger`), with `aria-haspopup="dialog"`. React Aria's DialogTrigger sets `aria-expanded`. Every trigger carries `data-help-id`, so "Back to {page}" on the Glossary can put focus back on it.
+- Tokens. `--card-bg`, `--border-strong`, `--text`, `--text-muted`, `--nav-hover-bg`, `--select-bg`, `--accent`.
+- Forced colors. The circle is `ButtonFace` with a `ButtonText` border. Open is a 3 px `Highlight` ring with a `CanvasText` mark. A `Highlight` fill would hide the mark, because the browser paints a backplate behind the text.
+- Sheet. "HelpButton" (closed, open, with values, line marked, word marked).
+
+### 55. Help term
+- Purpose. The light trigger. The header or label text itself opens the same panel. Use it on column headers and inspector field labels.
+- Anatomy. The text with a dotted `--border-strong` underline, 1.5 px thick and offset 4 px. The box is at least 32 px each way, and a negative block margin keeps the line from growing. Hover turns the text and the underline `--text`. Open is a solid 2 px `--accent` underline with accent text, so the open state never rests on color alone.
+- Name. The text alone, with no "About" prefix, because a header that read "About Check" would stop matching the column it names. In a `th` it is the header's only content, so the column keeps its name.
+- Props. The same as the help button, plus `children` (the text) and `describedBy` (the id of a note that describes the spot, such as a screen reader line beside a pill).
+- Forced colors. `LinkText` for the text and the underline, `Highlight` when open.
+- Sheet. "HelpTerm" (closed, open, in a header).
+
+### 56. Help panel
+- Purpose. The dialog both triggers open. One component with two layouts, chosen by `tray`.
+- Above 720 px. A React Aria Popover under the trigger, 8 px off, that flips above when there is no room and keeps 12 px from the window edge. It is 360 px wide, and never wider than the window minus 24 px. A notch points at the trigger. The popover itself never scrolls, because the notch sits outside its box, so the dialog inside scrolls.
+- At 720 px and under. A bottom tray in a modal, with a grip and a Close button (`hp_close`), up to 82 vh high. The tray slides up and the scrim fades in over 160 ms. Neither moves when `prefers-reduced-motion` is set.
+- Heading. The entry title as an h2 (`helpTitle`). When a chart passes `unit`, the title comes from the entry's `titleByUnit`, so it matches the card's title, such as "Cost per day".
+- Behavior. Focus moves into the dialog on open and returns to the trigger on close. Esc closes it, and so does a click outside (on the scrim, in the tray). `useHelpOpen` reads the layout when the panel opens. A window that crosses 720 px while the panel is open closes it, because a popover can't turn into a tray without losing focus. Pressing a glossary link closes the panel.
+- Tokens. `--card-bg`, `--border-strong`, `--shadow-card`, `--scrim`, `--radius-lg`, `--radius-md`, `--nav-hover-bg`.
+- Forced colors. The panel is `Canvas` with `CanvasText` text. The border, the notch and the grip are `CanvasText`, and the Close button's border is `ButtonText`.
+- Sheet. "HelpPanel" (popover, tray). The sheet draws it in place (`inline`), because a real overlay would cover the other cells.
+
+### 57. Help entry
+- Purpose. The body of a help entry, in a fixed order. What the spot shows, then its numbers or columns as a description list, then the shared list, then how to read it, then the glossary links. The panel owns the title, so the entry has none.
+- Numbers. The lines sit under "What each one means" (`hp_numbers`). When the spot passes a value for a line's `ref`, the value takes its own column beside that line. The line whose label matches `line` is marked. A pill that passes `word` marks the line whose label matches it.
+- Shared list. It sits under its own heading (`hp_list_status`, `hp_list_scopes`, `hp_list_confidence` or `hp_list_project_state`). In the status list, each word is a StatusChip with its shared meaning. Other lists show the word as plain text. The item whose id matches `word` is marked.
+- How to read it. The entry's reading, under "How to read it" (`hp_reading`).
+- Marked line. The `--select-bg` fill, a 3 px `--accent` start bar and the words "This column" (`hp_this_column`). In a list, and on a pill's line, the words are "Shown here" (`hp_this_setting`). The bar is a border on a pseudo-element, so forced colors keeps it and shows it in `Highlight`. A box shadow would be dropped.
+- Glossary links. One per term the Glossary has, named "{term} in the glossary" (`hp_glossary_link`), going to `#/reference/glossary/<id>`. When the current page is one a person can go back to, the link adds `?from=<route>&help=<id>`. The Glossary then shows "Back to {page}" and focuses the trigger again. A link to a missing term does not render, so every link has a page to open.
+- Sheet. "HelpEntry" (full, status list, scopes list, no glossary).
 

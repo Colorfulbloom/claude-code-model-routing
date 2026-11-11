@@ -565,6 +565,16 @@
             ],
             "title": "Pass Running Since"
           },
+          "rules_version_gap": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VersionGap"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "running": {
             "items": {
               "$ref": "#/components/schemas/RunningItem"
@@ -3701,6 +3711,224 @@
         "title": "Round",
         "type": "object"
       },
+      "RuleQuote": {
+        "additionalProperties": false,
+        "description": "Verbatim docs text that backs a rule, and the docs section it comes from.",
+        "properties": {
+          "doc_url": {
+            "title": "Doc Url",
+            "type": "string"
+          },
+          "quote": {
+            "title": "Quote",
+            "type": "string"
+          }
+        },
+        "required": [
+          "doc_url",
+          "quote"
+        ],
+        "title": "RuleQuote",
+        "type": "object"
+      },
+      "RuleRow": {
+        "additionalProperties": false,
+        "description": "One rule from ``rules.json``. ``due`` is True when ``installed`` is newer.\n\n``outcomes`` are the distinct ``conditions[].status`` values, in the order they\nfirst appear in the file, so a setting page can say what each rule can lead to.",
+        "properties": {
+          "combine": {
+            "title": "Combine",
+            "type": "string"
+          },
+          "confidence": {
+            "enum": [
+              "tested",
+              "documented",
+              "assumed"
+            ],
+            "title": "Confidence",
+            "type": "string"
+          },
+          "due": {
+            "title": "Due",
+            "type": "boolean"
+          },
+          "experiment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Experiment"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "layer_order": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Layer Order",
+            "type": "array"
+          },
+          "outcomes": {
+            "items": {
+              "enum": [
+                "in_effect",
+                "overridden",
+                "ignored",
+                "lowered",
+                "invalid",
+                "default",
+                "unknown"
+              ],
+              "type": "string"
+            },
+            "title": "Outcomes",
+            "type": "array"
+          },
+          "quotes": {
+            "items": {
+              "$ref": "#/components/schemas/RuleQuote"
+            },
+            "title": "Quotes",
+            "type": "array"
+          },
+          "rule_id": {
+            "title": "Rule Id",
+            "type": "string"
+          },
+          "scope": {
+            "enum": [
+              "main",
+              "agent",
+              "model"
+            ],
+            "title": "Scope",
+            "type": "string"
+          },
+          "verified_on": {
+            "$ref": "#/components/schemas/RuleVerified"
+          }
+        },
+        "required": [
+          "rule_id",
+          "key",
+          "scope",
+          "combine",
+          "layer_order",
+          "confidence",
+          "verified_on",
+          "due",
+          "outcomes",
+          "quotes",
+          "experiment"
+        ],
+        "title": "RuleRow",
+        "type": "object"
+      },
+      "RuleVerified": {
+        "additionalProperties": false,
+        "description": "The Claude Code version and the date a rule was checked on.",
+        "properties": {
+          "claude_version": {
+            "title": "Claude Version",
+            "type": "string"
+          },
+          "date": {
+            "title": "Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "claude_version",
+          "date"
+        ],
+        "title": "RuleVerified",
+        "type": "object"
+      },
+      "RulesAnswer": {
+        "additionalProperties": false,
+        "description": "Answer of ``GET /api/rules``. ``rules`` are sorted by ``rule_id``.",
+        "properties": {
+          "checked_on": {
+            "title": "Checked On",
+            "type": "string"
+          },
+          "etag": {
+            "title": "Etag",
+            "type": "string"
+          },
+          "installed": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Installed"
+          },
+          "rules": {
+            "items": {
+              "$ref": "#/components/schemas/RuleRow"
+            },
+            "title": "Rules",
+            "type": "array"
+          },
+          "server_time": {
+            "format": "date-time",
+            "title": "Server Time",
+            "type": "string"
+          },
+          "unchanged": {
+            "const": false,
+            "title": "Unchanged",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "server_time",
+          "etag",
+          "unchanged",
+          "installed",
+          "checked_on",
+          "rules"
+        ],
+        "title": "RulesAnswer",
+        "type": "object"
+      },
+      "RulesUnchanged": {
+        "additionalProperties": false,
+        "description": "The short answer of ``GET /api/rules`` when the asked etag still matches.",
+        "properties": {
+          "etag": {
+            "title": "Etag",
+            "type": "string"
+          },
+          "server_time": {
+            "format": "date-time",
+            "title": "Server Time",
+            "type": "string"
+          },
+          "unchanged": {
+            "const": true,
+            "title": "Unchanged",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "server_time",
+          "etag",
+          "unchanged"
+        ],
+        "title": "RulesUnchanged",
+        "type": "object"
+      },
       "RunningItem": {
         "additionalProperties": false,
         "description": "One session that is running now.",
@@ -5885,6 +6113,31 @@
         "title": "UnreadableFile",
         "type": "object"
       },
+      "VersionGap": {
+        "additionalProperties": false,
+        "description": "The Claude Code that ran last is newer than the rules' checked version.\n\n``installed`` is the newest session's version (demo: ``session.json``).\n``checked_on`` is the oldest ``verified_on.claude_version`` across ``rules.json``\nand ``agent_fields.json``. ``due`` counts the rules checked on a version older\nthan ``installed``, for \"Show the {n} rules to re-check\".",
+        "properties": {
+          "checked_on": {
+            "title": "Checked On",
+            "type": "string"
+          },
+          "due": {
+            "title": "Due",
+            "type": "integer"
+          },
+          "installed": {
+            "title": "Installed",
+            "type": "string"
+          }
+        },
+        "required": [
+          "installed",
+          "checked_on",
+          "due"
+        ],
+        "title": "VersionGap",
+        "type": "object"
+      },
       "Window": {
         "additionalProperties": false,
         "description": "Numbers over a stretch of time, such as the 60 s before T.",
@@ -6799,6 +7052,85 @@
         "summary": "Get Projects",
         "tags": [
           "app"
+        ]
+      }
+    },
+    "/api/rules": {
+      "get": {
+        "operationId": "get_rules",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "etag",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "pattern": "^[A-Za-z0-9_.-]{0,64}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Etag"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/RulesAnswer"
+                    },
+                    {
+                      "$ref": "#/components/schemas/RulesUnchanged"
+                    }
+                  ],
+                  "title": "Response Get Rules"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "summary": "Get Rules",
+        "tags": [
+          "rules"
         ]
       }
     },

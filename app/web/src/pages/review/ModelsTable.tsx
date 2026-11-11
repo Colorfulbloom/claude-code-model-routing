@@ -5,9 +5,11 @@
  * Used by columns clip-hide, and a line under the name says the same in one sentence of figures.
  */
 import { Badge } from "@/components/Badge/Badge";
+import { HelpTerm } from "@/components/HelpTerm/HelpTerm";
 import { ModelSwatch } from "@/components/ModelSwatch/ModelSwatch";
 import { ShareBar } from "@/components/ShareBar/ShareBar";
 import { Well } from "@/components/Well/Well";
+import { useIsDesktop } from "@/lib/media";
 import type { ModelRowView } from "@/lib/review-models";
 import { phoneLine } from "@/lib/review-models";
 import { t } from "@/strings/t";
@@ -51,6 +53,7 @@ function Row({ row }: { row: ModelRowView }) {
 }
 
 export function ModelsTable({ label, rows }: { label: string; rows: ModelRowView[] }) {
+  const desktop = useIsDesktop();
   return (
     <Well variant="list" className="review-table-well">
       <table className="review-table review-models-table" aria-label={label}>
@@ -62,14 +65,28 @@ export function ModelsTable({ label, rows }: { label: string; rows: ModelRowView
             <th scope="col" className="review-th review-end">
               {t("md_col_cost")}
             </th>
+            {/* At 720px and below Share and From cache are clipped, so they stay plain text and never
+                hold a focus stop nobody can see. */}
             <th scope="col" className="review-th review-hp">
-              {t("md_col_share")}
+              {desktop ? (
+                <HelpTerm help="models.cols" line={t("md_col_share")}>
+                  {t("md_col_share")}
+                </HelpTerm>
+              ) : (
+                t("md_col_share")
+              )}
             </th>
             <th scope="col" className="review-th review-end review-hp">
               {t("md_col_tokens")}
             </th>
             <th scope="col" className="review-th review-end review-hp">
-              {t("md_col_cache")}
+              {desktop ? (
+                <HelpTerm help="models.cols" line={t("md_col_cache")}>
+                  {t("md_col_cache")}
+                </HelpTerm>
+              ) : (
+                t("md_col_cache")
+              )}
             </th>
             <th scope="col" className="review-th review-hp">
               {t("md_col_used")}

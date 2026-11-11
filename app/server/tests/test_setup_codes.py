@@ -137,6 +137,28 @@ def test_every_corpus_case_emits_registered_codes(
     _check(setup_answers.build_bundle(sah.request_of(ctx)), case)
 
 
+def test_the_notice_codes_are_the_three_the_map_can_carry() -> None:
+    assert sorted(setup_codes.NOTICE_CODES) == [
+        "project_not_listed",
+        "rows_no_usage",
+        "version_gap",
+    ]
+
+
+@pytest.mark.parametrize("version", ["2.1.310", ""])
+def test_a_version_gap_notice_is_a_registered_code(
+    version: str, tmp_path_factory: pytest.TempPathFactory
+) -> None:
+    ctx = sah.materialized(tmp_path_factory, "typical")
+    claude_json.clear_cache()
+    bundle = setup_answers.build_bundle(sah.request_of(ctx, claude_version=version))
+    _check(bundle, f"version {version!r}")
+    assert [n.code for n in bundle.notices] == (["version_gap"] if version else [])
+    for notice in bundle.notices:
+        assert set(notice.params) == {"installed", "checked_on", "due"}
+        assert notice.params["due"].isdigit()
+
+
 @pytest.mark.skipif(ROOT, reason="mode 000 files read fine as root")
 @pytest.mark.parametrize(("kind", "case", "rel"), DAMAGE)
 def test_unreadable_variants_emit_registered_codes(

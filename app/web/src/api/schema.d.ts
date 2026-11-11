@@ -174,6 +174,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Rules */
+        get: operations["get_rules"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/sessions": {
         parameters: {
             query?: never;
@@ -441,6 +458,7 @@ export interface components {
             mode: "demo" | "fixture" | "flow" | "real";
             /** Pass Running Since */
             pass_running_since: string | null;
+            rules_version_gap?: components["schemas"]["VersionGap"] | null;
             /** Running */
             running: components["schemas"]["RunningItem"][];
             /**
@@ -1635,6 +1653,104 @@ export interface components {
             n: number;
         };
         /**
+         * RuleQuote
+         * @description Verbatim docs text that backs a rule, and the docs section it comes from.
+         */
+        RuleQuote: {
+            /** Doc Url */
+            doc_url: string;
+            /** Quote */
+            quote: string;
+        };
+        /**
+         * RuleRow
+         * @description One rule from ``rules.json``. ``due`` is True when ``installed`` is newer.
+         *
+         *     ``outcomes`` are the distinct ``conditions[].status`` values, in the order they
+         *     first appear in the file, so a setting page can say what each rule can lead to.
+         */
+        RuleRow: {
+            /** Combine */
+            combine: string;
+            /**
+             * Confidence
+             * @enum {string}
+             */
+            confidence: "tested" | "documented" | "assumed";
+            /** Due */
+            due: boolean;
+            /** Experiment */
+            experiment: string | null;
+            /** Key */
+            key: string;
+            /** Layer Order */
+            layer_order: string[];
+            /** Outcomes */
+            outcomes: ("in_effect" | "overridden" | "ignored" | "lowered" | "invalid" | "default" | "unknown")[];
+            /** Quotes */
+            quotes: components["schemas"]["RuleQuote"][];
+            /** Rule Id */
+            rule_id: string;
+            /**
+             * Scope
+             * @enum {string}
+             */
+            scope: "main" | "agent" | "model";
+            verified_on: components["schemas"]["RuleVerified"];
+        };
+        /**
+         * RuleVerified
+         * @description The Claude Code version and the date a rule was checked on.
+         */
+        RuleVerified: {
+            /** Claude Version */
+            claude_version: string;
+            /** Date */
+            date: string;
+        };
+        /**
+         * RulesAnswer
+         * @description Answer of ``GET /api/rules``. ``rules`` are sorted by ``rule_id``.
+         */
+        RulesAnswer: {
+            /** Checked On */
+            checked_on: string;
+            /** Etag */
+            etag: string;
+            /** Installed */
+            installed: string | null;
+            /** Rules */
+            rules: components["schemas"]["RuleRow"][];
+            /**
+             * Server Time
+             * Format: date-time
+             */
+            server_time: string;
+            /**
+             * Unchanged
+             * @constant
+             */
+            unchanged: false;
+        };
+        /**
+         * RulesUnchanged
+         * @description The short answer of ``GET /api/rules`` when the asked etag still matches.
+         */
+        RulesUnchanged: {
+            /** Etag */
+            etag: string;
+            /**
+             * Server Time
+             * Format: date-time
+             */
+            server_time: string;
+            /**
+             * Unchanged
+             * @constant
+             */
+            unchanged: true;
+        };
+        /**
          * RunningItem
          * @description One session that is running now.
          */
@@ -2447,6 +2563,23 @@ export interface components {
             scope: ("managed" | "command_line" | "project_local" | "project" | "user" | "plugin" | "shell") | null;
         };
         /**
+         * VersionGap
+         * @description The Claude Code that ran last is newer than the rules' checked version.
+         *
+         *     ``installed`` is the newest session's version (demo: ``session.json``).
+         *     ``checked_on`` is the oldest ``verified_on.claude_version`` across ``rules.json``
+         *     and ``agent_fields.json``. ``due`` counts the rules checked on a version older
+         *     than ``installed``, for "Show the {n} rules to re-check".
+         */
+        VersionGap: {
+            /** Checked On */
+            checked_on: string;
+            /** Due */
+            due: number;
+            /** Installed */
+            installed: string;
+        };
+        /**
          * Window
          * @description Numbers over a stretch of time, such as the 60 s before T.
          */
@@ -2953,6 +3086,55 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProjectList"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    get_rules: {
+        parameters: {
+            query?: {
+                etag?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RulesAnswer"] | components["schemas"]["RulesUnchanged"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
             /** @description Unauthorized */

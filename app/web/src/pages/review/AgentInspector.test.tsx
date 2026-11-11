@@ -378,3 +378,22 @@ describe("at phone width", () => {
     });
   });
 });
+
+describe("help", () => {
+  it("gives the status pill a button, and the Details and Why headings a term", async () => {
+    const user = userEvent.setup();
+    await open(server(), "?range=30d&agent=builder");
+    const heading = await screen.findByRole("heading", { level: 2, name: "builder" });
+    const region = need(heading.closest("section"));
+    expect(within(region).getByRole("button", { name: "About Status" })).toHaveAttribute(
+      "data-help-id",
+      "setup.inspector.status",
+    );
+    expect(within(region).getByRole("button", { name: "Why" })).toHaveAttribute(
+      "data-help-id",
+      "setup.why",
+    );
+    await user.click(within(region).getByRole("button", { name: "About Status" }));
+    expect(await screen.findByRole("dialog", { name: "Status" })).toBeInTheDocument();
+  });
+});

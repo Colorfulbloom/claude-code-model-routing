@@ -181,7 +181,9 @@ USAGE_CODES: Final[frozenset[str]] = frozenset({"agent_runs", "runs_at_value"})
 # ``SetupItem.group`` values that the answer builder sets (a collector sets its own).
 AGENT_GROUPS: Final[tuple[str, ...]] = ("ran", "no_runs")
 # ``SetupMap.notices[].code``.
-NOTICE_CODES: Final[frozenset[str]] = frozenset({"project_not_listed", "rows_no_usage"})
+NOTICE_CODES: Final[frozenset[str]] = frozenset(
+    {"project_not_listed", "rows_no_usage", "version_gap"}
+)
 
 PARTS: Final = SETUP_PARTS
 SCOPES: Final = SETUP_SCOPES
