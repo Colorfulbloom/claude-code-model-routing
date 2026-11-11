@@ -764,7 +764,10 @@ def test_the_managed_folder_table_matches_the_old_app() -> None:
         assert (None if got is None else str(got)) == want, platform
 
 
-def test_a_demo_build_keeps_no_managed_folder_unless_given(tmp_path: Path) -> None:
+def test_a_demo_build_keeps_no_managed_folder_unless_given(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
     config = tmp_path / "cfg"
     config.mkdir()
     settings = main.Settings(
@@ -778,7 +781,8 @@ def test_a_demo_build_keeps_no_managed_folder_unless_given(tmp_path: Path) -> No
     made = main.make_provider(settings)
     assert isinstance(made, store_provider.StoreProvider)
     assert made._managed_dir is None  # pyright: ignore[reportPrivateUsage]
-    assert made._home is None  # pyright: ignore[reportPrivateUsage]
+    # Every mode hands over HOME, so real paths show with "~" on a demo server too.
+    assert made._home == str(tmp_path / "home")  # pyright: ignore[reportPrivateUsage]
 
 
 def test_real_mode_hands_the_provider_the_home_env_var(

@@ -26,10 +26,11 @@ import { ModelsPage } from "@/pages/review/ModelsPage";
 import { SessionReviewPage } from "@/pages/review/SessionReviewPage";
 import { SessionsPage } from "@/pages/review/SessionsPage";
 import { SummaryPage } from "@/pages/review/SummaryPage";
+import { ChangesPage } from "@/pages/setup/ChangesPage";
 import { SurfacePage } from "@/pages/setup/SurfacePage";
 import { ToFixPage } from "@/pages/setup/ToFixPage";
 import { YourSetupPage } from "@/pages/setup/YourSetupPage";
-import { isSetupPart } from "@/lib/setup-routes";
+import { isSetupPart, setupEditPath, setupPartPath } from "@/lib/setup-routes";
 import { PART_NAMES } from "@/lib/setup-words";
 import { t } from "@/strings/t";
 
@@ -56,16 +57,16 @@ function RouteLayout() {
   const projectName = projects.data?.projects.find((p) => p.key === project)?.name ?? project;
   // A surface page is named by its part, and picking an item is no route change for focus.
   const part = matches.map((m) => m.params.part).find((p) => p !== undefined) ?? null;
+  const onSurface = page === "surface" || page === "surface_edit";
   const name =
-    page === "surface" && part !== null && isSetupPart(part) ? PART_NAMES[part]() : pageName(page);
+    onSurface && part !== null && isSetupPart(part) ? PART_NAMES[part]() : pageName(page);
   // The Reference pages move focus to their own target (a setting, a rule or a term), so a change of
   // target is no route change for focus, as picking an item on a surface page is none.
-  const focusId =
-    page === "surface"
-      ? pathname.split("/").slice(0, 5).join("/")
-      : page === "decides" || page === "glossary"
-        ? pathname.split("/").slice(0, 3).join("/")
-        : pathname;
+  const focusId = onSurface
+    ? pathname.split("/").slice(0, 5).join("/")
+    : page === "decides" || page === "glossary"
+      ? pathname.split("/").slice(0, 3).join("/")
+      : pathname;
   const title =
     projectName === null
       ? t("title_bare", { page: name })
@@ -143,8 +144,10 @@ function route(path: string, id: PageId): RouteObject {
         <ModelsPage />
       ) : id === "setup" ? (
         <YourSetupPage />
-      ) : id === "surface" ? (
+      ) : id === "surface" || id === "surface_edit" ? (
         <SurfacePage />
+      ) : id === "changes" ? (
+        <ChangesPage />
       ) : id === "to_fix" ? (
         <ToFixPage />
       ) : id === "decides" ? (
@@ -154,6 +157,28 @@ function route(path: string, id: PageId): RouteObject {
       ) : (
         <Placeholder page={id} />
       ),
+    handle: { page: id } satisfies RouteHandle,
+  };
+}
+
+/**
+ * A route that leaves for Your setup > Agents, with the agent selected when the URL names one.
+ * The edit URL lands on the agent's edit route there, where the inspector says in a note that
+ * M6a edits no agents. Review > Agents is not the landing page, because the note belongs to the
+ * agent's file, not to its runs.
+ */
+function agentRedirect(path: string, id: PageId): RouteObject {
+  return {
+    path,
+    loader: ({ params }) => {
+      const project = params.project ?? "";
+      const agent = params.name;
+      return redirect(
+        agent === undefined
+          ? setupPartPath(project, "agents")
+          : setupEditPath(project, "agents", agent),
+      );
+    },
     handle: { page: id } satisfies RouteHandle,
   };
 }
@@ -176,10 +201,14 @@ export function appRoutes(access: Access): RouteObject[] {
         route("/p/:project/review/sessions", "sessions"),
         route("/p/:project/review/sessions/:id", "session"),
         route("/p/:project/review/agents", "agents"),
-        route("/p/:project/review/agents/new", "agent_new"),
-        route("/p/:project/review/agents/:name/edit", "agent_edit"),
+        // M6a has no agent editing, so both agent routes leave for Your setup > Agents at route
+        // level (a loader redirect, so no page renders first). The edit URL names the agent, so
+        // that page opens it, with a note that takes focus.
+        agentRedirect("/p/:project/review/agents/new", "agent_new"),
+        agentRedirect("/p/:project/review/agents/:name/edit", "agent_edit"),
         route("/p/:project/review/models", "models"),
         route("/p/:project/setup", "setup"),
+        route("/p/:project/setup/changes", "changes"),
         route("/p/:project/setup/:part", "surface"),
         route("/p/:project/setup/:part/:item", "surface"),
         route("/p/:project/setup/:part/:item/edit", "surface_edit"),

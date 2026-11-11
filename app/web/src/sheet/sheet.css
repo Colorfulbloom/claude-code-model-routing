@@ -315,6 +315,72 @@
   border-radius: 0;
 }
 
+/* The edit components (M6a). The rail and its parts are as wide as the real rail. */
+.sheet-cell[data-component="Diff"],
+.sheet-cell[data-component="SaveToList"],
+.sheet-cell[data-component="ThisSave"],
+.sheet-cell[data-component="SavedBox"],
+.sheet-cell[data-component="RefusedMessage"],
+.sheet-cell[data-component="OverwrittenBox"],
+.sheet-cell[data-component="UndoConfirm"],
+.sheet-cell[data-component="EditsOffNote"],
+.sheet-cell[data-component="RestartBox"],
+.sheet-cell[data-component="PhoneActionBar"] {
+  width: min(100%, 720px, calc(100vw - 64px));
+}
+
+.sheet-cell[data-component="EditRail"] {
+  width: min(100%, 760px, calc(100vw - 64px));
+}
+
+/* A phone frame (375px, max 100%) shrinks to the cell instead of pushing the cell wider. */
+.sheet-cell[data-component="Diff"] .sheet-demo,
+.sheet-cell[data-component="SaveToList"] .sheet-demo,
+.sheet-cell[data-component="ThisSave"] .sheet-demo,
+.sheet-cell[data-component="EditRail"] .sheet-demo,
+.sheet-cell[data-component="SavedBox"] .sheet-demo,
+.sheet-cell[data-component="UndoConfirm"] .sheet-demo,
+.sheet-cell[data-component="RestartBox"] .sheet-demo,
+.sheet-cell[data-component="PhoneActionBar"] .sheet-demo {
+  min-width: 0;
+}
+
+/* At 375 a phone frame bleeds past the sheet's padding, so it is the full 375px the boards show. */
+@media (width <= 720px) {
+  .sheet-cell[data-component="Diff"]:has(.sheet-phone),
+  .sheet-cell[data-component="SaveToList"]:has(.sheet-phone),
+  .sheet-cell[data-component="ThisSave"]:has(.sheet-phone),
+  .sheet-cell[data-component="EditRail"]:has(.sheet-phone),
+  .sheet-cell[data-component="SavedBox"]:has(.sheet-phone),
+  .sheet-cell[data-component="UndoConfirm"]:has(.sheet-phone),
+  .sheet-cell[data-component="RestartBox"]:has(.sheet-phone),
+  .sheet-cell[data-component="PhoneActionBar"]:has(.sheet-phone) {
+    width: 100vw;
+    margin-inline: -33px;
+  }
+}
+
+/* The choice states of Segmented: as wide as the rail's control, and never wider than the window. */
+.sheet-cell[data-component="Segmented"][data-state^="choice"] {
+  width: min(100%, 560px, calc(100vw - 64px));
+}
+
+.sheet-cell[data-component="Segmented"][data-state^="choice"] .sheet-demo {
+  min-width: 0;
+}
+
+@media (width <= 720px) {
+  .sheet-cell[data-component="Segmented"][data-state="choice-phone"] {
+    width: 100vw;
+    margin-inline: -33px;
+  }
+}
+
+.sheet-edit-foot {
+  display: grid;
+  gap: var(--space-2);
+}
+
 @media (width <= 720px) {
   .sheet {
     padding: var(--space-3) var(--space-4) var(--space-7);

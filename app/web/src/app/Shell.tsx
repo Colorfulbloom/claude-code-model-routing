@@ -68,7 +68,8 @@ export function Shell({ page, routeProject, pathname, mainRef, children }: Shell
   const projectList = projects.data?.projects;
   const activeProject = useActiveProject(routeProject, { fallback: page !== "picker" });
   // A setup item page is named by its part ("Instructions"), as the desktop h1 is.
-  const surfacePart = page === "surface" ? parseRoute(pathname)?.part : undefined;
+  const surfacePart =
+    page === "surface" || page === "surface_edit" ? parseRoute(pathname)?.part : undefined;
   const barTitle =
     surfacePart !== undefined && isSetupPart(surfacePart)
       ? PART_NAMES[surfacePart]()
@@ -287,7 +288,14 @@ export function Shell({ page, routeProject, pathname, mainRef, children }: Shell
           {...(app.data !== undefined
             ? {
                 footer: (
-                  <SidebarFooter lines={footerLines(app.data, prices.data, app.data.server_time)} />
+                  <SidebarFooter
+                    lines={footerLines(
+                      app.data,
+                      prices.data,
+                      app.data.server_time,
+                      app.data.edits.state,
+                    )}
+                  />
                 ),
               }
             : {})}

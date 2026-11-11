@@ -282,19 +282,31 @@ describe("ListInspector", () => {
       const inspector = {
         ...(base.inspector ?? { title: "Servers" }),
         readOnly: {
-          lockLabel: "Read only",
+          lockLabel: "Can't change here",
           reason: "This server is set at user scope, so the dashboard can't change it.",
           command: {
             command: "claude mcp remove docs-search --scope user",
             copyLabel: "Copy command",
             copiedLabel: "Copied to clipboard",
           },
-          path: { value: "/work/home/.mcp.json", label: "Copy path", copiedLabel: "Copied" },
+          path: {
+            value: "/work/home/.mcp.json",
+            label: "Copy path",
+            copiedLabel: "Copied",
+            text: "~/.mcp.json",
+          },
         },
       };
       render(<ListInspector {...props({ inspector })} />);
       expect(screen.getByText(/This server is set at user scope/)).toBeInTheDocument();
-      expect(screen.getByText(/^Read only\./)).toHaveClass("sr-only");
+      // The lock word is the visible title of the box, with the help button on its row.
+      const title = screen.getByText("Can't change here");
+      expect(title).not.toHaveClass("sr-only");
+      const head = title.closest(".inspector-readonly-head");
+      expect(head?.querySelector(".help-button")).not.toBeNull();
+      // The path and Copy path share one row.
+      const row = screen.getByText("~/.mcp.json").closest(".inspector-readonly-path");
+      expect(within(row as HTMLElement).getByRole("button", { name: "Copy path" })).toBeTruthy();
       expect(screen.getByText("claude mcp remove docs-search --scope user")).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Copy command" })).toBeInTheDocument();
       expect(screen.getAllByRole("button", { name: "Copy path" })).toHaveLength(2);

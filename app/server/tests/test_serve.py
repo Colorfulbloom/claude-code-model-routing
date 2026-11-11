@@ -119,6 +119,7 @@ def test_server_json_is_private_and_complete(tmp_path: Path) -> None:
         "instance": "abcd1234",
         "mint_secret": "s3cr3t-sample",
         "started": "t",
+        "edits": False,
         "owners": [],
     }
     assert [p.name for p in tmp_path.iterdir()] == ["server.json"]

@@ -316,6 +316,13 @@ export const W = {
   sheet_search_rule_1: "Effort cap lowers the effort",
   sheet_search_rule_2: "Cache lifetime follows the plan",
   sheet_search_rule_3: "A cache read costs less than fresh input",
+  // Edit components (M6a). Made-up data for the sheet, from the designer's edit boards.
+  sheet_project: "Tidewater reporting",
+  sheet_edit_field: "effort",
+  sheet_edit_hint: "The effort cap is high, so xhigh and max run as high.",
+  sheet_edit_summary: "settings.local.json, xhigh → medium",
+  sheet_edit_show_file: "Show the file",
+  sheet_edit_off_reason: "Pick a file to save to first.",
   // Sheet chrome
   sheet_theme: "Theme",
   sheet_theme_light: "Light",

@@ -133,6 +133,7 @@ export const en = {
   more_h1: "More",
   more_ver_h: "Version",
   more_ver_cc: "Claude Code {version}",
+  more_ver_cc_unknown: "Claude Code version unknown",
   more_ver_app: "Bar Tab {version}",
   more_hist_h: "Your history",
   more_l_updated: "Updated",
@@ -516,6 +517,7 @@ export const en = {
   ag_setup_card: "agent setup",
   ag_also_one: "Also {setup} on {n} run",
   ag_also_other: "Also {setup} on {n} runs",
+  ag_runs_link: "See runs for {name}",
   ag_none_h: "No runs in this range",
   // Models
   md_h: "Models",
@@ -862,7 +864,9 @@ export const en = {
   ro_command_line:
     "Flags such as --model last one launch and live in no file. Bar Tab can't see them, so it can't change them.",
   ro_not_visible: "Bar Tab can't see where this is set, so it can't change it.",
-  ro_m6: "Editing comes in a later release. Nothing here is locked.",
+  ro_field_until_m7:
+    "Bar Tab can't edit this setting yet. Until it can, you can change the file in your editor.",
+  ro_agents_next: "Agent editing comes next. Until then, you can change this file in your editor.",
 
   // Inspector, per kind
   ag_f_desc: "Description",
@@ -1564,6 +1568,198 @@ export const en = {
   ly_agent: "Agent file",
   ly_default: "Claude Code's default",
   ly_default_agent: "The main session's model",
+
+  // M6 Edit core (tech-writer deck, November 11, owner review pending)
+  // Settings rail and This save
+  ed_h: "Edit {field}",
+  ed_cancel: "Cancel",
+  ed_saveto: "Save to",
+  ed_takes_effect: "Takes effect",
+  ed_overridden_by: "Overridden by {scope}",
+  ed_selected: "Selected",
+  ed_now: "set now",
+  ed_links_to: "links to",
+  ed_this_save_h: "This save",
+  ed_l_file: "File",
+  ed_l_set: "Set to",
+  ed_l_runs: "Runs at",
+  ed_l_runs_model: "Runs on",
+  ed_read_at: "Bar Tab read this file at {time}.",
+  ed_link: "This file is a link, so saving changes {real}. The link stays as it is.",
+  ed_backup_note: "Bar Tab keeps a copy of the old file, so Undo can put it back.",
+  ed_updating: "Updating",
+  ed_save: "Save to {scope}",
+  ed_saving: "Saving",
+  ed_user_warn:
+    "This won't change {project}, because {scope} sets {field} there. It still applies in your other projects that don't set {field} themselves.",
+  ed_reaches_one: "{n} other project reads this file too.",
+  ed_reaches_other: "{n} other projects read this file too.",
+  // Diff gutter words and the Set to arrow (tech-writer, November 11)
+  ed_diff_added: "added",
+  ed_diff_removed: "removed",
+  ed_diff_same: "unchanged",
+  // A run of unchanged lines the diff folds into one row. The wording is the lead's brief, not
+  // yet reviewed by tech-writer.
+  ed_diff_fold_one: "{n} unchanged line",
+  ed_diff_fold_other: "{n} unchanged lines",
+  ed_to: "to",
+  ed_edit: "Edit",
+  ed_edit_aria: "Edit {field}",
+  ed_new_file: "New file",
+  ed_pick_other: "Pick another value or file to see a change.",
+  ed_link_outside_row: "Links outside your home folder and this project",
+  ed_link_dangling_row: "Links to a file that doesn't exist",
+  // Under each effort option, beside its status glyph and word (designer item 11)
+  ed_opt_runs: "runs at {value}",
+
+  // Refusals. er_lead or er_lead_undo goes first, then the code's sentence.
+  er_lead: "Not saved.",
+  er_lead_undo: "Not undone.",
+  er_changed: "{file} changed after your preview, so Bar Tab wrote nothing.",
+  er_changed_keys:
+    "Another program changed {keys}. The preview below now shows the new file, so check it and save again.",
+  er_changed_nokeys: "The preview below now shows the file as it is, so check it and save again.",
+  er_changed_ours: "That includes the setting you're changing.",
+  er_preview_mismatch: "Your choice changed after the preview, so Bar Tab wrote nothing.",
+  er_bad_version: "Bar Tab couldn't match this preview to its current run, so it wrote nothing.",
+  er_changed_since_save:
+    "{file} changed after your save, so Bar Tab wrote nothing and shows what Undo would remove first.",
+  er_raced:
+    "Bar Tab saved {file}, but another program changed it at the same moment, so check it before you go on.",
+  er_link_outside:
+    "{file} links to a file outside your home folder and this project, so Bar Tab wrote nothing.",
+  er_link_dangling: "{file} links to a file that doesn't exist, so Bar Tab wrote nothing.",
+  er_not_regular: "{file} isn't a plain file, so Bar Tab wrote nothing.",
+  er_hard_link: "{file} is a hard link that other paths share, so Bar Tab wrote nothing.",
+  er_not_owner: "Another user owns {file}, so Bar Tab wrote nothing.",
+  er_too_large: "{file} is over 1 MB, so Bar Tab wrote nothing.",
+  er_managed: "Your organization manages {file}, so Bar Tab wrote nothing.",
+  er_forbidden_path: "Bar Tab never changes {file}, so it wrote nothing.",
+  er_folder_not_found: "Bar Tab can't find this project's folder, so it wrote nothing.",
+  er_unknown_project: "Bar Tab doesn't know this project, so it wrote nothing.",
+  er_not_editable: "Bar Tab can't change this item, so it wrote nothing.",
+  er_bad_value: "Bar Tab doesn't accept that value for this setting, so it wrote nothing.",
+  er_no_change: "The file already holds that value, so Bar Tab wrote nothing.",
+  er_unparsed: "Bar Tab couldn't read {file} as JSON, so it wrote nothing.",
+  er_key_missing:
+    "The setting Bar Tab meant to change isn't in {file} anymore, so it wrote nothing.",
+  er_key_present: "{file} already has this key, so Bar Tab wrote nothing.",
+  er_parent_not_object:
+    "In {file}, the key this setting goes under isn't an object, so Bar Tab wrote nothing.",
+  er_repeated_key:
+    "{file} sets this key twice, so Bar Tab can't tell which one to change and wrote nothing.",
+  er_oracle_failed: "The new file didn't pass Bar Tab's own check, so it wrote nothing.",
+  er_lock_busy: "Another save was still working on {file}, so Bar Tab wrote nothing.",
+  er_write_failed: "Bar Tab couldn't write {file}, so the file is as it was.",
+  er_ledger_damaged: "Bar Tab couldn't read its record of saves for {file}, so it wrote nothing.",
+  er_backup_damaged: "Bar Tab couldn't read the copy it kept of {file}, so it wrote nothing.",
+  er_not_undoable: "This save can't be undone, so Bar Tab wrote nothing.",
+  er_unknown_edit: "Bar Tab can't find this save anymore, so it wrote nothing.",
+  er_forged_row: "This save doesn't match a file in this project, so Bar Tab wrote nothing.",
+  er_request_reused: "Bar Tab got two different changes under one request, so it wrote nothing.",
+  er_cant_rebuild:
+    "Bar Tab can't show what the other program changed, because it can't rebuild the file it saved.",
+  er_edits_off: "Editing is off, so Bar Tab wrote nothing.",
+  er_edit_key_unknown: "Bar Tab restarted after this page loaded, so it wrote nothing.",
+  // Page-level failures. network and server take er_lead_unknown (or _undo), because the
+  // write may have happened before the answer was lost. locked and refused take er_lead.
+  er_lead_unknown: "Not confirmed.",
+  er_lead_unknown_undo: "Undo not confirmed.",
+  er_network:
+    "This page got no answer from Bar Tab, so it can't tell whether the file changed. Check Changes before you try again.",
+  er_server:
+    "Bar Tab answered with an error, so this page can't tell whether the file changed. Check Changes before you try again.",
+  er_locked:
+    "This tab lost its access to Bar Tab, so Bar Tab wrote nothing. Open the link from Claude Code again.",
+  er_refused: "Bar Tab refused this change for a reason this page can't name.",
+
+  // Edit warnings
+  ew_wont_win: "{scope} sets this too and wins, so this save won't change what runs here.",
+  ew_config_change_hook:
+    "Your setup has a ConfigChange hook. It can stop this change from taking effect in a running session, but Bar Tab still writes the file.",
+  ew_shared_repo:
+    "Git tracks {file} in this project, so others get this change once you commit and push it.",
+
+  // Saved and recheck
+  ed_saved: "Saved.",
+  ed_saved_meta: "{time}. Undo puts the old file back.",
+  ed_undo: "Undo",
+  ed_all_changes: "All changes",
+  rc_checking: "Reading the file again to check the change",
+  rc_confirmed: "Checked the file. It still holds {value}.",
+  ed_over: "Saved, but another program changed this file right after. Review it before you go on.",
+  ed_over_keys: "Changed after your save",
+  rc_overwritten_kept: "Your {field} change is still in the file.",
+  rc_overwritten_lost: "Your {field} change is no longer in the file.",
+  ed_review_changes: "Review changes",
+  ed_drift_h: "What the other program changed",
+
+  // Undo confirm
+  ed_undo_h: "Undo this save",
+  ed_undo_changed:
+    "{file} changed after your save. Undo puts the whole old file back, so it also removes that other change.",
+  ed_undo_keep: "Keep the file as it is",
+  ed_undo_anyway: "Undo anyway",
+  ed_undo_diff_h: "What Undo changes",
+
+  // Changes page
+  cg_h1: "Changes",
+  cg_sub: "Every file Bar Tab changed for {project}, newest first.",
+  cg_today: "Today",
+  cg_yesterday: "Yesterday",
+  cg_older_h: "Older backups",
+  cg_older_one: "{n} earlier save",
+  cg_older_other: "{n} earlier saves",
+  cg_backup_folder: "Bar Tab keeps copies of the old files in {path}.",
+  cg_col_when: "When",
+  cg_col_change: "Change",
+  cg_col_file: "File",
+  cg_col_undo: "Undo",
+  cg_subj_field: "{field}",
+  cg_subj_agent: "{field} for {agent}",
+  cg_subj_new_agent: "New agent {name}",
+  cg_change: "{subject}, {from} to {to}",
+  cg_change_added: "{subject}, set to {to}",
+  cg_change_created: "{subject}, set to {to} in a new file",
+  cg_op_undo: "Undid {change}",
+  cg_op_restore: "Restore of {change}",
+  cg_undone_at: "Undone at {time}",
+  cg_changed_since: "File changed since. Undo shows what it removes first.",
+  cg_deletes_file: "Undo deletes the file",
+  cg_not_undoable: "Can't undo",
+  cg_rc_checking: "Checking the file",
+  cg_rc_confirmed: "Still in the file",
+  cg_rc_overwritten: "Changed by another program",
+  cg_empty_h: "No changes yet",
+  cg_empty_b: "When you save a change from Your setup, it shows here with Undo.",
+  cg_empty_link: "Go to Your setup",
+  cg_nu_not_newest: "A later save changed this file, so undo that one first.",
+  cg_nu_undo_row: "This row is an undo itself.",
+  cg_nu_backup_pruned: "Bar Tab no longer keeps the copy this needs.",
+  cg_nu_backup_damaged: "Bar Tab can't read the copy this needs.",
+
+  // Editing off. {cmd} is the bartab-command meta tag plus --allow-edits.
+  eo_reason: "Editing is off. Start Bar Tab with {cmd} to turn it on.",
+  eo_reason_demo: "This run uses sample data, so Bar Tab doesn't edit it.",
+  eo_reason_folder: "Bar Tab can't find {path}, so it can't edit this project.",
+  eo_ft_off: "Editing off",
+  eo_ft_on: "Editing on",
+  eo_ft_unavailable: "Editing not available",
+  more_l_editing: "Editing",
+  eo_more_on: "On",
+  eo_more_off: "Off",
+  eo_more_unavailable: "Not available",
+  eo_hist_note: "Undo needs editing on. Start Bar Tab with {cmd} to turn it on.",
+  eo_route:
+    "Editing is off, so {item} opened without its editor. Start Bar Tab with {cmd} to edit it.",
+  eo_route_agent: "Bar Tab can't edit agents yet, so {name} opened without its editor.",
+  eo_restart_h:
+    "Bar Tab restarted with editing off after this page loaded, so this page can't save.",
+  eo_restart_b:
+    "Reload to see the page as it is now. To edit again, start Bar Tab with {cmd} first.",
+  eo_restart_on_h: "Bar Tab restarted after this page loaded, so this page can't save.",
+  eo_restart_on_b: "Reload the page to edit again.",
+  eo_reload: "Reload",
 } as const;
 
 export type StringKey = keyof typeof en;

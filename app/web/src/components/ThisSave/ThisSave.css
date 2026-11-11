@@ -1,0 +1,123 @@
+.this-save {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--raised-bg);
+  border: 1px solid var(--raised-border);
+  border-radius: var(--radius-lg);
+  container: this-save / inline-size;
+}
+
+.this-save-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.this-save-title {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+}
+
+.this-save-busy {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+/* The help button sits at the end of the header. */
+.this-save-head .help-button {
+  margin-inline-start: auto;
+}
+
+.this-save-dl {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.this-save-dl > div {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: baseline;
+}
+
+.this-save-dl dt {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.this-save-dl dd {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  align-items: center;
+  min-width: 0;
+  margin: 0;
+}
+
+.this-save-chip {
+  padding: 1px 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+}
+
+.this-save-mono {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+.this-save-none {
+  color: var(--text-muted);
+}
+
+.this-save-arrow {
+  margin: 0 4px;
+  color: var(--text-muted);
+}
+
+.this-save-link,
+.this-save-applies {
+  flex-basis: 100%;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.this-save-link {
+  overflow-wrap: anywhere;
+}
+
+.this-save-real {
+  color: var(--text);
+  font-family: var(--font-mono);
+}
+
+/* The neutral line of an untouched pick: calm text, no tone, nothing to fix. */
+.this-save-neutral {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.this-save-notes {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  font-size: var(--text-sm);
+  list-style: none;
+}
+
+.this-save-read {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+@container this-save (width <= 520px) {
+  .this-save-dl > div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+}

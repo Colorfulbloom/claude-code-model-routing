@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { clockStamp, dateWords, dayLong } from "@/lib/clock";
-import { backupReason, footerLines, pricesText, pricesValue } from "@/lib/history";
+import {
+  backupReason,
+  claudeVersionText,
+  footerLines,
+  pricesText,
+  pricesValue,
+} from "@/lib/history";
 import { appInfo, historyInfo, pricesInfo } from "@/test/server";
 
 const NOW = "2026-11-08T22:00:00Z";
@@ -101,6 +107,15 @@ describe("footerLines", () => {
       history: historyInfo({ oldest: null, last_backup: null }),
     });
     expect(texts(footerLines(app, undefined, NOW))).toEqual(["Claude Code 2.1.310"]);
+  });
+});
+
+describe("claudeVersionText", () => {
+  it("names the version, or says unknown when there is none", () => {
+    expect(claudeVersionText("2.1.310")).toBe("Claude Code 2.1.310");
+    expect(claudeVersionText("")).toBe("Claude Code version unknown");
+    expect(claudeVersionText("  ")).toBe("Claude Code version unknown");
+    expect(claudeVersionText(null)).toBe("Claude Code version unknown");
   });
 });
 

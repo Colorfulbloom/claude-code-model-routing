@@ -12,7 +12,12 @@ and serves it the way ``--demo`` does, with the data clock fixed at the scenario
 session start and holds at the scenario clock. ``--test-clock`` (with ``--flow`` or
 ``--demo``) mounts ``POST /api/dev/clock``, which sets the data clock. ``--flow`` is
 refused with ``--demo``, ``--claude-dir`` and ``--ingest-pace-ms``, and ``--clock-rate``
-and ``--test-clock`` refuse each other. ``--no-price-fetch``
+and ``--test-clock`` refuse each other. ``--allow-edits`` turns the edit routes on
+(m6-build.md section 3.1). Real mode gets them as asked. A fixture or demo run gets
+them only when the Claude folder, the data folder, the store and the launch project sit
+outside the Bar Tab checkout and the git work tree that holds it. Otherwise the server
+still starts and ``/api/app`` reports edits ``unavailable``. With edits on, the write
+guard is installed in every mode. ``--no-price-fetch``
 (or ``BARTAB_OFFLINE=1``) turns the live price fetch off. The server binds
 127.0.0.1, starts uvicorn, then writes ``DIR/server.json`` (mode 0600) and one
 JSON launch line to the launch fd, and closes that fd. SIGTERM and SIGINT stop uvicorn
@@ -45,6 +50,7 @@ from typing import cast
 import uvicorn
 from starlette.types import ASGIApp, Receive, Scope, Send
 
+import edit_switch
 import fixture_provider
 import platform_os
 import server_zone
@@ -54,6 +60,7 @@ from access import AccessState
 from data_clock import DataClock
 from gate import GateMiddleware
 from main import Settings, create_app, make_provider
+from models import EditsMode
 
 logger = logging.getLogger("bartab.serve")
 
@@ -101,6 +108,7 @@ class Args:
     clock_rate: float | None = None
     test_clock: bool = False
     real: bool = False
+    allow_edits: bool = False
 
 
 def real_folders(
@@ -168,6 +176,7 @@ def parse_args(argv: Sequence[str] | None = None) -> Args:
     parser.add_argument("--clock-rate", type=float, default=None)
     parser.add_argument("--test-clock", action="store_true")
     parser.add_argument("--real", action="store_true")
+    parser.add_argument("--allow-edits", action="store_true")
     ns = parser.parse_args(argv)
     if ns.port == FORBIDDEN_PORT:
         parser.error(f"port {FORBIDDEN_PORT} is reserved and is never used")
@@ -189,6 +198,7 @@ def parse_args(argv: Sequence[str] | None = None) -> Args:
             store=root,
             no_price_fetch=offline,
             real=True,
+            allow_edits=ns.allow_edits,
         )
     if ns.data is None:
         parser.error("--data is required unless --real is given")
@@ -215,6 +225,7 @@ def parse_args(argv: Sequence[str] | None = None) -> Args:
         flow=ns.flow,
         clock_rate=ns.clock_rate,
         test_clock=ns.test_clock,
+        allow_edits=ns.allow_edits,
     )
 
 
@@ -291,8 +302,73 @@ def enter_real_mode(args: Args) -> bool:
         return False
     os.environ["TMPDIR"] = str(tmp)
     tempfile.tempdir = str(tmp)
-    write_guard.install(root)
+    if args.allow_edits:
+        # The backups folder sits beside the store root, so it is an extra root, and
+        # only with edits on.
+        write_guard.install(root, [store_paths.backups_dir(config)], edits=True)
+    else:
+        write_guard.install(root)
     return True
+
+
+def enter_edit_mode(args: Args, world: "World") -> bool:
+    """Lock a fixture or demo run that can edit to its own folders.
+
+    Real mode does this in ``enter_real_mode``. Here the roots are the store, the data
+    folder (``server.json``, logs, the demo build) and the backups folder beside the
+    Claude folder. ``TMPDIR`` and ``tempfile.tempdir`` move to ``<data>/tmp``, as in
+    real mode. This runs after the demo or flow build and before anything opens a
+    store file, and it is never called for a run whose edits are not ``on``.
+
+    Args:
+        args: The parsed command line.
+        world: What the flags resolved to. ``claude_dir`` is set.
+
+    Returns:
+        True when the guard is on, False after logging why the server can't start.
+    """
+    claude = world.claude_dir
+    if claude is None:
+        raise ValueError("an editing run needs a Claude folder")  # noqa: TRY003
+    sys.dont_write_bytecode = True
+    store = world.store or args.data / "store"
+    tmp = args.data / TMP_FOLDER
+    backups = store_paths.backups_dir(claude)
+    try:
+        platform_os.mkdir_private(tmp)
+        # The guard allows the backups folder but not its parent, the old app's
+        # folder, so that one folder is made here, before the guard, as real mode
+        # does. Only a missing folder is made, and never the Claude folder itself.
+        platform_os.mkdir_private(backups.parent)
+    except OSError:
+        logger.error("could not make the Bar Tab folders")  # noqa: TRY400
+        return False
+    os.environ["TMPDIR"] = str(tmp)
+    tempfile.tempdir = str(tmp)
+    write_guard.install(store, [args.data, backups], edits=True)
+    return True
+
+
+def resolve_edits(args: Args, world: "World") -> EditsMode:
+    """Work out the edits state for this run (``edit_switch.resolve_state``).
+
+    Args:
+        args: The parsed command line.
+        world: What the flags resolved to.
+
+    Returns:
+        ``off``, ``on`` or ``unavailable``.
+    """
+    return edit_switch.resolve_state(
+        requested=args.allow_edits,
+        real=args.real,
+        claude_dir=world.claude_dir,
+        folders={
+            "data": args.data,
+            "store": world.store,
+            "project": args.project_dir,
+        },
+    )
 
 
 def ensure_demo(data: Path) -> Path:
@@ -498,6 +574,7 @@ class ServerInfo:
     instance: str
     mint_secret: str
     started: str
+    edits: bool = False
 
 
 def write_server_json(data_dir: Path, info: ServerInfo) -> Path:
@@ -679,7 +756,10 @@ async def run(args: Args) -> int:
     world = await prepare_world(args)
     if world is None:
         return 1
-    state = AccessState()
+    edits = resolve_edits(args, world)
+    if edits == "on" and not args.real and not enter_edit_mode(args, world):
+        return 1
+    state = AccessState(edits=edits)
     try:
         sock = bind_socket(args.port)
     except OSError:
@@ -706,6 +786,7 @@ async def run(args: Args) -> int:
         # Review counts local days in the machine's zone on real data. A demo or flow
         # build supplies its own (session.json), so it passes none.
         tz=server_zone.machine_zone(os.environ) if args.real else None,
+        edits=edits,
     )
     provider = make_provider(settings)
     project = provider.resolve_project(
@@ -745,6 +826,7 @@ async def run(args: Args) -> int:
                 instance=state.instance,
                 mint_secret=state.mint_secret,
                 started=datetime.now(UTC).isoformat(),
+                edits=state.edits == "on",
             ),
         )
         if args.launch_fd is not None:

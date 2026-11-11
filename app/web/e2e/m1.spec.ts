@@ -126,14 +126,15 @@ async function noHorizontalScroll(page: Page): Promise<void> {
 test.describe("footer at rest", () => {
   test.use({ timezoneId: "UTC", locale: "en-US" });
 
-  test("shows five muted lines with no live region and passes axe", async ({ page, server }) => {
+  test("shows six muted lines with no live region and passes axe", async ({ page, server }) => {
     await page.goto(linkFor(server.baseURL, await server.mint(PROJECT), `/p/${PROJECT}/live`));
     await expectUnlocked(page);
     const lines = page.locator(".sidebar-footer-line");
-    await expect(lines).toHaveCount(5);
+    await expect(lines).toHaveCount(6);
     await expect(lines.nth(1)).toHaveText(/^History since /);
     await expect(lines.nth(3)).toHaveText(/^Prices as of /);
-    await expect(lines.nth(4)).toHaveText(`Claude Code 2.1.310`);
+    await expect(lines.nth(4)).toHaveText(en.eo_ft_off);
+    await expect(lines.nth(5)).toHaveText(`Claude Code 2.1.310`);
     await expect(page.locator(".sidebar-footer [role], .sidebar-footer a")).toHaveCount(0);
     await expect(page.locator(".stopped-notice")).toHaveCount(0);
     expect(await axeAllCombos(page, "footer")).toEqual([]);
@@ -144,13 +145,14 @@ test.describe("footer at rest", () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto(linkFor(server.baseURL, await server.mint(PROJECT), `/p/${PROJECT}/live`));
     await expectUnlocked(page);
-    await expect(page.locator(".sidebar-footer-line")).toHaveCount(5);
+    await expect(page.locator(".sidebar-footer-line")).toHaveCount(6);
     const rows = await footerRows(page);
     expect(rows.map((r) => r.text)).toEqual([
       "Updated September 30, 12:59 PM",
       "History since September 30",
       "Last backup September 30, 12:59 PM",
       "Prices as of September 30",
+      en.eo_ft_off,
       "Claude Code 2.1.310",
     ]);
     expect(rows.filter((r) => r.clipped)).toEqual([]);
@@ -170,7 +172,7 @@ test.describe("footer with problems", () => {
     await page.goto(linkFor(server.baseURL, await server.mint(PROJECT), `/p/${PROJECT}/live`));
     await expectUnlocked(page);
     const lines = page.locator(".sidebar-footer-line");
-    await expect(lines).toHaveCount(6);
+    await expect(lines).toHaveCount(7);
     await expect(lines.nth(0)).toHaveText(/Couldn't read 3 files$/);
     await expect(lines.nth(3)).toHaveText("Backup failed at 7:04 AM");
     await expect(page.locator(".sidebar-footer")).not.toContainText(/Last backup/);
@@ -187,7 +189,7 @@ test.describe("footer with problems", () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto(linkFor(server.baseURL, await server.mint(PROJECT), `/p/${PROJECT}/live`));
     await expectUnlocked(page);
-    await expect(page.locator(".sidebar-footer-line")).toHaveCount(6);
+    await expect(page.locator(".sidebar-footer-line")).toHaveCount(7);
     const rows = await footerRows(page);
     const backup = rows.find((r) => r.text.startsWith("Backup failed"));
     expect(backup).toEqual({
@@ -214,6 +216,7 @@ test.describe("footer with problems", () => {
       en.more_l_since,
       en.more_l_backup,
       en.more_l_prices,
+      en.more_l_editing,
     ]);
     const first = await page.locator("main section").first().getAttribute("aria-labelledby");
     expect(first).toBe("history-card-title");
@@ -223,11 +226,11 @@ test.describe("footer with problems", () => {
 });
 
 test.describe("More history card at rest", () => {
-  test("lists four rows with no findings", async ({ page, server }) => {
+  test("lists five rows with no findings", async ({ page, server }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto(linkFor(server.baseURL, await server.mint(PROJECT), "/more"));
     const card = page.getByRole("region", { name: en.more_hist_h });
-    await expect(card.locator("dt")).toHaveCount(4);
+    await expect(card.locator("dt")).toHaveCount(5);
     await expect(card.getByRole("heading", { level: 3 })).toHaveCount(0);
     expect(await axeAllCombos(page, "more history")).toEqual([]);
   });

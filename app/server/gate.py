@@ -16,11 +16,21 @@ Key rules by path:
 An Origin header is checked whenever it is present. A browser always sends one on a
 POST, so a POST that carries ``Sec-Fetch-Site`` but no Origin is refused. A client that
 sends neither header (the launcher) may omit it.
+
+Edit writes (every POST under ``/api/edit/`` except a row's ``seen`` mark, which writes
+nothing outside the store root) add three rules (m6-build.md section 3.2). The Origin
+must be present and equal the server's own origin for the Host the request used. With
+edits off or unavailable the answer is ``edits_off``. ``X-Bartab-Edit`` must appear
+exactly once, and its key must belong to the project the JSON body names, compared in
+constant time. A wrong or unknown key answers ``edit_key_unknown``. The gate adds no
+CORS headers and answers no preflight, so a page on another origin can't send the
+custom header at all.
 """
 
 import asyncio
 import hmac
 import json
+import re
 from typing import cast
 
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
@@ -34,6 +44,10 @@ SWAP_PATH = "/api/access/swap"
 MINT_PATH = "/api/access/mint"
 KEY_HEADER = b"x-bartab-key"
 MINT_HEADER = b"x-bartab-mint"
+EDIT_HEADER = b"x-bartab-edit"
+EDIT_PREFIX = "/api/edit/"
+# A row's "seen" mark stores one id in the store root, so it needs the read key only.
+_SEEN_PATH = re.compile(r"^/api/edit/rows/[^/]+/seen$")
 
 _MAX_DIGITS = 10
 _METHODS = frozenset({"GET", "HEAD", "POST"})
@@ -54,6 +68,43 @@ def _one(headers: _Headers, name: bytes) -> bytes | None:
 
 def _is_api(path: str) -> bool:
     return path == "/api" or path.startswith("/api/")
+
+
+def _is_edit_write(path: str, method: str) -> bool:
+    """True for a POST that may change a user file. A new /api/edit/ route counts."""
+    if method != "POST":
+        return False
+    if path != "/api/edit" and not path.startswith(EDIT_PREFIX):
+        return False
+    return _SEEN_PATH.fullmatch(path) is None
+
+
+def _no_repeats(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    """Build an object and refuse a repeated key, which parsers could read apart."""
+    found: dict[str, object] = {}
+    for key, value in pairs:
+        if key in found:
+            raise ValueError("repeated key")  # noqa: TRY003
+        found[key] = value
+    return found
+
+
+def _body_project(body: bytes) -> str | None:
+    """Return the ``project`` a JSON body names, or None when it names none.
+
+    The body must be strict UTF-8 (no encoding guess, no BOM) and an object with no
+    repeated key, so the handler's parser can only read the project the gate read.
+    """
+    try:
+        parsed = cast(
+            "object", json.loads(body.decode("utf-8"), object_pairs_hook=_no_repeats)
+        )
+    except (ValueError, RecursionError):
+        return None
+    if not isinstance(parsed, dict):
+        return None
+    project = cast("dict[str, object]", parsed).get("project")
+    return project if isinstance(project, str) else None
 
 
 def _check_shape(headers: _Headers, method: str) -> tuple[int, str] | None:
@@ -129,6 +180,11 @@ class GateMiddleware:
             if isinstance(body, tuple):
                 await self._refuse(send, *body)
                 return
+            if _is_edit_write(str(scope["path"]), "POST"):
+                refusal = self._check_edit_key(headers, body)
+                if refusal is not None:
+                    await self._refuse(send, *refusal)
+                    return
             await self.app(scope, _replay(body, receive), send)
             return
         await self.app(scope, receive, send)
@@ -148,7 +204,32 @@ class GateMiddleware:
             refusal = _check_shape(headers, method)
         if refusal is None:
             refusal = self._check_key(str(scope["path"]), headers)
+        if refusal is None and _is_edit_write(str(scope["path"]), method):
+            refusal = self._check_edit_headers(headers)
         return refusal
+
+    def _check_edit_headers(self, headers: _Headers) -> tuple[int, str] | None:
+        """The edit rules that need no body: Origin, the edits switch, the header."""
+        origins = _values(headers, b"origin")
+        host = _one(headers, b"host") or b""
+        if len(origins) != 1 or origins[0].lower() != b"http://" + host.strip().lower():
+            return 403, "bad_origin"
+        if self.access.edits != "on":
+            return 403, "edits_off"
+        sent = _values(headers, EDIT_HEADER)
+        if len(sent) != 1 or not sent[0]:
+            return 401, "no_edit_key"
+        return None
+
+    def _check_edit_key(self, headers: _Headers, body: bytes) -> tuple[int, str] | None:
+        """Check that the edit key belongs to the project the body names."""
+        project = _body_project(body)
+        presented = _one(headers, EDIT_HEADER)
+        if project is None or presented is None:
+            return 403, "edit_key_unknown"
+        if not self.access.edit_key_matches(project, presented):
+            return 403, "edit_key_unknown"
+        return None
 
     def _check_origin(self, headers: _Headers, method: str) -> tuple[int, str] | None:
         """Check Origin and Sec-Fetch-Site."""

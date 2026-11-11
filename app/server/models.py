@@ -7,7 +7,7 @@ as its ``response_model``, so a field that is not declared never leaves the serv
 from datetime import date, datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 PROJECT_KEY_PATTERN = r"^[a-z0-9][a-z0-9-]{0,62}$"
 
@@ -125,6 +125,7 @@ class AppInfo(_Response):
         default_factory=lambda: _unchecked_to_fix()  # noqa: PLW0108 - ToFix is defined below
     )
     editable_projects: list[str]
+    edits: "EditsState"
     mode: "AppMode"
     clock: "ClockInfo"
     rules_version_gap: "VersionGap | None" = None
@@ -182,6 +183,7 @@ class Project(_Response):
     state: ProjectState
     running: bool
     listed: bool
+    edit_block: Literal["folder_not_found"] | None = None
 
 
 class ProjectList(_Response):
@@ -1505,3 +1507,450 @@ class RulesUnchanged(_Response):
     server_time: datetime
     etag: str
     unchanged: Literal[True]
+
+
+# ---------------------------------------------------------------------------
+# Edit contract (M6a, docs/rebuild/planning/m6-build.md sections 2, 4.2 and 4.3).
+# Types and bodies only. The routes, the writer and the preview builder come later.
+# ---------------------------------------------------------------------------
+
+EditsMode = Literal["on", "off", "unavailable"]
+EditRefusalCode = Literal[
+    "changed",
+    "preview_mismatch",
+    "bad_version",
+    "changed_since_save",
+    "raced",
+    "link_outside",
+    "link_dangling",
+    "not_regular",
+    "hard_link",
+    "not_owner",
+    "too_large",
+    "managed",
+    "forbidden_path",
+    "folder_not_found",
+    "unknown_project",
+    "not_editable",
+    "bad_value",
+    "no_change",
+    "unparsed",
+    "key_missing",
+    "key_present",
+    "parent_not_object",
+    "repeated_key",
+    "oracle_failed",
+    "lock_busy",
+    "write_failed",
+    "ledger_damaged",
+    "backup_damaged",
+    "not_undoable",
+    "unknown_edit",
+    "forged_row",
+    "request_reused",
+    "cant_rebuild",
+    "edits_off",
+    "edit_key_unknown",
+]
+EditWarningCode = Literal["wont_win", "config_change_hook", "shared_repo"]
+EditReadOnlyCode = Literal[
+    "field_until_m7",
+    "risky_until_m8",
+    "managed",
+    "plugin",
+    "not_writable",
+    "link_outside",
+    "link_dangling",
+]
+RecheckState = Literal["checking", "confirmed", "overwritten"]
+UndoState = Literal[
+    "can_undo", "changed_since", "undone", "deletes_file", "not_undoable"
+]
+EditOp = Literal["set"]  # M6a. M6b adds create_agent and agent_set.
+EditScope = Literal["user", "project", "local"]
+SettingsEditField = Literal[
+    "model", "effortLevel", "maxEffortLevel", "autoCompactWindow"
+]
+EditApplies = Literal["new_session", "new_run", "picked_up"]
+DiffKind = Literal["ctx", "add", "del"]
+HistoryOp = Literal["set", "create", "undo", "restore"]
+# Why a ledger row can't be undone. The writer's own words, closed to these six.
+NotUndoableReason = Literal[
+    "not_newest",
+    "undo_row",
+    "restore_row",
+    "backup_pruned",
+    "backup_damaged",
+    "file_refused",
+]
+
+# The page makes one request id per press of Save or Undo.
+REQUEST_ID_PATTERN = r"^[A-Za-z0-9_-]{8,64}$"
+
+
+class _AliasedResponse(_Response):
+    """Base for response bodies with a field named like a Python keyword.
+
+    ``from`` is a keyword, so the field is ``from_``. Code builds it as ``from_=``,
+    a parsed body may use either name, and ``from`` is what leaves the server, through
+    ``response_model`` and through a plain ``model_dump``.
+    """
+
+    model_config = ConfigDict(extra="forbid", serialize_by_alias=True)
+
+
+class EditsState(_Response):
+    """Whether this server can write. ``instance`` is the server instance id.
+
+    ``unavailable`` is a demo or fixture run whose folders sit in the checkout.
+    """
+
+    state: EditsMode
+    instance: str
+
+
+class EditPreviewRequest(_Request):
+    """Body of ``POST /api/edit/preview``, settings edits only (``op`` is ``set``).
+
+    ``seq`` is echoed in the answer so the page drops answers older than its latest
+    request. The server builds every path from ``project``, ``scope`` and ``field``.
+    """
+
+    project: str = Field(min_length=1, max_length=200)
+    op: EditOp
+    scope: EditScope
+    field: SettingsEditField
+    value: str | int
+    seq: int
+
+
+class EditSaveRequest(EditPreviewRequest):
+    """Body of ``POST /api/edit/save``: the preview body plus its token and an id.
+
+    ``version`` is the token the preview returned. ``request_id`` makes a repeat press
+    of Save return the first result instead of a stale-token refusal.
+    """
+
+    version: str = Field(min_length=1, max_length=2048)
+    request_id: str = Field(pattern=REQUEST_ID_PATTERN)
+
+
+class EditUndoRequest(_Request):
+    """Body of ``POST /api/edit/undo``.
+
+    ``version`` and ``anyway`` come back from a ``changed_since_save`` answer to
+    confirm "Undo anyway".
+    """
+
+    project: str = Field(min_length=1, max_length=200)
+    row_id: str = Field(min_length=1, max_length=200)
+    request_id: str = Field(pattern=REQUEST_ID_PATTERN)
+    version: str | None = Field(default=None, min_length=1, max_length=2048)
+    anyway: bool = False
+
+
+class MarkSeenRequest(_Request):
+    """Body of ``POST /api/edit/rows/<id>/seen``. The read key is enough."""
+
+    project: str = Field(min_length=1, max_length=200)
+
+
+class DiffLine(_Response):
+    """One line of a masked diff. ``old_n`` and ``new_n`` are real file line numbers.
+
+    A context line has both, an added line only ``new_n`` and a removed line only
+    ``old_n``.
+    """
+
+    kind: DiffKind
+    old_n: int | None
+    new_n: int | None
+    text: str
+
+
+class EditDiff(_Response):
+    """A masked diff of one file. ``new_file`` is True when the save creates it."""
+
+    lines: list[DiffLine]
+    new_file: bool
+
+
+class EditTarget(_Response):
+    """The file a save would write. For a link, ``real_path`` is the target file."""
+
+    scope: EditScope
+    display_path: str
+    real_path: str
+    link: bool
+    exists: bool
+    git_tracked: bool
+    new_file: bool
+
+
+class RunsAt(_Response):
+    """What the setting runs at, and the Model check status of that value."""
+
+    value: str | None
+    status: ModelCheckStatus
+
+
+class EditSetChange(_AliasedResponse):
+    """The key's value before and after. ``from`` is None when the file has no key."""
+
+    from_: str | int | None = Field(
+        validation_alias=AliasChoices("from_", "from"), serialization_alias="from"
+    )
+    to: str | int
+
+
+class EditRuns(_Response):
+    """What runs now, and what would run after the save."""
+
+    now: RunsAt
+    after: RunsAt
+
+
+class EditEffect(_Response):
+    """What a save does. ``applies`` says when a running session picks it up."""
+
+    set: EditSetChange
+    runs: EditRuns
+    applies: EditApplies
+
+
+class OptionRunsAt(_Response):
+    """One option of an effort or effort cap field, with where it would run."""
+
+    value: str
+    runs_at: RunsAt
+
+
+class ScopeOutcome(_Response):
+    """What a value saved in one scope would do. ``beaten_by`` names the scope above."""
+
+    status: ModelCheckStatus
+    beaten_by: EditScope | None
+
+
+class EditScopeRow(_Response):
+    """One writable scope of a field: its file, its current value and its outcome."""
+
+    scope: EditScope
+    display_path: str
+    real_path: str
+    link: bool
+    git_tracked: bool
+    writable: bool
+    read_only_reason: EditReadOnlyCode | None
+    current_value: str | None
+    outcome: ScopeOutcome
+
+
+class EditReach(_Response):
+    """A project a user-scope save changes, with that project's outcome."""
+
+    project: str
+    name: str
+    outcome: ScopeOutcome
+
+
+class EditWarning(_Response):
+    """A warning the preview shows before Save. ``params`` fill the page's string."""
+
+    code: EditWarningCode
+    params: dict[str, str]
+
+
+class EditSummary(_Response):
+    """The phone bar's line: what the save does to which file."""
+
+    verb: Literal["creates", "changes"]
+    lines_changed: int
+    display_path: str
+
+
+class EditRefusal(_Response):
+    """Why a save to the picked scope would be refused. ``params`` fill the string."""
+
+    code: EditRefusalCode
+    params: dict[str, str]
+
+
+class EditPreview(_Response):
+    """Answer of ``POST /api/edit/preview``.
+
+    ``choice_key`` is the sha256 of the canonical body without ``seq``, and ``version``
+    is the token Save sends back. ``refusal`` is None unless a save to the picked scope
+    would be refused.
+    """
+
+    server_time: datetime
+    seq: int
+    choice_key: str
+    target: EditTarget
+    effect: EditEffect
+    options: list[OptionRunsAt]
+    scopes: list[EditScopeRow]
+    reaches: list[EditReach]
+    warnings: list[EditWarning]
+    diff: EditDiff
+    summary: EditSummary
+    read_at: str
+    version: str
+    refusal: EditRefusal | None
+
+
+class EditSaved(_Response):
+    """Answer of a good ``POST /api/edit/save``."""
+
+    server_time: datetime
+    row_id: str
+    saved_at: str
+    recheck_after_ms: int
+
+
+class EditConflict(_Response):
+    """The 409 body of a save: the file or the body changed since the preview.
+
+    ``code`` is ``changed`` or ``preview_mismatch``. ``preview`` is a fresh one, and
+    ``changed_keys`` lists the keys that changed on disk (empty when the writer can't
+    tell, such as after a restart).
+    """
+
+    server_time: datetime
+    code: EditRefusalCode
+    preview: EditPreview | None
+    changed_keys: list[str]
+    edited_key_changed: bool
+
+
+class EditError(_Response):
+    """The 422 body of an edit route: a refusal with no write."""
+
+    server_time: datetime
+    code: EditRefusalCode
+    params: dict[str, str]
+
+
+class UndoDone(_Response):
+    """Answer of a good ``POST /api/edit/undo``."""
+
+    server_time: datetime
+    row_id: str
+
+
+class UndoPreview(_Response):
+    """What "Undo anyway" would do to a file that changed since the save."""
+
+    diff: EditDiff
+    version: str
+
+
+class UndoConflict(_Response):
+    """The 409 body of an undo: the file changed since the save."""
+
+    server_time: datetime
+    code: EditRefusalCode
+    undo_preview: UndoPreview
+
+
+class RecheckAnswer(_Response):
+    """Answer of ``GET /api/edit/rows/<id>``: the read-only checks after a save.
+
+    ``ours_survived`` is None while the state is ``checking``.
+    """
+
+    server_time: datetime
+    state: RecheckState
+    changed_keys: list[str]
+    ours_survived: bool | None
+    checked_at: str | None
+    seen: bool
+
+
+class DriftAnswer(_Response):
+    """Answer of ``GET /api/edit/rows/<id>/drift``.
+
+    ``lines`` is the masked diff from the bytes Bar Tab wrote to the file now. It is
+    None, with ``code`` ``cant_rebuild``, when the bytes can't be rebuilt.
+    """
+
+    server_time: datetime
+    lines: list[DiffLine] | None
+    code: EditRefusalCode | None
+
+
+class HistorySubject(_Response):
+    """What a ledger row edited. ``name`` is None for the main session."""
+
+    kind: Literal["main", "agent"]
+    name: str | None
+
+
+class HistoryRecheck(_Response):
+    """The recheck result a ledger row carries, and whether the owner saw it."""
+
+    state: RecheckState
+    changed_keys: list[str]
+    ours_survived: bool | None
+    seen: bool
+
+
+class HistoryRow(_AliasedResponse):
+    """One edit in the Changes page. Values are masked.
+
+    ``from`` and ``to`` are None for a create or a removed key.
+    """
+
+    id: str
+    time: str
+    subject: HistorySubject
+    field: str
+    from_: str | int | None = Field(
+        validation_alias=AliasChoices("from_", "from"), serialization_alias="from"
+    )
+    to: str | int | None
+    scope: EditScope
+    display_path: str
+    real_path: str
+    op: HistoryOp
+    undo_state: UndoState
+    undone_at: str | None
+    recheck: HistoryRecheck | None
+    not_undoable_reason: NotUndoableReason | None
+
+
+class HistoryOlder(_Response):
+    """Older rows, with their count.
+
+    Rows past the newest 20 of one file, and rows a scan of the backups folder found
+    for this project in files that are no longer one of its settings files. The
+    second kind can't be undone.
+    """
+
+    count: int
+    rows: list[HistoryRow]
+
+
+class BackupFolder(_Response):
+    """The folder that holds the backups. ``real`` differs from ``display`` by link."""
+
+    display: str
+    real: str
+
+
+class EditHistory(_Response):
+    """Answer of ``GET /api/edit/history``."""
+
+    server_time: datetime
+    rows: list[HistoryRow]
+    older: HistoryOlder
+    backup_folder: BackupFolder
+    edits: EditsState
+
+
+class OpenWarning(_Response):
+    """Answer of ``GET /api/edit/open``: the newest overwritten row not yet seen."""
+
+    server_time: datetime
+    row: HistoryRow | None

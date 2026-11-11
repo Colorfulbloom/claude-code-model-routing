@@ -5,6 +5,7 @@ import { parseRoute } from "@/app/routes";
 import { rulesServer } from "@/test/rules-server";
 import { resetViewport } from "@/test/media";
 import { mount } from "@/test/mount";
+import { editServer } from "@/test/edit-server";
 import { setupServer } from "@/test/setup-server";
 
 afterEach(() => {
@@ -17,32 +18,30 @@ beforeEach(() => {
   document.title = "";
 });
 
-/** Routes with no screen yet. Live has its own tests in LivePage.test.tsx. */
-const routes: [string, string][] = [
-  ["#/p/builder/review/agents/new", "New agent"],
-  ["#/p/builder/review/agents/reviewer/edit", "Edit agent"],
-  ["#/p/builder/setup/settings/effort/edit", "Edit setup item"],
-];
-
 describe("routes", () => {
-  it.each(routes)("%s renders the h1 %s, focuses it and announces it", async (hash, name) => {
-    await mount(hash);
-    const heading = await screen.findByRole("heading", { level: 1, name });
-    expect(heading).toHaveFocus();
-    expect(screen.getByRole("status")).toHaveTextContent(name);
-    expect(screen.getByText("This page comes in a later release.")).toBeInTheDocument();
-    const withProject = hash.startsWith("#/p/");
-    await waitFor(() => {
-      expect(document.title).toBe(withProject ? `${name}, Builder, Bar Tab` : `${name}, Bar Tab`);
-    });
+  // M6a has no agent editing, so both agent routes leave for Your setup > Agents at route level,
+  // never Review > Agents. The edit URL names the agent, so that page opens it on its edit route.
+  it.each([
+    ["#/p/builder/review/agents/new", "#/p/builder/setup/agents"],
+    ["#/p/builder/review/agents/reviewer/edit", "#/p/builder/setup/agents/reviewer/edit"],
+  ])("%s redirects to Your setup, Agents", async (hash, landing) => {
+    await mount(hash, { server: setupServer() });
+    const heading = await screen.findByRole("heading", { level: 1, name: "Agents" });
+    expect(heading).toBeInTheDocument();
+    expect(window.location.hash.startsWith(landing)).toBe(true);
+    expect(window.location.hash).not.toContain("/review/");
+    expect(screen.queryByText("This page comes in a later release.")).toBeNull();
   });
 
   it.each([
     ["#/p/builder/setup", "Your setup"],
     ["#/p/builder/setup/settings", "Settings"],
     ["#/p/builder/setup/settings/effort", "Settings"],
+    ["#/p/builder/setup/settings/effort/edit", "Settings"],
+    ["#/p/builder/setup/changes", "Changes"],
   ])("%s renders its own page, focused and announced", async (hash, name) => {
-    await mount(hash, { server: setupServer() });
+    // Changes reads /api/edit/history, which the setup fake has no route for.
+    await mount(hash, { server: hash.endsWith("/changes") ? editServer() : setupServer() });
     const heading = await screen.findByRole("heading", { level: 1, name });
     expect(heading).toHaveFocus();
     expect(screen.getByRole("status")).toHaveTextContent(name);

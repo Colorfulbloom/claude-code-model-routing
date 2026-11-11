@@ -4,6 +4,7 @@
  * never shows on a desktop.
  */
 import { useAppInfo, usePrices } from "@/api/client";
+import type { EditsMode } from "@/api/edit";
 import type { AppInfo, PricesAnswer } from "@/api/types";
 import { useActiveProject } from "@/app/active-project";
 import { HelpTerm } from "@/components/HelpTerm/HelpTerm";
@@ -12,7 +13,7 @@ import type { HistoryFinding, HistoryRow } from "@/components/HistoryCard/Histor
 import { MoreCard } from "@/components/MoreCard/MoreCard";
 import { PageHeader } from "@/components/PageHeader/PageHeader";
 import { clockStamp, dayLong } from "@/lib/clock";
-import { backupReason, pricesValue } from "@/lib/history";
+import { backupReason, claudeVersionText, editingValue, pricesValue } from "@/lib/history";
 import { VERSION } from "@/lib/version";
 import { t, tn } from "@/strings/t";
 import "./MorePage.css";
@@ -22,6 +23,7 @@ export function historyCardParts(
   app: AppInfo,
   prices: PricesAnswer | undefined,
   now: number | string | Date,
+  edits?: EditsMode,
 ): { findings: HistoryFinding[]; rows: HistoryRow[] } {
   const { history } = app;
   const findings: HistoryFinding[] = [];
@@ -63,16 +65,22 @@ export function historyCardParts(
   if (prices !== undefined) {
     rows.push({ id: "prices", label: t("more_l_prices"), value: pricesValue(prices) });
   }
+  if (edits !== undefined) {
+    rows.push({ id: "editing", label: t("more_l_editing"), value: editingValue(edits) });
+  }
   return { findings, rows };
 }
 
-/** The Prices and Last backup labels open their help entries. Every other label stays plain. */
+/** The Prices, Last backup and Editing labels open their help entries. Every other label stays plain. */
 function withHelp(row: HistoryRow): HistoryRow {
   if (row.id === "prices") {
     return { ...row, label: <HelpTerm help="shell.prices">{row.label}</HelpTerm> };
   }
   if (row.id === "backup") {
     return { ...row, label: <HelpTerm help="shell.backup">{row.label}</HelpTerm> };
+  }
+  if (row.id === "editing") {
+    return { ...row, label: <HelpTerm help="shell.editing">{row.label}</HelpTerm> };
   }
   return row;
 }
@@ -82,7 +90,9 @@ export function MorePage() {
   const app = useAppInfo(project);
   const prices = usePrices();
   const parts =
-    app.data === undefined ? null : historyCardParts(app.data, prices.data, app.data.server_time);
+    app.data === undefined
+      ? null
+      : historyCardParts(app.data, prices.data, app.data.server_time, app.data.edits.state);
   const card = parts === null ? null : { ...parts, rows: parts.rows.map(withHelp) };
   return (
     <>
@@ -112,9 +122,7 @@ export function MorePage() {
           <h2 className="more-version-title" id="more-version-title">
             {t("more_ver_h")}
           </h2>
-          {app.data !== undefined && (
-            <p>{t("more_ver_cc", { version: app.data.claude_version })}</p>
-          )}
+          {app.data !== undefined && <p>{claudeVersionText(app.data.claude_version)}</p>}
           <p>{t("more_ver_app", { version: VERSION })}</p>
         </section>
       </div>

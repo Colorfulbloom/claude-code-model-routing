@@ -7,6 +7,8 @@ Both use the standard library only. Nothing here binds port 8377.
 # The fake server stands in for serve.py. It follows the launch contract in
 # docs/rebuild/planning/m0-build.md section 10 and writes its start-up to
 # <data>/serve-runs.log and its mint calls to <data>/mints.log.
+# FAKE_SERVE_EDITS=refuse records edits false whatever the flag. no_key leaves the key
+# out, like an older server.
 # FAKE_SERVE_MODE picks a failure: busy (cannot bind the port), silent (exits at once),
 # badline (a launch line that isn't JSON).
 # It never outlives its test. Like the real server it exits after --idle-exit-minutes
@@ -40,7 +42,7 @@ argv = sys.argv[1:]
 args = {}
 _i = 0
 while _i < len(argv):
-    if argv[_i] in ("--demo", "--real"):  # the flags with no value
+    if argv[_i] in ("--demo", "--real", "--allow-edits"):  # the flags with no value
         args[argv[_i]] = "1"
         _i += 1
     else:
@@ -149,6 +151,11 @@ record = {
     "started": time.strftime("%Y-%m-%dT%H:%M:%S"),
     "owners": [],
 }
+# Like the real server, record whether edits are on. FAKE_SERVE_EDITS=refuse stands in
+# for a fixture or demo run that refused --allow-edits, and no_key for an older server.
+edits_mode = os.environ.get("FAKE_SERVE_EDITS", "")
+if edits_mode != "no_key":
+    record["edits"] = "--allow-edits" in args and edits_mode != "refuse"
 path = os.path.join(data, "server.json")
 fd = os.open(path + ".tmp", os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
 with os.fdopen(fd, "w") as fh:

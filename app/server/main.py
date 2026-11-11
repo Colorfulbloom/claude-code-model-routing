@@ -25,11 +25,14 @@ from starlette.types import ASGIApp
 import access
 import api_app
 import api_dev
+import api_edit
 import api_live
 import api_review
 import api_rules
 import api_setup
 import csp
+import edit_service
+import edit_switch
 import errors
 import fixture_provider
 import gate
@@ -38,7 +41,7 @@ import store_provider
 import version
 from access import AccessState
 from data_clock import DataClock
-from models import AppMode
+from models import AppMode, EditsMode
 from provider import Provider
 
 logger = logging.getLogger(__name__)
@@ -65,6 +68,12 @@ class Settings:
     ``tz`` is the zone Review counts local days in. None means the demo or flow build's
     own ``session.json`` zone, or UTC for anything else. ``serve.py`` passes the
     machine's zone with ``--real``.
+
+    ``edits`` is the switch (``edit_switch.resolve_state``). ``on`` mounts the preview,
+    save and undo routes and lets the swap hand out edit keys. ``off`` and
+    ``unavailable`` answer those routes with ``edits_off``. A server that has an
+    ``access_state`` takes the switch from it, so ``serve.py`` can start with edits on
+    and later turn them off for good. Without one, the app makes its state from this.
     """
 
     port: int
@@ -88,6 +97,7 @@ class Settings:
     transport: price_transport.Transport | None = None
     provider: Provider | None = None
     tz: ZoneInfo | None = None
+    edits: EditsMode = "off"
 
 
 HEALTH_FILE = "health.json"
@@ -104,6 +114,15 @@ def make_provider(settings: Settings) -> Provider:
     """Build the provider the settings ask for. A store provider is not started."""
     if settings.provider is not None:
         return settings.provider
+    watch = None
+    if (
+        settings.edits == "on"
+        and not settings.real
+        and settings.access_state is not None
+    ):
+        # A fixture or demo run may edit only outside the Bar Tab checkout, and the
+        # project roots are known only once the store has mapped them.
+        watch = edit_switch.root_watch(settings.access_state)
     if settings.claude_dir is not None:
         return store_provider.create(
             claude_dir=settings.claude_dir,
@@ -118,16 +137,19 @@ def make_provider(settings: Settings) -> Provider:
             log_path=str(settings.data_dir / "logs" / "server.log"),
             project_dir=settings.project_dir,
             # Real mode hands the model check a copy of the server's own environment
-            # (the resolver keeps only what a rule or an env block names), the
-            # platform's managed settings folder and the HOME folder that "~" expands
-            # against. The writer reports its pass times beside server.json.
+            # (the resolver keeps only what a rule or an env block names) and the
+            # platform's managed settings folder. The writer reports its pass times
+            # beside server.json. Every mode hands over the HOME folder that "~"
+            # expands against, so a link target or a real path shows as "~/..." on a
+            # demo, fixture or e2e server too (tests and e2e set HOME to a throwaway).
             managed_dir=store_provider.managed_dir_for(sys.platform)
             if settings.real
             else None,
-            home=(os.environ.get("HOME") or None) if settings.real else None,
+            home=os.environ.get("HOME") or None,
             shell_env=dict(os.environ) if settings.real else None,
             health_path=settings.data_dir / HEALTH_FILE if settings.real else None,
             tz=settings.tz,
+            root_watch=watch,
         )
     return fixture_provider.FixtureProvider(
         settings.fixture, settings.clock, settings.fixtures_dir
@@ -181,7 +203,9 @@ def build_app(settings: Settings) -> FastAPI:
     Returns:
         The FastAPI app with every router included.
     """
-    state = settings.access_state or AccessState(clock=settings.clock)
+    state = settings.access_state or AccessState(
+        clock=settings.clock, edits=settings.edits
+    )
     provider = make_provider(settings)
     live = provider if isinstance(provider, store_provider.StoreProvider) else None
     index = csp.IndexSource(settings.dist_dir)
@@ -212,7 +236,17 @@ def build_app(settings: Settings) -> FastAPI:
     app.include_router(
         access.build_router(state, on_mint=None if live is None else live.nudge_retry)
     )
-    app.include_router(api_app.build_router(provider, state.instance))
+    app.include_router(api_app.build_router(provider, state.instance, state))
+    edit_service_ = edit_service.EditService(provider, state)
+    app.include_router(
+        api_edit.build_always_router(
+            provider, state, settings.claude_dir, edit_service_
+        )
+    )
+    if state.edits == "on":
+        app.include_router(api_edit.build_edits_router(state, provider, edit_service_))
+    else:
+        app.include_router(api_edit.build_off_router())
     app.include_router(api_live.build_router(provider))
     app.include_router(api_review.build_router(provider))
     app.include_router(api_setup.build_router(provider))
@@ -238,7 +272,9 @@ def create_app(settings: Settings) -> ASGIApp:
     Returns:
         The gate wrapped around the security headers wrapped around FastAPI.
     """
-    state = settings.access_state or AccessState(clock=settings.clock)
+    state = settings.access_state or AccessState(
+        clock=settings.clock, edits=settings.edits
+    )
     resolved = replace(settings, access_state=state)
     inner = csp.SecurityHeadersMiddleware(build_app(resolved))
     return gate.GateMiddleware(inner, settings.port, state)

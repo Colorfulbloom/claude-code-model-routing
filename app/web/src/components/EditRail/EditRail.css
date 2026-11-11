@@ -1,0 +1,123 @@
+/* The parts inside ask their own width (container queries), so the phone sheet drawn on the
+   component sheet matches the real one. */
+.edit-rail {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-4) var(--space-5) var(--space-5);
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-xl);
+}
+
+.edit-rail-head {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.edit-rail-title {
+  font-size: var(--text-xl);
+}
+
+/* Cancel sits at the end of the heading row. */
+.edit-rail-head > .button-quiet {
+  margin-inline-start: auto;
+}
+
+.edit-rail-body {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.edit-rail-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.edit-rail-note {
+  margin-inline-end: auto;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.edit-rail-refusal {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  font-size: var(--text-sm);
+}
+
+.edit-rail-refusal-mark {
+  flex: none;
+  color: var(--status-invalid-fg);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+}
+
+.edit-rail-refusal-mark::before {
+  content: var(--status-invalid-mark) / "";
+}
+
+/* The two Save labels share one cell, so the button is as wide as the longer one at every moment. */
+.edit-save-label {
+  display: inline-grid;
+}
+
+.edit-save-label > span {
+  grid-area: 1 / 1;
+  text-align: center;
+}
+
+.edit-save-hidden {
+  visibility: hidden;
+}
+
+/* The phone sheet: full height, no card chrome, a sticky foot, and the body scrolls. */
+.edit-rail-sheet {
+  min-height: 100%;
+  padding: var(--space-3) var(--space-4) 0;
+  border: 0;
+  border-radius: 0;
+}
+
+.edit-rail-sheet .edit-rail-body {
+  padding-bottom: var(--space-4);
+}
+
+.edit-rail-sheet .phone-action-bar {
+  margin: 0 calc(-1 * var(--space-4));
+}
+
+.edit-rail-sheet .edit-rail-refusal {
+  padding-bottom: var(--space-2);
+}
+
+/* The phone foot names a link's real target under the file and the change. */
+.edit-foot-link {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-family: var(--font-sans);
+  overflow-wrap: anywhere;
+}
+
+.edit-rail-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: var(--card-bg);
+}
+
+.edit-rail-modal {
+  height: 100%;
+  overflow: auto;
+}
+
+.edit-rail-modal .edit-rail {
+  min-height: 100%;
+  align-content: start;
+}

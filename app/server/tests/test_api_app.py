@@ -60,10 +60,14 @@ def test_every_get_under_api_needs_the_key(
 def test_every_post_except_swap_needs_a_secret(
     client: Any, settings: main.Settings, key_headers: dict[str, str]
 ) -> None:
+    # The edit routes take the read key and, for a write, more. test_edit_gate.py
+    # holds their matrix.
     posts = [
         path
         for path, method, _ in _operations(settings)
-        if method == "POST" and path != "/api/access/swap"
+        if method == "POST"
+        and path != "/api/access/swap"
+        and not path.startswith("/api/edit/")
     ]
     assert posts
     for route in posts:
@@ -99,10 +103,12 @@ def test_get_app_demo(client: Any, key_headers: dict[str, str]) -> None:
         "to_fix_count",
         "to_fix",
         "editable_projects",
+        "edits",
         "mode",
         "clock",
         "rules_version_gap",
     }
+    assert body["edits"] == {"state": "off", "instance": body["instance"]}
     assert body["rules_version_gap"] == {
         "installed": "2.1.310",
         "checked_on": rules_reference.build_answer(None, datetime.now(UTC)).checked_on,
@@ -201,8 +207,12 @@ def test_get_projects_demo(client: Any, key_headers: dict[str, str]) -> None:
             "state",
             "running",
             "listed",
+            "edit_block",
         }
         assert project["listed"] is True
+        assert project["edit_block"] == (
+            "folder_not_found" if project["state"] == "folder_not_found" else None
+        )
         assert project["display_path"].startswith("/work/")
 
 

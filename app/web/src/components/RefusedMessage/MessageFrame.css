@@ -1,0 +1,56 @@
+.message-frame {
+  display: grid;
+  gap: 6px;
+  padding: var(--space-3) var(--space-4);
+  background: var(--raised-bg);
+  border: 1px solid var(--raised-border);
+  border-inline-start: 4px solid var(--message-edge);
+  border-radius: var(--radius-lg);
+}
+
+.message-frame-error {
+  --message-edge: var(--status-invalid-fg);
+}
+
+.message-frame-warning {
+  --message-edge: var(--status-overridden-fg);
+}
+
+.message-frame-ok {
+  --message-edge: var(--status-in-effect-fg);
+}
+
+.message-frame > p {
+  margin: 0;
+}
+
+.message-frame:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.message-mark {
+  display: inline-block;
+  margin-inline-end: 6px;
+  color: var(--message-edge);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  line-height: 1;
+}
+
+.message-mark-error {
+  font-size: var(--text-md);
+}
+
+.message-mark-error::before {
+  content: var(--status-invalid-mark) / "";
+}
+
+.message-mark-warning::before {
+  content: var(--status-overridden-mark) / "";
+}
+
+.message-mark-ok::before {
+  content: "\2713" / "";
+  font-size: var(--text-md);
+}

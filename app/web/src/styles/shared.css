@@ -64,6 +64,21 @@ code {
   white-space: nowrap;
 }
 
+/*
+ * The hollow circle of "Checking", drawn so it is as big as the check and the triangle beside the
+ * other outcomes. The text glyph for it renders tiny in system fonts. It takes the colour of the
+ * text around it, and it is always followed by words.
+ */
+.ring-mark {
+  display: inline-block;
+  box-sizing: border-box;
+  width: 0.85em;
+  height: 0.85em;
+  vertical-align: -0.08em;
+  border: 1.5px solid currentcolor;
+  border-radius: 50%;
+}
+
 /* Focus. Only :focus-visible, with the same outline on every focusable element. */
 :focus-visible,
 .is-focus {

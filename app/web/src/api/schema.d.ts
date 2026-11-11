@@ -89,6 +89,142 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/edit/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Edit History */
+        get: operations["get_edit_history"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/edit/open": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Edit Open */
+        get: operations["get_edit_open"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/edit/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Edit Preview */
+        post: operations["post_edit_preview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/edit/rows/{row_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Edit Row */
+        get: operations["get_edit_row"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/edit/rows/{row_id}/drift": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Edit Drift */
+        get: operations["get_edit_drift"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/edit/rows/{row_id}/seen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark Edit Seen */
+        post: operations["mark_edit_seen"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/edit/save": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Edit Save */
+        post: operations["post_edit_save"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/edit/undo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post Edit Undo */
+        post: operations["post_edit_undo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/live/sessions": {
         parameters: {
             query?: never;
@@ -445,6 +581,7 @@ export interface components {
             clock: components["schemas"]["ClockInfo"];
             /** Editable Projects */
             editable_projects: string[];
+            edits: components["schemas"]["EditsState"];
             /** Etag */
             etag: string;
             history: components["schemas"]["HistoryInfo"];
@@ -485,6 +622,16 @@ export interface components {
              * @enum {string}
              */
             reason_code: "no_space" | "unwritable" | "check_failed" | "copy_failed";
+        };
+        /**
+         * BackupFolder
+         * @description The folder that holds the backups. ``real`` differs from ``display`` by link.
+         */
+        BackupFolder: {
+            /** Display */
+            display: string;
+            /** Real */
+            real: string;
         };
         /**
          * CardError
@@ -706,6 +853,405 @@ export interface components {
             tokens: number;
         };
         /**
+         * DiffLine
+         * @description One line of a masked diff. ``old_n`` and ``new_n`` are real file line numbers.
+         *
+         *     A context line has both, an added line only ``new_n`` and a removed line only
+         *     ``old_n``.
+         */
+        DiffLine: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "ctx" | "add" | "del";
+            /** New N */
+            new_n: number | null;
+            /** Old N */
+            old_n: number | null;
+            /** Text */
+            text: string;
+        };
+        /**
+         * DriftAnswer
+         * @description Answer of ``GET /api/edit/rows/<id>/drift``.
+         *
+         *     ``lines`` is the masked diff from the bytes Bar Tab wrote to the file now. It is
+         *     None, with ``code`` ``cant_rebuild``, when the bytes can't be rebuilt.
+         */
+        DriftAnswer: {
+            /** Code */
+            code: ("changed" | "preview_mismatch" | "bad_version" | "changed_since_save" | "raced" | "link_outside" | "link_dangling" | "not_regular" | "hard_link" | "not_owner" | "too_large" | "managed" | "forbidden_path" | "folder_not_found" | "unknown_project" | "not_editable" | "bad_value" | "no_change" | "unparsed" | "key_missing" | "key_present" | "parent_not_object" | "repeated_key" | "oracle_failed" | "lock_busy" | "write_failed" | "ledger_damaged" | "backup_damaged" | "not_undoable" | "unknown_edit" | "forged_row" | "request_reused" | "cant_rebuild" | "edits_off" | "edit_key_unknown") | null;
+            /** Lines */
+            lines: components["schemas"]["DiffLine"][] | null;
+            /**
+             * Server Time
+             * Format: date-time
+             */
+            server_time: string;
+        };
+        /**
+         * EditConflict
+         * @description The 409 body of a save: the file or the body changed since the preview.
+         *
+         *     ``code`` is ``changed`` or ``preview_mismatch``. ``preview`` is a fresh one, and
+         *     ``changed_keys`` lists the keys that changed on disk (empty when the writer can't
+         *     tell, such as after a restart).
+         */
+        EditConflict: {
+            /** Changed Keys */
+            changed_keys: string[];
+            /**
+             * Code
+             * @enum {string}
+             */
+            code: "changed" | "preview_mismatch" | "bad_version" | "changed_since_save" | "raced" | "link_outside" | "link_dangling" | "not_regular" | "hard_link" | "not_owner" | "too_large" | "managed" | "forbidden_path" | "folder_not_found" | "unknown_project" | "not_editable" | "bad_value" | "no_change" | "unparsed" | "key_missing" | "key_present" | "parent_not_object" | "repeated_key" | "oracle_failed" | "lock_busy" | "write_failed" | "ledger_damaged" | "backup_damaged" | "not_undoable" | "unknown_edit" | "forged_row" | "request_reused" | "cant_rebuild" | "edits_off" | "edit_key_unknown";
+            /** Edited Key Changed */
+            edited_key_changed: boolean;
+            preview: components["schemas"]["EditPreview"] | null;
+            /**
+             * Server Time
+             * Format: date-time
+             */
+            server_time: string;
+        };
+        /**
+         * EditDiff
+         * @description A masked diff of one file. ``new_file`` is True when the save creates it.
+         */
+        EditDiff: {
+            /** Lines */
+            lines: components["schemas"]["DiffLine"][];
+            /** New File */
+            new_file: boolean;
+        };
+        /**
+         * EditEffect
+         * @description What a save does. ``applies`` says when a running session picks it up.
+         */
+        EditEffect: {
+            /**
+             * Applies
+             * @enum {string}
+             */
+            applies: "new_session" | "new_run" | "picked_up";
+            runs: components["schemas"]["EditRuns"];
+            set: components["schemas"]["EditSetChange"];
+        };
+        /**
+         * EditError
+         * @description The 422 body of an edit route: a refusal with no write.
+         */
+        EditError: {
+            /**
+             * Code
+             * @enum {string}
+             */
+            code: "changed" | "preview_mismatch" | "bad_version" | "changed_since_save" | "raced" | "link_outside" | "link_dangling" | "not_regular" | "hard_link" | "not_owner" | "too_large" | "managed" | "forbidden_path" | "folder_not_found" | "unknown_project" | "not_editable" | "bad_value" | "no_change" | "unparsed" | "key_missing" | "key_present" | "parent_not_object" | "repeated_key" | "oracle_failed" | "lock_busy" | "write_failed" | "ledger_damaged" | "backup_damaged" | "not_undoable" | "unknown_edit" | "forged_row" | "request_reused" | "cant_rebuild" | "edits_off" | "edit_key_unknown";
+            /** Params */
+            params: {
+                [key: string]: string;
+            };
+            /**
+             * Server Time
+             * Format: date-time
+             */
+            server_time: string;
+        };
+        /**
+         * EditHistory
+         * @description Answer of ``GET /api/edit/history``.
+         */
+        EditHistory: {
+            backup_folder: components["schemas"]["BackupFolder"];
+            edits: components["schemas"]["EditsState"];
+            older: components["schemas"]["HistoryOlder"];
+            /** Rows */
+            rows: components["schemas"]["HistoryRow"][];
+            /**
+             * Server Time
+             * Format: date-time
+             */
+            server_time: string;
+        };
+        /**
+         * EditPreview
+         * @description Answer of ``POST /api/edit/preview``.
+         *
+         *     ``choice_key`` is the sha256 of the canonical body without ``seq``, and ``version``
+         *     is the token Save sends back. ``refusal`` is None unless a save to the picked scope
+         *     would be refused.
+         */
+        EditPreview: {
+            /** Choice Key */
+            choice_key: string;
+            diff: components["schemas"]["EditDiff"];
+            effect: components["schemas"]["EditEffect"];
+            /** Options */
+            options: components["schemas"]["OptionRunsAt"][];
+            /** Reaches */
+            reaches: components["schemas"]["EditReach"][];
+            /** Read At */
+            read_at: string;
+            refusal: components["schemas"]["EditRefusal"] | null;
+            /** Scopes */
+            scopes: components["schemas"]["EditScopeRow"][];
+            /** Seq */
+            seq: number;
+            /**
+             * Server Time
+             * Format: date-time
+             */
+            server_time: string;
+            summary: components["schemas"]["EditSummary"];
+            target: components["schemas"]["EditTarget"];
+            /** Version */
+            version: string;
+            /** Warnings */
+            warnings: components["schemas"]["EditWarning"][];
+        };
+        /**
+         * EditPreviewRequest
+         * @description Body of ``POST /api/edit/preview``, settings edits only (``op`` is ``set``).
+         *
+         *     ``seq`` is echoed in the answer so the page drops answers older than its latest
+         *     request. The server builds every path from ``project``, ``scope`` and ``field``.
+         */
+        EditPreviewRequest: {
+            /**
+             * Field
+             * @enum {string}
+             */
+            field: "model" | "effortLevel" | "maxEffortLevel" | "autoCompactWindow";
+            /**
+             * Op
+             * @constant
+             */
+            op: "set";
+            /** Project */
+            project: string;
+            /**
+             * Scope
+             * @enum {string}
+             */
+            scope: "user" | "project" | "local";
+            /** Seq */
+            seq: number;
+            /** Value */
+            value: string | number;
+        };
+        /**
+         * EditReach
+         * @description A project a user-scope save changes, with that project's outcome.
+         */
+        EditReach: {
+            /** Name */
+            name: string;
+            outcome: components["schemas"]["ScopeOutcome"];
+            /** Project */
+            project: string;
+        };
+        /**
+         * EditRefusal
+         * @description Why a save to the picked scope would be refused. ``params`` fill the string.
+         */
+        EditRefusal: {
+            /**
+             * Code
+             * @enum {string}
+             */
+            code: "changed" | "preview_mismatch" | "bad_version" | "changed_since_save" | "raced" | "link_outside" | "link_dangling" | "not_regular" | "hard_link" | "not_owner" | "too_large" | "managed" | "forbidden_path" | "folder_not_found" | "unknown_project" | "not_editable" | "bad_value" | "no_change" | "unparsed" | "key_missing" | "key_present" | "parent_not_object" | "repeated_key" | "oracle_failed" | "lock_busy" | "write_failed" | "ledger_damaged" | "backup_damaged" | "not_undoable" | "unknown_edit" | "forged_row" | "request_reused" | "cant_rebuild" | "edits_off" | "edit_key_unknown";
+            /** Params */
+            params: {
+                [key: string]: string;
+            };
+        };
+        /**
+         * EditRuns
+         * @description What runs now, and what would run after the save.
+         */
+        EditRuns: {
+            after: components["schemas"]["RunsAt"];
+            now: components["schemas"]["RunsAt"];
+        };
+        /**
+         * EditSaveRequest
+         * @description Body of ``POST /api/edit/save``: the preview body plus its token and an id.
+         *
+         *     ``version`` is the token the preview returned. ``request_id`` makes a repeat press
+         *     of Save return the first result instead of a stale-token refusal.
+         */
+        EditSaveRequest: {
+            /**
+             * Field
+             * @enum {string}
+             */
+            field: "model" | "effortLevel" | "maxEffortLevel" | "autoCompactWindow";
+            /**
+             * Op
+             * @constant
+             */
+            op: "set";
+            /** Project */
+            project: string;
+            /** Request Id */
+            request_id: string;
+            /**
+             * Scope
+             * @enum {string}
+             */
+            scope: "user" | "project" | "local";
+            /** Seq */
+            seq: number;
+            /** Value */
+            value: string | number;
+            /** Version */
+            version: string;
+        };
+        /**
+         * EditSaved
+         * @description Answer of a good ``POST /api/edit/save``.
+         */
+        EditSaved: {
+            /** Recheck After Ms */
+            recheck_after_ms: number;
+            /** Row Id */
+            row_id: string;
+            /** Saved At */
+            saved_at: string;
+            /**
+             * Server Time
+             * Format: date-time
+             */
+            server_time: string;
+        };
+        /**
+         * EditScopeRow
+         * @description One writable scope of a field: its file, its current value and its outcome.
+         */
+        EditScopeRow: {
+            /** Current Value */
+            current_value: string | null;
+            /** Display Path */
+            display_path: string;
+            /** Git Tracked */
+            git_tracked: boolean;
+            /** Link */
+            link: boolean;
+            outcome: components["schemas"]["ScopeOutcome"];
+            /** Read Only Reason */
+            read_only_reason: ("field_until_m7" | "risky_until_m8" | "managed" | "plugin" | "not_writable" | "link_outside" | "link_dangling") | null;
+            /** Real Path */
+            real_path: string;
+            /**
+             * Scope
+             * @enum {string}
+             */
+            scope: "user" | "project" | "local";
+            /** Writable */
+            writable: boolean;
+        };
+        /**
+         * EditSetChange
+         * @description The key's value before and after. ``from`` is None when the file has no key.
+         */
+        EditSetChange: {
+            /** From */
+            from: string | number | null;
+            /** To */
+            to: string | number;
+        };
+        /**
+         * EditSummary
+         * @description The phone bar's line: what the save does to which file.
+         */
+        EditSummary: {
+            /** Display Path */
+            display_path: string;
+            /** Lines Changed */
+            lines_changed: number;
+            /**
+             * Verb
+             * @enum {string}
+             */
+            verb: "creates" | "changes";
+        };
+        /**
+         * EditTarget
+         * @description The file a save would write. For a link, ``real_path`` is the target file.
+         */
+        EditTarget: {
+            /** Display Path */
+            display_path: string;
+            /** Exists */
+            exists: boolean;
+            /** Git Tracked */
+            git_tracked: boolean;
+            /** Link */
+            link: boolean;
+            /** New File */
+            new_file: boolean;
+            /** Real Path */
+            real_path: string;
+            /**
+             * Scope
+             * @enum {string}
+             */
+            scope: "user" | "project" | "local";
+        };
+        /**
+         * EditUndoRequest
+         * @description Body of ``POST /api/edit/undo``.
+         *
+         *     ``version`` and ``anyway`` come back from a ``changed_since_save`` answer to
+         *     confirm "Undo anyway".
+         */
+        EditUndoRequest: {
+            /**
+             * Anyway
+             * @default false
+             */
+            anyway: boolean;
+            /** Project */
+            project: string;
+            /** Request Id */
+            request_id: string;
+            /** Row Id */
+            row_id: string;
+            /** Version */
+            version?: string | null;
+        };
+        /**
+         * EditWarning
+         * @description A warning the preview shows before Save. ``params`` fill the page's string.
+         */
+        EditWarning: {
+            /**
+             * Code
+             * @enum {string}
+             */
+            code: "wont_win" | "config_change_hook" | "shared_repo";
+            /** Params */
+            params: {
+                [key: string]: string;
+            };
+        };
+        /**
+         * EditsState
+         * @description Whether this server can write. ``instance`` is the server instance id.
+         *
+         *     ``unavailable`` is a demo or fixture run whose folders sit in the checkout.
+         */
+        EditsState: {
+            /** Instance */
+            instance: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "on" | "off" | "unavailable";
+        };
+        /**
          * Effective
          * @description The value that runs and where it comes from.
          *
@@ -801,6 +1347,93 @@ export interface components {
             pass_error: components["schemas"]["PassError"] | null;
             /** Unreadable Files */
             unreadable_files: number;
+        };
+        /**
+         * HistoryOlder
+         * @description Older rows, with their count.
+         *
+         *     Rows past the newest 20 of one file, and rows a scan of the backups folder found
+         *     for this project in files that are no longer one of its settings files. The
+         *     second kind can't be undone.
+         */
+        HistoryOlder: {
+            /** Count */
+            count: number;
+            /** Rows */
+            rows: components["schemas"]["HistoryRow"][];
+        };
+        /**
+         * HistoryRecheck
+         * @description The recheck result a ledger row carries, and whether the owner saw it.
+         */
+        HistoryRecheck: {
+            /** Changed Keys */
+            changed_keys: string[];
+            /** Ours Survived */
+            ours_survived: boolean | null;
+            /** Seen */
+            seen: boolean;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "checking" | "confirmed" | "overwritten";
+        };
+        /**
+         * HistoryRow
+         * @description One edit in the Changes page. Values are masked.
+         *
+         *     ``from`` and ``to`` are None for a create or a removed key.
+         */
+        HistoryRow: {
+            /** Display Path */
+            display_path: string;
+            /** Field */
+            field: string;
+            /** From */
+            from: string | number | null;
+            /** Id */
+            id: string;
+            /** Not Undoable Reason */
+            not_undoable_reason: ("not_newest" | "undo_row" | "restore_row" | "backup_pruned" | "backup_damaged" | "file_refused") | null;
+            /**
+             * Op
+             * @enum {string}
+             */
+            op: "set" | "create" | "undo" | "restore";
+            /** Real Path */
+            real_path: string;
+            recheck: components["schemas"]["HistoryRecheck"] | null;
+            /**
+             * Scope
+             * @enum {string}
+             */
+            scope: "user" | "project" | "local";
+            subject: components["schemas"]["HistorySubject"];
+            /** Time */
+            time: string;
+            /** To */
+            to: string | number | null;
+            /**
+             * Undo State
+             * @enum {string}
+             */
+            undo_state: "can_undo" | "changed_since" | "undone" | "deletes_file" | "not_undoable";
+            /** Undone At */
+            undone_at: string | null;
+        };
+        /**
+         * HistorySubject
+         * @description What a ledger row edited. ``name`` is None for the main session.
+         */
+        HistorySubject: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "main" | "agent";
+            /** Name */
+            name: string | null;
         };
         /**
          * HookFacts
@@ -1061,6 +1694,14 @@ export interface components {
             unchanged: true;
         };
         /**
+         * MarkSeenRequest
+         * @description Body of ``POST /api/edit/rows/<id>/seen``. The read key is enough.
+         */
+        MarkSeenRequest: {
+            /** Project */
+            project: string;
+        };
+        /**
          * MaskedText
          * @description A value that may hold a secret. ``masked`` is True when masking hid any part.
          */
@@ -1287,6 +1928,27 @@ export interface components {
             tokens: number;
         };
         /**
+         * OpenWarning
+         * @description Answer of ``GET /api/edit/open``: the newest overwritten row not yet seen.
+         */
+        OpenWarning: {
+            row: components["schemas"]["HistoryRow"] | null;
+            /**
+             * Server Time
+             * Format: date-time
+             */
+            server_time: string;
+        };
+        /**
+         * OptionRunsAt
+         * @description One option of an effort or effort cap field, with where it would run.
+         */
+        OptionRunsAt: {
+            runs_at: components["schemas"]["RunsAt"];
+            /** Value */
+            value: string;
+        };
+        /**
          * OutputStyleFacts
          * @description Inspector facts for the output style setting or one style file.
          */
@@ -1501,6 +2163,8 @@ export interface components {
         Project: {
             /** Display Path */
             display_path: string;
+            /** Edit Block */
+            edit_block?: "folder_not_found" | null;
             /** Key */
             key: string;
             /** Listed */
@@ -1554,6 +2218,32 @@ export interface components {
             params: {
                 [key: string]: string;
             };
+        };
+        /**
+         * RecheckAnswer
+         * @description Answer of ``GET /api/edit/rows/<id>``: the read-only checks after a save.
+         *
+         *     ``ours_survived`` is None while the state is ``checking``.
+         */
+        RecheckAnswer: {
+            /** Changed Keys */
+            changed_keys: string[];
+            /** Checked At */
+            checked_at: string | null;
+            /** Ours Survived */
+            ours_survived: boolean | null;
+            /** Seen */
+            seen: boolean;
+            /**
+             * Server Time
+             * Format: date-time
+             */
+            server_time: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "checking" | "confirmed" | "overwritten";
         };
         /**
          * ReviewSession
@@ -1759,6 +2449,32 @@ export interface components {
             project: string;
             /** Session */
             session: string;
+        };
+        /**
+         * RunsAt
+         * @description What the setting runs at, and the Model check status of that value.
+         */
+        RunsAt: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "in_effect" | "overridden" | "ignored" | "lowered" | "invalid" | "default" | "unknown";
+            /** Value */
+            value: string | null;
+        };
+        /**
+         * ScopeOutcome
+         * @description What a value saved in one scope would do. ``beaten_by`` names the scope above.
+         */
+        ScopeOutcome: {
+            /** Beaten By */
+            beaten_by: ("user" | "project" | "local") | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "in_effect" | "overridden" | "ignored" | "lowered" | "invalid" | "default" | "unknown";
         };
         /**
          * ScopeReach
@@ -2528,6 +3244,45 @@ export interface components {
             unchanged: true;
         };
         /**
+         * UndoConflict
+         * @description The 409 body of an undo: the file changed since the save.
+         */
+        UndoConflict: {
+            /**
+             * Code
+             * @enum {string}
+             */
+            code: "changed" | "preview_mismatch" | "bad_version" | "changed_since_save" | "raced" | "link_outside" | "link_dangling" | "not_regular" | "hard_link" | "not_owner" | "too_large" | "managed" | "forbidden_path" | "folder_not_found" | "unknown_project" | "not_editable" | "bad_value" | "no_change" | "unparsed" | "key_missing" | "key_present" | "parent_not_object" | "repeated_key" | "oracle_failed" | "lock_busy" | "write_failed" | "ledger_damaged" | "backup_damaged" | "not_undoable" | "unknown_edit" | "forged_row" | "request_reused" | "cant_rebuild" | "edits_off" | "edit_key_unknown";
+            /**
+             * Server Time
+             * Format: date-time
+             */
+            server_time: string;
+            undo_preview: components["schemas"]["UndoPreview"];
+        };
+        /**
+         * UndoDone
+         * @description Answer of a good ``POST /api/edit/undo``.
+         */
+        UndoDone: {
+            /** Row Id */
+            row_id: string;
+            /**
+             * Server Time
+             * Format: date-time
+             */
+            server_time: string;
+        };
+        /**
+         * UndoPreview
+         * @description What "Undo anyway" would do to a file that changed since the save.
+         */
+        UndoPreview: {
+            diff: components["schemas"]["EditDiff"];
+            /** Version */
+            version: string;
+        };
+        /**
          * Unpriced
          * @description Requests with no price, and the models they ran on, in catalog order.
          */
@@ -2849,6 +3604,512 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    get_edit_history: {
+        parameters: {
+            query?: {
+                project?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EditHistory"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    get_edit_open: {
+        parameters: {
+            query?: {
+                project?: string | null;
+                item?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenWarning"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    post_edit_preview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EditPreviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EditPreview"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EditConflict"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EditError"];
+                };
+            };
+        };
+    };
+    get_edit_row: {
+        parameters: {
+            query?: {
+                project?: string | null;
+            };
+            header?: never;
+            path: {
+                row_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecheckAnswer"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    get_edit_drift: {
+        parameters: {
+            query?: {
+                project?: string | null;
+            };
+            header?: never;
+            path: {
+                row_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DriftAnswer"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EditError"];
+                };
+            };
+        };
+    };
+    mark_edit_seen: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                row_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MarkSeenRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecheckAnswer"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    post_edit_save: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EditSaveRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EditSaved"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EditConflict"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EditError"];
+                };
+            };
+        };
+    };
+    post_edit_undo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EditUndoRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UndoDone"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UndoConflict"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EditError"];
                 };
             };
         };

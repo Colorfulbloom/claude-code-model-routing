@@ -229,3 +229,22 @@
     text-align: start;
   }
 }
+
+/* Editing: the reason under a disabled Edit, the edit route's note, and the line after an Undo. */
+.setup-edit-reason {
+  flex-basis: 100%;
+}
+
+.setup-edit-reason .edits-off-reason {
+  margin-top: 0;
+}
+
+.setup-edit-route:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.setup-undone {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}

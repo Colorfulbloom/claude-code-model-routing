@@ -89,6 +89,7 @@ export function appInfo(over: Partial<AppInfo> = {}): AppInfo {
     running: [{ project: "builder", session: "s1" }],
     to_fix_count: 4,
     editable_projects: [],
+    edits: { state: "off", instance: INSTANCE },
     mode: "fixture",
     clock: { kind: "real", rate_n: null },
     ...over,

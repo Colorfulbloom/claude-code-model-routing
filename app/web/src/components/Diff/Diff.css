@@ -1,0 +1,113 @@
+.path-text {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.path-text-dir {
+  color: var(--text-muted);
+}
+
+.path-text-name {
+  font-weight: var(--weight-semibold);
+}
+
+/* The diff sits in a well. It has no padding, so the tints run edge to edge. */
+.diff {
+  overflow: hidden;
+  background: var(--inset-bg);
+  border: 1px solid var(--inset-border);
+  border-radius: var(--radius-lg);
+}
+
+.diff-path {
+  display: grid;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--inset-border);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+
+.diff-path-link {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.diff-lines {
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+}
+
+.diff-line {
+  position: relative;
+  display: grid;
+  grid-template-columns: 34px 18px minmax(0, 1fr);
+  align-items: start;
+  padding: 1px 0;
+}
+
+.diff-code {
+  min-height: 1.5em;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.diff-ln {
+  padding-top: 2px;
+  padding-right: 6px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-align: right;
+}
+
+.diff-gm {
+  font-family: var(--font-mono);
+  font-weight: var(--weight-semibold);
+  text-align: center;
+}
+
+.diff-add {
+  background: var(--diff-add-bg);
+  color: var(--diff-add-fg);
+}
+
+.diff-del {
+  background: var(--diff-del-bg);
+  color: var(--diff-del-fg);
+}
+
+.diff-add .diff-code,
+.diff-del .diff-code {
+  color: inherit;
+}
+
+/* Forced colors drop the tints. The plus and minus in the gutter and the screen reader word stay. */
+@media (forced-colors: active) {
+  .diff-add,
+  .diff-del {
+    border-inline-start: 3px solid CanvasText;
+  }
+}
+
+/* A run of unchanged lines the server left out. It reads as a quiet break between hunks. */
+.diff-fold {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.diff-fold .diff-ln {
+  padding-top: 0;
+  font-size: var(--text-sm);
+  line-height: 1.4;
+}
+
+.diff-fold-text {
+  min-height: 1.4em;
+  line-height: 1.4;
+}

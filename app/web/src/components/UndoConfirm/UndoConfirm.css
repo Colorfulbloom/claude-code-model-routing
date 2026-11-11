@@ -1,0 +1,69 @@
+.undo-confirm {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.undo-confirm-head {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.undo-confirm-title {
+  font-size: var(--text-xl);
+}
+
+/* Cancel sits at the end of the title row. */
+.undo-confirm-head > .button-quiet {
+  margin-inline-start: auto;
+}
+
+.undo-confirm-body {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.undo-confirm-diff-h {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+}
+
+/* The file the undo deletes, when the page has no lines to show. */
+.undo-confirm-path {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+}
+
+.undo-confirm-link {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  overflow-wrap: anywhere;
+}
+
+.undo-confirm-real {
+  font-family: var(--font-mono);
+}
+
+.undo-confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: space-between;
+}
+
+/* The phone sheet: the body scrolls and the foot stays. */
+.undo-confirm-sheet {
+  align-content: start;
+  min-height: 100%;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4) 0;
+}
+
+.undo-confirm-sheet .phone-action-bar {
+  margin: 0 calc(-1 * var(--space-4));
+}
+
+.undo-confirm-sheet .undo-confirm-body {
+  padding-bottom: var(--space-3);
+}

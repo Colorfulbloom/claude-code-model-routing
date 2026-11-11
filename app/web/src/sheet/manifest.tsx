@@ -74,6 +74,32 @@ import {
   type SearchFieldState,
 } from "./help-samples";
 import { OrderLadderDemo, type OrderLadderState } from "./reference-samples";
+import {
+  DiffDemo,
+  EditRailDemo,
+  EditsOffNoteDemo,
+  OverwrittenBoxDemo,
+  PhoneActionBarDemo,
+  SegmentedChoiceDemo,
+  RefusedMessageDemo,
+  RestartBoxDemo,
+  SaveToListDemo,
+  SavedBoxDemo,
+  ThisSaveDemo,
+  UndoConfirmDemo,
+  type DiffState,
+  type EditRailState,
+  type EditsOffState,
+  type OverwrittenState,
+  type PhoneBarState,
+  type RefusedState,
+  type RestartState,
+  type SegmentedChoiceState,
+  type SaveToState,
+  type SavedBoxState,
+  type ThisSaveState,
+  type UndoConfirmState,
+} from "./edit-samples";
 import { SelectDemo } from "./SelectDemo";
 import { W } from "./words";
 
@@ -1229,6 +1255,21 @@ export const manifest: ManifestEntry[] = [
       </div>
     ),
   },
+  // Segmented (choice)
+  ...(
+    [
+      "choice",
+      "choice-now",
+      "choice-hover",
+      "choice-focus",
+      "choice-disabled",
+      "choice-phone",
+    ] as SegmentedChoiceState[]
+  ).map((state) => ({
+    component: "Segmented",
+    state,
+    render: () => <SegmentedChoiceDemo state={state} />,
+  })),
   // ScopeBar
   { component: "ScopeBar", state: "range", render: () => <ScopeBarDemo form="range" /> },
   {
@@ -1450,5 +1491,121 @@ export const manifest: ManifestEntry[] = [
     component: "OrderLadder",
     state,
     render: () => <OrderLadderDemo state={state} />,
+  })),
+  // Diff
+  ...(["default", "link", "new-file", "no-path", "wrap"] as DiffState[]).map((state) => ({
+    component: "Diff",
+    state,
+    render: () => <DiffDemo state={state} />,
+  })),
+  // SaveToList
+  ...(
+    ["default", "hover", "focus", "user-link", "not-writable", "disabled", "phone"] as SaveToState[]
+  ).map((state) => ({
+    component: "SaveToList",
+    state,
+    render: () => <SaveToListDemo state={state} />,
+  })),
+  // ThisSave
+  ...(
+    [
+      "default",
+      "user-link",
+      "model",
+      "updating",
+      "warnings",
+      "new-value",
+      "phone",
+    ] as ThisSaveState[]
+  ).map((state) => ({
+    component: "ThisSave",
+    state,
+    render: () => <ThisSaveDemo state={state} />,
+  })),
+  // EditRail
+  ...(
+    [
+      "default",
+      "message",
+      "updating",
+      "saving",
+      "refusal",
+      "sheet",
+      "sheet-saving",
+    ] as EditRailState[]
+  ).map((state) => ({
+    component: "EditRail",
+    state,
+    render: () => <EditRailDemo state={state} />,
+  })),
+  // SavedBox
+  ...(["checking", "confirmed", "undo-busy", "phone"] as SavedBoxState[]).map((state) => ({
+    component: "SavedBox",
+    state,
+    render: () => <SavedBoxDemo state={state} />,
+  })),
+  // RefusedMessage
+  ...(
+    [
+      "changed",
+      "changed-ours",
+      "changed-no-keys",
+      "link-outside",
+      "preview-mismatch",
+      "not-undone",
+    ] as RefusedState[]
+  ).map((state) => ({
+    component: "RefusedMessage",
+    state,
+    render: () => <RefusedMessageDemo state={state} />,
+  })),
+  // OverwrittenBox
+  ...(
+    [
+      "kept",
+      "lost",
+      "drift-open",
+      "drift-loading",
+      "drift-refused",
+      "many-keys",
+    ] as OverwrittenState[]
+  ).map((state) => ({
+    component: "OverwrittenBox",
+    state,
+    render: () => <OverwrittenBoxDemo state={state} />,
+  })),
+  // UndoConfirm
+  ...(["default", "busy", "sheet"] as UndoConfirmState[]).map((state) => ({
+    component: "UndoConfirm",
+    state,
+    render: () => <UndoConfirmDemo state={state} />,
+  })),
+  // EditsOffNote
+  ...(
+    [
+      "reason",
+      "reason-demo",
+      "reason-folder",
+      "history",
+      "route",
+      "route-focus",
+      "route-agent",
+    ] as EditsOffState[]
+  ).map((state) => ({
+    component: "EditsOffNote",
+    state,
+    render: () => <EditsOffNoteDemo state={state} />,
+  })),
+  // RestartBox
+  ...(["off", "on", "unknown", "phone"] as RestartState[]).map((state) => ({
+    component: "RestartBox",
+    state,
+    render: () => <RestartBoxDemo state={state} />,
+  })),
+  // PhoneActionBar
+  ...(["default", "with-link", "button-only"] as PhoneBarState[]).map((state) => ({
+    component: "PhoneActionBar",
+    state,
+    render: () => <PhoneActionBarDemo state={state} />,
   })),
 ];

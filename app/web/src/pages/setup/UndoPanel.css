@@ -1,0 +1,21 @@
+/* The undo confirm's frames (UndoPanel.tsx). Tokens only, setup- prefix. */
+
+/* In place of the inspector, a card like the edit rail's. */
+.setup-undo-card {
+  padding: var(--space-4) var(--space-5) var(--space-5);
+}
+
+/* Inline under a Changes row, full width, on the raised surface. */
+.setup-undo-inline {
+  padding: var(--space-3) var(--space-4);
+  background: var(--card-bg);
+  border: 1px solid var(--raised-border);
+  border-radius: var(--radius-lg);
+}
+
+/* The phone sheet fills the modal. */
+.setup-undo-sheet {
+  min-height: 100%;
+  background: var(--card-bg);
+  outline: none;
+}

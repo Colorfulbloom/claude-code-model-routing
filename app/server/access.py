@@ -1,12 +1,18 @@
-"""Read key, mint secret and single-use codes for the Bar Tab server.
+"""Read key, mint secret, edit keys and single-use codes for the Bar Tab server.
 
 The server makes an instance id, a read key and a mint secret at start. The launcher
 gets a code, and the page swaps it for the read key. A code is
 ``<instance>.<random>``, works once and lives 120 seconds. The clock is injectable so
 tests step time without sleeping.
+
+With edits on, the swap answer also hands out the edit key of the code's project. One
+key per project per server run, ``secrets.token_urlsafe(32)``, held in memory only.
+The swap answer is the only place a key leaves this module. It is never logged, put
+in a URL or an error body, or written to a ledger row or a backup name.
 """
 
 import hashlib
+import hmac
 import re
 import secrets
 import threading
@@ -19,6 +25,7 @@ from fastapi import APIRouter, HTTPException
 
 from models import (
     INVALID_REQUEST_RESPONSE,
+    EditsMode,
     ErrorEnvelope,
     MintRequest,
     MintResponse,
@@ -29,6 +36,8 @@ from models import (
 CODE_LIFETIME_SECONDS = 120.0
 _FORGET_AFTER_SECONDS = 3600.0
 _INSTANCE_PATTERN = re.compile(r"^[0-9a-f]{8}$")
+# What an unknown project's key is compared with, so a miss takes as long as a hit.
+_NO_KEY = secrets.token_urlsafe(32).encode()
 
 SwapFailure = Literal["code_used", "code_expired", "code_unknown", "server_restarted"]
 
@@ -62,6 +71,7 @@ class SwapResult:
     read_key: str
     instance: str
     project: str | None
+    edit_keys: dict[str, str] = field(default_factory=dict[str, str])
 
 
 @dataclass
@@ -72,6 +82,8 @@ class AccessState:
     read_key: str = field(default_factory=lambda: secrets.token_urlsafe(32))
     mint_secret: str = field(default_factory=lambda: secrets.token_urlsafe(32))
     clock: Callable[[], float] = time.time
+    edits: EditsMode = "off"
+    _edit_keys: dict[str, str] = field(default_factory=dict[str, str], repr=False)
     _codes: dict[str, _CodeEntry] = field(default_factory=dict[str, _CodeEntry])
     _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
 
@@ -124,7 +136,51 @@ class AccessState:
             if now >= entry.expires:
                 raise SwapError("code_expired")
             entry.used = True
-            return SwapResult(self.read_key, self.instance, entry.project)
+            keys: dict[str, str] = {}
+            if self.edits == "on" and entry.project is not None:
+                keys[entry.project] = self._edit_key(entry.project)
+            return SwapResult(self.read_key, self.instance, entry.project, keys)
+
+    def _edit_key(self, project: str) -> str:
+        """Return the project's edit key, made on first use. Call with the lock held."""
+        key = self._edit_keys.get(project)
+        if key is None:
+            key = secrets.token_urlsafe(32)
+            self._edit_keys[project] = key
+        return key
+
+    def edit_key_matches(self, project: str, presented: bytes) -> bool:
+        """Say whether ``presented`` is the edit key of ``project``.
+
+        The compare is constant time. A project with no key is compared with a random
+        stand-in, so a miss takes as long as a hit. Nothing here ever returns, logs or
+        raises the key.
+
+        Args:
+            project: The project key the request body names.
+            presented: The bytes of the ``X-Bartab-Edit`` header.
+
+        Returns:
+            True only when edits are on and the key belongs to that project.
+        """
+        with self._lock:
+            expected = self._edit_keys.get(project)
+            on = self.edits == "on"
+        same = hmac.compare_digest(presented, (expected or "").encode() or _NO_KEY)
+        return on and expected is not None and same
+
+    def disable_edits(self) -> bool:
+        """Turn edits from on to unavailable for the rest of this run.
+
+        The key store is emptied, so no key handed out before works again. Returns
+        True when the state changed. It never turns edits on.
+        """
+        with self._lock:
+            if self.edits != "on":
+                return False
+            self.edits = "unavailable"
+            self._edit_keys.clear()
+            return True
 
     def _purge(self, now: float) -> None:
         """Forget entries long past their lifetime so the store stays small."""
@@ -170,7 +226,7 @@ def build_router(
             raise HTTPException(status_code=403, detail=err.reason) from None
         return SwapResponse(
             read_key=result.read_key,
-            edit_keys={},
+            edit_keys=result.edit_keys,
             instance=result.instance,
             project=result.project,
         )

@@ -964,6 +964,105 @@ export const HELP = {
       "Bar Tab keeps seven good copies. It checks each new one first, so a failed copy never replaces a good one.",
     glossary: ["backup"],
   },
+
+  // M6 Edit core
+  "edit.save": {
+    title: "This save",
+    kind: "card",
+    shows:
+      "What Bar Tab will write when you press Save, read from the file just now. It updates each time you change the value.",
+    lines: [
+      {
+        label: "File",
+        means: "the file this save writes, with the real file beside it when the path is a link.",
+      },
+      { label: "Set to", means: "the value in that file now, and the value after the save." },
+      {
+        label: "Runs at",
+        means:
+          "what Claude Code runs now and what it would run after the save, each with its status.",
+      },
+      {
+        label: "Minus and plus lines",
+        means: "the lines the save removes and adds, at their real line numbers.",
+      },
+      {
+        label: "Bar Tab read this file at",
+        means:
+          "when Bar Tab read the file for this preview, so a change after that time stops the save.",
+      },
+    ],
+    reading:
+      "Save waits until this card matches your latest choice, so you always see the change before Bar Tab writes it. Bar Tab keeps a copy of the old file first, so Undo can put it back.",
+    glossary: ["when-a-change-applies", "set-to"],
+  },
+  "edit.scopes": {
+    title: "Save to",
+    kind: "field",
+    shows: "The files this value can go in, and what would happen if you saved it there.",
+    lines: [
+      {
+        label: "Takes effect",
+        means: "a value saved here is the one Claude Code uses for this project.",
+      },
+      {
+        label: "Overridden by",
+        means:
+          "a higher scope sets this too, so a value saved here changes nothing in this project.",
+      },
+      { label: "set now", means: "the file that holds the current value." },
+      {
+        label: "links to",
+        means: "the file is a link, so the save changes the file it points to.",
+      },
+    ],
+    list: "scopes",
+    reading:
+      "User reaches every project, so This save lists the other projects it changes. When git tracks the file, This save says so, because others get the change once you push it.",
+    glossary: ["scopes", "precedence"],
+  },
+  "edit.history": {
+    title: "Changes",
+    kind: "card",
+    shows:
+      "Every save Bar Tab made for this project, newest first, with what Undo can do for each one.",
+    lines: [
+      { label: "Change", means: "the setting or agent, with its old and new value." },
+      {
+        label: "File",
+        means: "the scope and the file, plus the real file when the path is a link.",
+      },
+      { label: "Can undo", means: "Undo puts the old file back." },
+      {
+        label: "File changed since",
+        means:
+          "another program changed the file after the save, so Undo shows what it would remove first.",
+      },
+      { label: "Undo deletes the file", means: "the save made a new file, so Undo removes it." },
+      { label: "Undone at", means: "this save was already undone at that time." },
+    ],
+    reading: "This page works with editing off. Only Undo needs editing on.",
+  },
+  "shell.editing": {
+    title: "Editing in Bar Tab",
+    kind: "other",
+    shows:
+      "Whether this Bar Tab can change your files. Editing is off unless Bar Tab starts with --allow-edits.",
+    lines: [
+      {
+        label: "Editing on",
+        means: "Bar Tab can save changes to your settings files and undo its own saves.",
+      },
+      {
+        label: "Editing off",
+        means:
+          "every page still shows your setup and Changes still lists past saves, but Edit and Undo stay off.",
+      },
+    ],
+    reading:
+      "To turn editing on, add --allow-edits to the command you start Bar Tab with. If Bar Tab is already running with editing off, that restarts it with editing on, and open pages ask you to reload. To turn editing off, stop Bar Tab, then start it without --allow-edits.",
+    glossary: ["bar-tab-server"],
+  },
 } as const satisfies Readonly<Record<string, HelpEntry>>;
 
 export type HelpId = keyof typeof HELP;

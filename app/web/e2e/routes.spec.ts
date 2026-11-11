@@ -66,20 +66,12 @@ const routes: RouteCase[] = [
     side: en.nav_agents,
   },
   {
+    // M6a has no agent editing, so this redirects at route level to Your setup > Agents.
     path: `${base}/review/agents/new`,
-    name: en.pg_agent_new,
+    name: en.sf_agents,
     hasProject: true,
-    tab: "review",
-    side: en.nav_agents,
-    hidesTabBar: true,
-  },
-  {
-    path: `${base}/review/agents/scout/edit`,
-    name: en.pg_agent_edit,
-    hasProject: true,
-    tab: "review",
-    side: en.nav_agents,
-    hidesTabBar: true,
+    tab: "setup",
+    side: en.nav_setup,
   },
   {
     path: `${base}/review/models`,
@@ -87,6 +79,16 @@ const routes: RouteCase[] = [
     hasProject: true,
     tab: "review",
     side: en.nav_models,
+  },
+  {
+    // Redirects to that agent on Your setup > Agents, with the route note focused. It follows a
+    // different page, because a redirect from one Agents page to another keeps the page id and
+    // the old h1 is gone, so no h1 takes focus (see the report on a16 follow-up).
+    path: `${base}/review/agents/scout/edit`,
+    name: en.sf_agents,
+    hasProject: true,
+    tab: "setup",
+    side: en.nav_setup,
   },
   {
     path: `${base}/setup`,
@@ -105,7 +107,8 @@ const routes: RouteCase[] = [
   },
   {
     path: `${base}/setup/agents/scout/edit`,
-    name: en.pg_surface_edit,
+    // With editing off or an agent, the edit URL renders the item's page with a note.
+    name: en.sf_agents,
     hasProject: true,
     tab: "setup",
     side: en.nav_setup,

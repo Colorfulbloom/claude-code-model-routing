@@ -29,6 +29,9 @@ def build_schema() -> dict[str, object]:
         port=1,
         data_dir=Path("/work/data"),
         dist_dir=Path("/work/dist"),
+        # Edits on, so the schema holds preview, save and undo. A server with edits off
+        # answers those paths with edits_off and has no schema for them.
+        edits="on",
     )
     return build_app(settings).openapi()
 

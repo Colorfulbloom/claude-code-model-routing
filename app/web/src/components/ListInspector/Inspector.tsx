@@ -21,8 +21,11 @@ export interface InspectorReadOnly {
   reason: string;
   /** The command that changes it from a terminal, when the dashboard can't write it. */
   command?: { command: string; copyLabel: string; copiedLabel: string };
-  /** The file's full path, for Copy path. */
-  path?: { value: string; label: string; copiedLabel: string; ariaLabel?: string };
+  /**
+   * The file's full path, for Copy path. `text` is the path as the screen shows it, such as
+   * "~/.claude/agents/linter.md", and sits left of the button in one row.
+   */
+  path?: { value: string; label: string; copiedLabel: string; ariaLabel?: string; text?: string };
 }
 
 export interface InspectorNotRead {
@@ -164,12 +167,12 @@ export function Inspector({
         {check}
         {readOnly !== undefined && (
           <RaisedFinding className="inspector-readonly">
-            <p className="inspector-readonly-reason">
+            <p className="inspector-readonly-head">
               <LockIcon />
-              <span className="sr-only">{readOnly.lockLabel}. </span>
-              {readOnly.reason}
+              <b className="inspector-readonly-title">{readOnly.lockLabel}</b>
               <HelpButton help="setup.readonly" />
             </p>
+            <p className="inspector-readonly-reason">{readOnly.reason}</p>
             {readOnly.command !== undefined && (
               <CommandRow
                 command={readOnly.command.command}
@@ -178,14 +181,19 @@ export function Inspector({
               />
             )}
             {readOnly.path !== undefined && (
-              <CopyPath
-                value={readOnly.path.value}
-                label={readOnly.path.label}
-                copiedLabel={readOnly.path.copiedLabel}
-                {...(readOnly.path.ariaLabel !== undefined
-                  ? { ariaLabel: readOnly.path.ariaLabel }
-                  : {})}
-              />
+              <div className="inspector-readonly-path">
+                {readOnly.path.text !== undefined && (
+                  <code className="inspector-readonly-file">{readOnly.path.text}</code>
+                )}
+                <CopyPath
+                  value={readOnly.path.value}
+                  label={readOnly.path.label}
+                  copiedLabel={readOnly.path.copiedLabel}
+                  {...(readOnly.path.ariaLabel !== undefined
+                    ? { ariaLabel: readOnly.path.ariaLabel }
+                    : {})}
+                />
+              </div>
             )}
           </RaisedFinding>
         )}

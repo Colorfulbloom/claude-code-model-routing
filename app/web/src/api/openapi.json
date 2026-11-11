@@ -529,6 +529,9 @@
             "title": "Editable Projects",
             "type": "array"
           },
+          "edits": {
+            "$ref": "#/components/schemas/EditsState"
+          },
           "etag": {
             "title": "Etag",
             "type": "string"
@@ -614,6 +617,7 @@
           "running",
           "to_fix_count",
           "editable_projects",
+          "edits",
           "mode",
           "clock"
         ],
@@ -645,6 +649,26 @@
           "reason_code"
         ],
         "title": "BackupFailure",
+        "type": "object"
+      },
+      "BackupFolder": {
+        "additionalProperties": false,
+        "description": "The folder that holds the backups. ``real`` differs from ``display`` by link.",
+        "properties": {
+          "display": {
+            "title": "Display",
+            "type": "string"
+          },
+          "real": {
+            "title": "Real",
+            "type": "string"
+          }
+        },
+        "required": [
+          "display",
+          "real"
+        ],
+        "title": "BackupFolder",
         "type": "object"
       },
       "CardError": {
@@ -1186,6 +1210,1032 @@
         "title": "Cum",
         "type": "object"
       },
+      "DiffLine": {
+        "additionalProperties": false,
+        "description": "One line of a masked diff. ``old_n`` and ``new_n`` are real file line numbers.\n\nA context line has both, an added line only ``new_n`` and a removed line only\n``old_n``.",
+        "properties": {
+          "kind": {
+            "enum": [
+              "ctx",
+              "add",
+              "del"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "new_n": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "New N"
+          },
+          "old_n": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Old N"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "old_n",
+          "new_n",
+          "text"
+        ],
+        "title": "DiffLine",
+        "type": "object"
+      },
+      "DriftAnswer": {
+        "additionalProperties": false,
+        "description": "Answer of ``GET /api/edit/rows/<id>/drift``.\n\n``lines`` is the masked diff from the bytes Bar Tab wrote to the file now. It is\nNone, with ``code`` ``cant_rebuild``, when the bytes can't be rebuilt.",
+        "properties": {
+          "code": {
+            "anyOf": [
+              {
+                "enum": [
+                  "changed",
+                  "preview_mismatch",
+                  "bad_version",
+                  "changed_since_save",
+                  "raced",
+                  "link_outside",
+                  "link_dangling",
+                  "not_regular",
+                  "hard_link",
+                  "not_owner",
+                  "too_large",
+                  "managed",
+                  "forbidden_path",
+                  "folder_not_found",
+                  "unknown_project",
+                  "not_editable",
+                  "bad_value",
+                  "no_change",
+                  "unparsed",
+                  "key_missing",
+                  "key_present",
+                  "parent_not_object",
+                  "repeated_key",
+                  "oracle_failed",
+                  "lock_busy",
+                  "write_failed",
+                  "ledger_damaged",
+                  "backup_damaged",
+                  "not_undoable",
+                  "unknown_edit",
+                  "forged_row",
+                  "request_reused",
+                  "cant_rebuild",
+                  "edits_off",
+                  "edit_key_unknown"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code"
+          },
+          "lines": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/DiffLine"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lines"
+          },
+          "server_time": {
+            "format": "date-time",
+            "title": "Server Time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "server_time",
+          "lines",
+          "code"
+        ],
+        "title": "DriftAnswer",
+        "type": "object"
+      },
+      "EditConflict": {
+        "additionalProperties": false,
+        "description": "The 409 body of a save: the file or the body changed since the preview.\n\n``code`` is ``changed`` or ``preview_mismatch``. ``preview`` is a fresh one, and\n``changed_keys`` lists the keys that changed on disk (empty when the writer can't\ntell, such as after a restart).",
+        "properties": {
+          "changed_keys": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Changed Keys",
+            "type": "array"
+          },
+          "code": {
+            "enum": [
+              "changed",
+              "preview_mismatch",
+              "bad_version",
+              "changed_since_save",
+              "raced",
+              "link_outside",
+              "link_dangling",
+              "not_regular",
+              "hard_link",
+              "not_owner",
+              "too_large",
+              "managed",
+              "forbidden_path",
+              "folder_not_found",
+              "unknown_project",
+              "not_editable",
+              "bad_value",
+              "no_change",
+              "unparsed",
+              "key_missing",
+              "key_present",
+              "parent_not_object",
+              "repeated_key",
+              "oracle_failed",
+              "lock_busy",
+              "write_failed",
+              "ledger_damaged",
+              "backup_damaged",
+              "not_undoable",
+              "unknown_edit",
+              "forged_row",
+              "request_reused",
+              "cant_rebuild",
+              "edits_off",
+              "edit_key_unknown"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "edited_key_changed": {
+            "title": "Edited Key Changed",
+            "type": "boolean"
+          },
+          "preview": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EditPreview"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "server_time": {
+            "format": "date-time",
+            "title": "Server Time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "server_time",
+          "code",
+          "preview",
+          "changed_keys",
+          "edited_key_changed"
+        ],
+        "title": "EditConflict",
+        "type": "object"
+      },
+      "EditDiff": {
+        "additionalProperties": false,
+        "description": "A masked diff of one file. ``new_file`` is True when the save creates it.",
+        "properties": {
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/DiffLine"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "new_file": {
+            "title": "New File",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "lines",
+          "new_file"
+        ],
+        "title": "EditDiff",
+        "type": "object"
+      },
+      "EditEffect": {
+        "additionalProperties": false,
+        "description": "What a save does. ``applies`` says when a running session picks it up.",
+        "properties": {
+          "applies": {
+            "enum": [
+              "new_session",
+              "new_run",
+              "picked_up"
+            ],
+            "title": "Applies",
+            "type": "string"
+          },
+          "runs": {
+            "$ref": "#/components/schemas/EditRuns"
+          },
+          "set": {
+            "$ref": "#/components/schemas/EditSetChange"
+          }
+        },
+        "required": [
+          "set",
+          "runs",
+          "applies"
+        ],
+        "title": "EditEffect",
+        "type": "object"
+      },
+      "EditError": {
+        "additionalProperties": false,
+        "description": "The 422 body of an edit route: a refusal with no write.",
+        "properties": {
+          "code": {
+            "enum": [
+              "changed",
+              "preview_mismatch",
+              "bad_version",
+              "changed_since_save",
+              "raced",
+              "link_outside",
+              "link_dangling",
+              "not_regular",
+              "hard_link",
+              "not_owner",
+              "too_large",
+              "managed",
+              "forbidden_path",
+              "folder_not_found",
+              "unknown_project",
+              "not_editable",
+              "bad_value",
+              "no_change",
+              "unparsed",
+              "key_missing",
+              "key_present",
+              "parent_not_object",
+              "repeated_key",
+              "oracle_failed",
+              "lock_busy",
+              "write_failed",
+              "ledger_damaged",
+              "backup_damaged",
+              "not_undoable",
+              "unknown_edit",
+              "forged_row",
+              "request_reused",
+              "cant_rebuild",
+              "edits_off",
+              "edit_key_unknown"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "params": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Params",
+            "type": "object"
+          },
+          "server_time": {
+            "format": "date-time",
+            "title": "Server Time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "server_time",
+          "code",
+          "params"
+        ],
+        "title": "EditError",
+        "type": "object"
+      },
+      "EditHistory": {
+        "additionalProperties": false,
+        "description": "Answer of ``GET /api/edit/history``.",
+        "properties": {
+          "backup_folder": {
+            "$ref": "#/components/schemas/BackupFolder"
+          },
+          "edits": {
+            "$ref": "#/components/schemas/EditsState"
+          },
+          "older": {
+            "$ref": "#/components/schemas/HistoryOlder"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/HistoryRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "server_time": {
+            "format": "date-time",
+            "title": "Server Time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "server_time",
+          "rows",
+          "older",
+          "backup_folder",
+          "edits"
+        ],
+        "title": "EditHistory",
+        "type": "object"
+      },
+      "EditPreview": {
+        "additionalProperties": false,
+        "description": "Answer of ``POST /api/edit/preview``.\n\n``choice_key`` is the sha256 of the canonical body without ``seq``, and ``version``\nis the token Save sends back. ``refusal`` is None unless a save to the picked scope\nwould be refused.",
+        "properties": {
+          "choice_key": {
+            "title": "Choice Key",
+            "type": "string"
+          },
+          "diff": {
+            "$ref": "#/components/schemas/EditDiff"
+          },
+          "effect": {
+            "$ref": "#/components/schemas/EditEffect"
+          },
+          "options": {
+            "items": {
+              "$ref": "#/components/schemas/OptionRunsAt"
+            },
+            "title": "Options",
+            "type": "array"
+          },
+          "reaches": {
+            "items": {
+              "$ref": "#/components/schemas/EditReach"
+            },
+            "title": "Reaches",
+            "type": "array"
+          },
+          "read_at": {
+            "title": "Read At",
+            "type": "string"
+          },
+          "refusal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EditRefusal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scopes": {
+            "items": {
+              "$ref": "#/components/schemas/EditScopeRow"
+            },
+            "title": "Scopes",
+            "type": "array"
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          },
+          "server_time": {
+            "format": "date-time",
+            "title": "Server Time",
+            "type": "string"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/EditSummary"
+          },
+          "target": {
+            "$ref": "#/components/schemas/EditTarget"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/EditWarning"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "server_time",
+          "seq",
+          "choice_key",
+          "target",
+          "effect",
+          "options",
+          "scopes",
+          "reaches",
+          "warnings",
+          "diff",
+          "summary",
+          "read_at",
+          "version",
+          "refusal"
+        ],
+        "title": "EditPreview",
+        "type": "object"
+      },
+      "EditPreviewRequest": {
+        "additionalProperties": false,
+        "description": "Body of ``POST /api/edit/preview``, settings edits only (``op`` is ``set``).\n\n``seq`` is echoed in the answer so the page drops answers older than its latest\nrequest. The server builds every path from ``project``, ``scope`` and ``field``.",
+        "properties": {
+          "field": {
+            "enum": [
+              "model",
+              "effortLevel",
+              "maxEffortLevel",
+              "autoCompactWindow"
+            ],
+            "title": "Field",
+            "type": "string"
+          },
+          "op": {
+            "const": "set",
+            "title": "Op",
+            "type": "string"
+          },
+          "project": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Project",
+            "type": "string"
+          },
+          "scope": {
+            "enum": [
+              "user",
+              "project",
+              "local"
+            ],
+            "title": "Scope",
+            "type": "string"
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "project",
+          "op",
+          "scope",
+          "field",
+          "value",
+          "seq"
+        ],
+        "title": "EditPreviewRequest",
+        "type": "object"
+      },
+      "EditReach": {
+        "additionalProperties": false,
+        "description": "A project a user-scope save changes, with that project's outcome.",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "outcome": {
+            "$ref": "#/components/schemas/ScopeOutcome"
+          },
+          "project": {
+            "title": "Project",
+            "type": "string"
+          }
+        },
+        "required": [
+          "project",
+          "name",
+          "outcome"
+        ],
+        "title": "EditReach",
+        "type": "object"
+      },
+      "EditRefusal": {
+        "additionalProperties": false,
+        "description": "Why a save to the picked scope would be refused. ``params`` fill the string.",
+        "properties": {
+          "code": {
+            "enum": [
+              "changed",
+              "preview_mismatch",
+              "bad_version",
+              "changed_since_save",
+              "raced",
+              "link_outside",
+              "link_dangling",
+              "not_regular",
+              "hard_link",
+              "not_owner",
+              "too_large",
+              "managed",
+              "forbidden_path",
+              "folder_not_found",
+              "unknown_project",
+              "not_editable",
+              "bad_value",
+              "no_change",
+              "unparsed",
+              "key_missing",
+              "key_present",
+              "parent_not_object",
+              "repeated_key",
+              "oracle_failed",
+              "lock_busy",
+              "write_failed",
+              "ledger_damaged",
+              "backup_damaged",
+              "not_undoable",
+              "unknown_edit",
+              "forged_row",
+              "request_reused",
+              "cant_rebuild",
+              "edits_off",
+              "edit_key_unknown"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "params": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Params",
+            "type": "object"
+          }
+        },
+        "required": [
+          "code",
+          "params"
+        ],
+        "title": "EditRefusal",
+        "type": "object"
+      },
+      "EditRuns": {
+        "additionalProperties": false,
+        "description": "What runs now, and what would run after the save.",
+        "properties": {
+          "after": {
+            "$ref": "#/components/schemas/RunsAt"
+          },
+          "now": {
+            "$ref": "#/components/schemas/RunsAt"
+          }
+        },
+        "required": [
+          "now",
+          "after"
+        ],
+        "title": "EditRuns",
+        "type": "object"
+      },
+      "EditSaveRequest": {
+        "additionalProperties": false,
+        "description": "Body of ``POST /api/edit/save``: the preview body plus its token and an id.\n\n``version`` is the token the preview returned. ``request_id`` makes a repeat press\nof Save return the first result instead of a stale-token refusal.",
+        "properties": {
+          "field": {
+            "enum": [
+              "model",
+              "effortLevel",
+              "maxEffortLevel",
+              "autoCompactWindow"
+            ],
+            "title": "Field",
+            "type": "string"
+          },
+          "op": {
+            "const": "set",
+            "title": "Op",
+            "type": "string"
+          },
+          "project": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Project",
+            "type": "string"
+          },
+          "request_id": {
+            "pattern": "^[A-Za-z0-9_-]{8,64}$",
+            "title": "Request Id",
+            "type": "string"
+          },
+          "scope": {
+            "enum": [
+              "user",
+              "project",
+              "local"
+            ],
+            "title": "Scope",
+            "type": "string"
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Value"
+          },
+          "version": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "project",
+          "op",
+          "scope",
+          "field",
+          "value",
+          "seq",
+          "version",
+          "request_id"
+        ],
+        "title": "EditSaveRequest",
+        "type": "object"
+      },
+      "EditSaved": {
+        "additionalProperties": false,
+        "description": "Answer of a good ``POST /api/edit/save``.",
+        "properties": {
+          "recheck_after_ms": {
+            "title": "Recheck After Ms",
+            "type": "integer"
+          },
+          "row_id": {
+            "title": "Row Id",
+            "type": "string"
+          },
+          "saved_at": {
+            "title": "Saved At",
+            "type": "string"
+          },
+          "server_time": {
+            "format": "date-time",
+            "title": "Server Time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "server_time",
+          "row_id",
+          "saved_at",
+          "recheck_after_ms"
+        ],
+        "title": "EditSaved",
+        "type": "object"
+      },
+      "EditScopeRow": {
+        "additionalProperties": false,
+        "description": "One writable scope of a field: its file, its current value and its outcome.",
+        "properties": {
+          "current_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Value"
+          },
+          "display_path": {
+            "title": "Display Path",
+            "type": "string"
+          },
+          "git_tracked": {
+            "title": "Git Tracked",
+            "type": "boolean"
+          },
+          "link": {
+            "title": "Link",
+            "type": "boolean"
+          },
+          "outcome": {
+            "$ref": "#/components/schemas/ScopeOutcome"
+          },
+          "read_only_reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "field_until_m7",
+                  "risky_until_m8",
+                  "managed",
+                  "plugin",
+                  "not_writable",
+                  "link_outside",
+                  "link_dangling"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Read Only Reason"
+          },
+          "real_path": {
+            "title": "Real Path",
+            "type": "string"
+          },
+          "scope": {
+            "enum": [
+              "user",
+              "project",
+              "local"
+            ],
+            "title": "Scope",
+            "type": "string"
+          },
+          "writable": {
+            "title": "Writable",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "scope",
+          "display_path",
+          "real_path",
+          "link",
+          "git_tracked",
+          "writable",
+          "read_only_reason",
+          "current_value",
+          "outcome"
+        ],
+        "title": "EditScopeRow",
+        "type": "object"
+      },
+      "EditSetChange": {
+        "additionalProperties": false,
+        "description": "The key's value before and after. ``from`` is None when the file has no key.",
+        "properties": {
+          "from": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From"
+          },
+          "to": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "To"
+          }
+        },
+        "required": [
+          "from",
+          "to"
+        ],
+        "title": "EditSetChange",
+        "type": "object"
+      },
+      "EditSummary": {
+        "additionalProperties": false,
+        "description": "The phone bar's line: what the save does to which file.",
+        "properties": {
+          "display_path": {
+            "title": "Display Path",
+            "type": "string"
+          },
+          "lines_changed": {
+            "title": "Lines Changed",
+            "type": "integer"
+          },
+          "verb": {
+            "enum": [
+              "creates",
+              "changes"
+            ],
+            "title": "Verb",
+            "type": "string"
+          }
+        },
+        "required": [
+          "verb",
+          "lines_changed",
+          "display_path"
+        ],
+        "title": "EditSummary",
+        "type": "object"
+      },
+      "EditTarget": {
+        "additionalProperties": false,
+        "description": "The file a save would write. For a link, ``real_path`` is the target file.",
+        "properties": {
+          "display_path": {
+            "title": "Display Path",
+            "type": "string"
+          },
+          "exists": {
+            "title": "Exists",
+            "type": "boolean"
+          },
+          "git_tracked": {
+            "title": "Git Tracked",
+            "type": "boolean"
+          },
+          "link": {
+            "title": "Link",
+            "type": "boolean"
+          },
+          "new_file": {
+            "title": "New File",
+            "type": "boolean"
+          },
+          "real_path": {
+            "title": "Real Path",
+            "type": "string"
+          },
+          "scope": {
+            "enum": [
+              "user",
+              "project",
+              "local"
+            ],
+            "title": "Scope",
+            "type": "string"
+          }
+        },
+        "required": [
+          "scope",
+          "display_path",
+          "real_path",
+          "link",
+          "exists",
+          "git_tracked",
+          "new_file"
+        ],
+        "title": "EditTarget",
+        "type": "object"
+      },
+      "EditUndoRequest": {
+        "additionalProperties": false,
+        "description": "Body of ``POST /api/edit/undo``.\n\n``version`` and ``anyway`` come back from a ``changed_since_save`` answer to\nconfirm \"Undo anyway\".",
+        "properties": {
+          "anyway": {
+            "default": false,
+            "title": "Anyway",
+            "type": "boolean"
+          },
+          "project": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Project",
+            "type": "string"
+          },
+          "request_id": {
+            "pattern": "^[A-Za-z0-9_-]{8,64}$",
+            "title": "Request Id",
+            "type": "string"
+          },
+          "row_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Row Id",
+            "type": "string"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          }
+        },
+        "required": [
+          "project",
+          "row_id",
+          "request_id"
+        ],
+        "title": "EditUndoRequest",
+        "type": "object"
+      },
+      "EditWarning": {
+        "additionalProperties": false,
+        "description": "A warning the preview shows before Save. ``params`` fill the page's string.",
+        "properties": {
+          "code": {
+            "enum": [
+              "wont_win",
+              "config_change_hook",
+              "shared_repo"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "params": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Params",
+            "type": "object"
+          }
+        },
+        "required": [
+          "code",
+          "params"
+        ],
+        "title": "EditWarning",
+        "type": "object"
+      },
+      "EditsState": {
+        "additionalProperties": false,
+        "description": "Whether this server can write. ``instance`` is the server instance id.\n\n``unavailable`` is a demo or fixture run whose folders sit in the checkout.",
+        "properties": {
+          "instance": {
+            "title": "Instance",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "on",
+              "off",
+              "unavailable"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "instance"
+        ],
+        "title": "EditsState",
+        "type": "object"
+      },
       "Effective": {
         "additionalProperties": false,
         "description": "The value that runs and where it comes from.\n\nThe value that runs and where it comes from, so the page never parses a reason.\n``value`` is None for a union part or when nothing runs.",
@@ -1462,6 +2512,250 @@
           "no_usage_rows"
         ],
         "title": "HistoryInfo",
+        "type": "object"
+      },
+      "HistoryOlder": {
+        "additionalProperties": false,
+        "description": "Older rows, with their count.\n\nRows past the newest 20 of one file, and rows a scan of the backups folder found\nfor this project in files that are no longer one of its settings files. The\nsecond kind can't be undone.",
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/HistoryRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          }
+        },
+        "required": [
+          "count",
+          "rows"
+        ],
+        "title": "HistoryOlder",
+        "type": "object"
+      },
+      "HistoryRecheck": {
+        "additionalProperties": false,
+        "description": "The recheck result a ledger row carries, and whether the owner saw it.",
+        "properties": {
+          "changed_keys": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Changed Keys",
+            "type": "array"
+          },
+          "ours_survived": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ours Survived"
+          },
+          "seen": {
+            "title": "Seen",
+            "type": "boolean"
+          },
+          "state": {
+            "enum": [
+              "checking",
+              "confirmed",
+              "overwritten"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "changed_keys",
+          "ours_survived",
+          "seen"
+        ],
+        "title": "HistoryRecheck",
+        "type": "object"
+      },
+      "HistoryRow": {
+        "additionalProperties": false,
+        "description": "One edit in the Changes page. Values are masked.\n\n``from`` and ``to`` are None for a create or a removed key.",
+        "properties": {
+          "display_path": {
+            "title": "Display Path",
+            "type": "string"
+          },
+          "field": {
+            "title": "Field",
+            "type": "string"
+          },
+          "from": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "not_undoable_reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "not_newest",
+                  "undo_row",
+                  "restore_row",
+                  "backup_pruned",
+                  "backup_damaged",
+                  "file_refused"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Not Undoable Reason"
+          },
+          "op": {
+            "enum": [
+              "set",
+              "create",
+              "undo",
+              "restore"
+            ],
+            "title": "Op",
+            "type": "string"
+          },
+          "real_path": {
+            "title": "Real Path",
+            "type": "string"
+          },
+          "recheck": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HistoryRecheck"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scope": {
+            "enum": [
+              "user",
+              "project",
+              "local"
+            ],
+            "title": "Scope",
+            "type": "string"
+          },
+          "subject": {
+            "$ref": "#/components/schemas/HistorySubject"
+          },
+          "time": {
+            "title": "Time",
+            "type": "string"
+          },
+          "to": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "To"
+          },
+          "undo_state": {
+            "enum": [
+              "can_undo",
+              "changed_since",
+              "undone",
+              "deletes_file",
+              "not_undoable"
+            ],
+            "title": "Undo State",
+            "type": "string"
+          },
+          "undone_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Undone At"
+          }
+        },
+        "required": [
+          "id",
+          "time",
+          "subject",
+          "field",
+          "from",
+          "to",
+          "scope",
+          "display_path",
+          "real_path",
+          "op",
+          "undo_state",
+          "undone_at",
+          "recheck",
+          "not_undoable_reason"
+        ],
+        "title": "HistoryRow",
+        "type": "object"
+      },
+      "HistorySubject": {
+        "additionalProperties": false,
+        "description": "What a ledger row edited. ``name`` is None for the main session.",
+        "properties": {
+          "kind": {
+            "enum": [
+              "main",
+              "agent"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "required": [
+          "kind",
+          "name"
+        ],
+        "title": "HistorySubject",
         "type": "object"
       },
       "HookFacts": {
@@ -2151,6 +3445,23 @@
         "title": "LiveSessionsUnchanged",
         "type": "object"
       },
+      "MarkSeenRequest": {
+        "additionalProperties": false,
+        "description": "Body of ``POST /api/edit/rows/<id>/seen``. The read key is enough.",
+        "properties": {
+          "project": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Project",
+            "type": "string"
+          }
+        },
+        "required": [
+          "project"
+        ],
+        "title": "MarkSeenRequest",
+        "type": "object"
+      },
       "MaskedText": {
         "additionalProperties": false,
         "description": "A value that may hold a secret. ``masked`` is True when masking hid any part.",
@@ -2774,6 +4085,52 @@
         "title": "ModelTokens",
         "type": "object"
       },
+      "OpenWarning": {
+        "additionalProperties": false,
+        "description": "Answer of ``GET /api/edit/open``: the newest overwritten row not yet seen.",
+        "properties": {
+          "row": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HistoryRow"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "server_time": {
+            "format": "date-time",
+            "title": "Server Time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "server_time",
+          "row"
+        ],
+        "title": "OpenWarning",
+        "type": "object"
+      },
+      "OptionRunsAt": {
+        "additionalProperties": false,
+        "description": "One option of an effort or effort cap field, with where it would run.",
+        "properties": {
+          "runs_at": {
+            "$ref": "#/components/schemas/RunsAt"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "value",
+          "runs_at"
+        ],
+        "title": "OptionRunsAt",
+        "type": "object"
+      },
       "OutputStyleFacts": {
         "additionalProperties": false,
         "description": "Inspector facts for the output style setting or one style file.",
@@ -3345,6 +4702,18 @@
             "title": "Display Path",
             "type": "string"
           },
+          "edit_block": {
+            "anyOf": [
+              {
+                "const": "folder_not_found",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edit Block"
+          },
           "key": {
             "title": "Key",
             "type": "string"
@@ -3478,6 +4847,69 @@
           "command"
         ],
         "title": "ReadOnly",
+        "type": "object"
+      },
+      "RecheckAnswer": {
+        "additionalProperties": false,
+        "description": "Answer of ``GET /api/edit/rows/<id>``: the read-only checks after a save.\n\n``ours_survived`` is None while the state is ``checking``.",
+        "properties": {
+          "changed_keys": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Changed Keys",
+            "type": "array"
+          },
+          "checked_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checked At"
+          },
+          "ours_survived": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ours Survived"
+          },
+          "seen": {
+            "title": "Seen",
+            "type": "boolean"
+          },
+          "server_time": {
+            "format": "date-time",
+            "title": "Server Time",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "checking",
+              "confirmed",
+              "overwritten"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "server_time",
+          "state",
+          "changed_keys",
+          "ours_survived",
+          "checked_at",
+          "seen"
+        ],
+        "title": "RecheckAnswer",
         "type": "object"
       },
       "ReviewSession": {
@@ -3947,6 +5379,83 @@
           "session"
         ],
         "title": "RunningItem",
+        "type": "object"
+      },
+      "RunsAt": {
+        "additionalProperties": false,
+        "description": "What the setting runs at, and the Model check status of that value.",
+        "properties": {
+          "status": {
+            "enum": [
+              "in_effect",
+              "overridden",
+              "ignored",
+              "lowered",
+              "invalid",
+              "default",
+              "unknown"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "value",
+          "status"
+        ],
+        "title": "RunsAt",
+        "type": "object"
+      },
+      "ScopeOutcome": {
+        "additionalProperties": false,
+        "description": "What a value saved in one scope would do. ``beaten_by`` names the scope above.",
+        "properties": {
+          "beaten_by": {
+            "anyOf": [
+              {
+                "enum": [
+                  "user",
+                  "project",
+                  "local"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Beaten By"
+          },
+          "status": {
+            "enum": [
+              "in_effect",
+              "overridden",
+              "ignored",
+              "lowered",
+              "invalid",
+              "default",
+              "unknown"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "beaten_by"
+        ],
+        "title": "ScopeOutcome",
         "type": "object"
       },
       "ScopeReach": {
@@ -5993,6 +7502,108 @@
         "title": "Unchanged",
         "type": "object"
       },
+      "UndoConflict": {
+        "additionalProperties": false,
+        "description": "The 409 body of an undo: the file changed since the save.",
+        "properties": {
+          "code": {
+            "enum": [
+              "changed",
+              "preview_mismatch",
+              "bad_version",
+              "changed_since_save",
+              "raced",
+              "link_outside",
+              "link_dangling",
+              "not_regular",
+              "hard_link",
+              "not_owner",
+              "too_large",
+              "managed",
+              "forbidden_path",
+              "folder_not_found",
+              "unknown_project",
+              "not_editable",
+              "bad_value",
+              "no_change",
+              "unparsed",
+              "key_missing",
+              "key_present",
+              "parent_not_object",
+              "repeated_key",
+              "oracle_failed",
+              "lock_busy",
+              "write_failed",
+              "ledger_damaged",
+              "backup_damaged",
+              "not_undoable",
+              "unknown_edit",
+              "forged_row",
+              "request_reused",
+              "cant_rebuild",
+              "edits_off",
+              "edit_key_unknown"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "server_time": {
+            "format": "date-time",
+            "title": "Server Time",
+            "type": "string"
+          },
+          "undo_preview": {
+            "$ref": "#/components/schemas/UndoPreview"
+          }
+        },
+        "required": [
+          "server_time",
+          "code",
+          "undo_preview"
+        ],
+        "title": "UndoConflict",
+        "type": "object"
+      },
+      "UndoDone": {
+        "additionalProperties": false,
+        "description": "Answer of a good ``POST /api/edit/undo``.",
+        "properties": {
+          "row_id": {
+            "title": "Row Id",
+            "type": "string"
+          },
+          "server_time": {
+            "format": "date-time",
+            "title": "Server Time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "server_time",
+          "row_id"
+        ],
+        "title": "UndoDone",
+        "type": "object"
+      },
+      "UndoPreview": {
+        "additionalProperties": false,
+        "description": "What \"Undo anyway\" would do to a file that changed since the save.",
+        "properties": {
+          "diff": {
+            "$ref": "#/components/schemas/EditDiff"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "diff",
+          "version"
+        ],
+        "title": "UndoPreview",
+        "type": "object"
+      },
       "Unpriced": {
         "additionalProperties": false,
         "description": "Requests with no price, and the models they ran on, in catalog order.",
@@ -6630,6 +8241,696 @@
         "summary": "Get Cost Chart",
         "tags": [
           "review"
+        ]
+      }
+    },
+    "/api/edit/history": {
+      "get": {
+        "operationId": "get_edit_history",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "project",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 63,
+                  "pattern": "^[a-z0-9][a-z0-9-]{0,62}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EditHistory"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "summary": "Get Edit History",
+        "tags": [
+          "edit"
+        ]
+      }
+    },
+    "/api/edit/open": {
+      "get": {
+        "operationId": "get_edit_open",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "project",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 63,
+                  "pattern": "^[a-z0-9][a-z0-9-]{0,62}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project"
+            }
+          },
+          {
+            "in": "query",
+            "name": "item",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Item"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenWarning"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "summary": "Get Edit Open",
+        "tags": [
+          "edit"
+        ]
+      }
+    },
+    "/api/edit/preview": {
+      "post": {
+        "operationId": "post_edit_preview",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EditPreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EditPreview"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EditConflict"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EditError"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "summary": "Post Edit Preview",
+        "tags": [
+          "edit"
+        ]
+      }
+    },
+    "/api/edit/rows/{row_id}": {
+      "get": {
+        "operationId": "get_edit_row",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "row_id",
+            "required": true,
+            "schema": {
+              "maxLength": 200,
+              "minLength": 1,
+              "title": "Row Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "project",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 63,
+                  "pattern": "^[a-z0-9][a-z0-9-]{0,62}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecheckAnswer"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "summary": "Get Edit Row",
+        "tags": [
+          "edit"
+        ]
+      }
+    },
+    "/api/edit/rows/{row_id}/drift": {
+      "get": {
+        "operationId": "get_edit_drift",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "row_id",
+            "required": true,
+            "schema": {
+              "maxLength": 200,
+              "minLength": 1,
+              "title": "Row Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "project",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 63,
+                  "pattern": "^[a-z0-9][a-z0-9-]{0,62}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DriftAnswer"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EditError"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "summary": "Get Edit Drift",
+        "tags": [
+          "edit"
+        ]
+      }
+    },
+    "/api/edit/rows/{row_id}/seen": {
+      "post": {
+        "operationId": "mark_edit_seen",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "row_id",
+            "required": true,
+            "schema": {
+              "maxLength": 200,
+              "minLength": 1,
+              "title": "Row Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarkSeenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecheckAnswer"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "summary": "Mark Edit Seen",
+        "tags": [
+          "edit"
+        ]
+      }
+    },
+    "/api/edit/save": {
+      "post": {
+        "operationId": "post_edit_save",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EditSaveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EditSaved"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EditConflict"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EditError"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "summary": "Post Edit Save",
+        "tags": [
+          "edit"
+        ]
+      }
+    },
+    "/api/edit/undo": {
+      "post": {
+        "operationId": "post_edit_undo",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EditUndoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UndoDone"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UndoConflict"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EditError"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "summary": "Post Edit Undo",
+        "tags": [
+          "edit"
         ]
       }
     },

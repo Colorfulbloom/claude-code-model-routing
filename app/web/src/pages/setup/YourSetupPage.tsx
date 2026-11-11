@@ -5,6 +5,8 @@
  * scope chip under each row for every scope that has something to say (owner decision 1). Every
  * row carries its scopes already, so the Switch fetches nothing and focus stays on it.
  *
+ * The header also links to the Changes page, the history of every save Bar Tab made.
+ *
  * States. First load shows bones with one spoken line. A failed first read shows one raised error
  * with Try again. A refetch that fails keeps the last good rows and says so. A project that is not
  * on Bar Tab's list reads "Not read here" in its project scopes, with a notice. A part that is empty
@@ -16,6 +18,7 @@ import { useRules } from "@/api/rules";
 import type { RulesCard } from "@/api/rules";
 import { useSetupMap } from "@/api/setup";
 import type { SetupMap } from "@/api/types";
+import { Button } from "@/components/Button/Button";
 import { Card } from "@/components/Card/Card";
 import { HelpButton } from "@/components/HelpButton/HelpButton";
 import { NoticeLine } from "@/components/NoticeLine/NoticeLine";
@@ -24,6 +27,7 @@ import { ScopeLabel } from "@/components/ScopeLabel/ScopeLabel";
 import { StatusChip } from "@/components/StatusChip/StatusChip";
 import { Switch } from "@/components/Switch/Switch";
 import { clockShort } from "@/lib/clock";
+import { changesPath } from "@/lib/setup-routes";
 import { mapRows } from "@/lib/setup-map";
 import { scopeMeaning, SCOPE_NAMES } from "@/lib/setup-words";
 import { decidesHref } from "@/pages/reference/reference-routes";
@@ -141,6 +145,9 @@ function YourSetupProject({ project }: { project: string }) {
               {t("su_switch")}
             </Switch>
             <HelpButton help="setup.scopes" />
+            <Button variant="quiet" href={`#${changesPath(project)}`}>
+              {t("cg_h1")}
+            </Button>
           </>
         }
       />

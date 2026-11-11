@@ -485,7 +485,10 @@ describe("readOnlyView", () => {
       value: "/work/agents/linter.md",
       label: "Copy path",
       copiedLabel: "Copied",
+      text: ".claude/settings.json",
     });
+    // The box's title is the board's "Can't change here".
+    expect(readOnly("managed")?.lockLabel).toBe("Can't change here");
     expect(readOnly("plugin")?.reason).toContain("This comes from the lint-kit plugin.");
     expect(readOnly("plugin")?.reason).toContain("copy the file into your own agents folder");
   });

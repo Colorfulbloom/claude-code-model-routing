@@ -69,6 +69,9 @@ describe("parse and build round trip", () => {
     { kind: "item", part: "agents", key: "design:critic", scopes: true },
     { kind: "item", part: "settings", key: "env.A/B", scopes: false },
     { kind: "item", part: "permissions", key: "allow:Bash(git *)", scopes: false },
+    { kind: "edit", part: "settings", key: "effortLevel", scopes: false },
+    { kind: "edit", part: "settings", key: "env.A/B", scopes: true },
+    { kind: "changes" },
     { kind: "to_fix" },
     { kind: "unknown_part", part: "widgets" },
   ];

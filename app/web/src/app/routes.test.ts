@@ -19,6 +19,7 @@ describe("parseRoute", () => {
     ["/p/a/setup/settings", "surface", "a"],
     ["/p/a/setup/settings/effort", "surface", "a"],
     ["/p/a/setup/settings/effort/edit", "surface_edit", "a"],
+    ["/p/a/setup/changes", "changes", "a"],
     ["/p/a/to-fix", "to_fix", "a"],
   ])("%s", (path, page, project) => {
     const parsed = parseRoute(path);

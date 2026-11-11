@@ -36,6 +36,7 @@ export function sidebarCurrent(page: PageId): SidebarId | null {
     case "setup":
     case "surface":
     case "surface_edit":
+    case "changes":
       return "setup";
     case "to_fix":
       return "tofix";
@@ -68,6 +69,7 @@ export function tabCurrent(page: PageId): TabId | null {
     case "setup":
     case "surface":
     case "surface_edit":
+    case "changes":
       return "setup";
     case "to_fix":
       return "tofix";

@@ -11,7 +11,7 @@ import { describe, expect, it } from "vitest";
 import { en } from "@/strings/en";
 import { sourceFiles, type SourceFile } from "@/test/source-files";
 
-// Keys a later M5 task wires up. The lead empties this set before the exit runs.
+// Keys a later task wires up. The lead empties this set before the exit runs.
 const PENDING = new Set<string>([]);
 
 /** Families the code reaches by building the key at run time, each with its reason. */

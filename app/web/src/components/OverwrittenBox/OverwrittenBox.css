@@ -1,0 +1,51 @@
+.overwritten-box {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.overwritten-box-keys-h {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.overwritten-box-keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px var(--space-2);
+}
+
+.overwritten-box-key {
+  overflow-wrap: anywhere;
+}
+
+.overwritten-box-ours {
+  font-size: var(--text-sm);
+}
+
+.overwritten-box-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+
+.overwritten-box-drift {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.overwritten-box-drift:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.overwritten-box-drift-h {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+}
+
+.overwritten-box-wait,
+.overwritten-box-refused {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}

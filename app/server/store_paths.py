@@ -47,6 +47,15 @@ def shared_store_root(config_dir: Path) -> Path:
     return config_dir / "routing-dashboard" / "bartab"
 
 
+def backups_dir(config_dir: Path) -> Path:
+    """Return the old app's backups folder, ``<config>/routing-dashboard/backups``.
+
+    Bar Tab writes there only with edits on (m6-build.md section 2). It sits beside
+    the store root, not inside it, so the write guard gets it as an extra root.
+    """
+    return config_dir / "routing-dashboard" / "backups"
+
+
 @dataclass(frozen=True)
 class StoreLayout:
     """The fixed names inside one store root."""

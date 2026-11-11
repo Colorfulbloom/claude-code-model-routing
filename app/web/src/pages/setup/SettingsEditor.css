@@ -1,0 +1,59 @@
+/*
+ * The settings editor's own parts (SettingsEditor.tsx). Tokens only, setup- prefix. The rail,
+ * Save to list and This save bring their own rules from their components.
+ */
+
+/* The line under the effort control: each level that would not run as it reads. */
+.setup-opt-runs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+}
+
+.setup-opt-run {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+
+.setup-opt-name {
+  font-family: var(--font-mono);
+  font-weight: var(--weight-semibold);
+}
+
+/* The compact window's number control. */
+.setup-window {
+  display: grid;
+  gap: var(--space-1);
+  max-width: 260px;
+}
+
+.setup-window-label {
+  font-weight: var(--weight-semibold);
+}
+
+.setup-window-input {
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  background: var(--card-bg);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: var(--text-md);
+}
+
+.setup-window-input[data-focused] {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.setup-window-input[data-invalid] {
+  border-color: var(--status-invalid-fg);
+}
+
+/* The wait before the first preview answers. */
+.setup-edit-wait {
+  font-size: var(--text-sm);
+}

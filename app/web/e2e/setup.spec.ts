@@ -432,7 +432,10 @@ test.describe("a surface", () => {
     await expect(
       inspector.locator(".inspector-small").filter({ hasText: /last 30 days/ }),
     ).toBeVisible();
-    const link = inspector.getByRole("link", { name: en.nav_agents, exact: true });
+    const link = inspector.getByRole("link", {
+      name: en.ag_runs_link.replace("{name}", "builder"),
+      exact: true,
+    });
     await expect(link).toHaveAttribute("href", /review\/agents\?range=30d&agent=builder$/);
     await expect(link).toHaveCSS("text-decoration-line", "none");
   });

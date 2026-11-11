@@ -1,0 +1,192 @@
+/*
+ * The Changes page (board x-history, m6.css .m6-hist). Tokens only. Every class carries the
+ * changes- prefix, because page CSS is global (fact J-0ba9). The rows are a four-column grid at
+ * 721px and up, under a header row that screen readers skip (each cell carries its own label). At
+ * 720px and under each row stacks and the header row goes. The four column words stay visually
+ * hidden (the shared sr-only class), so a screen reader still hears them (plan item 24).
+ */
+
+/* A long folder path wraps inside the card instead of widening the page. */
+.changes-page,
+.changes-card,
+.changes-list,
+.changes-older,
+.changes-head,
+.changes-backup,
+.changes-backup > span {
+  min-width: 0;
+}
+
+.changes-page > .changes-card,
+.changes-page > .empty-page,
+.changes-page > .changes-note,
+.changes-page > .changes-problem {
+  margin-top: var(--space-4);
+}
+
+.changes-page > .page-header + .changes-note {
+  margin-top: var(--space-2);
+}
+
+.changes-page > .changes-note + .changes-card {
+  margin-top: var(--space-3);
+}
+
+.changes-note .edits-off-note {
+  margin-top: 0;
+}
+
+.changes-head,
+.changes-row {
+  display: grid;
+  grid-template-columns: 84px minmax(180px, 1.1fr) minmax(0, 1.6fr) 230px;
+  gap: var(--space-3);
+  align-items: start;
+}
+
+.changes-head {
+  padding: 0 var(--space-4) 6px;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.changes-list {
+  margin: 0;
+  padding: 0;
+  background: var(--inset-bg);
+  border: 1px solid var(--inset-border);
+  border-radius: var(--radius-lg);
+  list-style: none;
+}
+
+.changes-row {
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+.changes-row:first-child {
+  border-top: 0;
+}
+
+.changes-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  align-items: center;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.changes-undo {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.changes-state,
+.changes-recheck,
+.changes-link {
+  font-size: var(--text-sm);
+}
+
+.changes-recheck {
+  display: grid;
+  line-height: 1.5;
+}
+
+/* The outcome word and its sentence sit on separate lines. */
+.changes-recheck-word,
+.changes-recheck-note {
+  display: block;
+}
+
+.changes-link {
+  flex-basis: 100%;
+  color: var(--text-muted);
+}
+
+.changes-real,
+.changes-folder {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+
+.changes-chip {
+  padding: 1px 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+}
+
+.changes-confirm {
+  padding-top: var(--space-2);
+}
+
+/* A problem or an undo confirm takes the row's full width, under its four cells. */
+.changes-row > .changes-problem,
+.changes-row > .changes-confirm {
+  grid-column: 1 / -1;
+}
+
+.changes-older {
+  margin-top: var(--space-3);
+}
+
+.changes-older-trigger {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+  min-height: 32px;
+  padding: 0;
+  background: none;
+  border: 0;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.changes-older-h {
+  font-weight: var(--weight-semibold);
+}
+
+.changes-chevron::before {
+  content: "\25B8" / "";
+  display: inline-block;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.changes-older-trigger[aria-expanded="true"] .changes-chevron::before {
+  content: "\25BE" / "";
+}
+
+.changes-older-panel {
+  margin-top: var(--space-2);
+}
+
+.changes-backup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) 6px;
+  align-items: center;
+  margin: var(--space-3) 0 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+@media (width <= 720px) {
+  .changes-head {
+    display: none;
+  }
+
+  .changes-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+    padding: var(--space-3);
+  }
+
+  .changes-undo {
+    flex-flow: row wrap;
+    align-items: center;
+  }
+}

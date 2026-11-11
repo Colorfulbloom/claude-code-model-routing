@@ -1,9 +1,21 @@
-"""Runtime write guard for real-data mode.
+"""Runtime write guard for real-data mode and for any server that can edit.
 
 ``install(store_root)`` adds a ``sys.addaudithook`` that raises ``PermissionError``
 for any file system write outside the store root and the extra roots. Reads are
 allowed everywhere. Audit hooks can't be removed once set, so the server installs
-this once, early, in real mode only, and tests run it in subprocesses.
+this once, early, in real mode and in any mode started with ``--allow-edits``, and
+tests run it in subprocesses.
+
+With ``edits=True`` (m6-build.md section 3.5) the hook is stricter and ``permit``
+works. A bare name under a ``dir_fd`` is allowed only when ``fstat(dir_fd)`` names a
+folder the current thread's permit holds (by device and inode) or a folder inside a
+root. A write ``open`` with a relative path is refused, because ``os.open(name,
+dir_fd=)`` raises its audit event with no ``dir_fd`` and so can't be judged. The
+writer opens every file it writes by absolute path. ``permit(target)`` names the
+exact files the current thread may write outside the roots: the real target, temp
+files ``.routing-dashboard-<16 hex>.tmp`` in its folder, and for a create the one
+folder it may make. ``os.fstat`` raises no audit event, so the hook doesn't re-enter
+itself.
 
 The hook does string and path checks only. ``os.path.realpath`` and
 ``os.path.abspath`` use ``os.lstat``, ``os.readlink`` and ``os.getcwd``, none of
@@ -48,11 +60,13 @@ What the events can't cover, and so what this guard can't stop:
   (``mmap.__new__`` carries only ``fileno``) and ``os.write``, which has no event.
   The ``open`` that made the fd was checked, so an fd opened for write outside a
   root can't exist, but an fd inherited from before ``install`` is unchecked.
-- A name relative to a directory fd (``dir_fd``). The fd's directory can't be
-  resolved without a file system call, so only a bare name (no separator, not
-  ``.`` or ``..``) is allowed, which is what ``shutil.rmtree`` uses inside the tree
-  its own event already checked. ``os.open`` raises ``open`` with no ``dir_fd``, so a
-  relative write through it is judged against the working folder.
+- A name relative to a directory fd (``dir_fd``), with edits off. The fd's
+  directory can't be resolved without a file system call, so only a bare name (no
+  separator, not ``.`` or ``..``) is allowed, which is what ``shutil.rmtree`` uses
+  inside the tree its own event already checked. ``os.open`` raises ``open`` with no
+  ``dir_fd``, so a relative write through it is judged against the working folder.
+  With edits on, the fd's folder is identified by ``fstat`` and by its path from the
+  system, and a relative write ``open`` is refused.
 - ``os.mkfifo`` and ``os.mknod``, which have no audit event.
 - Child processes (``subprocess.Popen``, ``os.exec``, ``os.system``,
   ``os.posix_spawn``, ``os.spawn``, ``os.fork`` and ``pty.spawn`` raise events, but
@@ -71,17 +85,24 @@ sets ``sys.dont_write_bytecode``.
 
 from __future__ import annotations
 
+import contextlib
 import errno
+import fcntl
 import logging
 import os
+import re
+import stat
 import sys
 import threading
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Generator, Sequence
 from pathlib import Path
 from typing import cast
 from urllib.parse import unquote
 
-__all__ = ["install"]
+# ruff: noqa: PTH115, PTH117, PTH119, PTH120 - the hook does string work on paths and
+# makes no file system call of its own, so it keeps to os.path.
+
+__all__ = ["Permit", "install", "permit"]
 
 LOG = logging.getLogger(__name__)
 
@@ -91,6 +112,8 @@ _ALWAYS_WRITABLE = frozenset({os.devnull})
 _MEMORY_DATABASES = (":memory:", "file::memory:")
 _URI_PREFIX = "file:"
 _URI_AUTHORITY = "//"
+_TEMP_NAME = re.compile(r"^\.routing-dashboard-[0-9a-f]{16}\.tmp$")
+_PATH_BUFFER = 1024
 
 _Check = Callable[[tuple[object, ...]], str | None]
 
@@ -101,10 +124,12 @@ class _State:
     def __init__(self) -> None:
         self.roots: tuple[str, ...] = ()
         self.installed = False
+        self.edits = False
 
 
 STATE = _State()
 BUSY = threading.local()
+PERMITS = threading.local()
 
 
 def _text(path: object) -> str:
@@ -126,20 +151,135 @@ def _inside(resolved: str) -> bool:
     )
 
 
+class Permit:
+    """The exact files one thread may write outside the roots (see ``permit``).
+
+    Folders are bound by ``(st_dev, st_ino)`` taken from the folder fd the writer
+    opened, never by name, so a folder swapped for a link after the check is not the
+    folder the permit holds.
+    """
+
+    def __init__(self, target: str, make_dir: str | None) -> None:
+        """Hold the real target and, for a create, the one folder it may make."""
+        self.target = target
+        self.folder = os.path.dirname(target)
+        self.make_dir = make_dir
+        self._folders: set[tuple[int, int]] = set()
+        self._parents: set[tuple[int, int]] = set()
+
+    def bind_folder(self, fd: int) -> None:
+        """Hold the folder an fd names as the one that contains the target.
+
+        Raises:
+            NotADirectoryError: When the fd is not a folder.
+        """
+        self._folders.add(self._folder_identity(fd))
+
+    def bind_parent(self, fd: int) -> None:
+        """Hold the folder an fd names as the one the made folder is created in.
+
+        Raises:
+            NotADirectoryError: When the fd is not a folder, or the permit makes none.
+        """
+        if self.make_dir is None:
+            raise NotADirectoryError(errno.ENOTDIR, "this permit makes no folder")
+        self._parents.add(self._folder_identity(fd))
+
+    @staticmethod
+    def _folder_identity(fd: int) -> tuple[int, int]:
+        info = os.fstat(fd)
+        if not stat.S_ISDIR(info.st_mode):
+            raise NotADirectoryError(errno.ENOTDIR, "not a folder")
+        return (info.st_dev, info.st_ino)
+
+    def allows_name(self, identity: tuple[int, int], name: str) -> bool:
+        """True when a bare name under a bound folder is one this permit names."""
+        if identity in self._folders:
+            return name == os.path.basename(self.target) or bool(_TEMP_NAME.match(name))
+        if identity in self._parents and self.make_dir is not None:
+            return name == os.path.basename(self.make_dir)
+        return False
+
+    def allows_path(self, resolved: str) -> bool:
+        """True when a resolved absolute path is a file or folder this permit names."""
+        if resolved in (self.target, self.make_dir):
+            return True
+        return os.path.dirname(resolved) == self.folder and bool(
+            _TEMP_NAME.match(os.path.basename(resolved))
+        )
+
+
+def _identity(fd: int) -> tuple[int, int] | None:
+    """Return ``(st_dev, st_ino)`` of an open fd, or None when it can't be read."""
+    try:
+        info = os.fstat(fd)
+    except OSError:
+        return None
+    return (info.st_dev, info.st_ino)
+
+
+def _fd_folder(fd: int) -> str | None:
+    """Return the real path of the folder an fd holds, or None when unknown.
+
+    Linux reads ``/proc/self/fd/<fd>``. macOS asks ``fcntl`` for ``F_GETPATH``. Both
+    raise no event this hook judges. Anything else gives None, which the caller
+    treats as "not inside a root".
+    """
+    try:
+        if sys.platform == "darwin":
+            get_path = getattr(fcntl, "F_GETPATH", None)
+            if get_path is None:
+                return None
+            raw = fcntl.fcntl(fd, get_path, b"\0" * _PATH_BUFFER)
+            return os.path.realpath(os.fsdecode(raw.split(b"\0", 1)[0]))
+        return os.path.realpath(os.readlink(f"/proc/self/fd/{fd}"))
+    except (OSError, ValueError):
+        return None
+
+
+def _bare(name: str) -> bool:
+    return name not in ("", ".", "..") and os.sep not in name
+
+
+def _current() -> Permit | None:
+    return cast("Permit | None", getattr(PERMITS, "active", None))
+
+
+def _name_under_fd(name: str, dir_fd: int) -> bool:
+    """Judge a bare name under a directory fd with edits on."""
+    if not _bare(name):
+        return False
+    identity = _identity(dir_fd)
+    if identity is None:
+        return False
+    held = _current()
+    if held is not None and held.allows_name(identity, name):
+        return True
+    folder = _fd_folder(dir_fd)
+    return folder is not None and _inside(folder)
+
+
 def _allowed(path: object, dir_fd: object = None) -> bool:
     """True when a write to ``path`` is allowed.
 
-    An int is a file descriptor, which an earlier ``open`` already checked. A bare
-    name below an open directory fd is allowed (see the module docstring).
+    An int is a file descriptor, which an earlier ``open`` already checked. With edits
+    off, a bare name below an open directory fd is allowed (see the module
+    docstring). With edits on, that name is judged by the fd's folder identity.
     """
     if isinstance(path, int):
         return True
     text = _text(path)
     if isinstance(dir_fd, int) and dir_fd >= 0 and not text.startswith(os.sep):
-        return text not in ("", ".", "..") and os.sep not in text
+        if STATE.edits:
+            return _name_under_fd(text, dir_fd)
+        return _bare(text)
     if text in _ALWAYS_WRITABLE:
         return True
-    return _inside(os.path.realpath(text))
+    resolved = os.path.realpath(text)
+    if _inside(resolved):
+        return True
+    held = _current()
+    return held is not None and held.allows_path(resolved)
 
 
 def writes(mode: object, flags: object) -> bool:
@@ -153,9 +293,13 @@ def writes(mode: object, flags: object) -> bool:
 
 def _check_open(args: tuple[object, ...]) -> str | None:
     path, mode, flags = args[0], args[1], args[2]
-    if writes(mode, flags) and not _allowed(path):
+    if not writes(mode, flags):
+        return None
+    # os.open(name, dir_fd=) raises this event with no dir_fd, so a relative name can't
+    # be judged by its folder. With edits on the writer opens by absolute path.
+    if STATE.edits and not isinstance(path, int) and not _text(path).startswith(os.sep):
         return "open"
-    return None
+    return None if _allowed(path) else "open"
 
 
 def _check_rename(args: tuple[object, ...]) -> str | None:
@@ -308,20 +452,82 @@ def _resolve_root(root: Path) -> str:
     return os.path.realpath(os.fspath(root)).rstrip(os.sep) or os.sep
 
 
-def install(store_root: Path, extra_roots: Sequence[Path] = ()) -> None:
+def install(
+    store_root: Path, extra_roots: Sequence[Path] = (), *, edits: bool = False
+) -> None:
     """Refuse every write outside ``store_root`` and ``extra_roots`` from now on.
 
     Roots are made absolute and resolved here, so a root that is a symlink or a
     relative path is judged by where it really points. The hook can't be removed.
-    A second call with the same roots does nothing, and one with other roots raises
-    ``RuntimeError``, because a hook that stays can't be narrowed or widened.
+    A second call with the same roots and mode does nothing, and one with other roots
+    or another mode raises ``RuntimeError``, because a hook that stays can't be
+    narrowed or widened.
+
+    Args:
+        store_root: The Bar Tab store root.
+        extra_roots: More folders that stay writable. With edits on, the caller adds
+            the backups folder here.
+        edits: True for a server that can edit. The hook then judges names under a
+            ``dir_fd`` by folder identity, refuses a relative write ``open``, and
+            ``permit`` works.
     """
     roots = tuple(dict.fromkeys(_resolve_root(r) for r in (store_root, *extra_roots)))
     if STATE.installed:
-        if roots != STATE.roots:
+        if roots != STATE.roots or edits != STATE.edits:
             msg = "the write guard is already installed with other roots"
             raise RuntimeError(msg)
         return
     STATE.roots = roots
+    STATE.edits = edits
     STATE.installed = True
     sys.addaudithook(audit)
+
+
+@contextlib.contextmanager
+def permit(
+    target: str | os.PathLike[str], *, make_dir: str | os.PathLike[str] | None = None
+) -> Generator[Permit]:
+    """Let the current thread write one real file, and nothing else, outside the roots.
+
+    The permit names exact files. They are the real target, temp files matching
+    ``.routing-dashboard-<16 hex>.tmp`` in the target's folder, and for a create the
+    one folder ``make_dir`` that may be made. It binds folders by identity, so the
+    writer calls ``bind_folder`` with the folder fd it opened and ``bind_parent`` with
+    the fd of the folder ``make_dir`` is made in. Only ``edit_store.py`` calls this,
+    for a target its registry built. The permit is thread-local. A coroutine that
+    awaits inside it could resume on another thread, so the writer runs it whole in
+    one worker thread. Permits don't nest.
+
+    Args:
+        target: The absolute path of the real file to write. A link at the leaf is
+            resolved here.
+        make_dir: The absolute path of the one folder a create may make, or None.
+
+    Yields:
+        The permit, to bind the folder fds to.
+
+    Raises:
+        PermissionError: When edits are off, or the guard was not installed with them.
+        ValueError: When a path is not absolute.
+        RuntimeError: When this thread already holds a permit.
+    """
+    if not STATE.edits:
+        raise PermissionError(errno.EPERM, "edits are off")
+    if _current() is not None:
+        msg = "a write permit is already held by this thread"
+        raise RuntimeError(msg)
+    paths = [os.fspath(target)]
+    if make_dir is not None:
+        paths.append(os.fspath(make_dir))
+    if not all(os.path.isabs(p) for p in paths):
+        msg = "a permit names absolute paths"
+        raise ValueError(msg)
+    held = Permit(
+        os.path.realpath(paths[0]),
+        os.path.realpath(paths[1]) if make_dir is not None else None,
+    )
+    PERMITS.active = held
+    try:
+        yield held
+    finally:
+        PERMITS.active = None

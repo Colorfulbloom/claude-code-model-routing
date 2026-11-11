@@ -22,7 +22,7 @@ const sidebarCases: [string, string][] = [
   ["#/p/builder/live", "Live"],
   ["#/p/builder/review/summary", "Summary"],
   ["#/p/builder/review/sessions/s1", "Sessions"],
-  ["#/p/builder/review/agents/new", "Agents"],
+  ["#/p/builder/review/agents/new", "Your setup"],
   ["#/p/builder/review/models", "Models"],
   ["#/p/builder/setup/settings/effort/edit", "Your setup"],
   ["#/p/builder/to-fix", "To fix, 4 items"],
@@ -87,7 +87,9 @@ describe("sidebar at 1440", () => {
   it.each(sidebarCases)("%s marks only %s as current", async (hash, name) => {
     await mount(hash, { server: setupServer() });
     await screen.findByRole("link", { name: "To fix, 4 items" });
-    const current = screen.getAllByRole("link", { current: "page" });
+    const current = within(screen.getByRole("navigation", { name: "Main" })).getAllByRole("link", {
+      current: "page",
+    });
     expect(current).toHaveLength(1);
     expect(current[0]).toHaveAccessibleName(new RegExp(`^${name}`));
   });
@@ -287,10 +289,11 @@ describe("top bar and tab bar at 375", () => {
     expect(current[0]).toHaveAccessibleName(name);
   });
 
-  it("hides the tab bar on the agent form routes", async () => {
+  it("keeps the tab bar on the agent form routes, which leave for Your setup, Agents in M6a", async () => {
     await mount("#/p/builder/review/agents/new", { width: 375 });
-    await screen.findByRole("heading", { level: 1, name: "New agent" });
-    expect(screen.queryByRole("navigation")).toBeNull();
+    await screen.findByRole("heading", { level: 1, name: "Agents" });
+    expect(window.location.hash).toBe("#/p/builder/setup/agents");
+    expect(screen.getByRole("navigation", { name: "Main" })).toBeInTheDocument();
     expect(document.querySelector(".top-bar")).not.toBeNull();
   });
 
@@ -378,8 +381,10 @@ describe("help spots in the shell", () => {
     expect(prices).toHaveAttribute("data-help-id", "shell.prices");
     const backup = within(nav).getByRole("button", { name: /^Last backup / });
     expect(backup).toHaveAttribute("data-help-id", "shell.backup");
+    const editing = within(nav).getByRole("button", { name: "Editing off" });
+    expect(editing).toHaveAttribute("data-help-id", "shell.editing");
     const footer = nav.querySelector(".sidebar-footer");
-    expect(footer?.querySelectorAll("button")).toHaveLength(2);
+    expect(footer?.querySelectorAll("button")).toHaveLength(3);
   });
 
   it("puts a help button after the Updated line while calls fail", async () => {
@@ -404,8 +409,13 @@ describe("help spots in the shell", () => {
       "data-help-id",
       "shell.backup",
     );
+    expect(within(card).getByRole("button", { name: "Editing" })).toHaveAttribute(
+      "data-help-id",
+      "shell.editing",
+    );
     const labels = [...card.querySelectorAll("dt")].map((el) => el.textContent);
-    expect(labels).toEqual(["Updated", "History since", "Last backup", "Prices as of"]);
+    expect(labels).toEqual(["Updated", "History since", "Last backup", "Prices as of", "Editing"]);
+    expect(card.querySelectorAll("dd")[4]).toHaveTextContent("Off");
   });
 
   it("opens the Project state help from the tray's heading", async () => {
@@ -443,17 +453,18 @@ describe("More page", () => {
 describe("sidebar footer", () => {
   const history = (over: Parameters<typeof historyInfo>[0]) => historyInfo(over);
 
-  it("shows the five quiet lines at rest, none a link or a live region", async () => {
+  it("shows the six quiet lines at rest, none a link or a live region", async () => {
     await mount("#/p/builder/live");
     const nav = await screen.findByRole("navigation", { name: "Main" });
     await within(nav).findByText("Prices as of October 28");
     const lines = [...nav.querySelectorAll(".sidebar-footer-line")].map((el) => el.textContent);
-    expect(lines).toHaveLength(5);
+    expect(lines).toHaveLength(6);
     expect(lines[0]).toMatch(/^Updated /);
     expect(lines[1]).toBe("History since September 3");
     expect(lines[2]).toMatch(/^Last backup /);
     expect(lines[3]).toBe("Prices as of October 28");
-    expect(lines[4]).toBe("Claude Code 2.1.310");
+    expect(lines[4]).toBe("Editing off");
+    expect(lines[5]).toBe("Claude Code 2.1.310");
     const footer = nav.querySelector(".sidebar-footer");
     expect(footer?.querySelector("a")).toBeNull();
     expect(footer?.querySelector("[role], [aria-live]")).toBeNull();
@@ -470,7 +481,7 @@ describe("sidebar footer", () => {
     const nav = await screen.findByRole("navigation", { name: "Main" });
     await within(nav).findByText("Couldn't read 3 files");
     const lines = [...nav.querySelectorAll(".sidebar-footer-line")].map((el) => el.textContent);
-    expect(lines).toHaveLength(6);
+    expect(lines).toHaveLength(7);
     expect(lines[0]).toBe("Couldn't read 3 files");
     expect(lines.some((l) => l?.startsWith("Backup failed at "))).toBe(true);
     expect(lines.some((l) => l?.startsWith("Last backup"))).toBe(false);
@@ -612,7 +623,7 @@ describe("More history card", () => {
     const card = await screen.findByRole("region", { name: "Your history" });
     await within(card).findByText("October 28");
     const labels = [...card.querySelectorAll("dt")].map((el) => el.textContent);
-    expect(labels).toEqual(["Updated", "History since", "Last backup", "Prices as of"]);
+    expect(labels).toEqual(["Updated", "History since", "Last backup", "Prices as of", "Editing"]);
     expect(card.querySelector("h3")).toBeNull();
     const regions = screen.getAllByRole("region").map((el) => el.getAttribute("aria-labelledby"));
     expect(regions[0]).toBe("history-card-title");

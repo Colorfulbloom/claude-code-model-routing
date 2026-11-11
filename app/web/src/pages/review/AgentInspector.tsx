@@ -240,6 +240,9 @@ function ItemInspector({
       lockLabel: t("ro_h"),
       reason: `${t("ro_plugin", { plugin: owner })} ${t("ro_plugin_2")}`,
     };
+  } else if (only === null) {
+    // M6a has no agent editing. The box says it comes next and keeps Copy path.
+    readOnly = { lockLabel: t("ro_h"), reason: t("ro_agents_next") };
   }
   const copy =
     fullPath === null

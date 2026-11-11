@@ -243,10 +243,41 @@
   align-items: center;
 }
 
-.inspector-readonly-reason {
+/* A quiet link alone in the foot starts at the text's left edge, not at its own padding. */
+.inspector-actions > .setup-agents-link:first-child {
+  margin-inline-start: calc(-1 * (var(--space-3) + 1px));
+}
+
+/* The title row: the lock, "Can't change here", and the help button at the end. */
+.inspector-readonly-head {
   display: flex;
   gap: var(--space-2);
-  align-items: baseline;
+  align-items: center;
+}
+
+.inspector-readonly-head .help-button {
+  margin-inline-start: auto;
+}
+
+.inspector-readonly-title {
+  font-weight: var(--weight-semibold);
+}
+
+/* The path and Copy path share one row, the path first and the button at the end. */
+.inspector-readonly-path {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.inspector-readonly-file {
+  min-width: 0;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
 }
 
 .inspector-lock {

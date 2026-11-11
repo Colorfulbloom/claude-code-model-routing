@@ -15,7 +15,7 @@ import logging
 import sqlite3
 import threading
 import time
-from collections.abc import Callable, Generator, Mapping, Sequence
+from collections.abc import Callable, Generator, Iterable, Mapping, Sequence
 from contextlib import contextmanager
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
@@ -47,6 +47,7 @@ import store_writer
 import timeline
 import usage_query
 from data_clock import DataClock
+from edit_preview import EditInputs
 from models import (
     AgentList,
     AppInfo,
@@ -54,6 +55,7 @@ from models import (
     BackupFailure,
     BackupReasonCode,
     CostChart,
+    EditsState,
     HistoryInfo,
     Ingest,
     IngestError,
@@ -261,6 +263,7 @@ class StoreProvider:
         shell_env: dict[str, str] | None = None,
         home: str | None = None,
         tz: ZoneInfo | None = None,
+        root_watch: Callable[[Iterable[str]], None] | None = None,
     ) -> None:
         """Wire the provider. Nothing starts until ``start``.
 
@@ -285,7 +288,11 @@ class StoreProvider:
                 project paths shorten against, or None for no expansion.
             tz: The server's zone, where Review counts local days. Every Review
                 answer's ``window.tz`` is its key. UTC when None.
+            root_watch: Called with every mapped project path each time the project
+                map is built. A fixture or demo run with edits on passes the check
+                that turns edits off for a path inside the Bar Tab checkout.
         """
+        self._root_watch = root_watch
         self._tz = tz if tz is not None else ZoneInfo(server_zone.UTC_ZONE)
         self._reviews = review_answers.ReviewCache()
         self._layout = layout
@@ -396,6 +403,8 @@ class StoreProvider:
         )
         mapped = project_map.map_projects(ctx, conn)
         self._mapped = (now, mapped)
+        if self._root_watch is not None:
+            self._root_watch([item.path for item in mapped if item.path is not None])
         return mapped
 
     def _running_sessions(
@@ -428,6 +437,9 @@ class StoreProvider:
                     state=item.state,  # pyright: ignore[reportArgumentType]
                     running=item.key in running,
                     listed=item.listed,
+                    edit_block=(
+                        "folder_not_found" if item.state == "folder_not_found" else None
+                    ),
                 )
                 for item in mapped
             ]
@@ -609,23 +621,15 @@ class StoreProvider:
             raise UnknownProjectError
         return item
 
-    def _setup_request(
-        self, item: project_map.MappedProject
-    ) -> setup_answers.SetupRequest:
-        """Build the request the setup service answers for one project.
+    def _setup_context(self, item: project_map.MappedProject) -> SetupContext:
+        """Build the setup context of one project.
 
-        The data version is the store's pass marker and the local day, so a finished
-        ingest pass or a new day drops the cached read. The two store lookups run on a
-        cold read only.
+        ``project_dir`` is None for a project that is not listed, so nothing under its
+        cwd is read, or edited.
         """
-        now = self.now()
-        with self._reader() as conn:
-            marker = review_answers.pass_marker(conn)
-            as_of = timeline.as_of(conn, now)
-            installed = self._version or _newest_claude_version(conn)
         check_dir = self._check_dir(item)
         listed = item.listed and check_dir is not None
-        ctx = SetupContext(
+        return SetupContext(
             project_key=item.key,
             config_dir=self._claude_dir,
             home=Path(self._home) if self._home else None,
@@ -641,6 +645,36 @@ class StoreProvider:
             ),
             real_mode=self._mode == "real",
         )
+
+    def edit_inputs(self, project: str) -> EditInputs:
+        """Return what the edit routes need to know about one project.
+
+        Raises:
+            UnknownProjectError: When ``project`` is not a project key.
+        """
+        item = self._mapped_item(project)
+        return EditInputs(
+            setup=self._setup_context(item),
+            claude_version=self.claude_version() or None,
+            store_root=self._layout.root,
+        )
+
+    def _setup_request(
+        self, item: project_map.MappedProject
+    ) -> setup_answers.SetupRequest:
+        """Build the request the setup service answers for one project.
+
+        The data version is the store's pass marker and the local day, so a finished
+        ingest pass or a new day drops the cached read. The two store lookups run on a
+        cold read only.
+        """
+        now = self.now()
+        with self._reader() as conn:
+            marker = review_answers.pass_marker(conn)
+            as_of = timeline.as_of(conn, now)
+            installed = self._version or _newest_claude_version(conn)
+        ctx = self._setup_context(item)
+        listed = ctx.project_dir is not None
         folders = sorted(item.folders)
         ready = marker is not None
 
@@ -1096,6 +1130,7 @@ class StoreProvider:
             to_fix_count=to_fix.count,
             to_fix=to_fix,
             editable_projects=[],
+            edits=EditsState(state="off", instance=instance),
             mode=self._mode,
             clock=self._data_clock.info(),
         )
@@ -1164,6 +1199,7 @@ def create(  # noqa: PLR0913 - one server's settings, keyword-only
     health_path: Path | None = None,
     home: str | None = None,
     tz: ZoneInfo | None = None,
+    root_watch: Callable[[Iterable[str]], None] | None = None,
 ) -> StoreProvider:
     """Build the provider with its writer and price feed. Nothing starts yet.
 
@@ -1191,6 +1227,8 @@ def create(  # noqa: PLR0913 - one server's settings, keyword-only
         tz: The server's zone. A demo or flow build defaults to the ``tz`` of its
             ``session.json``, anything else to UTC. Real mode passes the machine's
             zone (``server_zone.machine_zone``).
+        root_watch: The check run on every project mapping, or None. See
+            ``StoreProvider``.
 
     Returns:
         A provider that ``start`` brings up.
@@ -1249,4 +1287,5 @@ def create(  # noqa: PLR0913 - one server's settings, keyword-only
         tz=tz
         if tz is not None
         else (server_zone.session_zone(claude_dir.parent) if demo else None),
+        root_watch=root_watch,
     )

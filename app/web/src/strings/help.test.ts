@@ -21,6 +21,9 @@ const deck: Deck = en;
 /** The most glossary links one entry may carry. */
 const MAX_GLOSSARY_LINKS = 2;
 
+// Help ids no spot names yet. Empty, because every entry has a spot.
+const PENDING_HELP = new Set<string>();
+
 /**
  * The same bans the en.ts lint holds (lint.test.ts): no colon in prose, no em dash, no
  * exclamation mark, and no bold. That file's rule is not exported, so the pattern is copied here.
@@ -58,7 +61,7 @@ export function unknownHelpIds(sources: readonly SourceFile[], known: Registry):
 /** The registry ids that no source names. */
 export function unusedHelpIds(sources: readonly SourceFile[], known: Registry): string[] {
   const named = new Set(sources.flatMap((source) => helpIdsIn(source.text)));
-  return Object.keys(known).filter((id) => !named.has(id));
+  return Object.keys(known).filter((id) => !named.has(id) && !PENDING_HELP.has(id));
 }
 
 /** Dead glossary links in the registry and the Glossary, and entries with too many links. */

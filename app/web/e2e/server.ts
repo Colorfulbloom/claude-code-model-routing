@@ -3,12 +3,16 @@
  * Starts the real server (app/server/serve.py) on a port from 47000 to 47999 against the built app and a fresh data
  * folder, reads the launch line from fd 3, and stops it with SIGTERM. The `server` fixture gives
  * each test its own server, so codes and keys never leak between tests.
+ *
+ * Every server runs with HOME and CLAUDE_CONFIG_DIR set to a made-up home inside its data folder, so
+ * a server never inherits the real HOME, whether edits are on or off (m6-build.md section 3.10). The
+ * data folder is removed with the rest of the test's files.
  */
 import { spawn } from "node:child_process";
 import type { ChildProcess } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { createServer } from "node:net";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { test as base } from "@playwright/test";
 
@@ -56,6 +60,8 @@ export interface StartOptions {
   fixture?: string | null;
   /** More serve.py arguments, such as --demo. */
   args?: string[];
+  /** The made-up HOME. Defaults to `home` inside the data folder, so a restart reuses it. */
+  homeDir?: string;
 }
 
 export interface Server {
@@ -66,6 +72,8 @@ export interface Server {
   instance: string;
   pid: number;
   dataDir: string;
+  /** The made-up HOME the server runs with, and its CLAUDE_CONFIG_DIR is `.claude` inside it. */
+  homeDir: string;
   mintSecret: string;
   /** Asks the running server for a fresh single-use code. */
   mint: (project?: string | null) => Promise<string>;
@@ -107,11 +115,20 @@ function readLaunchLine(child: ChildProcess, stderr: () => string): Promise<Laun
   });
 }
 
+/** The environment a spawned server gets: the test's own HOME and config folder, never the real ones. */
+export function serverEnv(homeDir: string): NodeJS.ProcessEnv {
+  if (resolve(homeDir) === resolve(homedir()))
+    throw new Error(`refusing to start a test server on the real home folder ${homeDir}`);
+  return { ...process.env, HOME: homeDir, CLAUDE_CONFIG_DIR: join(homeDir, ".claude") };
+}
+
 export async function startServer(options: StartOptions = {}): Promise<Server> {
   const dist = process.env.BARTAB_E2E_DIST;
   if (dist === undefined)
     throw new Error("BARTAB_E2E_DIST is not set, the global setup did not run");
   const dataDir = options.dataDir ?? mkdtempSync(join(tmpdir(), "bartab-e2e-data-"));
+  const homeDir = options.homeDir ?? join(dataDir, "home");
+  mkdirSync(join(homeDir, ".claude"), { recursive: true });
   const args = [
     SERVE,
     "--port",
@@ -129,6 +146,7 @@ export async function startServer(options: StartOptions = {}): Promise<Server> {
   ];
   const child = spawn(PYTHON, args, {
     cwd: join(appDir, "server"),
+    env: serverEnv(homeDir),
     stdio: ["ignore", "ignore", "pipe", "pipe"],
   });
   let log = "";
@@ -171,6 +189,7 @@ export async function startServer(options: StartOptions = {}): Promise<Server> {
     instance: launch.instance,
     pid: launch.pid,
     dataDir,
+    homeDir,
     mintSecret: info.mint_secret,
     mint,
     stop: async () => {

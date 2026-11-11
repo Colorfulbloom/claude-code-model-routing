@@ -17,6 +17,7 @@ export type PageId =
   | "setup"
   | "surface"
   | "surface_edit"
+  | "changes"
   | "to_fix"
   | "decides"
   | "glossary"
@@ -49,6 +50,8 @@ export function pageName(id: PageId): string {
       return t("pg_surface");
     case "surface_edit":
       return t("pg_surface_edit");
+    case "changes":
+      return t("cg_h1");
     case "to_fix":
       return t("nav_tofix");
     case "decides":
@@ -89,6 +92,7 @@ export function parentPageName(id: PageId): string {
       return pageName("agents");
     case "surface":
     case "surface_edit":
+    case "changes":
       return pageName("setup");
     default:
       return pageName(id);
@@ -160,6 +164,8 @@ export function parseRoute(path: string): ParsedRoute | null {
       return at("agent_edit", { name: c });
     }
   }
+  // The Changes page comes before a part's list, because "changes" is not a part.
+  if (a === "setup" && b === "changes" && tail.length === 2) return at("changes");
   // A part's list, with no item picked.
   if (a === "setup" && b !== undefined && tail.length === 2) return at("surface", { part: b });
   if (a === "setup" && b !== undefined && c !== undefined) {

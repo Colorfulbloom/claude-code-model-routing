@@ -1,0 +1,7 @@
+.refused-lead {
+  font-weight: var(--weight-semibold);
+}
+
+.refused-keys {
+  line-height: 1.5;
+}

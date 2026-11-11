@@ -2,6 +2,7 @@
  * The words for the history facts, shared by the sidebar footer, the updates-stopped notice and
  * the More page card. Every function is pure and takes "now", so a test fixes the day.
  */
+import type { EditsMode } from "@/api/edit";
 import type { AppInfo, BackupFailure, PricesAnswer } from "@/api/types";
 import { clockStamp, dateWords, dayLong } from "@/lib/clock";
 import { t, tn } from "@/strings/t";
@@ -43,14 +44,40 @@ export function pricesValue(prices: PricesAnswer): string {
   }
 }
 
+/** "Editing off", "Editing on" or "Editing not available". One literal t() per branch (K-819f). */
+export function editingText(mode: EditsMode): string {
+  switch (mode) {
+    case "on":
+      return t("eo_ft_on");
+    case "off":
+      return t("eo_ft_off");
+    case "unavailable":
+      return t("eo_ft_unavailable");
+  }
+}
+
+/** "On", "Off" or "Not available", the value beside Editing on the More page. */
+export function editingValue(mode: EditsMode): string {
+  switch (mode) {
+    case "on":
+      return t("eo_more_on");
+    case "off":
+      return t("eo_more_off");
+    case "unavailable":
+      return t("eo_more_unavailable");
+  }
+}
+
 /**
  * The footer lines, top to bottom. At rest there are five. Unreadable files add one line on top,
- * and a failed backup takes the place of the backup line, so there are six at most.
+ * and a failed backup takes the place of the backup line, so there are six at most. With the edit
+ * mode, an Editing line comes after the prices line, and that makes seven.
  */
 export function footerLines(
   app: AppInfo,
   prices: PricesAnswer | undefined,
   now: number | string | Date,
+  edits?: EditsMode,
 ): FooterLine[] {
   const { history } = app;
   const lines: FooterLine[] = [];
@@ -77,8 +104,15 @@ export function footerLines(
     lines.push({ id: "backup", text: t("ft_backup", { t: clockStamp(history.last_backup, now) }) });
   }
   if (prices !== undefined) lines.push({ id: "prices", text: pricesText(prices) });
-  lines.push({ id: "claude", text: t("more_ver_cc", { version: app.claude_version }) });
+  if (edits !== undefined) lines.push({ id: "editing", text: editingText(edits) });
+  lines.push({ id: "claude", text: claudeVersionText(app.claude_version) });
   return lines;
+}
+
+/** "Claude Code 2.1.310", or "Claude Code version unknown" when the server has no version for it. */
+export function claudeVersionText(version: string | null | undefined): string {
+  const known = version !== null && version !== undefined && version.trim() !== "";
+  return known ? t("more_ver_cc", { version }) : t("more_ver_cc_unknown");
 }
 
 /** The reason sentence under a failed backup, with the newest good copy when there is one. */

@@ -1,0 +1,56 @@
+.edits-off-cmd {
+  padding: 0 4px;
+  background: var(--inset-bg);
+  border: 1px solid var(--inset-border);
+  border-radius: var(--radius-md);
+  color: var(--text);
+  font-size: 0.93em;
+  white-space: nowrap;
+}
+
+.edits-off-reason {
+  margin-top: var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+}
+
+.edits-off-note {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  margin-top: var(--space-2);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+}
+
+.edits-off-lock {
+  position: relative;
+  top: 1px;
+  flex: none;
+  color: var(--text-muted);
+}
+
+.edits-off-route {
+  padding: var(--space-3) var(--space-4);
+  background: var(--raised-bg);
+  border: 1px solid var(--raised-border);
+  border-radius: var(--radius-lg);
+}
+
+.edits-off-route > p {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  line-height: 1.6;
+}
+
+/*
+ * The note is not a control, so its focus ring is lighter than a control's: 2px, close to the box,
+ * and still the focus colour against the page (3:1 or more).
+ */
+.edits-off-route:focus-visible,
+.edits-off-route.is-focus {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}

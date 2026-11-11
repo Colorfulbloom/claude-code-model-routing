@@ -193,6 +193,8 @@ test.describe("accessibility snapshots", () => {
         - heading "builder" [level=2]
         - paragraph: ${fill(en.ag_runs, { model: "Fable 5.1", effort: "medium" })} ${fill(en.in_origin_override_file, { key: "effort", file: ".claude/settings.local.json", line: 3 })}
         - paragraph: ${fill(en.in_set_at, { scope: en.sc_user, where: "~/config/agents/builder.md line 2" })}
+        - paragraph: ${en.ro_agents_next}
+        - button "${en.in_copy}"
         - heading "${en.in_why_h}" [level=3]
         - paragraph: ${fill(en.rs_agent_loads, { file: "~/config/agents/builder.md" })}
         - paragraph: ${en.in_conf_documented}
@@ -204,7 +206,6 @@ test.describe("accessibility snapshots", () => {
         - definition: Fable 5.1
         - term: ${en.ag_f_effort}
         - definition: xhigh
-        - button "${en.in_copy}"
         - link "${en.ag_open_setup}"
     `);
     await expect(page.getByRole("table", { name: en.ag_h })).toMatchAriaSnapshot(`

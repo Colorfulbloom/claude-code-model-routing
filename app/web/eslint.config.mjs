@@ -28,7 +28,12 @@ export default tseslint.config(
       globals: globals.browser,
       parserOptions: {
         projectService: {
-          allowDefaultProject: ["vite.config.ts", "playwright.config.ts", "e2e/*.ts"],
+          allowDefaultProject: [
+            "vite.config.ts",
+            "playwright.config.ts",
+            "e2e/*.ts",
+            "e2e/fixtures/*.ts",
+          ],
           maximumDefaultProjectFileMatchCount_THIS_WILL_SLOW_DOWN_LINTING: 40,
         },
         tsconfigRootDir: import.meta.dirname,

@@ -11,6 +11,12 @@
  * Long lists. A grouped list over 30 items shows six rows per group with Show n more, and Jump to
  * chips appear only then (owner decision 5). The picked item always shows.
  *
+ * Editing. An edit route, `setup/<part>/<item key>/edit`, shows the same page. With edits on and an
+ * item that has an editor, the editor takes the inspector's place beside the list, or is a full-height
+ * sheet over the item on a phone. After Save it closes back to the inspector, which shows the Saved
+ * box. With edits off the item shows with a note that takes focus. An item with no editor goes back
+ * to its own page. A confirm for an undo of a changed file takes the inspector's place the same way.
+ *
  * States. First load shows bones. A failed first read shows one raised error with Try again. A
  * refetch that fails keeps the last good list. A file that couldn't be read gets the Couldn't read
  * card over the partial list. An empty part says what would appear and offers its action. A picked
@@ -19,6 +25,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { Navigate, useLocation, useNavigate, useParams } from "react-router";
 import { useProjects } from "@/api/client";
+import { useEditRestart, useUndo } from "@/api/edit";
 import { useProblems, useSetupMap, useSetupPart } from "@/api/setup";
 import type { SetupItem, SetupPart, SetupPartAnswer } from "@/api/types";
 import { postStatus } from "@/app/harness";
@@ -30,6 +37,7 @@ import type { ItemListEmpty, ItemListJump } from "@/components/ListInspector/Ite
 import type { ListGroup } from "@/components/ListInspector/types";
 import { PageHeader } from "@/components/PageHeader/PageHeader";
 import { useIsDesktop } from "@/lib/media";
+import { fieldOfItem } from "@/lib/edit-page";
 import { listRow, planList, shapeGroups } from "@/lib/setup-list";
 import {
   autoPickItem,
@@ -45,8 +53,13 @@ import type { SetupRoute } from "@/lib/setup-routes";
 import { PART_EMPTY, PART_NAMES, PART_SUBS, groupLabel } from "@/lib/setup-words";
 import { t, tn } from "@/strings/t";
 import { CouldntReadCard, readFailures } from "./CouldntReadCard";
+import { useEditAvailability } from "./edit-mode";
 import { ItemInspector } from "./ItemInspector";
+import { SettingsEditor } from "./SettingsEditor";
+import type { SavedInfo } from "./SettingsEditor";
 import { SetupBones, SetupError, SetupStale } from "./SetupStates";
+import { UndoPanel, useUndoConfirm } from "./UndoPanel";
+import type { UndoTarget } from "./UndoPanel";
 import "./SurfacePage.css";
 
 type PartRoute = Extract<SetupRoute, { part: SetupPart }>;
@@ -59,7 +72,7 @@ export function SurfacePage() {
   if (route === null) return null;
   // A part name the server doesn't know has nothing to show, so the map is the way back.
   if (route.kind === "unknown_part") return <Navigate to={setupPath(project)} replace />;
-  if (route.kind !== "part" && route.kind !== "item") return null;
+  if (route.kind !== "part" && route.kind !== "item" && route.kind !== "edit") return null;
   return <SurfaceView key={`${project}:${route.part}`} project={project} route={route} />;
 }
 
@@ -129,23 +142,45 @@ function SurfaceView({ project, route }: { project: string; route: PartRoute }) 
   const answer = card.answer;
   const root = useRef<HTMLDivElement>(null);
   const headingRef = useRef<HTMLHeadingElement | null>(null);
+  const editHeadingRef = useRef<HTMLHeadingElement | null>(null);
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set<string>());
   const revealed = useRef<string | null>(null);
   const lastItem = useRef<string | null>(null);
 
+  // Editing. The saved box, the undo and the confirm outlive the rail, so they live here.
+  const availability = useEditAvailability(project);
+  const [saved, setSaved] = useState<SavedInfo | null>(null);
+  const [undoTarget, setUndoTarget] = useState<UndoTarget | null>(null);
+  const undo = useUndo(project);
+  const confirm = useUndoConfirm(undo);
+
   const items: readonly SetupItem[] = answer?.items ?? [];
   const state = answer === undefined ? "none" : itemState(route, items);
+  const onItem = route.kind === "item" || route.kind === "edit";
   let picked: SetupItem | null = null;
-  if (route.kind === "item") {
+  if (onItem) {
     const id = itemId(part, route.key);
     picked = items.find((item) => item.id === id) ?? null;
   } else if (desktop && answer !== undefined) {
     picked = autoPickItem(items, problems.answer?.rows ?? []);
   }
 
-  const mode = desktop ? "split" : route.kind === "item" ? "inspector" : "list";
+  const mode = desktop ? "split" : onItem ? "inspector" : "list";
   const listed = answer !== undefined;
-  const itemKeyNow = route.kind === "item" ? route.key : null;
+  const itemKeyNow = onItem ? route.key : null;
+  const editField = picked === null ? null : fieldOfItem(picked);
+  // A restart keeps the rail up even when the new server has editing off, because its box says why
+  // Save can't go and names the command. The route note shows only when no rail is up.
+  const restarted = useEditRestart() !== null;
+  const editing =
+    route.kind === "edit" && editField !== null && (availability.kind === "on" || restarted);
+
+  // When the editor closes back to the item, focus goes to the inspector's heading.
+  const lastKind = useRef(route.kind);
+  useEffect(() => {
+    if (lastKind.current === "edit" && route.kind === "item") headingRef.current?.focus();
+    lastKind.current = route.kind;
+  }, [route.kind]);
 
   // At 1440 the auto-picked item goes into the URL with replace, so a reload and Back keep it
   // and the pick adds no history entry.
@@ -263,27 +298,80 @@ function SurfaceView({ project, route }: { project: string; route: PartRoute }) 
     });
   };
   const backHref = `#${setupPartPath(project, part, scopes)}`;
+  // Cancel and Save both go back to the item, in place of the edit route, so Back skips the rail.
+  // The effect above puts focus on the inspector's heading once the item is back.
+  const closeRail = (): void => {
+    if (itemKeyNow !== null)
+      void navigate(setupItemPath(project, part, itemKeyNow, scopes), { replace: true });
+  };
+  const startUndo = (target: UndoTarget): void => {
+    setUndoTarget(target);
+    undo.undo(target.rowId, target.scope);
+  };
   // Instruction files are a load order, so the list numbers them and says what it leaves out.
   const loadOrder = part === "instructions";
 
+  // An edit route for an item with no editor, with edits on, is the item's own page. An agent's edit
+  // route stays, because M6a edits no agents and the inspector says so in a note that takes focus.
+  if (
+    route.kind === "edit" &&
+    picked !== null &&
+    editField === null &&
+    part !== "agents" &&
+    availability.kind === "on"
+  ) {
+    return <Navigate to={setupItemPath(project, part, route.key, scopes)} replace />;
+  }
+
+  const inspector = picked !== null && (
+    <ItemInspector
+      item={picked}
+      project={project}
+      scopes={scopes}
+      startedAt={map.answer?.server_started_at ?? null}
+      inspector={{
+        headingRef,
+        ...(mode === "inspector" && !editing
+          ? {
+              focusOnMount: true,
+              back: { label: partName, href: backHref },
+            }
+          : {}),
+      }}
+      edit={{ saved, undo, onUndo: startUndo, routeNote: route.kind === "edit" && !editing }}
+    />
+  );
+  const confirming =
+    confirm !== null && undoTarget !== null ? (
+      <UndoPanel view={confirm} undo={undo} target={undoTarget} />
+    ) : null;
+  const editor =
+    editing && picked !== null && editField !== null ? (
+      <SettingsEditor
+        key={picked.id}
+        project={project}
+        projectName={projectName}
+        item={picked}
+        field={editField}
+        onCancel={closeRail}
+        onSaved={(info) => {
+          setSaved(info);
+          closeRail();
+        }}
+        headingRef={editHeadingRef}
+      />
+    ) : null;
+
   let right: React.ReactNode = null;
   if (picked !== null) {
+    // At 721px and up the editor or the undo confirm takes the inspector's place. On a phone they
+    // are sheets over the item.
     right = (
-      <ItemInspector
-        item={picked}
-        project={project}
-        scopes={scopes}
-        startedAt={map.answer?.server_started_at ?? null}
-        inspector={{
-          headingRef,
-          ...(mode === "inspector"
-            ? {
-                focusOnMount: true,
-                back: { label: partName, href: backHref },
-              }
-            : {}),
-        }}
-      />
+      <>
+        {desktop && (editor !== null || confirming !== null) ? null : inspector}
+        {editor}
+        {confirming}
+      </>
     );
   } else if (state === "vanished") {
     right = <GoneCard part={part} href={backHref} />;

@@ -22,8 +22,18 @@ passes the resolved <config> to it as CLAUDE_CONFIG_DIR so both agree. The serve
 writes its server.json into that same run folder. A demo server (state in the data
 folder) and a real server can run side by side.
 
+start --allow-edits turns the edit routes on. The launcher passes it to serve.py and
+the server writes its mode into server.json as "edits" (true only when edits are on,
+so a fixture or demo run that refused the flag records false). start --allow-edits
+beside a server that runs with edits off stops it and starts it again with edits on,
+keeping its owners. A plain start or code beside a running server keeps its mode and
+prints "Editing is on" or "Editing is off". Turn edits off by stopping, then starting
+without the flag. Only the local user can run the launcher, so typing the flag is the
+intent.
+
 Actions
-  start [--project DIR] [--no-open] [--port N] [--fixture NAME]   the default
+  start [--project DIR] [--no-open] [--port N] [--fixture NAME] [--allow-edits]
+                the default
   code [--project DIR] [--no-open]
   stop
   status        with --real, one more line holds the last pass times and the lag
@@ -1248,7 +1258,8 @@ UV_URL = "https://docs.astral.sh/uv/getting-started/installation/"
 USAGE = (
     "usage: bartab.py [--data DIR] [--default-project DIR] [--session ID] "
     "[--demo] [--ingest-pace-ms N] [--real] "
-    "[start [--project DIR] [--no-open] [--port N] [--fixture NAME] | "
+    "[start [--project DIR] [--no-open] [--port N] [--fixture NAME] "
+    "[--allow-edits] | "
     "code [--project DIR] [--no-open] | stop | status]"
 )
 CONNECT_HINT = "Connect to the internet and run the command again."
@@ -1261,7 +1272,13 @@ REAL_REFUSES = ("--demo", "--ingest-pace-ms", "--data")
 # action -> (options as {name: takes a value}, number of positional words)
 ACTIONS: dict[str, tuple[dict[str, bool], int]] = {
     "start": (
-        {"--project": True, "--no-open": False, "--port": True, "--fixture": True},
+        {
+            "--project": True,
+            "--no-open": False,
+            "--port": True,
+            "--fixture": True,
+            "--allow-edits": False,
+        },
         0,
     ),
     "code": ({"--project": True, "--no-open": False}, 0),
@@ -2469,8 +2486,30 @@ def resolve_project(ctx: Ctx, opts: dict[str, str | bool]) -> Path:
     return path
 
 
+def running_edits(rec: Record) -> bool:
+    """True when the server's record says it runs with edits on.
+
+    The server writes "edits" into server.json. A record from an older server has no
+    such key, and that counts as off.
+    """
+    return rec.raw.get("edits") is True
+
+
+def say_mode(rec: Record) -> None:
+    """Say the edit mode of the running server. A link it mints has its rights."""
+    if running_edits(rec):
+        say("Editing is on")
+        say("This link can change your settings files.")
+    else:
+        say("Editing is off")
+
+
 def do_start(ctx: Ctx, opts: dict[str, str | bool]) -> None:
-    """Start the server, or add this session to the one that is running."""
+    """Start the server, or add this session to the one that is running.
+
+    start --allow-edits beside a server that runs with edits off stops it and starts
+    it again with edits on. The owners of the stopped server stay owners.
+    """
     project = resolve_project(ctx, opts)
     asked = parse_port(opts)
     fixture = opts.get("--fixture")
@@ -2481,13 +2520,24 @@ def do_start(ctx: Ctx, opts: dict[str, str | bool]) -> None:
     extra: tuple[str, ...] = ("--demo",) if ctx.demo else ()
     if ctx.pace_ms is not None:
         extra += ("--ingest-pace-ms", ctx.pace_ms)
+    allow_edits = "--allow-edits" in opts
+    if allow_edits:
+        extra += ("--allow-edits",)
     no_open = "--no-open" in opts
     rec = live_server(ctx)
+    carried: list[Owner] = []
+    if rec is not None and allow_edits and not running_edits(rec):
+        carried = list(rec.owners)
+        stop_process(ctx, rec)
+        forget(ctx)
+        say("Restarting Bar Tab with editing on.")
+        rec = None
     if rec is not None:
         add_owner(rec, caller_owner(ctx))
         save_record(ctx, rec)
         code = mint_code(rec, project)
         announce(rec.port, code, no_open)
+        say_mode(rec)
         if (asked and asked != rec.port) or fixture:
             say("already running; run stop first to change the port or fixture")
         return
@@ -2496,12 +2546,22 @@ def do_start(ctx: Ctx, opts: dict[str, str | bool]) -> None:
     launch, note = bring_up(
         ctx, project, asked, fixture if isinstance(fixture, str) else None, extra
     )
-    adopt_record(ctx, launch, project)
+    started = adopt_record(ctx, launch, project)
+    for owner in carried:
+        add_owner(started, owner)
+    if carried:
+        save_record(ctx, started)
     with contextlib.suppress(OSError):
         write_private(ctx.port_file, f"{launch.port}\n".encode("ascii"))
     if note:
         say(note)
     announce(launch.port, launch.code, no_open)
+    say_mode(started)
+    if allow_edits and not running_edits(started):
+        say(
+            "Bar Tab turned down --allow-edits for this run. "
+            f"The log at {clean(ctx.log_file, 300)} says why."
+        )
 
 
 def do_code(ctx: Ctx, opts: dict[str, str | bool]) -> None:
@@ -2513,6 +2573,7 @@ def do_code(ctx: Ctx, opts: dict[str, str | bool]) -> None:
     add_owner(rec, caller_owner(ctx))
     save_record(ctx, rec)
     announce(rec.port, mint_code(rec, project), "--no-open" in opts)
+    say_mode(rec)
 
 
 def do_stop(ctx: Ctx) -> None:

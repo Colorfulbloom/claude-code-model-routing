@@ -1,0 +1,45 @@
+.phone-action-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 7;
+  display: grid;
+  gap: 6px;
+  padding: var(--space-3) var(--space-4) calc(var(--space-3) + env(safe-area-inset-bottom));
+  background: var(--card-bg);
+  border-top: 1px solid var(--border);
+}
+
+.phone-action-bar-note {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-2);
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.phone-action-bar-summary {
+  min-width: 0;
+  color: var(--text);
+  font-family: var(--font-mono);
+  overflow-wrap: anywhere;
+}
+
+.phone-action-bar-aside a,
+.phone-action-bar-aside button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+/* Whatever the page puts here fills the row, so the primary button is the full width of the bar. */
+.phone-action-bar-action {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.phone-action-bar-action > .button {
+  width: 100%;
+}

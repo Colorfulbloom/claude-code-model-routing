@@ -11,6 +11,7 @@
 import type { SetupItem } from "@/api/types";
 import type { ScopeRow, StatusWord } from "@/components/ListInspector/types";
 import { clockShort } from "@/lib/clock";
+import { isUntilM7 } from "@/lib/edit-page";
 import { modelLabel } from "@/lib/models";
 import { pluginOf, settingValueText } from "@/lib/setup-list";
 import {
@@ -363,7 +364,23 @@ export interface ReadOnlyView {
   lockLabel: string;
   reason: string;
   command?: { command: string; copyLabel: string; copiedLabel: string };
-  path?: { value: string; label: string; copiedLabel: string };
+  path?: { value: string; label: string; copiedLabel: string; text?: string };
+}
+
+/** The path of the box's Copy path row: the full path to copy, and the path as the screen shows it. */
+function copyRow(item: SetupItem): Pick<ReadOnlyView, "path"> {
+  const value = copyPathOf(item);
+  if (value === null) return {};
+  const win = winnerOf(item);
+  const text = win?.file ?? item.sources.find((s) => s.file !== null)?.file ?? null;
+  return {
+    path: {
+      value,
+      label: t("in_copy"),
+      copiedLabel: t("an_copied"),
+      ...(text !== null ? { text } : {}),
+    },
+  };
 }
 
 /** The plugin's reason. Only an agent has a file to copy into its own folder and edit. */
@@ -376,12 +393,8 @@ function pluginReason(item: SetupItem, plugin: string): string {
 export function readOnlyView(item: SetupItem): ReadOnlyView | null {
   const why = item.read_only_reason;
   if (why === null) return null;
-  const path = copyPathOf(item);
-  const withPath =
-    path !== null && why.code !== "command_line" && why.code !== "not_visible"
-      ? { path: { value: path, label: t("in_copy"), copiedLabel: t("an_copied") } }
-      : {};
-  const base = { lockLabel: t("in_lock_word") };
+  const withPath = why.code !== "command_line" && why.code !== "not_visible" ? copyRow(item) : {};
+  const base = { lockLabel: t("ro_h") };
   switch (why.code) {
     case "managed":
       return { ...base, reason: t("ro_managed"), ...withPath };
@@ -410,6 +423,20 @@ export function readOnlyView(item: SetupItem): ReadOnlyView | null {
     case "not_visible":
       return { ...base, reason: t("ro_not_visible") };
   }
+}
+
+/**
+ * The read-only box of an item the server calls editable but Bar Tab can't edit yet: a Settings
+ * item that waits for M7 (`ro_field_until_m7`), or an agent, whose editing comes next
+ * (`ro_agents_next`). Null for every other item, and for one that has its own read-only reason.
+ */
+export function notYetEditableView(item: SetupItem): ReadOnlyView | null {
+  if (item.read_only_reason !== null) return null;
+  const withPath = copyRow(item);
+  const base = { lockLabel: t("ro_h") };
+  if (isUntilM7(item)) return { ...base, reason: t("ro_field_until_m7"), ...withPath };
+  if (item.part === "agents") return { ...base, reason: t("ro_agents_next"), ...withPath };
+  return null;
 }
 
 /** The sentence of the box an item the server did not read gets, or null. The pill is its status. */

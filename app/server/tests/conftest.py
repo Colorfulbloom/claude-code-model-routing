@@ -452,3 +452,46 @@ def asgi_call() -> AsgiCaller:
         return result
 
     return call
+
+
+def assert_outside_git(path: Path) -> None:
+    """Fail when ``path`` or any folder above it holds a ``.git`` entry (fact T-c826).
+
+    The edit tests write real files, so their folders must never sit in a git work
+    tree, the checkout included. A ``.git`` file counts too, as in a worktree.
+    """
+    real = path.resolve()
+    for folder in (real, *real.parents):
+        marker = folder / ".git"
+        if marker.exists() or marker.is_symlink():
+            pytest.fail(f"edit fixture sits in a git work tree: {marker}")
+
+
+@pytest.fixture
+def edit_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """A fresh config folder for an edit test, with HOME and CLAUDE_CONFIG_DIR on it.
+
+    Returns:
+        The config folder (``<tmp>/edit-home/.claude``). Its parent is HOME. The
+        folder is outside any git work tree and starts empty.
+    """
+    home = tmp_path / "edit-home"
+    config = home / ".claude"
+    config.mkdir(parents=True)
+    assert_outside_git(config)
+    monkeypatch.setenv("HOME", str(home.resolve()))
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(config.resolve()))
+    return config.resolve()
+
+
+@pytest.fixture
+def edit_project(tmp_path: Path) -> Path:
+    """A project tree for an edit test, with an empty ``.claude`` folder.
+
+    Returns:
+        The project root (``<tmp>/edit-project``), outside any git work tree.
+    """
+    project = tmp_path / "edit-project"
+    (project / ".claude").mkdir(parents=True)
+    assert_outside_git(project)
+    return project.resolve()

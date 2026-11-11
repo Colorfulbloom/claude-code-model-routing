@@ -34,6 +34,7 @@ from models import (
     BackupReasonCode,
     ClockInfo,
     CostChart,
+    EditsState,
     HistoryInfo,
     Ingest,
     IngestError,
@@ -372,7 +373,13 @@ class FixtureProvider:
         running = {item.project for item in self._data.running}
         return ProjectList(
             projects=[
-                Project(**row.model_dump(), running=row.key in running)
+                Project(
+                    **row.model_dump(),
+                    running=row.key in running,
+                    edit_block=(
+                        "folder_not_found" if row.state == "folder_not_found" else None
+                    ),
+                )
                 for row in self._data.projects
             ]
         )
@@ -412,6 +419,7 @@ class FixtureProvider:
             to_fix_count=to_fix.count,
             to_fix=to_fix,
             editable_projects=list(self._data.editable_projects),
+            edits=EditsState(state="off", instance=instance),
             mode="fixture",
             clock=ClockInfo(kind="real", rate_n=None),
         )

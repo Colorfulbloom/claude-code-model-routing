@@ -5,10 +5,17 @@
  * not read gets a box under the headline with the Unknown pill. Copy path copies the full local path
  * while the screen shows the short one (owner answer, November 9).
  *
+ * Editing. A Settings item with an editor gets an Edit button at the foot of the inspector. With
+ * edits on it opens the edit route. With edits off it stays in place, aria-disabled and focusable,
+ * and one visible line under it says why and names the command (plan 5.2). A save made on this page
+ * shows its Saved box at the top (`ItemEditStatus`). An edit route opened with edits off shows the
+ * item with a note that takes focus.
+ *
  * An agent adds three things. A callout under the headline when it doesn't run as its file sets it,
  * a run line with the cost over 30 days from /api/agents, and the footer link to the Agents page in
  * Review. Its where-set well lists its own files only (`whereRows`).
  */
+import { useEffect, useId, useRef } from "react";
 import { useAgents } from "@/api/review";
 import { useRules } from "@/api/rules";
 import type { SetupItem } from "@/api/types";
@@ -20,14 +27,16 @@ import { Inspector } from "@/components/ListInspector/Inspector";
 import type { InspectorProps } from "@/components/ListInspector/Inspector";
 import { agentCheckView } from "@/lib/agent-check";
 import { agentUsageLine, showReviewLink } from "@/lib/agent-usage";
+import { editPathOf, fieldOfItem, fieldWord } from "@/lib/edit-page";
 import { reviewPath } from "@/lib/range";
 import { itemName } from "@/lib/setup-list";
-import { itemKey } from "@/lib/setup-routes";
+import { changesPath, itemKey, setupItemPath } from "@/lib/setup-routes";
 import {
   appliesLine,
   copyPathOf,
   hasMaskedValue,
   notReadView,
+  notYetEditableView,
   readOnlyView,
   runsLine,
   setLine,
@@ -36,13 +45,32 @@ import {
   whereRows,
   whyView,
 } from "@/lib/setup-inspector";
+import type { ReadOnlyView } from "@/lib/setup-inspector";
 import { decidesHref } from "@/pages/reference/reference-routes";
 import { ruleTarget } from "@/pages/reference/rules-view";
 import { t } from "@/strings/t";
+import { EditsOffNote } from "@/components/EditsOffNote/EditsOffNote";
 import { AgentCallout } from "./AgentCallout";
+import { useEditAvailability } from "./edit-mode";
+import type { EditAvailability } from "./edit-mode";
 import { InspectorFacts } from "./InspectorFacts";
+import { ItemEditStatus } from "./ItemEditStatus";
+import type { SavedInfo } from "./SettingsEditor";
+import type { UndoTarget } from "./UndoPanel";
+import type { UndoHandle } from "@/api/edit";
+
+/** What an inspector needs to show a save, an undo and an edit route's note. */
+export interface ItemEditProps {
+  /** The save made on this page, for the Saved and Overwritten boxes. */
+  saved: SavedInfo | null;
+  undo: UndoHandle;
+  onUndo: (target: UndoTarget) => void;
+  /** The edit route opened this page. With edits off the note above the item takes focus. */
+  routeNote: boolean;
+}
 
 export interface ItemInspectorProps {
+  edit?: ItemEditProps;
   item: SetupItem;
   project: string;
   /** The Switch's state, which the links inside the inspector keep. */
@@ -65,6 +93,25 @@ function ruleLinkLabel(id: string): React.ReactNode {
       {after}
     </>
   );
+}
+
+/**
+ * The lock box of an item that has an editor where edits can't be turned on: a demo or sample run,
+ * or a project whose folder is missing. The owner can't enable editing from there, so the box
+ * replaces the Edit button. A missing folder also offers Copy path.
+ */
+function unavailableView(availability: EditAvailability): ReadOnlyView | null {
+  if (availability.kind === "demo") {
+    return { lockLabel: t("ro_h"), reason: t("eo_reason_demo") };
+  }
+  if (availability.kind === "folder") {
+    return {
+      lockLabel: t("ro_h"),
+      reason: t("eo_reason_folder", { path: availability.path }),
+      path: { value: availability.path, label: t("in_copy"), copiedLabel: t("an_copied") },
+    };
+  }
+  return null;
 }
 
 /** The inspector of one item. An agent's also reads its runs and cost over 30 days. */
@@ -100,12 +147,30 @@ function ItemInspectorView({
   scopes,
   startedAt,
   inspector,
+  edit,
   agentUsage = null,
   reviewLink = true,
 }: ItemInspectorViewProps) {
   const runs = runsLine(item);
   const setTo = setLine(item);
-  const readOnly = readOnlyView(item);
+  const field = fieldOfItem(item);
+  const availability = useEditAvailability(project);
+  const noteId = useId();
+  const routeRef = useRef<HTMLDivElement>(null);
+  // An agent's edit URL always gets the note, because M6a edits no agents. Any other edit URL gets
+  // it when edits are off or unavailable.
+  const agentRoute = edit?.routeNote === true && item.part === "agents";
+  const showRouteNote =
+    agentRoute ||
+    (edit?.routeNote === true && availability.kind !== "on" && availability.kind !== "loading");
+  useEffect(() => {
+    if (showRouteNote) routeRef.current?.focus();
+  }, [showRouteNote]);
+  // Where edits can't be turned on from here (a demo, a missing folder), an editable item shows the
+  // lock box with its reason in place of an Edit button the owner can't enable. The route note
+  // says the same thing, so the box waits while the note shows.
+  const unavailable = field !== null && !showRouteNote ? unavailableView(availability) : null;
+  const readOnly = readOnlyView(item) ?? notYetEditableView(item) ?? unavailable;
   const notRead = notReadView(item);
   const where = whereRows(item, startedAt);
   const why = whyView(item);
@@ -132,15 +197,96 @@ function ItemInspectorView({
     agentKey === null || !reviewLink ? null : (
       <Button
         variant="quiet"
+        className="setup-agents-link"
         href={`#${reviewPath(project, "agents", "30d", { agent: agentKey })}`}
       >
-        {t("nav_agents")} <span aria-hidden="true">→</span>
+        {t("ag_runs_link", { name: itemName(item) })} <span aria-hidden="true">→</span>
       </Button>
     );
+  // Edit stays in the foot. With edits on it is a link. Otherwise it is aria-disabled and focusable,
+  // with one visible reason under it, tied to it by aria-describedby.
+  const key = itemKey(item.part, item.id);
+  const editHref =
+    field !== null && key !== null
+      ? `#${editPathOf(setupItemPath(project, item.part, key, scopes))}`
+      : null;
+  const editName = field === null ? undefined : t("ed_edit_aria", { field: fieldWord(field) });
+  const editButton =
+    field === null ||
+    availability.kind === "loading" ||
+    availability.kind === "demo" ||
+    availability.kind === "folder" ? null : availability.kind === "on" ? (
+      editHref === null ? null : (
+        <Button
+          variant="primary"
+          href={editHref}
+          {...(editName !== undefined ? { ariaLabel: editName } : {})}
+        >
+          {t("ed_edit")}
+        </Button>
+      )
+    ) : (
+      <Button
+        disabled
+        describedBy={noteId}
+        {...(editName !== undefined ? { ariaLabel: editName } : {})}
+      >
+        {t("ed_edit")}
+      </Button>
+    );
+  // The reason under a disabled Edit. While the route note shows, it says the same, so it waits.
+  const editReason =
+    field === null || showRouteNote || availability.kind !== "off" ? null : (
+      <div className="setup-edit-reason">
+        <EditsOffNote id={noteId} kind="reason" command={availability.command} />
+      </div>
+    );
+  const routeNote = !showRouteNote ? null : agentRoute ? (
+    <EditsOffNote id={noteId} kind="agent" name={itemName(item)} noteRef={routeRef} />
+  ) : availability.kind === "off" ? (
+    <EditsOffNote
+      id={noteId}
+      kind="route"
+      item={itemName(item)}
+      command={availability.command}
+      noteRef={routeRef}
+    />
+  ) : availability.kind === "folder" ? (
+    <div ref={routeRef} tabIndex={-1} className="setup-edit-route">
+      <EditsOffNote kind="folder" path={availability.path} />
+    </div>
+  ) : (
+    <div ref={routeRef} tabIndex={-1} className="setup-edit-route">
+      <EditsOffNote kind="demo" />
+    </div>
+  );
+  const status =
+    edit !== undefined && field !== null ? (
+      <ItemEditStatus
+        key={item.id}
+        project={project}
+        item={item}
+        field={field}
+        saved={edit.saved}
+        undo={edit.undo}
+        onUndo={edit.onUndo}
+        changesHref={`#${changesPath(project)}`}
+      />
+    ) : null;
   const parts: InspectorProps = {
     title: itemName(item),
     status: statusOf(item),
     ...(inspector ?? {}),
+    ...(routeNote !== null || status !== null
+      ? {
+          finding: (
+            <>
+              {routeNote}
+              {status}
+            </>
+          ),
+        }
+      : {}),
     ...(runs !== null
       ? {
           runs: (
@@ -189,12 +335,14 @@ function ItemInspectorView({
         }
       : {}),
     ...(usage !== null ? { usage } : {}),
-    ...(copy !== null || agentsLink !== null
+    ...(editButton !== null || copy !== null || agentsLink !== null
       ? {
           actions: (
             <>
+              {editButton}
               {copy}
               {agentsLink}
+              {editReason}
             </>
           ),
         }

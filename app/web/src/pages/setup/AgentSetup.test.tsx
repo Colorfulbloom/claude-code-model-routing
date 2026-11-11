@@ -174,24 +174,32 @@ describe("the run line and the footer link", () => {
     expect(within(region).getByText("3 runs in the last 30 days")).toBeInTheDocument();
   });
 
-  it("ends with a quiet Agents link to the agent's Review page, with a space before its arrow", async () => {
+  it("ends with a quiet link that names the agent's runs, with a space before its arrow", async () => {
     await open([agentItem()]).mounted;
     const region = await screen.findByRole("region", { name: "judge" });
-    const link = within(region).getByRole("link", { name: "Agents" });
+    const link = within(region).getByRole("link", { name: "See runs for judge" });
     expect(link).toHaveAttribute("href", "#/p/builder/review/agents?range=30d&agent=judge");
     expect(link).toHaveClass("button", "button-quiet");
-    expect(link.textContent).toBe("Agents →");
+    expect(link.textContent).toBe("See runs for judge →");
     expect(link.querySelector("span")).toHaveAttribute("aria-hidden", "true");
-    // Copy path comes first in the footer, and the link last.
+    // M6a has no agent editing, so the agent says so in a read-only box. Copy path sits in the box,
+    // and the link is last in the footer.
     const actions = need(region.querySelector<HTMLElement>(".inspector-actions"));
     expect(actions.lastElementChild).toBe(link);
-    expect(within(actions).getByRole("button", { name: "Copy path" })).toBeInTheDocument();
+    expect(within(actions).queryByRole("button", { name: "Edit" })).toBeNull();
+    const box = need(region.querySelector<HTMLElement>(".inspector-readonly"));
+    expect(box).toHaveTextContent(
+      "Agent editing comes next. Until then, you can change this file in your editor.",
+    );
+    expect(within(box).getByRole("button", { name: "Copy path" })).toBeInTheDocument();
   });
 
   it("links a plugin agent by its plugin key, and keeps the read-only box", async () => {
-    await open([pluginAgentItem()], "lint-kit:linter").mounted;
+    // The Agents answer waits, so the link shows as it does before the runs are known.
+    const server = agentServer([pluginAgentItem()], () => never());
+    await mount("#/p/builder/setup/agents/lint-kit:linter", { server });
     const region = await screen.findByRole("region", { name: "linter" });
-    expect(within(region).getByRole("link", { name: "Agents" })).toHaveAttribute(
+    expect(within(region).getByRole("link", { name: "See runs for linter" })).toHaveAttribute(
       "href",
       "#/p/builder/review/agents?range=30d&agent=lint-kit%3Alinter",
     );

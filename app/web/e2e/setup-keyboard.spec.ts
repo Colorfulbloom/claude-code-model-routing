@@ -394,7 +394,7 @@ test.describe("accessibility snapshots", () => {
     await expect(page.getByRole("region", { name: "Before Bash" })).toMatchAriaSnapshot(`
       - region "Before Bash":
         - heading "Before Bash" [level=2]
-        - paragraph: ${en.in_lock_word}. ${fill(en.ro_plugin, { plugin: "hivemind" })}
+        - paragraph: ${fill(en.ro_plugin, { plugin: "hivemind" })}
         - button "${en.in_copy}"
         - heading "${en.in_details_h}" [level=3]
         - heading "${en.in_why_h}" [level=3]

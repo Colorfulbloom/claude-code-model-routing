@@ -1,0 +1,132 @@
+/* The list asks its own width, not the window's, so the rail and the phone sheet share one rule. */
+.save-to {
+  display: grid;
+  gap: var(--space-3);
+  container: save-to / inline-size;
+}
+
+.save-to-legend {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+}
+
+.save-to-rows {
+  display: grid;
+  overflow: hidden;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+/* Scope | path | outcome. The chosen look is the shared .chosen-row (fill and start bar). */
+.save-to-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr) auto;
+  gap: 2px var(--space-3);
+  align-items: center;
+  padding: 10px var(--space-3) 10px var(--space-4);
+  border-top: 1px solid var(--border);
+  cursor: pointer;
+}
+
+.save-to-row:first-child {
+  border-top: 0;
+}
+
+.save-to-row:has(input:focus-visible),
+.save-to-row.is-focus {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: -5px;
+}
+
+.save-to-row:hover:not(.chosen-row),
+.save-to-row.is-hover:not(.chosen-row) {
+  background: var(--nav-hover-bg);
+}
+
+.save-to-row[data-disabled] {
+  color: var(--text-muted);
+  cursor: default;
+}
+
+.save-to-scope {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.save-to-scope-name {
+  font-weight: var(--weight-medium);
+}
+
+.save-to-scope-meaning {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.save-to-path {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.save-to-link {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  overflow-wrap: anywhere;
+}
+
+.save-to-real {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+.save-to-outcome {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.save-to-outcome .status-chip,
+.save-to-outcome .chosen-word {
+  white-space: nowrap;
+}
+
+.save-to-blocked {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.save-to-reason {
+  grid-column: 1 / -1;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.save-to-warning {
+  font-size: var(--text-md);
+}
+
+@container save-to (width <= 560px) {
+  .save-to-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .save-to-outcome {
+    flex-flow: row wrap;
+    align-items: center;
+    justify-content: flex-start;
+  }
+}
+
+/* Forced colors drop the fill and the inset bar, so the chosen row keeps a real border and its word. */
+@media (forced-colors: active) {
+  .save-to-row.chosen-row {
+    border-inline-start: 4px solid Highlight;
+  }
+}

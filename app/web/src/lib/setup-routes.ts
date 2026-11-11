@@ -1,11 +1,13 @@
 /*
- * The Setup routes, as pure functions. A route is the map, one part, one item, or To fix, plus the
- * Switch state in `?scopes=1`.
+ * The Setup routes, as pure functions. A route is the map, one part, one item, an item's edit,
+ * the Changes page, or To fix, plus the Switch state in `?scopes=1`.
  *
- *   /p/<project>/setup                    the map
- *   /p/<project>/setup/<part>             one part, with its list
- *   /p/<project>/setup/<part>/<item key>  one item in its inspector
- *   /p/<project>/to-fix                   the To fix page
+ *   /p/<project>/setup                         the map
+ *   /p/<project>/setup/changes                 the Changes page
+ *   /p/<project>/setup/<part>                  one part, with its list
+ *   /p/<project>/setup/<part>/<item key>       one item in its inspector
+ *   /p/<project>/setup/<part>/<item key>/edit  the same item with its editor open
+ *   /p/<project>/to-fix                        the To fix page
  *
  * An item id is `<part>:<key>`, and the route carries the key alone, because the part is already
  * in the path. A plugin item is `<part>:<plugin>:<name>`, so its route is
@@ -36,6 +38,10 @@ export type SetupRoute =
   | { kind: "map"; scopes: boolean }
   | { kind: "part"; part: SetupPart; scopes: boolean }
   | { kind: "item"; part: SetupPart; key: string; scopes: boolean }
+  /** An item's edit route. The page shows the item, with its editor or the reason it has none. */
+  | { kind: "edit"; part: SetupPart; key: string; scopes: boolean }
+  /** The Changes page. */
+  | { kind: "changes" }
   | { kind: "to_fix" }
   /** A part name the server does not know, kept so the page can say so. */
   | { kind: "unknown_part"; part: string };
@@ -92,6 +98,21 @@ export function setupItemPathFromId(project: string, id: string, scopes = false)
   return key === null ? null : setupItemPath(project, part, key, scopes);
 }
 
+/** `/p/<project>/setup/<part>/<key>/edit`. */
+export function setupEditPath(
+  project: string,
+  part: SetupPart,
+  key: string,
+  scopes = false,
+): string {
+  return `${projectBase(project)}/setup/${part}/${segment(key)}/edit${scopes ? SCOPES_QUERY : ""}`;
+}
+
+/** `/p/<project>/setup/changes`. */
+export function changesPath(project: string): string {
+  return `${projectBase(project)}/setup/changes`;
+}
+
 /** `/p/<project>/to-fix`. */
 export function toFixPath(project: string): string {
   return `${projectBase(project)}/to-fix`;
@@ -106,6 +127,10 @@ export function buildSetupRoute(project: string, route: SetupRoute): string {
       return setupPartPath(project, route.part, route.scopes);
     case "item":
       return setupItemPath(project, route.part, route.key, route.scopes);
+    case "edit":
+      return setupEditPath(project, route.part, route.key, route.scopes);
+    case "changes":
+      return changesPath(project);
     case "to_fix":
       return toFixPath(project);
     case "unknown_part":
@@ -129,12 +154,14 @@ export function parseSetupRoute(path: string): SetupRoute | null {
   if (part === undefined) return { kind: "map", scopes };
   const name = safeDecode(part);
   if (name === null) return null;
+  if (name === "changes") return rest.length === 0 ? { kind: "changes" } : null;
   if (!isSetupPart(name)) return rest.length <= 1 ? { kind: "unknown_part", part: name } : null;
   if (rest.length === 0) return { kind: "part", part: name, scopes };
-  if (rest.length > 1) return null;
   const key = safeDecode(rest[0] ?? "");
   if (key === null || key === "") return null;
-  return { kind: "item", part: name, key, scopes };
+  if (rest.length === 1) return { kind: "item", part: name, key, scopes };
+  if (rest.length === 2 && rest[1] === "edit") return { kind: "edit", part: name, key, scopes };
+  return null;
 }
 
 function safeDecode(value: string): string | null {
@@ -147,7 +174,9 @@ function safeDecode(value: string): string | null {
 
 /** The same route with the Switch turned on or off. To fix has no Switch and comes back as is. */
 export function withScopes(route: SetupRoute, scopes: boolean): SetupRoute {
-  if (route.kind === "to_fix" || route.kind === "unknown_part") return route;
+  if (route.kind === "to_fix" || route.kind === "unknown_part" || route.kind === "changes") {
+    return route;
+  }
   return { ...route, scopes };
 }
 
@@ -172,7 +201,7 @@ export function itemState(
   items: readonly Pick<SetupItem, "id">[],
 ): "none" | "found" | "vanished" | "unknown_part" {
   if (route.kind === "unknown_part") return "unknown_part";
-  if (route.kind !== "item") return "none";
+  if (route.kind !== "item" && route.kind !== "edit") return "none";
   return hasItem(items, route.part, route.key) ? "found" : "vanished";
 }
 
