@@ -122,7 +122,7 @@ jobs:
     # put about 8 minutes of wall time on the longest one, on 2 workers.
     name: e2e shard ${{ matrix.shard }} of ${{ matrix.total }}
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:

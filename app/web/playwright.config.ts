@@ -10,7 +10,7 @@ export default defineConfig({
   testDir: "e2e",
   outputDir: "test-results/artifacts",
   globalSetup: "./e2e/global-setup.ts",
-  reporter: "list",
+  reporter: [["list"], ["./e2e/shard-reporter.ts"]],
   timeout: 60_000,
   expect: { timeout: 8_000 },
   fullyParallel: true,
