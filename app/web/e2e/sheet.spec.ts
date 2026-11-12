@@ -337,84 +337,102 @@ test("sheet under forced colors: full page screenshot", async ({ page }) => {
   await page.screenshot({ path: join(outDir, "page-forced-colors.png"), fullPage: true });
 });
 
+/*
+ * The hover scan moves the mouse over up to five elements of every cell and measures the cell and
+ * all its neighbours before and after, about eight browser round trips per element. One test over
+ * the whole sheet took 1.6 minutes on a fast laptop (301 cells, 485 elements at 1440), and the
+ * 2-vCPU runner is about three times slower, so it ran past its 240 s limit. It splits into
+ * SECTION_GROUPS tests that each keep the default limit. The hover check has no section to keep
+ * together, and one section can be far bigger than the rest, so cell number i goes to group i
+ * modulo SECTION_GROUPS. A new cell lands in exactly one group, and the groups stay even.
+ */
 for (const width of widths) {
-  test(`hover does not move anything at ${String(width)}`, async ({ page }) => {
-    test.setTimeout(240_000);
-    await page.setViewportSize({ width, height: 900 });
-    const cells = await openSheet(page, "light");
-    const interactive = [
-      "a[href]",
-      "button:not([disabled])",
-      "input",
-      "select",
-      "textarea",
-      '[role="option"]',
-      '[role="button"]',
-    ];
-    const snapshot = (selector: string) =>
-      page.evaluate((sel) => {
-        // The cell's own elements, plus every cell box on the sheet as the neighbours.
-        const rects: Record<string, string> = {};
-        const put = (key: string, el: Element) => {
-          const r = el.getBoundingClientRect();
-          // React Aria's hidden select is fixed and clipped, so scrolling moves it. Zero boxes too.
-          if (el.closest("[data-testid='hidden-select-container']") !== null) return;
-          if (r.width === 0 && r.height === 0) return;
-          rects[key] =
-            `${el.tagName.toLowerCase()}.${String(el.getAttribute("class") ?? "").split(" ")[0] ?? ""} ` +
-            [r.x + window.scrollX, r.y + window.scrollY, r.width, r.height]
-              .map((n) => n.toFixed(1))
-              .join(",");
-        };
-        document
-          .querySelector(sel)
-          ?.querySelectorAll("*")
-          .forEach((el, i) => {
-            put(`in${String(i)}`, el);
+  for (let group = 0; group < SECTION_GROUPS; group += 1) {
+    test(`hover does not move anything at ${String(width)} group ${String(group + 1)} of ${String(SECTION_GROUPS)}`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 900 });
+      const all = await openSheet(page, "light");
+      const mine = all.filter((_, i) => i % SECTION_GROUPS === group);
+      expect(mine.length, "every group holds at least one cell").toBeGreaterThan(0);
+      const interactive = [
+        "a[href]",
+        "button:not([disabled])",
+        "input",
+        "select",
+        "textarea",
+        '[role="option"]',
+        '[role="button"]',
+      ];
+      const snapshot = (selector: string) =>
+        page.evaluate((sel) => {
+          // The cell's own elements, plus every cell box on the sheet as the neighbours.
+          const rects: Record<string, string> = {};
+          const put = (key: string, el: Element) => {
+            const r = el.getBoundingClientRect();
+            // React Aria's hidden select is fixed and clipped, so scrolling moves it. Zero boxes too.
+            if (el.closest("[data-testid='hidden-select-container']") !== null) return;
+            if (r.width === 0 && r.height === 0) return;
+            rects[key] =
+              `${el.tagName.toLowerCase()}.${String(el.getAttribute("class") ?? "").split(" ")[0] ?? ""} ` +
+              [r.x + window.scrollX, r.y + window.scrollY, r.width, r.height]
+                .map((n) => n.toFixed(1))
+                .join(",");
+          };
+          document
+            .querySelector(sel)
+            ?.querySelectorAll("*")
+            .forEach((el, i) => {
+              put(`in${String(i)}`, el);
+            });
+          document.querySelectorAll(".sheet-cell").forEach((el, i) => {
+            put(`cell${String(i)}`, el);
           });
-        document.querySelectorAll(".sheet-cell").forEach((el, i) => {
-          put(`cell${String(i)}`, el);
-        });
-        return rects;
-      }, selector);
-    const moved: Finding[] = [];
-    for (const cell of cells) {
-      const sel = cellSelector(cell);
-      const targets = page.locator(interactive.map((part) => `${sel} ${part}`).join(", "));
-      const count = await targets.count();
-      // Up to five elements per cell, spread from first to last, to keep the run short.
-      const picks = new Set(
-        Array.from({ length: Math.min(count, 5) }, (_, k) =>
-          Math.round((k * (count - 1)) / Math.max(1, Math.min(count, 5) - 1)),
-        ),
-      );
-      for (const i of picks) {
-        const target = targets.nth(i);
-        if (!(await target.isVisible())) continue;
-        if ((await target.evaluate((el) => el.closest('[aria-hidden="true"]'))) !== null) continue;
-        await target.scrollIntoViewIfNeeded();
-        // The baseline comes after the scroll. A target inside a sideways scroll container (the
-        // segmented pages at 375) moves the whole row when it scrolls into view, and that is the
-        // scroll, not the hover.
-        await page.mouse.move(0, 0);
-        const before = await snapshot(sel);
-        const box = await target.boundingBox();
-        if (box === null) continue;
-        await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-        const after = await snapshot(sel);
-        const changed = Object.keys(before).filter((k) => before[k] !== after[k]);
-        if (changed.length > 0) {
-          moved.push({
-            kind: "hover-shift",
-            cell: `${cell.component}/${cell.state}`,
-            target: i,
-            elements: changed.length,
-            sample: changed.slice(0, 3).map((k) => `${before[k] ?? ""} -> ${after[k] ?? ""}`),
-          });
+          return rects;
+        }, selector);
+      const moved: Finding[] = [];
+      for (const cell of mine) {
+        const sel = cellSelector(cell);
+        const targets = page.locator(interactive.map((part) => `${sel} ${part}`).join(", "));
+        const count = await targets.count();
+        // Up to five elements per cell, spread from first to last, to keep the run short.
+        const picks = new Set(
+          Array.from({ length: Math.min(count, 5) }, (_, k) =>
+            Math.round((k * (count - 1)) / Math.max(1, Math.min(count, 5) - 1)),
+          ),
+        );
+        for (const i of picks) {
+          const target = targets.nth(i);
+          if (!(await target.isVisible())) continue;
+          if ((await target.evaluate((el) => el.closest('[aria-hidden="true"]'))) !== null)
+            continue;
+          await target.scrollIntoViewIfNeeded();
+          // The baseline comes after the scroll. A target inside a sideways scroll container (the
+          // segmented pages at 375) moves the whole row when it scrolls into view, and that is the
+          // scroll, not the hover.
+          await page.mouse.move(0, 0);
+          const before = await snapshot(sel);
+          const box = await target.boundingBox();
+          if (box === null) continue;
+          await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+          const after = await snapshot(sel);
+          const changed = Object.keys(before).filter((k) => before[k] !== after[k]);
+          if (changed.length > 0) {
+            moved.push({
+              kind: "hover-shift",
+              cell: `${cell.component}/${cell.state}`,
+              target: i,
+              elements: changed.length,
+              sample: changed.slice(0, 3).map((k) => `${before[k] ?? ""} -> ${after[k] ?? ""}`),
+            });
+          }
         }
       }
-    }
-    save(`findings-hover-${String(width)}`, moved);
-    expect.soft(summarise(moved), "hover moves layout").toEqual([]);
-  });
+      save(`findings-hover-${String(width)}-group-${String(group + 1)}`, {
+        cells: mine.map((cell) => `${cell.component}/${cell.state}`),
+        moved,
+      });
+      expect.soft(summarise(moved), "hover moves layout").toEqual([]);
+    });
+  }
 }

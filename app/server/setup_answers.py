@@ -710,15 +710,26 @@ class SetupService:
         with self._lock(req.project):
             with self._guard:
                 cached = self._cache.get(req.project)
+            seen: Sequence[tuple[str, Collected]] = (
+                cached.ran if cached is not None else ()
+            )
+            before = _signature(req.ctx, seen)
             if (
                 cached is not None
                 and cached.key == _context_key(req)
-                and cached.signature == _signature(req.ctx, cached.ran)
+                and cached.signature == before
             ):
                 with self._guard:
                     self._cache.move_to_end(req.project)
                 return cached
             built = build_bundle(req)
+            # build_bundle takes its signature after the collectors, so a file changed
+            # mid-read leaves old content under the new file's signature, which would
+            # look fresh until the next change. Such a read is answered but not kept.
+            if _signature(req.ctx, seen) != before:
+                with self._guard:
+                    self._cache.pop(req.project, None)
+                return built
             with self._guard:
                 self._cache[req.project] = built
                 self._cache.move_to_end(req.project)

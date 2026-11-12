@@ -32,6 +32,7 @@ import {
   rewriteJson,
   seedHistory,
   startReady,
+  waitForSetupRead,
 } from "./fixtures/m6_edit";
 import type { BuildOptions, M6Fixture } from "./fixtures/m6_edit";
 
@@ -117,14 +118,21 @@ async function shot(
   });
 }
 
-/** Runs one flow for each width and theme, with the settings files put back first. */
+/**
+ * Runs one flow for each width and theme, with the settings files put back first. The page leaves
+ * and the server finishes any setup read the last variant's page began before the files change,
+ * because a read that overlaps a file change answers with the old values (see `waitForSetupRead`).
+ */
 async function eachVariant(
-  fx: M6Fixture,
+  world: World,
+  page: Page,
   flow: (width: number, theme: Theme) => Promise<void>,
 ): Promise<void> {
   for (const width of WIDTHS) {
     for (const theme of THEMES) {
-      restoreFiles(fx);
+      await page.goto("about:blank");
+      await waitForSetupRead(world.server);
+      restoreFiles(world.fx);
       await flow(width, theme);
     }
   }
@@ -160,7 +168,7 @@ async function pickLow(page: Page): Promise<void> {
 
 test("edit rail, updating with Save held, and Save busy", async ({ page }) => {
   await inWorld({}, async (world) => {
-    await eachVariant(world.fx, async (width, theme) => {
+    await eachVariant(world, page, async (width, theme) => {
       const phone = width === 375;
       // The untouched rail (D2): the picked value and file are what is set now. No error line, no
       // empty diff box and no "xhigh to xhigh" rows. Save is dashed and aria-disabled, stays
@@ -218,7 +226,7 @@ test("edit rail, updating with Save held, and Save busy", async ({ page }) => {
       await page.unroute("**/api/edit/preview");
     });
 
-    await eachVariant(world.fx, async (width, theme) => {
+    await eachVariant(world, page, async (width, theme) => {
       const phone = width === 375;
       // 5. Save busy: the save is on its way and has no answer yet.
       await openEdit(page, world, width, theme);
@@ -247,7 +255,7 @@ test("edit rail, updating with Save held, and Save busy", async ({ page }) => {
 
 test("user scope through a link, and link_outside", async ({ page }) => {
   await inWorld({}, async (world) => {
-    await eachVariant(world.fx, async (width, theme) => {
+    await eachVariant(world, page, async (width, theme) => {
       const phone = width === 375;
       // 3. User picked through a link, with the user-scope warning and the projects it reaches
       // (x-symlink).
@@ -291,7 +299,7 @@ test("user scope through a link, and link_outside", async ({ page }) => {
 
 test("refused after a file change, focus on the message", async ({ page }) => {
   await inWorld({}, async (world) => {
-    await eachVariant(world.fx, async (width, theme) => {
+    await eachVariant(world, page, async (width, theme) => {
       await openEdit(page, world, width, theme);
       await pickLow(page);
       rewriteJson(world.fx.localFile, (now) => {
@@ -313,7 +321,7 @@ test("refused after a file change, focus on the message", async ({ page }) => {
 
 test("saved, checking then confirmed", async ({ page }) => {
   await inWorld({}, async (world) => {
-    await eachVariant(world.fx, async (width, theme) => {
+    await eachVariant(world, page, async (width, theme) => {
       await openEdit(page, world, width, theme);
       await pickLow(page);
       await saveButton(page).click();
@@ -336,7 +344,7 @@ test("saved, checking then confirmed", async ({ page }) => {
 test("overwritten, our change kept and lost, with Review changes open", async ({ page }) => {
   await inWorld({}, async (world) => {
     for (const kept of [true, false]) {
-      await eachVariant(world.fx, async (width, theme) => {
+      await eachVariant(world, page, async (width, theme) => {
         await openEdit(page, world, width, theme);
         await pickLow(page);
         await saveButton(page).click();
@@ -369,7 +377,7 @@ test("overwritten, our change kept and lost, with Review changes open", async ({
 
 test("undo confirm after another program changed the file", async ({ page }) => {
   await inWorld({}, async (world) => {
-    await eachVariant(world.fx, async (width, theme) => {
+    await eachVariant(world, page, async (width, theme) => {
       await openEdit(page, world, width, theme);
       await pickLow(page);
       await saveButton(page).click();
@@ -666,7 +674,7 @@ test("editing off, inspector, plugin agent, route note and foot lines", async ({
 
 test("restart box when the new server has editing on, and off", async ({ page }) => {
   await inWorld({}, async (world) => {
-    await eachVariant(world.fx, async (width, theme) => {
+    await eachVariant(world, page, async (width, theme) => {
       const phone = width === 375;
       // The new server has editing on, and no longer knows this page's edit key.
       await openEdit(page, world, width, theme);

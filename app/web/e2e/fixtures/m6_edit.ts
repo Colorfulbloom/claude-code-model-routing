@@ -425,8 +425,25 @@ export async function seedHistory(server: Server, fx: M6Fixture): Promise<void> 
 }
 
 /**
+ * Waits until the server is done with every setup read it began for a page that has gone.
+ *
+ * A save makes the page ask for the setup again at once, so a spec that puts the files back right
+ * after a save can land in the middle of that read, and a slow runner makes that likely. The server
+ * keeps such a read out of its cache (SetupService.bundle in app/server/setup_answers.py), but the
+ * page that asked still gets the old values. A read holds the project's lock from start to end, so
+ * one more read that gets its answer means no earlier read is left running. Leave the page first,
+ * so no new request arrives after this one.
+ */
+export async function waitForSetupRead(server: Server): Promise<void> {
+  const session = await openSession(server);
+  const answer = await call(session, "GET", `/api/setup/settings?project=${PROJECT_KEY}`);
+  if (answer.status !== 200) throw new Error(`setup answered ${String(answer.status)}`);
+}
+
+/**
  * Puts the three settings files back as the builder wrote them, and the user link back on its
- * file, so a test can run the same flow once per width and theme. The ledger keeps its rows.
+ * file, so a test can run the same flow once per width and theme. The ledger keeps its rows. Call
+ * `waitForSetupRead` first when a page was open on the server a moment ago.
  */
 export function restoreFiles(fx: M6Fixture): void {
   writeJson(fx.projectFile, { effortLevel: "medium" });

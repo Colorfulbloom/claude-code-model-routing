@@ -83,12 +83,19 @@ ItemQuery = Annotated[str | None, Query(max_length=200)]
 _FIXTURE_BACKUPS = "~/.claude/routing-dashboard/backups"
 _NO_STORE = {"Cache-Control": "no-store"}
 
+# A fixed 422 description, as with INVALID_REQUEST_RESPONSE: without one FastAPI reads
+# ``http.HTTPStatus``, whose 422 phrase differs between Python 3.11 and 3.13.
+_EDIT_REFUSED_RESPONSE: dict[str, object] = {
+    "model": EditError,
+    "description": "Unprocessable Content",
+}
+
 _WRITE_RESPONSES: dict[int | str, dict[str, object]] = {
     401: {"model": ErrorEnvelope},
     403: {"model": ErrorEnvelope},
     404: {"model": ErrorEnvelope},
     409: {"model": EditConflict},
-    422: {"model": EditError},
+    422: _EDIT_REFUSED_RESPONSE,
 }
 
 
@@ -321,7 +328,7 @@ def build_always_router(
         "/rows/{row_id}/drift",
         response_model=DriftAnswer,
         name="get_edit_drift",
-        responses={422: {"model": EditError}},
+        responses={422: _EDIT_REFUSED_RESPONSE},
     )
     def get_drift(
         row_id: RowId, project: ProjectQuery = None

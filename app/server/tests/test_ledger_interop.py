@@ -138,6 +138,10 @@ def start_old(world: World, op: str, **extra: Any) -> subprocess.Popen[str]:
     assert proc.stdin is not None
     proc.stdin.write(json.dumps(request_for(world, op, **extra)))
     proc.stdin.close()
+    # The request is sent and its pipe closed. On Python 3.11, communicate() flushes
+    # stdin first and raises "I/O operation on closed file" on a closed pipe (3.13
+    # ignores that), so the process drops its handle to the pipe here.
+    proc.stdin = None
     return proc
 
 

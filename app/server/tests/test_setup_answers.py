@@ -8,6 +8,7 @@ contract in ``models.py``.
 import logging
 import os
 import sys
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -510,6 +511,37 @@ def test_a_changed_file_drops_the_cache_and_moves_the_etag(
     after = svc.bundle(request)
     assert after is not before
     assert after.etag != before.etag
+
+
+def test_a_file_changed_during_the_read_keeps_that_read_out_of_the_cache(
+    tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = sah.fresh(tmp_path_factory, "simple")
+    ctx = sc.context(root)
+    svc = service()
+    request = sah.request_of(ctx)
+    svc.bundle(request)
+    target = ctx.config_dir / "settings.json"
+    original = target.read_text(encoding="utf-8")
+    target.write_text(original + "\n\n", encoding="utf-8")
+    collector = setup_answers._BY_NAME["settings"]  # pyright: ignore[reportPrivateUsage]
+    real = collector.read
+
+    def put_back_after_reading(
+        ctx: setup_answers.SetupContext, handoff: Mapping[str, object]
+    ) -> setup_answers.Collected:
+        # The file changes after the collector read it and before the bundle's
+        # signature, as when a test or an editor restores it mid-read.
+        got = real(ctx, handoff)
+        target.write_text(original, encoding="utf-8")
+        return got
+
+    monkeypatch.setattr(collector, "read", put_back_after_reading)
+    racy = svc.bundle(request)
+    monkeypatch.setattr(collector, "read", real)
+    fresh = svc.bundle(request)
+    assert fresh is not racy
+    assert svc.bundle(request) is fresh
 
 
 def test_a_new_data_version_drops_the_cache(
